@@ -2,7 +2,15 @@
 
 import { mergeStatements } from "@openuidev/react-lang";
 import { Button } from "@openuidev/react-ui";
-import { Code2 } from "lucide-react";
+import {
+  Activity,
+  CircleDot,
+  Code2,
+  GitPullRequest,
+  Hexagon,
+  Search,
+  type LucideIcon,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConversationPanel } from "./components/ConversationPanel/ConversationPanel";
@@ -12,6 +20,7 @@ import { PreviewPanel } from "./components/PreviewPanel/PreviewPanel";
 import {
   GITHUB_STARTERS,
   type ChatMessage,
+  type GitHubStarterIconKey,
   type Status,
   type Theme,
   type ToolCallEntry,
@@ -58,6 +67,20 @@ function isPureCode(response: string): boolean {
   const stmtPattern = /^[a-zA-Z_$][\w$]*\s*=/;
   const stmtCount = lines.filter((l) => stmtPattern.test(l.trim())).length;
   return stmtCount / lines.length > 0.7;
+}
+
+const STARTER_ICON_MAP: Record<GitHubStarterIconKey, LucideIcon> = {
+  "commit-activity": Activity,
+  "pull-requests": GitPullRequest,
+  "issue-tracking": CircleDot,
+  "code-reviews": Search,
+  "language-breakdown": Code2,
+  "repository-stats": Hexagon,
+};
+
+function renderStarterIcon(icon: GitHubStarterIconKey) {
+  const Icon = STARTER_ICON_MAP[icon];
+  return <Icon size={16} strokeWidth={2} />;
 }
 
 // ── Tool call tracking wrapper ───────────────────────────────────────────
@@ -445,7 +468,7 @@ export default function GitHubDemoPage() {
                         onClick={() => send(s.prompt)}
                         disabled={isStreaming}
                       >
-                        <span className="gh-starter-icon">{s.icon}</span>
+                        <span className={`gh-starter-icon gh-tone-${s.tone}`}>{renderStarterIcon(s.icon)}</span>
                         <div className="gh-starter-label">{s.label}</div>
                         <div className="gh-starter-desc">
                           {s.prompt.length > 60 ? s.prompt.slice(0, 60) + "..." : s.prompt}

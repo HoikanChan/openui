@@ -70,11 +70,11 @@ function DesktopPlaygroundButton({ className = "" }: { className?: string }) {
 function MobilePlaygroundButton({ className = "" }: { className?: string }) {
   return (
     <PillLink
-      href="/playground"
+      href="/demo/github"
       className={`${styles.mobilePlaygroundButton} ${className}`.trim()}
       arrow={<TrailingArrow />}
     >
-      <span className={styles.mobilePlaygroundLabel}>{secondaryCTA}</span>
+      <span className={styles.mobilePlaygroundLabel}>Try Demo</span>
     </PillLink>
   );
 }
@@ -83,10 +83,13 @@ function AnnouncementBanner({ className = "" }: { className?: string }) {
   return (
     <>
       <div className={`${styles.heroBanner} ${styles.heroBannerDesktop} ${className}`.trim()}>
-        <span className={styles.heroBannerLabel}>We&apos;re introducing OpenUI Lang v0.5</span>
+        <span className={styles.heroBannerLabel}>
+          <span className={styles.heroBannerBadge}>New</span>
+          <span>We&apos;re introducing OpenUI Lang v0.5</span>
+        </span>
         <div className={styles.heroBannerActions}>
           <Link href="/demo/github" target="_blank" className={`${styles.heroBannerButton} ${styles.heroBannerButtonPrimary}`}>
-            <span>Try now</span>
+            <span>Try</span>
           </Link>
           <Link href={architectureHref} className={styles.heroBannerButton}>
             <span>Read more</span>
@@ -94,7 +97,10 @@ function AnnouncementBanner({ className = "" }: { className?: string }) {
         </div>
       </div>
       <Link href={architectureHref} className={`${styles.heroBanner} ${styles.heroBannerMobile} ${className}`.trim()}>
-        <span className={styles.heroBannerLabel}>We&apos;re introducing OpenUI Lang v0.5</span>
+        <span className={styles.heroBannerLabel}>
+          <span className={styles.heroBannerBadge}>New</span>
+          <span>Introducing OpenUI Lang v0.5</span>
+        </span>
       </Link>
     </>
   );

@@ -47,6 +47,8 @@
   flex-direction: column;
   height: 100vh;
   background: var(--openui-foreground);
+  position: relative;
+  isolation: isolate;
 }
 
 .app-body {
@@ -57,6 +59,7 @@
 }
 
 .app-body-home {
+  align-items: stretch;
   overflow-y: auto;
 }
 
@@ -70,9 +73,24 @@
 }
 
 .content-wrapper-home {
-  justify-content: center;
+  position: relative;
+  align-items: stretch;
+  justify-content: flex-start;
   padding: 0;
   overflow: visible;
+}
+
+.content-wrapper-home::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--openui-foreground);
+  pointer-events: none;
+}
+
+.content-wrapper-home > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* ─── Split Screen ──────────────────────────────────────────────────────────── */
@@ -552,6 +570,15 @@
 
 .gh-starters-grid-compact {
   width: min(100%, 600px);
+}
+
+.gh-starter-icon {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--openui-radius-full);
 }
 
 /* ─── Responsive ────────────────────────────────────────────────────────────── */
