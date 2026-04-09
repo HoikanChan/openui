@@ -24,6 +24,8 @@
 # Claude
 Claude.md
 .claude/
+!packages/lang-core/.claude/
+!packages/lang-core/.claude/**
 CLAUDE.local.md
 .workspace/
 

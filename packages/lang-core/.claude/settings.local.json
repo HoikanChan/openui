@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /Users/chenxie/workspace/openui/packages/lang-core/.claude/specs/lang-core-spec)",
+      "Bash(touch /Users/chenxie/workspace/openui/packages/lang-core/.claude/specs/lang-core-spec/requirements.md /Users/chenxie/workspace/openui/packages/lang-core/.claude/specs/lang-core-spec/design.md /Users/chenxie/workspace/openui/packages/lang-core/.claude/specs/lang-core-spec/tasks.md)"
+    ]
+  }
+}
