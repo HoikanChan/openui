@@ -1,0 +1,5 @@
+dev/openui/langcore/lexer/TokenType.class
+dev/openui/langcore/lexer/Lexer.class
+dev/openui/langcore/util/JsonStringUtil.class
+dev/openui/langcore/lexer/Token.class
+dev/openui/langcore/LangCore.class

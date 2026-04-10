@@ -2,7 +2,7 @@ package dev.openui.langcore.util;
 
 /**
  * Utilities for unescaping JSON-style double-quoted strings.
- * Handles {@code \"}, {@code \\}, {@code \n}, {@code \t}, {@code \r}, {@code \uXXXX}.
+ * Handles \", \\, \n, \t, \r, and Unicode escapes (backslash-u followed by 4 hex digits).
  * On malformed input, strips surrounding quotes and returns the raw text.
  * Ref: Req 1 AC9
  */
@@ -66,7 +66,7 @@ public final class JsonStringUtil {
                             sb.append((char) cp);
                             i += 6;
                         } catch (NumberFormatException e) {
-                            // Malformed \uXXXX — emit raw and advance past backslash only
+                            // Malformed unicode escape — emit raw and advance past backslash only
                             sb.append('\\');
                             i++;
                         }

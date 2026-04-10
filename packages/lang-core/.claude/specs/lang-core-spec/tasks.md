@@ -42,7 +42,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
   - Double-quoted strings via `JsonStringUtil`; single-quoted strings with manual unescape; numeric literals (int, decimal, scientific notation, negative-number vs minus disambiguation)
   - _Ref: Req 1 AC9-12_
 
-- [ ] **Task 2.5** — Unit tests for `Lexer`
+- [x] **Task 2.5** — Unit tests for `Lexer`
   - Files: `test/.../lexer/LexerTest.java`
   - One test per AC (AC1-18); include edge cases: unterminated string, negative number vs binary minus, emoji skipped, `&&` vs `&`
   - _Ref: Req 1.*_
