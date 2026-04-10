@@ -8,12 +8,12 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 1 — Project Scaffold
 
-- [ ] **Task 1.1** — Create Maven project skeleton
+- [x] **Task 1.1** — Create Maven project skeleton
   - Files: `lang-core-java/pom.xml`
   - Create `pom.xml` with `<release>21</release>`, zero runtime deps, JUnit Jupiter 5.10.2 test-scope only, standard source layout `src/main/java` / `src/test/java`
   - _Ref: Design §Technology Choices_
 
-- [ ] **Task 1.2** — Create root package and `LangCore` façade stub
+- [x] **Task 1.2** — Create root package and `LangCore` façade stub
   - Files: `src/main/java/dev/openui/langcore/LangCore.java`
   - Empty public final class with TODO stubs for `createParser`, `createStreamingParser`, `parse`, `mergeStatements`, `createLibrary`
   - _Ref: Design §20_
