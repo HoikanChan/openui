@@ -51,22 +51,22 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 3 — Pre-Processor
 
-- [ ] **Task 3.1** — Implement `PreProcessor.stripComments`
+- [x] **Task 3.1** — Implement `PreProcessor.stripComments`
   - Files: `parser/PreProcessor.java`
   - Remove `//…` and `#…` to end-of-line when outside a double-quoted string
   - _Ref: Req 7 AC5-6_
 
-- [ ] **Task 3.2** — Implement `PreProcessor.stripFences`
+- [x] **Task 3.2** — Implement `PreProcessor.stripFences`
   - Files: `parser/PreProcessor.java` (extend)
   - Extract content from `` ``` ``-fenced blocks; concatenate multiple blocks with `\n`; pass through if no fences; do not treat `` ``` `` inside strings as fence boundary; handle missing closing fence (streaming)
   - _Ref: Req 7 AC1-4, AC7_
 
-- [ ] **Task 3.3** — Implement `PreProcessor.autoClose` and `AutoCloseResult`
+- [x] **Task 3.3** — Implement `PreProcessor.autoClose` and `AutoCloseResult`
   - Files: `parser/PreProcessor.java` (extend), `parser/AutoCloseResult.java`
   - Bracket stack + string state machine; append closers in reverse order; handle trailing `\` in strings; `wasIncomplete` flag
   - _Ref: Req 8 AC1-4_
 
-- [ ] **Task 3.4** — Unit tests for `PreProcessor`
+- [x] **Task 3.4** — Unit tests for `PreProcessor`
   - Files: `test/.../parser/PreProcessorTest.java`
   - One test per AC for stripComments, stripFences, autoClose; include nested fences, missing closing fence, trailing escape
   - _Ref: Req 7.*, 8.*_
