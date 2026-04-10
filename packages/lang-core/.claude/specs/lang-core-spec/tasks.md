@@ -32,12 +32,12 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
   - State-machine unescape of `"..."` strings; handles `\"`, `\\`, `\n`, `\t`, `\r`, `\uXXXX`; on malformed input strips quotes and returns raw text
   - _Ref: Req 1 AC9_
 
-- [ ] **Task 2.3** — Implement `Lexer` — whitespace, punctuation, operators, keywords
+- [x] **Task 2.3** — Implement `Lexer` — whitespace, punctuation, operators, keywords
   - Files: `lexer/Lexer.java`
   - `tokenize()` method; handles AC1-8, AC13-18 (whitespace skip, newline, punctuation, `=`/`==`, `!`/`!=`, `>=/<=`, `&&`/`||`, single-char ops, `$stateVar`, `@BuiltinCall`, PascalCase/lowercase ident, keywords, EOF)
   - _Ref: Req 1 AC1-8, AC13-18_
 
-- [ ] **Task 2.4** — Implement `Lexer` — string and number literals
+- [x] **Task 2.4** — Implement `Lexer` — string and number literals
   - Files: `lexer/Lexer.java` (extend Task 2.3)
   - Double-quoted strings via `JsonStringUtil`; single-quoted strings with manual unescape; numeric literals (int, decimal, scientific notation, negative-number vs minus disambiguation)
   - _Ref: Req 1 AC9-12_
