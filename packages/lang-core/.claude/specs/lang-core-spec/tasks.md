@@ -27,7 +27,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
   - 35 variants as listed in design; `Token(TokenType, Object)` with `stringValue()` and `numValue()` accessors
   - _Ref: Req 1, Design §1_
 
-- [ ] **Task 2.2** — Implement `JsonStringUtil` (double-quote string unescaping)
+- [x] **Task 2.2** — Implement `JsonStringUtil` (double-quote string unescaping)
   - Files: `util/JsonStringUtil.java`
   - State-machine unescape of `"..."` strings; handles `\"`, `\\`, `\n`, `\t`, `\r`, `\uXXXX`; on malformed input strips quotes and returns raw text
   - _Ref: Req 1 AC9_
