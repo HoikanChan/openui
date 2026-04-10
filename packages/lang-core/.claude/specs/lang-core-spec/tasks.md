@@ -22,7 +22,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 2 — Lexer
 
-- [ ] **Task 2.1** — Implement `TokenType` enum and `Token` record
+- [x] **Task 2.1** — Implement `TokenType` enum and `Token` record
   - Files: `lexer/TokenType.java`, `lexer/Token.java`
   - 35 variants as listed in design; `Token(TokenType, Object)` with `stringValue()` and `numValue()` accessors
   - _Ref: Req 1, Design §1_
