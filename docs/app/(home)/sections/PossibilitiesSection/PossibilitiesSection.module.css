@@ -1,0 +1,158 @@
+.section {
+  width: 100%;
+}
+
+.headerContainer {
+  max-width: 75rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+
+.header {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+.title {
+  margin: 0;
+  text-align: center;
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -2px;
+  color: var(--openui-text-neutral-primary);
+}
+
+.cardsContainer {
+  max-width: 80rem;
+  margin-inline: auto;
+}
+
+.mobileCarouselViewport {
+  overflow: hidden;
+  padding-inline: 1.25rem;
+}
+
+.mobileCarouselTrack {
+  display: flex;
+  width: max-content;
+  gap: 1rem;
+  will-change: transform;
+}
+
+.cardsGrid {
+  display: none;
+}
+
+.card {
+  position: relative;
+  width: 100%;
+  max-width: calc((100vw - 3.5rem) / 1.5);
+  flex: 0 0 calc((100vw - 3.5rem) / 1.5);
+  border-radius: var(--openui-radius-4xl);
+  background: var(--openui-foreground);
+}
+
+.cardLink {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.cardLink:hover {
+  transform: translateY(-2px);
+}
+
+.cardLink:focus-visible {
+  outline: 2px solid var(--openui-border-accent);
+  outline-offset: 4px;
+}
+
+.cardLink:hover .cardOverlay,
+.cardLink:focus-visible .cardOverlay {
+  border-color: var(--openui-border-accent);
+  box-shadow: var(--openui-shadow-l);
+}
+
+.cardInner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.cardImage {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  object-fit: cover;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 82%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, #000 82%, transparent 100%);
+}
+
+.cardBody {
+  width: 100%;
+  padding: 1rem;
+}
+
+.cardTitle {
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--openui-text-neutral-primary);
+}
+
+.cardOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid var(--openui-border-default);
+  border-radius: inherit;
+  box-shadow: var(--openui-shadow-m);
+}
+
+@media (min-width: 1024px) {
+  .headerContainer {
+    padding-inline: 2rem;
+  }
+
+  .mobileCarouselViewport {
+    display: none;
+  }
+
+  .cardsGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    max-width: none;
+    margin-inline: 0;
+    gap: 1.25rem;
+  }
+
+  .cardsContainer {
+    padding-inline: 2rem;
+  }
+
+  .card {
+    max-width: none;
+    flex: initial;
+  }
+
+  .cardBody {
+    padding: 1.5rem;
+  }
+
+  .cardTitle {
+    font-family: "Inter Display", sans-serif;
+    font-size: 18px;
+  }
+}
