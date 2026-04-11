@@ -173,12 +173,12 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 10 — Merger
 
-- [ ] **Task 10.1** — Implement `Merger`
+- [x] **Task 10.1** — Implement `Merger`
   - Files: `merge/Merger.java`
   - `mergeStatements(existing, patchText, schema)`: strip fences, parse patch, copy existing, overwrite/delete, BFS GC keeping `$state` IDs; update `LangCore.mergeStatements`
   - _Ref: Req 12 AC1-8_
 
-- [ ] **Task 10.2** — Unit tests for `Merger`
+- [x] **Task 10.2** — Unit tests for `Merger`
   - Files: `test/.../merge/MergerTest.java`
   - Override, delete (`NullStatement`), append new ID, GC unreachable, preserve `$state`, fence stripping, empty existing, empty patch
   - _Ref: Req 12.*_

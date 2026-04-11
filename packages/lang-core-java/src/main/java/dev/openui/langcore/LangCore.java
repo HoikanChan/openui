@@ -1,9 +1,13 @@
 package dev.openui.langcore;
 
+import dev.openui.langcore.merge.Merger;
 import dev.openui.langcore.parser.OneShot;
 import dev.openui.langcore.parser.result.ParseResult;
 import dev.openui.langcore.parser.SchemaRegistry;
 import dev.openui.langcore.parser.StreamParser;
+import dev.openui.langcore.parser.stmt.Statement;
+
+import java.util.Map;
 
 /**
  * Main façade for the OpenUI Lang core library.
@@ -38,10 +42,11 @@ public final class LangCore {
 
     /**
      * Merge a patch program into an existing statement map.
-     * TODO: implement
+     * Ref: Req 12 AC1-8
      */
-    public static Object mergeStatements(Object existing, String patchText, String jsonSchema) {
-        throw new UnsupportedOperationException("TODO: implement mergeStatements");
+    public static Map<String, Statement> mergeStatements(
+            Map<String, Statement> existing, String patchText, String jsonSchema) {
+        return Merger.mergeStatements(existing, patchText, SchemaRegistry.fromJson(jsonSchema));
     }
 
     /**
