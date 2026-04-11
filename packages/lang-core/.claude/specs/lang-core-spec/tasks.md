@@ -75,7 +75,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 4 — AST
 
-- [ ] **Task 4.1** — Implement AST node sealed interface and all record subtypes
+- [x] **Task 4.1** — Implement AST node sealed interface and all record subtypes
   - Files: `parser/ast/Node.java`, `parser/ast/LiteralNode.java`, `parser/ast/RefNode.java`, `parser/ast/StateRefNode.java`, `parser/ast/RuntimeRefNode.java`, `parser/ast/AssignNode.java`, `parser/ast/BinaryNode.java`, `parser/ast/UnaryNode.java`, `parser/ast/MemberNode.java`, `parser/ast/TernaryNode.java`, `parser/ast/CallNode.java`, `parser/ast/BuiltinCallNode.java`, `parser/ast/ElementNode.java`, `parser/ast/ArrayNode.java`, `parser/ast/ObjectNode.java`
   - All as `record implements Node`; `ElementNode` includes `hasDynamicProps` and nullable `statementId`
   - _Ref: Design §3_
