@@ -84,7 +84,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 5 — Expression Parser
 
-- [ ] **Task 5.1** — Implement Pratt expression parser
+- [x] **Task 5.1** — Implement Pratt expression parser
   - Files: `parser/ExpressionParser.java`
   - `parseExpression(int minBp)` with binding power table matching design §4; handles all operators, unary prefix, member access `.` and `[…]`, function calls `Name(…)`, builtin calls `@Name(…)`, ternary `?:`
   - _Ref: Req 3_
