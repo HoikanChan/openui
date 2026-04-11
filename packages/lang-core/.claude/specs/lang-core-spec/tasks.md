@@ -116,12 +116,12 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 7 — Schema Registry
 
-- [ ] **Task 7.1** — Implement `SchemaRegistry` with hand-written JSON Schema parser
+- [x] **Task 7.1** — Implement `SchemaRegistry` with hand-written JSON Schema parser
   - Files: `parser/SchemaRegistry.java`, `parser/PropDef.java` (parser package version), `parser/ComponentSchema.java`
   - Parse `$defs[Name].properties` key order, `required` array, and `default` values from JSON Schema string using `JsonStringUtil`; no external JSON library
   - _Ref: Design §7_
 
-- [ ] **Task 7.2** — Unit tests for `SchemaRegistry`
+- [x] **Task 7.2** — Unit tests for `SchemaRegistry`
   - Files: `test/.../parser/SchemaRegistryTest.java`
   - Round-trip: schema with required/optional props, default values, nested types; unknown component lookup returns empty
   - _Ref: Req 4 AC2-4_
@@ -130,17 +130,17 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 8 — Materializer
 
-- [ ] **Task 8.1** — Implement `ValidationError`, `OpenUIError`, `ParseMeta`, `ParseResult` records
+- [x] **Task 8.1** — Implement `ValidationError`, `OpenUIError`, `ParseMeta`, `ParseResult` records
   - Files: `parser/ValidationError.java`, `parser/OpenUIError.java`, `parser/ParseMeta.java`, `parser/ParseResult.java`
   - Exact field shapes from Design §6 and Req 5
   - _Ref: Req 5_
 
-- [ ] **Task 8.2** — Implement `Materializer` — prop mapping and validation
+- [x] **Task 8.2** — Implement `Materializer` — prop mapping and validation
   - Files: `parser/Materializer.java`
   - Positional arg → named prop via `SchemaRegistry`; generate excess-args, missing-required, null-required, unknown-component, inline-reserved errors; `hasDynamicProps` detection; mark `Query`/`Mutation` inline usage
   - _Ref: Req 4 AC1-8_
 
-- [ ] **Task 8.3** — Implement `Materializer` — root selection, unresolved, orphaned, state/query/mutation extraction
+- [x] **Task 8.3** — Implement `Materializer` — root selection, unresolved, orphaned, state/query/mutation extraction
   - Files: `parser/Materializer.java` (extend Task 8.2)
   - Root selection priority (Req 6 AC1-6); BFS to find unresolved refs and orphaned statements; build `stateDeclarations`, `queryStatements`, `mutationStatements`; set `meta.incomplete` from `wasIncomplete`
   - _Ref: Req 5, Req 6_
@@ -154,17 +154,17 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 9 — One-Shot and Streaming Parsers
 
-- [ ] **Task 9.1** — Implement `OneShot`
+- [x] **Task 9.1** — Implement `OneShot`
   - Files: `parser/OneShot.java`
   - Wire PreProcessor → Lexer → StatementParser → Materializer; update `LangCore.createParser` and `LangCore.parse`
   - _Ref: Design §8_
 
-- [ ] **Task 9.2** — Implement `StreamParser`
+- [x] **Task 9.2** — Implement `StreamParser`
   - Files: `parser/StreamParser.java`
   - Buffer management (`push`, `set`, `getResult`); `completedEnd` pointer; `putIfAbsent` for committed statements; delta-append vs reset logic; `synchronized` on all public methods; update `LangCore.createStreamingParser`
   - _Ref: Req 9 AC1-9_
 
-- [ ] **Task 9.3** — Unit tests for `StreamParser`
+- [x] **Task 9.3** — Unit tests for `StreamParser`
   - Files: `test/.../parser/StreamParserTest.java`
   - Incremental chunk delivery matches one-shot result on same complete input; committed statements not overwritten; `set()` delta vs reset; `meta.incomplete` correctly set; `getResult()` idempotent
   - _Ref: Req 9.*_

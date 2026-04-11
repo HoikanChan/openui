@@ -1,5 +1,10 @@
 package dev.openui.langcore;
 
+import dev.openui.langcore.parser.OneShot;
+import dev.openui.langcore.parser.ParseResult;
+import dev.openui.langcore.parser.SchemaRegistry;
+import dev.openui.langcore.parser.StreamParser;
+
 /**
  * Main façade for the OpenUI Lang core library.
  * Provides factory methods for parsers, the streaming parser, merge utilities,
@@ -11,26 +16,24 @@ public final class LangCore {
 
     /**
      * Create a one-shot parser bound to the given JSON Schema string.
-     * TODO: implement
      */
-    public static Object createParser(String jsonSchema) {
-        throw new UnsupportedOperationException("TODO: implement createParser");
+    public static OneShot createParser(String jsonSchema) {
+        return new OneShot(SchemaRegistry.fromJson(jsonSchema));
     }
 
     /**
      * Create a streaming parser bound to the given JSON Schema string.
-     * TODO: implement
+     * Ref: Req 9 AC1
      */
-    public static Object createStreamingParser(String jsonSchema) {
-        throw new UnsupportedOperationException("TODO: implement createStreamingParser");
+    public static StreamParser createStreamingParser(String jsonSchema) {
+        return new StreamParser(SchemaRegistry.fromJson(jsonSchema));
     }
 
     /**
      * Parse an OpenUI Lang program in one shot.
-     * TODO: implement
      */
-    public static Object parse(String input, String jsonSchema) {
-        throw new UnsupportedOperationException("TODO: implement parse");
+    public static ParseResult parse(String input, String jsonSchema) {
+        return createParser(jsonSchema).parse(input);
     }
 
     /**
