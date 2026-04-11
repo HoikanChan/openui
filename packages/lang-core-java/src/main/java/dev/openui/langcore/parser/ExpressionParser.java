@@ -68,14 +68,24 @@ public final class ExpressionParser {
         Node left = parseAtom();
 
         while (true) {
-            // Skip newlines inside expressions
+            // Speculatively skip newlines: only if the next real token has
+            // sufficient binding power (e.g. multiline ternary '?'). Otherwise
+            // leave the newlines in place so StatementParser can use them as
+            // statement boundaries (AC6, AC8).
+            int savedPos = pos;
             skipNewlines();
 
             Token tok = peek();
-            if (tok.type() == TokenType.EOF) break;
+            if (tok.type() == TokenType.EOF) {
+                pos = savedPos; // restore — newlines are not part of this expr
+                break;
+            }
 
             int lbp = getLeftBp(tok.type());
-            if (lbp <= minBp) break;
+            if (lbp <= minBp) {
+                pos = savedPos; // restore — newlines are statement boundaries
+                break;
+            }
 
             left = parseInfix(left, tok);
         }

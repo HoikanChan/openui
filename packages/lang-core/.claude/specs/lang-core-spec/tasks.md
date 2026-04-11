@@ -89,7 +89,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
   - `parseExpression(int minBp)` with binding power table matching design §4; handles all operators, unary prefix, member access `.` and `[…]`, function calls `Name(…)`, builtin calls `@Name(…)`, ternary `?:`
   - _Ref: Req 3_
 
-- [ ] **Task 5.2** — Unit tests for `ExpressionParser`
+- [x] **Task 5.2** — Unit tests for `ExpressionParser`
   - Files: `test/.../parser/ExpressionParserTest.java`
   - Precedence ordering tests (all 9 levels); member access on arrays (pluck vs length); ternary spanning lines; `$var = expr` inside expression → `AssignNode`
   - _Ref: Req 3.*_
@@ -98,16 +98,16 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 6 — Statement Parser
 
-- [ ] **Task 6.1** — Implement `Statement` sealed interface subtypes
+- [x] **Task 6.1** — Implement `Statement` sealed interface subtypes
   - Files: `parser/Statement.java` (sealed), `parser/ValueStatement.java`, `parser/StateStatement.java`, `parser/QueryStatement.java`, `parser/MutationStatement.java`, `parser/NullStatement.java`
   - _Ref: Req 2, Design §5_
 
-- [ ] **Task 6.2** — Implement `StatementParser`
+- [x] **Task 6.2** — Implement `StatementParser`
   - Files: `parser/StatementParser.java`
   - Top-level loop: scan for `<lhs> = <expr>` patterns; track `bracketDepth` and `ternaryDepth`; emit statement on newline at depth 0 when next token is not `?`/`:`; reclassify `Query`/`Mutation` calls; last-write-wins deduplication; silently skip non-matching lines
   - _Ref: Req 2 AC1-10_
 
-- [ ] **Task 6.3** — Unit tests for `StatementParser`
+- [x] **Task 6.3** — Unit tests for `StatementParser`
   - Files: `test/.../parser/StatementParserTest.java`
   - State/value/query/mutation classification; multiline ternary continuations; duplicate IDs; bracketed newline ignore; silent skip of malformed lines
   - _Ref: Req 2.*_
