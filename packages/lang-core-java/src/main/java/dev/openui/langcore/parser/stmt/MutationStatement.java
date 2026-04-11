@@ -1,4 +1,4 @@
-package dev.openui.langcore.parser;
+package dev.openui.langcore.parser.stmt;
 
 import dev.openui.langcore.parser.ast.Node;
 

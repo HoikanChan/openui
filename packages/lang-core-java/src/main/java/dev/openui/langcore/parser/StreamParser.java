@@ -3,6 +3,8 @@ package dev.openui.langcore.parser;
 import dev.openui.langcore.lexer.Lexer;
 import dev.openui.langcore.lexer.Token;
 import dev.openui.langcore.lexer.TokenType;
+import dev.openui.langcore.parser.result.ParseResult;
+import dev.openui.langcore.parser.stmt.Statement;
 
 import java.util.LinkedHashMap;
 import java.util.List;

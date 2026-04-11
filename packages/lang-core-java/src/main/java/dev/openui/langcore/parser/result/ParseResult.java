@@ -1,4 +1,4 @@
-package dev.openui.langcore.parser;
+package dev.openui.langcore.parser.result;
 
 import dev.openui.langcore.parser.ast.ElementNode;
 import java.util.List;

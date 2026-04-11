@@ -6,7 +6,12 @@
       "Bash(wc:*)",
       "Bash(claude-code-spec-workflow get-steering-context:*)",
       "Bash(claude-code-spec-workflow get-tasks:*)",
-      "Bash(claude-code-spec-workflow get-spec-context:*)"
+      "Bash(claude-code-spec-workflow get-spec-context:*)",
+      "Bash(mkdir -p /Users/chenxie/workspace/openui/packages/lang-core-java/src/main/java/dev/openui/langcore)",
+      "Bash(mkdir -p /Users/chenxie/workspace/openui/packages/lang-core-java/src/test/java/dev/openui/langcore)",
+      "Bash(mvn test:*)",
+      "Bash(java -version)",
+      "Bash(mvn compile:*)"
     ]
   }
 }

@@ -5,6 +5,12 @@ import dev.openui.langcore.lexer.TokenType;
 import dev.openui.langcore.parser.ast.CallNode;
 import dev.openui.langcore.parser.ast.LiteralNode;
 import dev.openui.langcore.parser.ast.Node;
+import dev.openui.langcore.parser.stmt.MutationStatement;
+import dev.openui.langcore.parser.stmt.NullStatement;
+import dev.openui.langcore.parser.stmt.QueryStatement;
+import dev.openui.langcore.parser.stmt.StateStatement;
+import dev.openui.langcore.parser.stmt.Statement;
+import dev.openui.langcore.parser.stmt.ValueStatement;
 
 import java.util.LinkedHashMap;
 import java.util.List;

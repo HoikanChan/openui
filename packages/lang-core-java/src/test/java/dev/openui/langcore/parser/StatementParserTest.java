@@ -2,6 +2,11 @@ package dev.openui.langcore.parser;
 
 import dev.openui.langcore.lexer.Lexer;
 import dev.openui.langcore.parser.ast.LiteralNode;
+import dev.openui.langcore.parser.stmt.MutationStatement;
+import dev.openui.langcore.parser.stmt.QueryStatement;
+import dev.openui.langcore.parser.stmt.StateStatement;
+import dev.openui.langcore.parser.stmt.Statement;
+import dev.openui.langcore.parser.stmt.ValueStatement;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;

@@ -1,7 +1,7 @@
 package dev.openui.langcore;
 
 import dev.openui.langcore.parser.OneShot;
-import dev.openui.langcore.parser.ParseResult;
+import dev.openui.langcore.parser.result.ParseResult;
 import dev.openui.langcore.parser.SchemaRegistry;
 import dev.openui.langcore.parser.StreamParser;
 

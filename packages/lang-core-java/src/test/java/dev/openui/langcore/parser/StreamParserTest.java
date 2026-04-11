@@ -3,6 +3,7 @@ package dev.openui.langcore.parser;
 import dev.openui.langcore.parser.ast.ElementNode;
 import dev.openui.langcore.parser.ast.LiteralNode;
 import dev.openui.langcore.parser.ast.Node;
+import dev.openui.langcore.parser.result.ParseResult;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
