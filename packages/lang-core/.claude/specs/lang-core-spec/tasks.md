@@ -254,7 +254,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 14 — Store
 
-- [ ] **Task 14.1** — Implement `Store` interface and `DefaultStore`
+- [x] **Task 14.1** — Implement `Store` interface and `DefaultStore`
   - Files: `store/Store.java`, `store/DefaultStore.java`
   - `get`, `set` (shallow equality check), `subscribe` (returns unsubscribe `Runnable`), `getSnapshot`, `initialize` (persisted first, defaults for new keys only), `dispose`; `CopyOnWriteArraySet` for listeners
   - _Ref: Design §14_
