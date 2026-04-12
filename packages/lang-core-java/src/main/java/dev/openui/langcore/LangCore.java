@@ -9,6 +9,9 @@ import dev.openui.langcore.parser.result.ParseResult;
 import dev.openui.langcore.parser.SchemaRegistry;
 import dev.openui.langcore.parser.StreamParser;
 import dev.openui.langcore.parser.stmt.Statement;
+import dev.openui.langcore.query.DefaultQueryManager;
+import dev.openui.langcore.query.QueryManager;
+import dev.openui.langcore.query.ToolProvider;
 
 import java.util.Map;
 
@@ -59,5 +62,15 @@ public final class LangCore {
      */
     public static Library createLibrary(LibraryDefinition definition) {
         return Libraries.createLibrary(definition);
+    }
+
+    /**
+     * Create a {@link QueryManager} backed by the given {@link ToolProvider}.
+     *
+     * <p>Pass {@code null} as the tool provider to create a manager that never fires fetches
+     * (useful for testing or render-only scenarios).
+     */
+    public static QueryManager createQueryManager(ToolProvider toolProvider) {
+        return new DefaultQueryManager(toolProvider);
     }
 }
