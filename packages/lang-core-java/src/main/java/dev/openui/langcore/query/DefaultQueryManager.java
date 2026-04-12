@@ -448,7 +448,8 @@ public final class DefaultQueryManager implements QueryManager {
         }
 
         QuerySnapshot next = new QuerySnapshot(
-                Map.copyOf(data), List.copyOf(loading), List.copyOf(refetching), List.copyOf(errors));
+                java.util.Collections.unmodifiableMap(data),
+                List.copyOf(loading), List.copyOf(refetching), List.copyOf(errors));
         String nextJson = StableJson.stringify(snapshotToMap(next));
         if (nextJson.equals(snapshotJson)) return false;
         snapshot     = next;
