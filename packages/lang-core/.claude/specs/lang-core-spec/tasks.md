@@ -277,7 +277,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 16 — Prompt Generation
 
-- [ ] **Task 16.1** — Implement `PromptSpec`, `ComponentPromptSpec`, `ToolSpec`, `ComponentGroup` records
+- [x] **Task 16.1** — Implement `PromptSpec`, `ComponentPromptSpec`, `ToolSpec`, `ComponentGroup` records
   - Files: `prompt/PromptSpec.java`, `prompt/ComponentPromptSpec.java`, `prompt/ToolSpec.java`, `prompt/ComponentGroup.java`
   - Exact field shapes from Design §11
   - _Ref: Design §11_
