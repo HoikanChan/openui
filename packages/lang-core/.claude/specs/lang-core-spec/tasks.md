@@ -187,7 +187,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 11 — Reactive Marker
 
-- [ ] **Task 11.1** — Implement `ReactiveSchemas`
+- [x] **Task 11.1** — Implement `ReactiveSchemas`
   - Files: `reactive/ReactiveSchemas.java`
   - `markReactive(Object schema)` and `isReactiveSchema(Object schema)` using `Collections.synchronizedMap(new WeakHashMap<>())`
   - _Ref: Design §12_
@@ -196,32 +196,32 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 12 — Evaluator
 
-- [ ] **Task 12.1** — Implement `EvaluationContext` interface and `ReactiveAssign` record
+- [x] **Task 12.1** — Implement `EvaluationContext` interface and `ReactiveAssign` record
   - Files: `runtime/EvaluationContext.java`, `runtime/ReactiveAssign.java`
   - `EvaluationContext`: `getState(name)`, `resolveRef(name)`, `extraScope()` map, `getPropSchema(name)`, `withExtraScope(Map)`; `ReactiveAssign(String target, Node expr)`
   - _Ref: Req 11 AC2-4_
 
-- [ ] **Task 12.2** — Implement `Evaluator` — literals, state, refs, binary ops, unary ops
+- [x] **Task 12.2** — Implement `Evaluator` — literals, state, refs, binary ops, unary ops
   - Files: `runtime/Evaluator.java`
   - Pattern-matching switch; `toNumber` helper; `+` string concat; `/` `%` zero-guard; loose `==`/`!=`; comparison coercion; short-circuit `&&`/`||`
   - _Ref: Req 11 AC1-2, Req 3 AC3-7_
 
-- [ ] **Task 12.3** — Implement `Evaluator` — member access, ternary, calls, assign, element, array, object
+- [x] **Task 12.3** — Implement `Evaluator` — member access, ternary, calls, assign, element, array, object
   - Files: `runtime/Evaluator.java` (extend)
   - `.field` on array → pluck / `.length`; `[idx]` coercion; ternary; `CallNode` dispatch (Action); `BuiltinCallNode` dispatch; `AssignNode` → `ReactiveAssign`; `ElementNode` static skip; `ArrayNode`/`ObjectNode` recursive eval
   - _Ref: Req 3 AC9-10, Req 10 AC13-18, Req 11 AC6-7_
 
-- [ ] **Task 12.4** — Implement `Evaluator` — reactive prop dispatch
+- [x] **Task 12.4** — Implement `Evaluator` — reactive prop dispatch
   - Files: `runtime/Evaluator.java` (extend)
   - `resolveState` checks `ReactiveSchemas.isReactiveSchema(ctx.getPropSchema(name))` → emit `ReactiveAssign`; non-reactive prop stripping of stray `ReactiveAssign`
   - _Ref: Req 11 AC8-9_
 
-- [ ] **Task 12.5** — Implement `PropEvaluator` (`evaluateElementProps`)
+- [x] **Task 12.5** — Implement `PropEvaluator` (`evaluateElementProps`)
   - Files: `runtime/PropEvaluator.java`
   - Recursively evaluate all props in `ElementNode` tree; skip `hasDynamicProps == false` nodes (Req 11 AC7)
   - _Ref: Req 11 AC6-7_
 
-- [ ] **Task 12.6** — Unit tests for `Evaluator` and `PropEvaluator`
+- [x] **Task 12.6** — Unit tests for `Evaluator` and `PropEvaluator`
   - Files: `test/.../runtime/EvaluatorTest.java`
   - All Req 11 ACs; plus arithmetic edge cases (div-by-zero, loose equality, string concat with null), member access pluck, reactive prop round-trip
   - _Ref: Req 11.*_
