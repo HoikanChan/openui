@@ -287,7 +287,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
   - Build system-prompt string from `PromptSpec`; grammar overview section; component signatures section; tool descriptors section; examples and toolExamples sections; additionalRules; preamble prepend; `jsonSchemaTypeStr` helper for tool schema types
   - _Ref: Design §11_
 
-- [ ] **Task 16.3** — Unit tests for `PromptGenerator`
+- [x] **Task 16.3** — Unit tests for `PromptGenerator`
   - Files: `test/.../prompt/PromptGeneratorTest.java`
   - Output contains component signatures; tool section present when tools given; examples/toolExamples appear; preamble prepended; editMode/inlineMode flags alter output
   - _Ref: Design §11_
