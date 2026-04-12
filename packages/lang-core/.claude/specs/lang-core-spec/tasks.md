@@ -296,7 +296,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 17 — Library API
 
-- [ ] **Task 17.1** — Implement `PropDef`, `ComponentDef`, `ComponentGroup`, `LibraryDefinition` records
+- [x] **Task 17.1** — Implement `PropDef`, `ComponentDef`, `ComponentGroup`, `LibraryDefinition` records
   - Files: `library/PropDef.java`, `library/ComponentDef.java`, `library/ComponentGroup.java`, `library/LibraryDefinition.java`
   - `PropDef(name, required, defaultValue, typeAnnotation, isArray, isReactive)`; `ComponentDef(name, List<PropDef>, description, component: Object)`
   - _Ref: Design §13_
