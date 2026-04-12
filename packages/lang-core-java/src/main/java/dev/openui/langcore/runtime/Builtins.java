@@ -1,8 +1,24 @@
 package dev.openui.langcore.runtime;
 
+import dev.openui.langcore.parser.ast.ArrayNode;
+import dev.openui.langcore.parser.ast.AssignNode;
+import dev.openui.langcore.parser.ast.BinaryNode;
+import dev.openui.langcore.parser.ast.BuiltinCallNode;
+import dev.openui.langcore.parser.ast.CallNode;
+import dev.openui.langcore.parser.ast.ElementNode;
+import dev.openui.langcore.parser.ast.LiteralNode;
+import dev.openui.langcore.parser.ast.MemberNode;
+import dev.openui.langcore.parser.ast.Node;
+import dev.openui.langcore.parser.ast.ObjectNode;
+import dev.openui.langcore.parser.ast.RefNode;
+import dev.openui.langcore.parser.ast.TernaryNode;
+import dev.openui.langcore.parser.ast.UnaryNode;
+
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Eager built-in functions for {@code @Name(...)} expressions.
@@ -210,6 +226,65 @@ public final class Builtins {
     /** Returns the ceiling. Ref: Req 10 AC11 */
     public static Object ceil(Object n) {
         return Math.ceil(Evaluator.toNumber(n));
+    }
+
+    // -------------------------------------------------------------------------
+    // @Each — AST ref substitution helper (Req 10 AC12)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Walk {@code node}, replacing every {@link RefNode} whose name equals
+     * {@code varName} with {@code LiteralNode(value)}.
+     *
+     * <p>All other nodes are returned unchanged or recursively substituted.
+     * This substitution happens BEFORE evaluation so that deferred expressions
+     * (e.g. {@code Action} steps) capture the correct per-item value.
+     *
+     * Ref: Req 10 AC12, Req 11 AC10
+     */
+    static Node substituteRef(Node node, String varName, Object value) {
+        return switch (node) {
+            case RefNode r when r.name().equals(varName) -> new LiteralNode(value);
+            case ArrayNode a -> {
+                List<Node> els = new ArrayList<>(a.elements().size());
+                for (Node el : a.elements()) els.add(substituteRef(el, varName, value));
+                yield new ArrayNode(els);
+            }
+            case ObjectNode o -> {
+                Map<String, Node> entries = new LinkedHashMap<>();
+                for (Map.Entry<String, Node> e : o.entries().entrySet())
+                    entries.put(e.getKey(), substituteRef(e.getValue(), varName, value));
+                yield new ObjectNode(entries);
+            }
+            case ElementNode e -> {
+                Map<String, Node> props = new LinkedHashMap<>();
+                for (Map.Entry<String, Node> p : e.props().entrySet())
+                    props.put(p.getKey(), substituteRef(p.getValue(), varName, value));
+                yield new ElementNode(e.typeName(), props, e.partial(), e.hasDynamicProps(), e.statementId());
+            }
+            case CallNode c -> {
+                List<Node> args = new ArrayList<>(c.args().size());
+                for (Node a : c.args()) args.add(substituteRef(a, varName, value));
+                yield new CallNode(c.callee(), args);
+            }
+            case BuiltinCallNode bc -> {
+                List<Node> args = new ArrayList<>(bc.args().size());
+                for (Node a : bc.args()) args.add(substituteRef(a, varName, value));
+                yield new BuiltinCallNode(bc.name(), args);
+            }
+            case BinaryNode b -> new BinaryNode(b.op(),
+                    substituteRef(b.left(), varName, value),
+                    substituteRef(b.right(), varName, value));
+            case UnaryNode u  -> new UnaryNode(u.op(), substituteRef(u.operand(), varName, value));
+            case MemberNode m -> new MemberNode(
+                    substituteRef(m.object(), varName, value), m.property(), m.computed());
+            case TernaryNode t -> new TernaryNode(
+                    substituteRef(t.condition(), varName, value),
+                    substituteRef(t.consequent(), varName, value),
+                    substituteRef(t.alternate(), varName, value));
+            case AssignNode a -> new AssignNode(a.target(), substituteRef(a.expr(), varName, value));
+            default -> node; // LiteralNode, StateRefNode, RuntimeRefNode — no substitution
+        };
     }
 
     // -------------------------------------------------------------------------

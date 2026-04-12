@@ -353,9 +353,45 @@ public final class Evaluator {
         return new ActionStep.ResetStep(List.copyOf(targets));
     }
 
-    /** @Each stub — implemented in Task 13.2. */
+    /**
+     * Lazy {@code @Each(array, varName, template)} builtin.
+     *
+     * <ol>
+     *   <li>Evaluate the array argument eagerly.</li>
+     *   <li>Resolve {@code varName} — a bare {@link RefNode} identifier or a string literal.</li>
+     *   <li>For each element, substitute all {@code RefNode(varName)} in the template with
+     *       {@code LiteralNode(element)}, then evaluate the substituted template.</li>
+     * </ol>
+     *
+     * Ref: Req 10 AC12, Req 11 AC10
+     */
     protected Object evalEach(List<Node> args, EvaluationContext ctx) {
-        throw new UnsupportedOperationException("TODO: Task 13.2 — @Each");
+        if (args.size() < 3) return List.of();
+
+        // 1. Evaluate array eagerly
+        Object arrVal = evaluate(args.get(0), ctx);
+        if (!(arrVal instanceof List<?> list)) return List.of();
+
+        // 2. Resolve varName — either a RefNode (bare identifier) or a string LiteralNode
+        Node varArg = args.get(1);
+        String varName;
+        if (varArg instanceof RefNode ref) {
+            varName = ref.name();
+        } else if (varArg instanceof LiteralNode lit && lit.value() instanceof String s) {
+            varName = s;
+        } else {
+            varName = Evaluator.toStr(evaluate(varArg, ctx));
+        }
+
+        Node template = args.get(2);
+
+        // 3. For each element: substitute RefNode(varName) → LiteralNode(element), then evaluate
+        List<Object> results = new ArrayList<>(list.size());
+        for (Object element : list) {
+            Node substituted = Builtins.substituteRef(template, varName, element);
+            results.add(evaluate(substituted, ctx));
+        }
+        return results;
     }
 
     // -------------------------------------------------------------------------

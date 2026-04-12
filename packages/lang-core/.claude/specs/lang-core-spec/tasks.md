@@ -235,7 +235,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
   - All 11 eager builtins as static methods; `@Sort` dot-path resolver; `@Filter` 6 operators including `"contains"`; `@Round` decimal places
   - _Ref: Req 10 AC1-11_
 
-- [ ] **Task 13.2** — Implement lazy builtin `@Each` in `Evaluator`
+- [x] **Task 13.2** — Implement lazy builtin `@Each` in `Evaluator`
   - Files: `runtime/Evaluator.java` (extend), `runtime/Builtins.java`
   - Walk template AST substituting `RefNode(varName)` with `LiteralNode(element)` before evaluating; result is `List<Object>`
   - _Ref: Req 10 AC12, Req 11 AC10_
