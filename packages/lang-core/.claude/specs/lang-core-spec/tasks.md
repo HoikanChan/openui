@@ -230,7 +230,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 13 — Built-in Functions
 
-- [ ] **Task 13.1** — Implement eager builtins (`@Count` through `@Ceil`)
+- [x] **Task 13.1** — Implement eager builtins (`@Count` through `@Ceil`)
   - Files: `runtime/Builtins.java`
   - All 11 eager builtins as static methods; `@Sort` dot-path resolver; `@Filter` 6 operators including `"contains"`; `@Round` decimal places
   - _Ref: Req 10 AC1-11_
