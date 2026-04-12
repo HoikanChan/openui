@@ -1,5 +1,7 @@
 package dev.openui.langcore.parser;
 
+import dev.openui.langcore.library.ComponentDef;
+import dev.openui.langcore.library.Library;
 import dev.openui.langcore.util.JsonStringUtil;
 
 import java.util.ArrayList;
@@ -105,6 +107,25 @@ public final class SchemaRegistry {
     /** Look up a component schema by its type name. */
     public Optional<ComponentSchema> lookup(String typeName) {
         return Optional.ofNullable(components.get(typeName));
+    }
+
+    /**
+     * Build a {@link SchemaRegistry} directly from a {@link Library} — no JSON round-trip.
+     * Preserves the prop order defined by the library's {@link ComponentDef} lists.
+     *
+     * Ref: Design §7
+     */
+    public static SchemaRegistry fromLibrary(Library library) {
+        Map<String, ComponentSchema> result = new LinkedHashMap<>();
+        for (Map.Entry<String, ComponentDef> entry : library.components().entrySet()) {
+            ComponentDef cd = entry.getValue();
+            List<PropDef> props = new ArrayList<>();
+            for (dev.openui.langcore.library.PropDef lp : cd.props()) {
+                props.add(new PropDef(lp.name(), lp.required(), lp.defaultValue()));
+            }
+            result.put(entry.getKey(), new ComponentSchema(List.copyOf(props)));
+        }
+        return new SchemaRegistry(Collections.unmodifiableMap(result));
     }
 
     /** Returns a registry with no component definitions. */
