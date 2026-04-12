@@ -1,5 +1,8 @@
 package dev.openui.langcore;
 
+import dev.openui.langcore.library.Libraries;
+import dev.openui.langcore.library.Library;
+import dev.openui.langcore.library.LibraryDefinition;
 import dev.openui.langcore.merge.Merger;
 import dev.openui.langcore.parser.OneShot;
 import dev.openui.langcore.parser.result.ParseResult;
@@ -50,10 +53,11 @@ public final class LangCore {
     }
 
     /**
-     * Create a library from the given definition object.
-     * TODO: implement
+     * Create a {@link Library} from the given {@link LibraryDefinition}.
+     *
+     * @throws IllegalArgumentException if the root component is not present in the definition
      */
-    public static Object createLibrary(Object definition) {
-        throw new UnsupportedOperationException("TODO: implement createLibrary");
+    public static Library createLibrary(LibraryDefinition definition) {
+        return Libraries.createLibrary(definition);
     }
 }

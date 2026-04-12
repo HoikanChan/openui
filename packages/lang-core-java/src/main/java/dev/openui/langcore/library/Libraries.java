@@ -21,4 +21,13 @@ public final class Libraries {
     public static ComponentDefBuilder defineComponent(String name) {
         return new ComponentDefBuilder(name);
     }
+
+    /**
+     * Create a {@link Library} from the given {@link LibraryDefinition}.
+     *
+     * @throws IllegalArgumentException if the root component is not present in the definition
+     */
+    public static Library createLibrary(LibraryDefinition definition) {
+        return new DefaultLibrary(definition);
+    }
 }
