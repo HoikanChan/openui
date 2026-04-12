@@ -268,7 +268,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
 
 ## Group 15 — StateField
 
-- [ ] **Task 15.1** — Implement `StateField` record and `resolveStateField`
+- [x] **Task 15.1** — Implement `StateField` record and `resolveStateField`
   - Files: `runtime/StateField.java`
   - `StateField<T>(name, value, setValue Consumer<T>, isReactive boolean)`; `resolveStateField` — if `bindingValue instanceof ReactiveAssign` and store+ctx present → reactive branch with `$value` scope injection; else static branch
   - _Ref: Design §17 (StateField section)_
