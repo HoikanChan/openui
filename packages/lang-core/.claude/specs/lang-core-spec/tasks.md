@@ -282,7 +282,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
   - Exact field shapes from Design §11
   - _Ref: Design §11_
 
-- [ ] **Task 16.2** — Implement `PromptGenerator.generatePrompt`
+- [x] **Task 16.2** — Implement `PromptGenerator.generatePrompt`
   - Files: `prompt/PromptGenerator.java`
   - Build system-prompt string from `PromptSpec`; grammar overview section; component signatures section; tool descriptors section; examples and toolExamples sections; additionalRules; preamble prepend; `jsonSchemaTypeStr` helper for tool schema types
   - _Ref: Design §11_
