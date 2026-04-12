@@ -240,12 +240,12 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
   - Walk template AST substituting `RefNode(varName)` with `LiteralNode(element)` before evaluating; result is `List<Object>`
   - _Ref: Req 10 AC12, Req 11 AC10_
 
-- [ ] **Task 13.3** — Implement Action builtins and `ActionStep` hierarchy
+- [x] **Task 13.3** — Implement Action builtins and `ActionStep` hierarchy
   - Files: `runtime/ActionStep.java` (sealed), `runtime/RunStep.java`, `runtime/SetStep.java`, `runtime/ResetStep.java`, `runtime/ToAssistantStep.java`, `runtime/OpenUrlStep.java`, `runtime/ActionPlan.java`, `runtime/Builtins.java` (extend)
   - `Action([…])` filters nulls, collects steps; `@Run`, `@Set`, `@Reset`, `@ToAssistant`, `@OpenUrl` produce typed records
   - _Ref: Req 10 AC13-18_
 
-- [ ] **Task 13.4** — Unit tests for builtins
+- [x] **Task 13.4** — Unit tests for builtins
   - Files: `test/.../runtime/BuiltinsTest.java`
   - All Req 10 ACs; `@Sort` ascending/descending/dot-path/numeric-string ordering; `@Filter` all 6 operators; `@Each` loop var substitution; `@Set` with non-StateRef → null; `Action` null filtering
   - _Ref: Req 10.*_
