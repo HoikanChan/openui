@@ -259,7 +259,7 @@ Each task touches 1-3 files, has a single testable outcome, and references the r
   - `get`, `set` (shallow equality check), `subscribe` (returns unsubscribe `Runnable`), `getSnapshot`, `initialize` (persisted first, defaults for new keys only), `dispose`; `CopyOnWriteArraySet` for listeners
   - _Ref: Design §14_
 
-- [ ] **Task 14.2** — Unit tests for `Store`
+- [x] **Task 14.2** — Unit tests for `Store`
   - Files: `test/.../store/StoreTest.java`
   - Set triggers listener; identity-equal value skips notify; shallow-equal object skips notify; initialize persisted overrides defaults; dispose clears; unsubscribe works
   - _Ref: Design §14_
