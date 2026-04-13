@@ -50,7 +50,7 @@ This mirrors the data/structure separation used by A2UI (Google) and json-render
 
 ### Framework packages
 
-All framework renderers (`react-lang`, `vue-lang`, `svelte-lang`) expose `dataModel` as an equivalent prop/option.
+Only `react-lang` is in scope for this iteration. `vue-lang` and `svelte-lang` are out of scope.
 
 ---
 
@@ -285,4 +285,3 @@ Host App
 | `react-lang/src/hooks/useOpenUIState.ts` | Accept `dataModel`; wire parser option + resolveRef |
 | `react-lang/src/Renderer.tsx` | Add `dataModel` to `RendererProps` |
 | `react-lang/src/index.ts` | Re-export `DataModelSpec` |
-| `vue-lang` / `svelte-lang` | Mirror the `dataModel` prop addition |
