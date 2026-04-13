@@ -11,7 +11,9 @@
       "Bash(mkdir -p /Users/chenxie/workspace/openui/packages/lang-core-java/src/test/java/dev/openui/langcore)",
       "Bash(mvn test:*)",
       "Bash(java -version)",
-      "Bash(mvn compile:*)"
+      "Bash(mvn compile:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
