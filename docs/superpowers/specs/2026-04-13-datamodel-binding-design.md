@@ -1,101 +1,128 @@
 # DataModel Binding Design
 
 **Date:** 2026-04-13  
-**Status:** Draft
+**Status:** Proposed
 
 ---
 
 ## Overview
 
-Add a `dataModel` data binding layer to openui-lang. Host applications pass a static data object; the LLM references it via `data.xxx` path expressions in its UI output. This separates "what data to render" (host responsibility) from "how to render it" (LLM responsibility).
+Add a host-provided `dataModel` binding to OpenUI Lang so generated UI can reference application data through a fixed `data.*` root.
 
----
+This fills the current gap between:
 
-## Motivation
-
-Current data layers in openui-lang:
-
-| Layer | Syntax | Who provides | Purpose |
+| Source | Syntax | Owner | Purpose |
 |---|---|---|---|
-| Local reactive state | `$var` | LLM declares | Form inputs, toggles, counters |
-| Async tool calls | `Query("tool")` | LLM declares | Fetched backend data |
-| **DataModel (new)** | `data.xxx` | **Host App** | Fixed business data to render |
+| Local reactive state | `$var` | LLM/runtime | UI state, filters, form bindings |
+| Tool-backed async data | `Query("tool")` | LLM/runtime | Fetching live backend data |
+| Host-provided static data | `data.*` | Host app | Rendering already-available business data |
 
-The missing layer: host app holds data (e.g. from its own API call), wants the LLM to generate UI that renders it, without the LLM needing to embed the data as literals or call a tool.
-
-This mirrors the data/structure separation used by A2UI (Google) and json-render — both use a static data context that the UI spec references by path — adapted to openui-lang's code DSL syntax (dot notation instead of JSON Pointer).
+The core rule is simple: the host owns the data payload, and the LLM only decides how to present it.
 
 ---
 
-## API
+## Goals
 
-### Renderer prop
+- Let host apps pass pre-fetched data into `Renderer`.
+- Let generated code read that data through normal expression syntax: `data.user.name`, `data.rows[0]`, `data.rows.total`.
+- Reuse existing evaluator behavior for `Member`, `Index`, array pluck, conditionals, and `@Each`.
+- Keep the feature additive: no behavior change when `dataModel` is omitted.
+- Teach the model about the available data shape via prompt generation.
+
+## Non-Goals
+
+- Two-way binding into host data.
+- A reactive data store inside `lang-core`.
+- Multiple external roots such as `ctx.*` or `model.*`.
+- Inline declaration or reassignment of `data` inside openui-lang.
+- Framework parity beyond `react-lang` in this iteration.
+
+---
+
+## Public API
+
+### Renderer
 
 ```tsx
 <Renderer
   response={llmOutput}
   library={library}
   dataModel={{
-    sales: [{ quarter: "Q1", revenue: 100 }, { quarter: "Q2", revenue: 120 }],
+    sales: [
+      { quarter: "Q1", revenue: 100 },
+      { quarter: "Q2", revenue: 120 },
+    ],
     user: { name: "Alice", role: "admin" },
     totalRevenue: 220,
   }}
 />
 ```
 
-`dataModel` is `Record<string, unknown>`. It is:
-- **Read-only** from the LLM's perspective — no mutation mechanism
-- **Not reactive** — changing `dataModel` between renders re-evaluates props (same as `response` changing)
-- **Flat top-level keys** — `data.sales`, `data.user`, etc.; deep nesting is accessed via path expressions
+Add `dataModel?: Record<string, unknown>` to `RendererProps` and thread it into `useOpenUIState`.
 
-### Framework packages
+### Prompt generation
 
-Only `react-lang` is in scope for this iteration. `vue-lang` and `svelte-lang` are out of scope.
+`PromptSpec` gains an optional `dataModel` description:
+
+```ts
+export interface PromptSpec {
+  // existing fields
+  dataModel?: DataModelSpec;
+}
+
+export interface DataModelSpec {
+  description?: string;
+  fields: Record<
+    string,
+    {
+      type: "array" | "object" | "scalar";
+      description?: string;
+    }
+  >;
+}
+```
+
+This is prompt metadata only. It describes the available root fields but does not carry runtime values.
 
 ---
 
-## LLM Syntax
+## Language Semantics
 
-The root binding name is the fixed identifier `data`. All dataModel fields are accessed as `data.<key>` paths.
+`data` is a reserved external reference root. When enabled, it behaves like a runtime reference, not like a normal statement-local identifier.
 
-### Object access
-```
+### Allowed usage
+
+```txt
 Label(data.user.name)
-Badge(data.user.role)
-```
-
-### Array — pass whole array
-```
+Metric(data.totalRevenue, "Total Revenue")
+Label(data.sales[0].quarter)
+Each(data.sales, item, Card(item.quarter, item.revenue))
 BarChart(data.sales.revenue, data.sales.quarter, "Revenue by Quarter")
 ```
-`data.sales.revenue` uses the existing **array pluck** behavior: when `.field` is accessed on an array, it maps each element to extract that field, returning `[100, 120]`.
 
-### Array — iterate with Each
-```
-Each(data.sales, item, Card(item.quarter, item.revenue))
-```
+### Semantics
 
-### Array — single element
-```
-Label(data.sales[0].quarter)
-```
-Use bracket `[n]` for index access. `data.sales.0` (dot with number) triggers array pluck, not index access.
+- `data.<field>` reads a top-level field from the host object.
+- `data.rows.field` uses the existing array-pluck evaluator behavior when `rows` is an array.
+- `data.rows[0]` uses the existing `Index` evaluator behavior.
+- `data` is read-only.
+- If `dataModel` is not provided, `data` is treated as an unresolved reference exactly like today.
+- `data = ...` is out of scope and should not be supported as a valid redeclaration pattern.
 
-### Scalar
-```
-Metric(data.totalRevenue, "Total Revenue")
-```
+### Interaction with existing features
 
-### Mixed with local state and queries
-```
+- `$state` continues to represent mutable runtime state only.
+- `Query()` and `Mutation()` continue to use `RuntimeRef` as they do today.
+- `data` can be combined freely with expressions, conditionals, builtins, and local state:
+
+```txt
 $selected = "Q1"
 
 root = Root(
   Label(data.user.name),
-  BarChart(data.sales.revenue, data.sales.quarter),
   Buttons([
-    Button("Q1", Action([Set($selected, "Q1")])),
-    Button("Q2", Action([Set($selected, "Q2")])),
+    Button("Q1", Action([@Set($selected, "Q1")])),
+    Button("Q2", Action([@Set($selected, "Q2")])),
   ]),
   Label($selected == "Q1" ? data.sales[0].revenue : data.sales[1].revenue)
 )
@@ -103,185 +130,166 @@ root = Root(
 
 ---
 
-## Implementation
+## Runtime Design
 
-### 1. `lang-core` — Parser: `externalRefs` option
+### 1. Parser support for external refs
 
-**File:** `packages/lang-core/src/parser/parser.ts` (and `materialize.ts`)
+The parser already distinguishes:
 
-The streaming parser receives an `externalRefs?: string[]` option. Internally, `MaterializeCtx` gains `externalRefs?: Set<string>`.
+- normal refs resolved from the symbol table
+- unresolved refs lowered to `Ph`
+- query/mutation declarations lowered to `RuntimeRef`
 
-In `materialize.ts`, the `resolveRef` function currently turns unknown names into `Ph` (null placeholder). With `externalRefs`, it instead emits a `RuntimeRef` with a new `refType: "data"`:
+Extend that model with parser options:
 
-```typescript
-// Before (existing):
-if (!ctx.syms.has(name)) {
-  ctx.unres.push(name);
-  return mode === "expr" ? { k: "Ph", n: name } : null;
-}
-
-// After:
-if (!ctx.syms.has(name)) {
-  if (ctx.externalRefs?.has(name)) {
-    // Preserve for runtime resolution — do NOT add to unres
-    const rtNode = { k: "RuntimeRef" as const, n: name, refType: "data" as const };
-    return mode === "expr" ? rtNode : /* value mode: */ null;
-  }
-  ctx.unres.push(name);
-  return mode === "expr" ? { k: "Ph", n: name } : null;
-}
-```
-
-In value mode (standalone statement `x = data`), `null` is returned — this is an unusual usage and acceptable. In expr mode (inline in component args, which is the normal case), the `RuntimeRef` is preserved.
-
-### 2. `lang-core` — AST: extend `RuntimeRef` refType
-
-**File:** `packages/lang-core/src/parser/ast.ts`
-
-```typescript
-// Before:
-| { k: "RuntimeRef"; n: string; refType: "query" | "mutation" }
-
-// After:
-| { k: "RuntimeRef"; n: string; refType: "query" | "mutation" | "data" }
-```
-
-The evaluator already routes all `RuntimeRef` through `context.resolveRef(node.n)` — no evaluator changes needed.
-
-### 3. `lang-core` — Parser API: pass `externalRefs` through
-
-**File:** `packages/lang-core/src/parser/parser.ts`
-
-`createStreamingParser` and `createParser` accept a new optional third argument:
-
-```typescript
+```ts
 export interface ParserOptions {
   externalRefs?: string[];
 }
-
-export function createStreamingParser(
-  schema: LibraryJSONSchema,
-  root: string,
-  options?: ParserOptions,
-): StreamParser
 ```
 
-When `dataModel` is provided by the host, `["data"]` is passed here. When not provided, `externalRefs` is empty and behavior is unchanged.
+`createParser()` and `createStreamingParser()` accept `options?: ParserOptions`. The only external ref in scope for this feature is `"data"`.
 
-### 4. `react-lang` — `useOpenUIState`: wire up dataModel
+### 2. Materialization
 
-**File:** `packages/react-lang/src/hooks/useOpenUIState.ts`
+`MaterializeCtx` gains:
 
-- Add `dataModel?: Record<string, unknown>` to `UseOpenUIStateOptions`
-- Pass `externalRefs: dataModel ? ["data"] : []` to `createStreamingParser`
-- Extend `resolveRef` in `evaluationContext`:
+```ts
+externalRefs?: Set<string>;
+```
 
-```typescript
+In `resolveRef()` inside [materialize.ts](/C:/workspace/openui/packages/lang-core/src/parser/materialize.ts:39):
+
+- If the name exists in `syms`, preserve current behavior.
+- If the name does not exist in `syms` but is present in `externalRefs`, emit `RuntimeRef`.
+- Otherwise preserve the current unresolved-path behavior (`Ph` in expression mode, `null` in value mode, plus `meta.unresolved`).
+
+New AST shape in [ast.ts](/C:/workspace/openui/packages/lang-core/src/parser/ast.ts:41):
+
+```ts
+| { k: "RuntimeRef"; n: string; refType: "query" | "mutation" | "data" }
+```
+
+No new AST node kind is needed.
+
+### 3. Evaluation
+
+The evaluator already resolves `RuntimeRef` through `context.resolveRef(node.n)`. That means no evaluator changes are required.
+
+In [useOpenUIState.ts](/C:/workspace/openui/packages/react-lang/src/hooks/useOpenUIState.ts:134), extend `resolveRef`:
+
+```ts
 resolveRef: (name: string) => {
   if (name === "data" && dataModel) return dataModel;
   const mutResult = queryManager.getMutationResult(name);
   if (mutResult) return mutResult;
   return queryManager.getResult(name);
-},
-```
-
-The `dataModel` reference must be stable in the `useMemo` dependency array (same as `store`, `queryManager`). If `dataModel` changes identity between renders, the evaluation context rebuilds — which is correct behavior (new data → re-evaluate props).
-
-The streaming parser instance is memoized on `[library, dataModel != null]`. If the host starts passing `dataModel` mid-session (or stops), the parser is recreated to include/exclude the `"data"` external ref.
-
-### 5. `react-lang` — `Renderer`: expose prop
-
-**File:** `packages/react-lang/src/Renderer.tsx`
-
-Add `dataModel?: Record<string, unknown>` to `RendererProps` and pass through to `useOpenUIState`.
-
-### 6. Prompt generation: dataModel schema description
-
-**File:** `packages/lang-core/src/parser/prompt.ts`
-
-`PromptSpec` gains an optional `dataModel` field:
-
-```typescript
-export interface PromptSpec {
-  // ... existing fields
-  dataModel?: DataModelSpec;
-}
-
-export interface DataModelSpec {
-  /** Description shown to LLM: what this data represents */
-  description?: string;
-  /** Field descriptions — tells LLM whether each field is array, object, or scalar */
-  fields: Record<string, { type: "array" | "object" | "scalar"; description?: string }>;
 }
 ```
 
-`generatePrompt` includes a `## Data Model` section in the system prompt when `dataModel` is present:
+This keeps runtime resolution centralized in the existing evaluation context.
 
-```
+### 4. Parser lifecycle in `react-lang`
+
+`useOpenUIState` creates its streaming parser once per library today. That memoization must also account for whether the `data` external ref is enabled:
+
+- when `dataModel` is present: create parser with `externalRefs: ["data"]`
+- when `dataModel` is absent: create parser with `externalRefs: []` or `undefined`
+
+The parser instance should be recreated when the feature toggles on or off so parse-time lowering matches runtime capabilities.
+
+The evaluation context should include `dataModel` in its memo dependencies. If the host passes a new object identity, re-evaluation is correct and expected.
+
+---
+
+## Prompt Design
+
+When `PromptSpec.dataModel` is present, `generatePrompt()` appends a `## Data Model` section after the syntax/component guidance:
+
+```txt
 ## Data Model
 
-The following data is available via `data.<field>`:
+The following host data is available via `data.<field>`:
 
-- `data.sales` (array): List of quarterly sales records. Each item has `quarter` (string) and `revenue` (number).
-- `data.user` (object): Current user. Has `name` (string) and `role` (string).
+- `data.sales` (array): List of quarterly sales records.
+- `data.user` (object): Current user.
 - `data.totalRevenue` (scalar): Total revenue number.
 
-Use `data.<field>` to reference this data. Use Each(...) to iterate arrays.
-Array pluck: `data.sales.revenue` extracts the revenue field from every item.
+Use `data.<field>` to read host data.
+Use `Each(...)` to iterate arrays.
+Array pluck works on arrays: `data.sales.revenue`.
 ```
+
+Requirements:
+
+- Only include this section when `dataModel` metadata is provided.
+- Keep the root identifier fixed as `data`.
+- Explain array pluck explicitly, because it is not obvious from generic dot-access syntax.
 
 ---
 
 ## Data Flow
 
-```
-Host App
-  │
-  ├─ dataModel: { sales: [...], user: {...} }    ← provided at render time
-  │
-  └─ Renderer
-       │
-       ├─ createStreamingParser(..., { externalRefs: ["data"] })
-       │     └─ parser sees `data` in LLM output → emits RuntimeRef("data", "data")
-       │         (not Ph/null)
-       │
-       ├─ evaluationContext.resolveRef("data") → returns dataModel object
-       │
-       └─ Member evaluation: data.sales → dataModel.sales (array)
-                             data.sales.revenue → [100, 120, ...]
-                             data.sales[0] → { quarter: "Q1", revenue: 100 }
+```txt
+Host app
+  -> Renderer(dataModel={...})
+  -> useOpenUIState(...)
+  -> createStreamingParser(schema, root, { externalRefs: ["data"] })
+  -> parser lowers `data` to RuntimeRef("data", "data")
+  -> evaluator calls resolveRef("data")
+  -> evaluationContext returns the host dataModel object
+  -> existing Member/Index evaluation resolves concrete values
 ```
 
 ---
 
-## What Does NOT Change
+## Error Behavior
 
-- The evaluator (`evaluator.ts`, `evaluate-tree.ts`, `evaluate-prop.ts`) — no changes
-- The store (`store.ts`) — dataModel is not stored reactively
-- `$state` reactive bindings — unaffected
-- `Query()` / `Mutation()` tool calls — unaffected
-- Array pluck, `Index`, `Member` evaluation — already correct
-
----
-
-## Non-Goals
-
-- **Two-way binding**: `dataModel` is read-only. Mutations go through `Mutation()` + `onAction`.
-- **Reactive updates**: dataModel is not a reactive store. If it changes, the host re-renders with a new prop (same as React).
-- **Dynamic keys**: the `data` root name is fixed. Multi-namespace (`model.xxx`, `ctx.xxx`) is not in scope.
-- **Nested declaration**: LLM cannot redeclare `data = ...` in openui-lang (it would conflict with the external ref).
+- Missing `dataModel` + use of `data.*` should behave like any other unresolved reference.
+- Providing `dataModel` does not suppress normal validation errors for unknown components, missing required props, or malformed expressions.
+- No special parser error is required for `data` access itself.
+- If the host provides a shape that does not match what the LLM expects, runtime behavior follows existing evaluator semantics for missing object fields and out-of-range indexes.
 
 ---
 
-## Affected Files Summary
+## Affected Files
 
 | File | Change |
 |---|---|
-| `lang-core/src/parser/ast.ts` | Add `"data"` to `RuntimeRef.refType` union |
-| `lang-core/src/parser/materialize.ts` | Add `externalRefs` to `MaterializeCtx`; emit `RuntimeRef` instead of `Ph` |
-| `lang-core/src/parser/parser.ts` | Add `ParserOptions.externalRefs`; pass to materialize context |
-| `lang-core/src/parser/prompt.ts` | Add `DataModelSpec` to `PromptSpec`; generate `## Data Model` section |
-| `lang-core/src/index.ts` | Export `DataModelSpec`, `ParserOptions` |
-| `react-lang/src/hooks/useOpenUIState.ts` | Accept `dataModel`; wire parser option + resolveRef |
-| `react-lang/src/Renderer.tsx` | Add `dataModel` to `RendererProps` |
-| `react-lang/src/index.ts` | Re-export `DataModelSpec` |
+| `packages/lang-core/src/parser/ast.ts` | Add `"data"` to `RuntimeRef.refType` |
+| `packages/lang-core/src/parser/materialize.ts` | Add `externalRefs` support and lower `data` to `RuntimeRef` |
+| `packages/lang-core/src/parser/parser.ts` | Add `ParserOptions`; thread options into parser/materializer creation |
+| `packages/lang-core/src/parser/prompt.ts` | Add `DataModelSpec`; render `## Data Model` section |
+| `packages/lang-core/src/parser/index.ts` | Re-export new prompt/parser types |
+| `packages/lang-core/src/index.ts` | Re-export `DataModelSpec` and `ParserOptions` |
+| `packages/react-lang/src/hooks/useOpenUIState.ts` | Accept `dataModel`; configure parser and `resolveRef` |
+| `packages/react-lang/src/Renderer.tsx` | Add `dataModel` prop and pass through |
+| `packages/react-lang/src/index.ts` | Re-export prompt types if needed for adapter consumers |
+
+---
+
+## Testing
+
+### `lang-core`
+
+- parser without `externalRefs` still lowers unknown refs to unresolved placeholders
+- parser with `externalRefs: ["data"]` lowers `data` to `RuntimeRef`
+- `data.user.name` materializes as `Member(Member(RuntimeRef("data"), "user"), "name")`
+- `data.rows[0]` and `data.rows.field` preserve existing `Index` and `Member` behavior
+- unresolved refs other than `data` still populate `meta.unresolved`
+- prompt generation includes `## Data Model` only when configured
+
+### `react-lang`
+
+- `Renderer` accepts `dataModel` and passes it into evaluation
+- changing `dataModel` identity re-evaluates rendered props
+- omitting `dataModel` keeps current behavior unchanged
+- mixed expressions such as `$selected == "Q1" ? data.sales[0].revenue : 0` evaluate correctly
+
+---
+
+## Rollout Notes
+
+- Scope this change to `react-lang` first.
+- Keep the external ref mechanism generic (`externalRefs`) so future host-provided roots can reuse the same parser path if that ever becomes necessary.
+- Do not expose multi-root support yet; the public contract for this feature is a single fixed `data` root.
