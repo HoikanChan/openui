@@ -97,6 +97,19 @@ describe("Renderer dataModel integration", () => {
     expect(html2).toContain("Bob");
   });
 
+  it("accesses a specific array element by index: data.items[0].label", () => {
+    const html = renderToStaticMarkup(
+      <Renderer
+        response={'root = Root([Label(data.items[0].label)])'}
+        library={library}
+        dataModel={{ items: [{ label: "First" }, { label: "Second" }] }}
+      />,
+    );
+
+    expect(html).toContain("First");
+    expect(html).not.toContain("Second");
+  });
+
   it("iterates an array with @Each: data.items via loop variable", () => {
     const html = renderToStaticMarkup(
       <Renderer
