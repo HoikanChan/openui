@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ParamMap } from "../parser";
-import { createStreamParser, parse } from "../parser";
+import type { LibraryJSONSchema, ParamMap } from "../types";
+import { createParser, createStreamParser, createStreamingParser, parse } from "../parser";
 
 // ── Test schema ──────────────────────────────────────────────────────────────
 
@@ -23,6 +23,30 @@ const schema: ParamMap = new Map([
     },
   ],
 ]);
+
+const schemaDoc: LibraryJSONSchema = {
+  $defs: {
+    Stack: {
+      properties: {
+        children: {},
+      },
+      required: ["children"],
+    },
+    Title: {
+      properties: {
+        text: {},
+      },
+      required: ["text"],
+    },
+    Table: {
+      properties: {
+        columns: {},
+        rows: {},
+      },
+      required: ["columns", "rows"],
+    },
+  },
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -105,6 +129,96 @@ describe("unresolved references", () => {
 });
 
 // ── unresolved references (streaming) ─────────────────────────────────────────
+
+describe("external refs", () => {
+  it("treats configured external refs as RuntimeRef nodes", () => {
+    const result = parse("root = Title(data.user.name)", schema, undefined, {
+      externalRefs: ["data"],
+    });
+
+    expect(result.meta.unresolved).toHaveLength(0);
+
+    const text = result.root?.props.text as any;
+    expect(text).toMatchObject({
+      k: "Member",
+      field: "name",
+      obj: {
+        k: "Member",
+        field: "user",
+        obj: {
+          k: "RuntimeRef",
+          n: "data",
+          refType: "data",
+        },
+      },
+    });
+  });
+
+  it("keeps data unresolved when externalRefs is not enabled", () => {
+    const result = parse("root = Title(data.user.name)", schema);
+    expect(result.meta.unresolved).toContain("data");
+  });
+
+  it("schema-based createParser preserves configured external refs", () => {
+    const parser = createParser(schemaDoc, undefined, {
+      externalRefs: ["data"],
+    });
+
+    const result = parser.parse("root = Title(data.user.name)");
+    expect(result.meta.unresolved).toHaveLength(0);
+    expect(result.root?.props.text).toMatchObject({
+      k: "Member",
+      field: "name",
+      obj: {
+        k: "Member",
+        field: "user",
+        obj: {
+          k: "RuntimeRef",
+          n: "data",
+          refType: "data",
+        },
+      },
+    });
+  });
+
+  it("streaming parser preserves configured external refs", () => {
+    const parser = createStreamParser(schema, undefined, {
+      externalRefs: ["data"],
+    });
+
+    const result = parser.push("root = Title(data.user.name)\n");
+    expect(result.meta.unresolved).toHaveLength(0);
+
+    const text = result.root?.props.text as any;
+    expect(text.obj.obj).toMatchObject({
+      k: "RuntimeRef",
+      n: "data",
+      refType: "data",
+    });
+  });
+
+  it("schema-based createStreamingParser preserves configured external refs", () => {
+    const parser = createStreamingParser(schemaDoc, undefined, {
+      externalRefs: ["data"],
+    });
+
+    const result = parser.push("root = Title(data.user.name)\n");
+    expect(result.meta.unresolved).toHaveLength(0);
+    expect(result.root?.props.text).toMatchObject({
+      k: "Member",
+      field: "name",
+      obj: {
+        k: "Member",
+        field: "user",
+        obj: {
+          k: "RuntimeRef",
+          n: "data",
+          refType: "data",
+        },
+      },
+    });
+  });
+});
 
 describe("unresolved references (streaming)", () => {
   it("tracks unresolved refs mid-stream without errors", () => {

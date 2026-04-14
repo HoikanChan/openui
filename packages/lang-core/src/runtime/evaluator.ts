@@ -322,10 +322,10 @@ function evaluateActionCall(
       // Run(runtimeRef) → ActionStep { type: "run", statementId, refType }
       if (args.length === 0) return null;
       const refNode = args[0];
-      if (refNode.k === "RuntimeRef") {
+      if (refNode.k === "RuntimeRef" && refNode.refType !== "data") {
         return { type: ACTION_STEPS.Run, statementId: refNode.n, refType: refNode.refType };
       }
-      // Unresolved Ref — skip (filtered out by Action's step array)
+      // Unresolved Ref or external data ref — skip (filtered out by Action's step array)
       return null;
     }
     case "ToAssistant": {

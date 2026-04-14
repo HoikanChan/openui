@@ -15,6 +15,7 @@ import {
   type QueryStatementInfo,
   type ValidationError,
 } from "./types";
+export type { ParamMap } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Result building
@@ -187,6 +188,7 @@ function buildResult(
   stmtCount: number,
   cat: ParamMap | undefined,
   rootName?: string,
+  options?: ParserOptions,
 ): ParseResult {
   const entryId = pickEntryId(stmtMap, typedStmts, firstId, rootName);
   if (!stmtMap.has(entryId)) return emptyResult(wasIncomplete);
@@ -212,6 +214,7 @@ function buildResult(
     unres,
     visited: new Set(),
     partial: wasIncomplete,
+    externalRefs: options?.externalRefs?.length ? new Set(options.externalRefs) : undefined,
     currentStatementId: entryId,
     unreached,
   };
@@ -377,7 +380,16 @@ function preprocess(input: string): string {
  * @param cat    - Param map for positional-arg → named-prop mapping
  * @returns      ParseResult with root ElementNode (or null) and metadata
  */
-export function parse(input: string, cat: ParamMap, rootName?: string): ParseResult {
+export interface ParserOptions {
+  externalRefs?: string[];
+}
+
+export function parse(
+  input: string,
+  cat: ParamMap,
+  rootName?: string,
+  options?: ParserOptions,
+): ParseResult {
   const trimmed = preprocess(input);
   if (!trimmed) return emptyResult();
 
@@ -396,7 +408,16 @@ export function parse(input: string, cat: ParamMap, rootName?: string): ParseRes
   // Derive from map to deduplicate — Map.set overwrites duplicates
   const typedStmts = [...stmtMap.values()];
 
-  return buildResult(stmtMap, typedStmts, firstId, wasIncomplete, stmtMap.size, cat, rootName);
+  return buildResult(
+    stmtMap,
+    typedStmts,
+    firstId,
+    wasIncomplete,
+    stmtMap.size,
+    cat,
+    rootName,
+    options,
+  );
 }
 
 export interface StreamParser {
@@ -409,7 +430,11 @@ export interface StreamParser {
   getResult(): ParseResult;
 }
 
-export function createStreamParser(cat: ParamMap, rootName?: string): StreamParser {
+export function createStreamParser(
+  cat: ParamMap,
+  rootName?: string,
+  options?: ParserOptions,
+): StreamParser {
   let buf = "";
   let completedEnd = 0;
   const completedStmtMap = new Map<string, Statement>();
@@ -499,6 +524,7 @@ export function createStreamParser(cat: ParamMap, rootName?: string): StreamPars
         completedCount,
         cat,
         rootName,
+        options,
       );
     }
 
@@ -514,6 +540,7 @@ export function createStreamParser(cat: ParamMap, rootName?: string): StreamPars
         completedCount,
         cat,
         rootName,
+        options,
       );
     }
     // Autoclose the incomplete last statement so it's syntactically valid
@@ -530,6 +557,7 @@ export function createStreamParser(cat: ParamMap, rootName?: string): StreamPars
         completedCount,
         cat,
         rootName,
+        options,
       );
     }
 
@@ -556,6 +584,7 @@ export function createStreamParser(cat: ParamMap, rootName?: string): StreamPars
       completedCount + stmts.length,
       cat,
       rootName,
+      options,
     );
   }
 
@@ -623,11 +652,15 @@ function compileSchema(schema: LibraryJSONSchema): ParamMap {
  * const result = parser.parse(openuiLangString);
  * ```
  */
-export function createParser(schema: LibraryJSONSchema, rootName?: string): Parser {
+export function createParser(
+  schema: LibraryJSONSchema,
+  rootName?: string,
+  options?: ParserOptions,
+): Parser {
   const paramMap = compileSchema(schema);
   return {
     parse(input: string): ParseResult {
-      return parse(input, paramMap, rootName);
+      return parse(input, paramMap, rootName, options);
     },
   };
 }
@@ -636,6 +669,10 @@ export function createParser(schema: LibraryJSONSchema, rootName?: string): Pars
  * Create a streaming parser from a library JSON Schema document.
  * Pass `library.toJSONSchema()` to get the schema.
  */
-export function createStreamingParser(schema: LibraryJSONSchema, rootName?: string): StreamParser {
-  return createStreamParser(compileSchema(schema), rootName);
+export function createStreamingParser(
+  schema: LibraryJSONSchema,
+  rootName?: string,
+  options?: ParserOptions,
+): StreamParser {
+  return createStreamParser(compileSchema(schema), rootName, options);
 }

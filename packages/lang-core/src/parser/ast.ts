@@ -38,7 +38,7 @@ export type ASTNode =
   | { k: "Ref"; n: string }
   | { k: "Ph"; n: string }
   | { k: "StateRef"; n: string }
-  | { k: "RuntimeRef"; n: string; refType: "query" | "mutation" }
+  | { k: "RuntimeRef"; n: string; refType: "query" | "mutation" | "data" }
   | { k: "BinOp"; op: string; left: ASTNode; right: ASTNode }
   | { k: "UnaryOp"; op: string; operand: ASTNode }
   | { k: "Ternary"; cond: ASTNode; then: ASTNode; else: ASTNode }

@@ -29,6 +29,7 @@ export interface MaterializeCtx {
   unres: string[];
   visited: Set<string>;
   partial: boolean;
+  externalRefs?: Set<string>;
   /** Tracks which statement is currently being materialized (for error attribution). */
   currentStatementId?: string;
   /** Statement IDs not yet reached — delete as they're touched. Remaining = orphaned. */
@@ -45,6 +46,9 @@ function resolveRef(name: string, ctx: MaterializeCtx, mode: "value" | "expr"): 
     return mode === "expr" ? { k: "Ph", n: name } : null;
   }
   if (!ctx.syms.has(name)) {
+    if (ctx.externalRefs?.has(name)) {
+      return { k: "RuntimeRef", n: name, refType: "data" };
+    }
     ctx.unres.push(name);
     return mode === "expr" ? { k: "Ph", n: name } : null;
   }
