@@ -43,6 +43,8 @@ export interface UseOpenUIStateOptions {
   onAction?: (event: ActionEvent) => void;
   onStateUpdate?: (state: Record<string, unknown>) => void;
   initialState?: Record<string, any>;
+  /** Host data object accessible as `data.*` in openui-lang expressions. */
+  dataModel?: Record<string, unknown>;
   /** ToolProvider for Query data fetching — MCP, REST, GraphQL, or any backend. */
   toolProvider?: ToolProvider | null;
   /** Callback for structured, LLM-friendly errors. See OpenUIError type. */
@@ -74,13 +76,21 @@ export function useOpenUIState(
     onAction,
     onStateUpdate,
     initialState,
+    dataModel,
     toolProvider,
     onError,
   }: UseOpenUIStateOptions,
   renderDeep: (value: unknown) => React.ReactNode,
 ): OpenUIState {
   // ─── Streaming parser (incremental — caches completed statements) ───
-  const sp = useMemo(() => createStreamingParser(library.toJSONSchema(), library.root), [library]);
+  const sp = useMemo(
+    () =>
+      createStreamingParser(library.toJSONSchema(), library.root, {
+        externalRefs: dataModel ? ["data"] : undefined,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [library, dataModel != null],
+  );
 
   // ─── Parse result ───
   const parseExceptionRef = useRef<OpenUIError | null>(null);
@@ -151,12 +161,13 @@ export function useOpenUIState(
     () => ({
       getState: (name: string) => unwrapFieldValue(store.get(name)),
       resolveRef: (name: string) => {
+        if (name === "data" && dataModel) return dataModel;
         const mutResult = queryManager.getMutationResult(name);
         if (mutResult) return mutResult;
         return queryManager.getResult(name);
       },
     }),
-    [store, queryManager],
+    [store, queryManager, dataModel],
   );
 
   // ─── Evaluate and submit queries ───

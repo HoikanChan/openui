@@ -35,6 +35,13 @@ export interface RendererProps {
   /** Called whenever the parse result changes. */
   onParseResult?: (result: ParseResult | null) => void;
   /**
+   * Host data object available as `data.*` in openui-lang expressions.
+   * When provided, the parser enables `data` as an external ref so that
+   * expressions like `data.user.name` resolve at runtime instead of being
+   * flagged as unresolved symbols.
+   */
+  dataModel?: Record<string, unknown>;
+  /**
    * Tool provider for Query()/Mutation() calls.
    * - Function map: `{ tool_name: async (args) => result }` — simplest option
    * - MCP client: any object with `callTool({ name, arguments })` (e.g. from @modelcontextprotocol/sdk)
@@ -206,6 +213,7 @@ export function Renderer({
   onStateUpdate,
   initialState,
   onParseResult,
+  dataModel,
   toolProvider,
   queryLoader,
   onError,
@@ -253,6 +261,7 @@ export function Renderer({
       onAction,
       onStateUpdate,
       initialState,
+      dataModel,
       toolProvider: resolvedToolProvider,
       onError,
     },

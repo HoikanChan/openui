@@ -32,7 +32,13 @@ export { createParser, createStreamingParser } from "@openuidev/lang-core";
 
 // Standalone prompt generation (no Zod deps — usable on backend)
 export { generatePrompt } from "@openuidev/lang-core";
-export type { ComponentPromptSpec, PromptSpec, ToolSpec } from "@openuidev/lang-core";
+export type {
+  ComponentPromptSpec,
+  DataModelFieldSpec,
+  DataModelSpec,
+  PromptSpec,
+  ToolSpec,
+} from "@openuidev/lang-core";
 
 // openui-lang edit/merge
 export { mergeStatements } from "@openuidev/lang-core";
