@@ -25,6 +25,16 @@ export interface ComponentGroup {
   notes?: string[];
 }
 
+export interface DataModelFieldSpec {
+  type: "array" | "object" | "scalar";
+  description?: string;
+}
+
+export interface DataModelSpec {
+  description?: string;
+  fields: Record<string, DataModelFieldSpec>;
+}
+
 export interface PromptSpec {
   root?: string;
   components: Record<string, ComponentPromptSpec>;
@@ -42,6 +52,7 @@ export interface PromptSpec {
   /** Tool-specific examples (Query/Mutation patterns). Both `examples` and `toolExamples` are included when present. */
   toolExamples?: string[];
   additionalRules?: string[];
+  dataModel?: DataModelSpec;
 }
 
 // ─── JSON Schema → type string helper ───────────────────────────────────────
@@ -584,6 +595,30 @@ function generateComponentSignatures(
 
 // ─── Prompt assembly ────────────────────────────────────────────────────────
 
+function dataModelSection(dataModel: DataModelSpec): string {
+  const lines = ["## Data Model", ""];
+
+  if (dataModel.description) {
+    lines.push(dataModel.description, "");
+  }
+
+  lines.push("The following host data is available via `data.<field>`:", "");
+
+  for (const [fieldName, fieldSpec] of Object.entries(dataModel.fields)) {
+    const suffix = fieldSpec.description ? `: ${fieldSpec.description}` : "";
+    lines.push(`- \`data.${fieldName}\` (${fieldSpec.type})${suffix}`);
+  }
+
+  lines.push(
+    "",
+    "Use `data.<field>` to read host data.",
+    "Use `Each(...)` to iterate arrays.",
+    "Array pluck works on arrays: `data.sales.revenue`.",
+  );
+
+  return lines.join("\n");
+}
+
 export function generatePrompt(spec: PromptSpec): string {
   const rootName = spec.root ?? "Root";
   const hasTools = !!spec.tools?.length;
@@ -605,6 +640,11 @@ export function generatePrompt(spec: PromptSpec): string {
   parts.push(syntaxRules(rootName, { supportsExpressions, bindings }));
   parts.push("");
   parts.push(generateComponentSignatures(spec, { toolCalls, bindings, usesActionExpression }));
+
+  if (spec.dataModel) {
+    parts.push("");
+    parts.push(dataModelSection(spec.dataModel));
+  }
 
   // Built-in functions — only when expressions are enabled (Query/reactive state)
   if (supportsExpressions) {
