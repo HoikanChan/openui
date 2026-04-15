@@ -39,7 +39,32 @@ interface ComponentDSL {
 }
 ```
 
-Children are expressed as `DSL[]` arrays inside `data.content.children` or `properties` depending on the component.
+Children are expressed as `DSL[]` arrays inside `children` (card, list, hLayout, vLayout) or `data[].content.children` (timeLine).
+
+## Complete Component Set
+
+Derived from `dsl.py`:
+
+| DSL type | Description | Has children |
+|---|---|---|
+| `vLayout` | Vertical layout — **default root** | yes |
+| `hLayout` | Horizontal layout | yes |
+| `text` | Text / Markdown / HTML content | no |
+| `button` | Button with status + actions | no |
+| `select` | Dropdown select | no |
+| `image` | Image (url / base64 / svg) | no |
+| `link` | Anchor link | no |
+| `card` | Card container with optional header | yes |
+| `list` | Ordered / unordered list | yes |
+| `form` | Form with inline field definitions (label + name + rules + component DSL) | no |
+| `table` | Data table with column definitions | no |
+| `pieChart` | ECharts pie chart | no |
+| `lineChart` | ECharts line chart | no |
+| `barChart` | ECharts bar chart | no |
+| `gaugeChart` | ECharts gauge chart | no |
+| `timeLine` | Timeline with typed items (success/error/default), each containing a DSL children tree | no |
+
+**Note on charts**: All charts are ECharts-based (`echarts` npm package), not Recharts. Properties extend `Omit<echarts.EChartsOption, 'title'>` with a top-level `title` shorthand.
 
 ## Package Structure
 
@@ -50,16 +75,31 @@ packages/react-ui-dsl/
 │   │   ├── Button/
 │   │   ├── Text/
 │   │   ├── Select/
-│   │   ├── GaugeChart/
-│   │   ├── TimeLine/
-│   │   └── ...
+│   │   ├── Image/
+│   │   ├── Link/
+│   │   ├── Card/
+│   │   ├── List/
+│   │   ├── Form/
+│   │   ├── Table/
+│   │   ├── HLayout/
+│   │   ├── VLayout/
+│   │   ├── Charts/              # PieChart, LineChart, BarChart, GaugeChart
+│   │   └── TimeLine/
 │   ├── genui-lib/               # DSL adapter layer
 │   │   ├── Button/
 │   │   │   ├── index.tsx        # defineComponent wrapper
 │   │   │   └── schema.ts        # Zod schema
 │   │   ├── Text/
 │   │   ├── Select/
-│   │   ├── GaugeChart/
+│   │   ├── Image/
+│   │   ├── Link/
+│   │   ├── Card/
+│   │   ├── List/
+│   │   ├── Form/
+│   │   ├── Table/
+│   │   ├── HLayout/
+│   │   ├── VLayout/
+│   │   ├── Charts/
 │   │   ├── TimeLine/
 │   │   └── dslLibrary.tsx       # createLibrary registration entry point
 │   └── styles/                  # Company styles (copied in as needed)
@@ -135,13 +175,24 @@ import { TimeLine } from "./TimeLine"
 // ... other components
 
 export const dslLibrary = createLibrary({
-  root: "Stack",   // top-level layout component
+  root: "VLayout",  // vLayout is the default root layout
   components: [
-    Button,
+    VLayout,
+    HLayout,
     Text,
+    Button,
+    Select,
+    Image,
+    Link,
+    Card,
+    List,
+    Form,
+    Table,
+    PieChart,
+    LineChart,
+    BarChart,
     GaugeChart,
     TimeLine,
-    // ...
   ],
 })
 ```
@@ -159,10 +210,13 @@ The company's components bring their own styles. The existing `react-ui` SCSS is
   "peerDependencies": {
     "@openuidev/react-lang": "workspace:^",
     "react": ">=19.0.0",
-    "react-dom": ">=19.0.0"
+    "react-dom": ">=19.0.0",
+    "echarts": "^5.0.0"
   }
 }
 ```
+
+`echarts` is a peer dependency because chart components are ECharts-based. The consuming app is expected to have `echarts` installed.
 
 ## Out of Scope (Deferred)
 
