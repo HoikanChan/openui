@@ -20,8 +20,9 @@ app.post("/api/generate", async (req, res) => {
   }
 
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
-  res.setHeader("Transfer-Encoding", "chunked");
   res.setHeader("Cache-Control", "no-cache");
+
+  let started = false;
 
   try {
     const stream = await openai.chat.completions.create({
@@ -35,11 +36,18 @@ app.post("/api/generate", async (req, res) => {
 
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content ?? "";
-      if (text) res.write(text);
+      if (text) {
+        res.write(text);
+        started = true;
+      }
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "OpenAI error";
     console.error("[server] OpenAI error:", msg);
+    if (!started) {
+      res.status(502).json({ error: msg });
+      return;
+    }
     res.write(`\n\n[ERROR: ${msg}]`);
   } finally {
     res.end();
