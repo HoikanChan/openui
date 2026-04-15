@@ -2,13 +2,13 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
-// Resolve @openuidev/react-lang to TypeScript source directly so the demo
-// works without a build step (the dist is not available on Node <20.12).
-// lang-core is already built so its imports resolve normally.
+// Resolve workspace packages to TypeScript source directly — the dists are either
+// not built or have broken .ts import extensions (lang-core). Vite handles TS natively.
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
+      "@openuidev/lang-core": path.resolve(__dirname, "../../packages/lang-core/src/index.ts"),
       "@openuidev/react-lang": path.resolve(__dirname, "../../packages/react-lang/src/index.ts"),
     },
   },
