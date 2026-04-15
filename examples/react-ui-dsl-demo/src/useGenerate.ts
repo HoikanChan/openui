@@ -45,6 +45,8 @@ export function useGenerate(): UseGenerateResult {
         const chunk = decoder.decode(value, { stream: true });
         setResponse((prev) => prev + chunk);
       }
+      const trailing = decoder.decode();
+      if (trailing) setResponse((prev) => prev + trailing);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Request failed";
       setError(msg);
