@@ -1,0 +1,32 @@
+{
+  "name": "react-ui-dsl-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"tsx watch server/index.ts\" \"vite\"",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@openuidev/react-lang": "workspace:*",
+    "@openuidev/react-ui": "workspace:*",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2",
+    "@types/express": "^5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4",
+    "concurrently": "^9",
+    "cors": "^2",
+    "express": "^5",
+    "openai": "^4",
+    "tsx": "^4",
+    "typescript": "^5",
+    "vite": "^6"
+  }
+}
