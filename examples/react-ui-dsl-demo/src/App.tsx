@@ -1,5 +1,5 @@
 import { Renderer } from "@openuidev/react-lang";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { dslLibrary } from "./lib/placeholderLibrary";
 import { useGenerate } from "./useGenerate";
 
@@ -7,22 +7,16 @@ export function App() {
   const { response, isStreaming, error, generate, reset } = useGenerate();
   const [prompt, setPrompt] = useState("");
   const [dataModelRaw, setDataModelRaw] = useState("{}");
-  const [dataModelError, setDataModelError] = useState<string | null>(null);
 
-  function parseDataModel(): Record<string, unknown> | undefined {
+  const { dataModel, dataModelError } = useMemo(() => {
     const trimmed = dataModelRaw.trim();
-    if (!trimmed || trimmed === "{}") return undefined;
+    if (!trimmed || trimmed === "{}") return { dataModel: undefined, dataModelError: null };
     try {
-      const parsed = JSON.parse(trimmed);
-      setDataModelError(null);
-      return parsed as Record<string, unknown>;
+      return { dataModel: JSON.parse(trimmed) as Record<string, unknown>, dataModelError: null };
     } catch {
-      setDataModelError("Invalid JSON");
-      return undefined;
+      return { dataModel: undefined, dataModelError: "Invalid JSON" };
     }
-  }
-
-  const dataModel = parseDataModel();
+  }, [dataModelRaw]);
 
   function handleGenerate() {
     if (!prompt.trim() || isStreaming || dataModelError) return;
@@ -61,8 +55,9 @@ export function App() {
 
       {/* Right column */}
       <div style={{ width: 320, display: "flex", flexDirection: "column", gap: 12, padding: 16, background: "#f9f9f9" }}>
-        <label style={{ fontWeight: 600, fontSize: 14 }}>Prompt</label>
+        <label htmlFor="prompt" style={{ fontWeight: 600, fontSize: 14 }}>Prompt</label>
         <textarea
+          id="prompt"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Describe the UI you want to generate…"
@@ -70,8 +65,9 @@ export function App() {
           style={{ resize: "vertical", padding: 8, fontSize: 13, borderRadius: 4, border: "1px solid #ccc" }}
         />
 
-        <label style={{ fontWeight: 600, fontSize: 14 }}>dataModel (JSON)</label>
+        <label htmlFor="dataModel" style={{ fontWeight: 600, fontSize: 14 }}>dataModel (JSON)</label>
         <textarea
+          id="dataModel"
           value={dataModelRaw}
           onChange={(e) => setDataModelRaw(e.target.value)}
           placeholder="{}"
@@ -86,7 +82,7 @@ export function App() {
 
         <button
           onClick={handleGenerate}
-          disabled={isStreaming || !prompt.trim()}
+          disabled={isStreaming || !prompt.trim() || !!dataModelError}
           style={{
             marginTop: "auto", padding: "10px 0", borderRadius: 4, border: "none",
             background: isStreaming ? "#aaa" : "#0070f3", color: "#fff",
