@@ -1,0 +1,38 @@
+"use client";
+
+import { createLibrary } from "@openuidev/react-lang";
+import { BarChart, GaugeChart, LineChart, PieChart } from "./Charts";
+import { Button } from "./Button";
+import { Card } from "./Card";
+import { Form } from "./Form";
+import { HLayout } from "./HLayout";
+import { Image } from "./Image";
+import { Link } from "./Link";
+import { List } from "./List";
+import { Select } from "./Select";
+import { Table } from "./Table";
+import { Text } from "./Text";
+import { TimeLine } from "./TimeLine";
+import { VLayout } from "./VLayout";
+
+export const dslLibrary = createLibrary({
+  root: "VLayout",
+  components: [
+    VLayout,
+    HLayout,
+    Text,
+    Button,
+    Select,
+    Image,
+    Link,
+    Card,
+    List,
+    Form,
+    Table,
+    PieChart,
+    LineChart,
+    BarChart,
+    GaugeChart,
+    TimeLine,
+  ],
+});
