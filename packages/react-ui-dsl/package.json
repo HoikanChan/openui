@@ -1,0 +1,84 @@
+{
+  "name": "@openuidev/react-ui-dsl",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "DSL component library built on Ant Design v5 and ECharts",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "watch": "tsdown --watch",
+    "typecheck": "tsc --noEmit",
+    "lint:check": "eslint ./src",
+    "lint:fix": "eslint ./src --fix",
+    "format:fix": "prettier --write ./src",
+    "format:check": "prettier --check ./src",
+    "check:publint": "publint",
+    "check:attw": "attw --pack .",
+    "prepare": "pnpm run build",
+    "prepublishOnly": "pnpm run check:publint && pnpm run check:attw",
+    "ci": "pnpm run lint:check && pnpm run format:check"
+  },
+  "keywords": [
+    "openui",
+    "generative-ui",
+    "react",
+    "llm",
+    "streaming",
+    "renderer",
+    "parser",
+    "ai",
+    "components",
+    "prompt-generation",
+    "zod",
+    "ui-generation",
+    "model-driven-ui",
+    "openui-lang",
+    "dsl",
+    "antd",
+    "echarts"
+  ],
+  "homepage": "https://openui.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thesysdev/openui.git",
+    "directory": "packages/react-ui-dsl"
+  },
+  "bugs": {
+    "url": "https://github.com/thesysdev/openui/issues"
+  },
+  "author": "engineering@thesys.dev",
+  "dependencies": {
+    "react-markdown": "^10.1.0"
+  },
+  "peerDependencies": {
+    "@openuidev/react-lang": "workspace:^",
+    "antd": "^5.0.0",
+    "echarts": "^5.0.0",
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/react": ">=19.0.0",
+    "@types/react-dom": ">=19.0.0"
+  }
+}
