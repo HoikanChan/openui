@@ -1,3 +1,6 @@
+# Worktrees
+.worktrees/
+
 # OS
 .DS_Store
 
@@ -28,6 +31,9 @@ Claude.md
 !packages/lang-core/.claude/**
 CLAUDE.local.md
 .workspace/
+
+# Codex
+.codex/
 
 # Dependencies
 node_modules
