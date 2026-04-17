@@ -179,15 +179,15 @@ Chart genui-lib wrappers import from `src/components/chart/`:
 "use client"
 
 import { defineComponent } from "@openuidev/react-lang"
-import { PieChart } from "../../components/chart"
+import { PieChart as PieChartComponent } from "../../components/chart"
 import { PieChartSchema } from "./schema"
 
-export const PieChartDSL = defineComponent({
+export const PieChart = defineComponent({
   name: "PieChart",
   props: PieChartSchema,
   description: "ECharts pie chart",
   component: ({ props }) => (
-    <PieChart option={props.properties} data={props.data} style={props.style} />
+    <PieChartComponent option={props.properties} data={props.data} style={props.style} />
   ),
 })
 ```
@@ -212,7 +212,7 @@ import { Card } from "./Card"
 import { List } from "./List"
 import { Form } from "./Form"
 import { Table } from "./Table"
-import { PieChartDSL, LineChartDSL, BarChartDSL, GaugeChartDSL } from "./Charts"
+import { PieChart, LineChart, BarChart, GaugeChart } from "./Charts"
 import { TimeLine } from "./TimeLine"
 
 export const dslLibrary = createLibrary({
@@ -229,10 +229,10 @@ export const dslLibrary = createLibrary({
     List,
     Form,
     Table,
-    PieChartDSL,
-    LineChartDSL,
-    BarChartDSL,
-    GaugeChartDSL,
+    PieChart,
+    LineChart,
+    BarChart,
+    GaugeChart,
     TimeLine,
   ],
 })
