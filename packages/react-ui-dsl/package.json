@@ -66,16 +66,19 @@
     "url": "https://github.com/thesysdev/openui/issues"
   },
   "author": "engineering@thesys.dev",
-  "dependencies": {
-    "react-markdown": "^10.1.0"
-  },
   "peerDependencies": {
     "@openuidev/react-lang": "workspace:^",
     "antd": "^5.0.0",
     "echarts": "^5.0.0",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0",
+    "react-markdown": "^10.1.0",
     "zod": "^4.3.6"
+  },
+  "peerDependenciesMeta": {
+    "react-markdown": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/react": ">=19.0.0",

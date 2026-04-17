@@ -5,12 +5,14 @@ import { Table as AntTable, Tooltip } from "antd";
 import type { ColumnType } from "antd/es/table";
 import { TableSchema } from "./schema";
 
-function formatCell(value: unknown, format?: "data" | "dateTime" | "time"): string {
+function formatCell(value: unknown, format?: "date" | "dateTime" | "time"): string {
   if (value == null) return "";
-  if (format === "dateTime" || format === "time") {
+  if (format === "date" || format === "dateTime" || format === "time") {
     const d = new Date(value as string);
     if (isNaN(d.getTime())) return String(value);
-    return format === "time" ? d.toLocaleTimeString() : d.toLocaleString();
+    if (format === "time") return d.toLocaleTimeString();
+    if (format === "date") return d.toLocaleDateString();
+    return d.toLocaleString();
   }
   return String(value);
 }

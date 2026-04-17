@@ -10,7 +10,7 @@ export const TableSchema = z.object({
         filterable: z.boolean().optional(),
         filterOptions: z.array(z.string()).optional(),
         customized: z.any().optional(),
-        format: z.enum(["data", "dateTime", "time"]).optional(),
+        format: z.enum(["date", "dateTime", "time"]).optional(),
         tooltip: z.boolean().optional(),
       }),
     ),

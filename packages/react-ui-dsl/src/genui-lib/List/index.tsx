@@ -9,22 +9,17 @@ export const List = defineComponent({
   description: "Ordered or unordered list",
   component: ({ props, renderNode }) => {
     const { header, isOrder } = props.properties ?? {};
-    const Tag = isOrder ? ("ol" as const) : ("ul" as const);
+    const Tag = isOrder ? "ol" : "ul";
+    const items = (props.children ?? []).map((child, i) => (
+      <li key={i}>{renderNode(child)}</li>
+    ));
     return (
       <div style={props.style as React.CSSProperties}>
         {header && <div style={{ fontWeight: 600, marginBottom: 8 }}>{header}</div>}
         {Tag === "ol" ? (
-          <ol style={{ paddingLeft: 24, margin: 0 }}>
-            {(props.children ?? []).map((child, i) => (
-              <li key={i}>{renderNode(child)}</li>
-            ))}
-          </ol>
+          <ol style={{ paddingLeft: 24, margin: 0 }}>{items}</ol>
         ) : (
-          <ul style={{ paddingLeft: 24, margin: 0 }}>
-            {(props.children ?? []).map((child, i) => (
-              <li key={i}>{renderNode(child)}</li>
-            ))}
-          </ul>
+          <ul style={{ paddingLeft: 24, margin: 0 }}>{items}</ul>
         )}
       </div>
     );

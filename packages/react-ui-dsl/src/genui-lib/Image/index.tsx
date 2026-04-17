@@ -14,7 +14,7 @@ export const Image = defineComponent({
     if (type === "svg") {
       return <div style={style} dangerouslySetInnerHTML={{ __html: content }} />;
     }
-    const src = type === "base64" ? `data:image/png;base64,${content}` : content;
+    const src = type === "base64" ? `data:image/*;base64,${content}` : content;
     return <img src={src} style={{ maxWidth: "100%", ...style }} alt="" />;
   },
 });

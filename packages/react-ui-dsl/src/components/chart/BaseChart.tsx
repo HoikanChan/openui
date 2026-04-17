@@ -21,19 +21,23 @@ interface BaseChartProps {
 export const BaseChart: React.FC<BaseChartProps> = ({ option, style }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const chartRef = React.useRef<echarts.ECharts | null>(null);
+  const optionRef = React.useRef(option);
+  optionRef.current = option;
 
-  // Init
+  // Init — also applies the current option so the chart renders immediately
   React.useEffect(() => {
     ensureTheme();
     if (!containerRef.current) return;
-    chartRef.current = echarts.init(containerRef.current, THEME_NAME);
+    const chart = echarts.init(containerRef.current, THEME_NAME);
+    chartRef.current = chart;
+    chart.setOption(optionRef.current, true);
     return () => {
-      chartRef.current?.dispose();
+      chart.dispose();
       chartRef.current = null;
     };
   }, []);
 
-  // Update option
+  // Update option when it changes after mount
   React.useEffect(() => {
     chartRef.current?.setOption(option, true);
   }, [option]);
