@@ -1,10 +1,11 @@
 import cors from "cors";
 import express from "express";
+import { HttpsProxyAgent } from "https-proxy-agent";
 import OpenAI from "openai";
 import { systemPrompt } from "./systemPrompt.js";
 
-if (!process.env.OPENAI_API_KEY) {
-  console.error("[server] OPENAI_API_KEY is not set. Please copy .env.example to .env and fill in your key.");
+if (!process.env.LLM_API_KEY) {
+  console.error("[server] LLM_API_KEY is not set. Please copy .env.example to .env and fill in your key.");
   process.exit(1);
 }
 
@@ -14,7 +15,15 @@ const PORT = 3001;
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const httpAgent = process.env.HTTPS_PROXY
+  ? new HttpsProxyAgent(process.env.HTTPS_PROXY)
+  : undefined;
+
+const openai = new OpenAI({
+  apiKey: process.env.LLM_API_KEY,
+  baseURL: process.env.LLM_BASE_URL,
+  httpAgent,
+});
 
 app.post("/api/generate", async (req, res) => {
   const { prompt } = req.body as { prompt: string };
@@ -31,7 +40,7 @@ app.post("/api/generate", async (req, res) => {
 
   try {
     const stream = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: process.env.LLM_MODEL ?? "deepseek-chat",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },

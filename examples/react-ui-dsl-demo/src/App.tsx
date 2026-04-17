@@ -1,6 +1,6 @@
 import { Renderer } from "@openuidev/react-lang";
 import { useMemo, useState } from "react";
-import { dslLibrary } from "./lib/placeholderLibrary";
+import { dslLibrary } from "@openuidev/react-ui-dsl";
 import { useGenerate } from "./useGenerate";
 
 // ── Design tokens ──────────────────────────────────────────────────────────────

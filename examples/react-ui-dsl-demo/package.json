@@ -4,14 +4,21 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"tsx watch server/index.ts\" \"vite\"",
+    "dev": "concurrently \"node --env-file=.env --import tsx/esm --watch server/index.ts\" \"vite\"",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@openuidev/react-lang": "workspace:*",
+    "@openuidev/react-ui-dsl": "workspace:*",
+    "antd": "^5.0.0",
+    "echarts": "^5.0.0",
+    "https-proxy-agent": "^9.0.0",
+    "node-fetch": "^3.3.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-markdown": "^10.1.0",
+    "undici": "^8.1.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
