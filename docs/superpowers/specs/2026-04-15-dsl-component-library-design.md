@@ -1,10 +1,10 @@
 ---
-title: DSL Component Library Replacement Design
+title: DSL Component Library Design
 date: 2026-04-15
 status: approved
 ---
 
-# DSL Component Library Replacement Design
+# DSL Component Library Design
 
 ## Background
 
@@ -13,29 +13,36 @@ The project currently has a UI component library in `packages/react-ui` with two
 - `src/components/` — raw React UI components (Button, Card, Table, etc.) using Radix UI + SCSS
 - `src/genui-lib/` — DSL adapter layer that wraps components with `defineComponent` + Zod schemas for the `react-lang` runtime
 
-The goal is to replace both layers with the company's own enterprise DSL component library, while keeping the `react-lang` runtime (`defineComponent`, `createLibrary`, `useTriggerAction`, etc.) intact.
+The goal is to replace both layers with a new DSL component library built on **Ant Design v5** (for general UI components) and **ECharts** (for charts), while keeping the `react-lang` runtime (`defineComponent`, `createLibrary`, `useTriggerAction`, etc.) intact.
 
 ## Decision
 
 **Approach: New isolated package** (`packages/react-ui-dsl`)
 
-Build a new package in the monorepo containing the company's components and a fresh DSL adapter layer. This allows development in complete isolation from the existing `react-ui` package, with zero risk to existing functionality. Once complete, consumers swap their import from `@openuidev/react-ui` to `@yourcompany/react-ui-dsl`.
+Build a new package in the monorepo with two layers:
+
+1. `src/components/chart/` — ECharts-based React chart components with custom theme (partially exists)
+2. `src/genui-lib/` — DSL adapter layer using `defineComponent` + Zod schemas
+
+Non-chart components (`Button`, `Table`, `Form`, etc.) have no intermediate component layer — `genui-lib` wrappers import Ant Design directly. Chart components are heavier and have an existing theme, so they live in `src/components/chart/` and `genui-lib` imports from there.
 
 Rejected alternatives:
 - **Big Bang replacement**: Too risky — everything breaks at once, hard to verify incrementally.
-- **Incremental in-place replacement**: Cleaner than Big Bang but still introduces a long transition period with mixed old/new state in the same package.
+- **Incremental in-place replacement**: Long transition period with mixed old/new state in the same package.
+- **Thin wrapper layer for all components**: Adds indirection with no benefit when antd is a stable public API.
 
 ## Component DSL Format
 
-The company's DSL components follow a consistent interface shape:
+DSL components follow a consistent interface shape (defined in `dsl.py`):
 
 ```ts
 interface ComponentDSL {
+  id?: string;
   type: string;           // discriminator (e.g. 'button', 'text', 'gaugeChart')
   properties?: { ... };  // component-specific config
   style?: CSSProperties; // optional inline styles
-  actions?: Action[];    // event handlers (opaque, handled internally by React component)
-  data?: { ... };        // data input for charts and data-driven components
+  actions?: Action[];    // event handlers (opaque)
+  data?: { ... };        // data input for data-driven components
 }
 ```
 
@@ -43,36 +50,49 @@ Children are expressed as `DSL[]` arrays inside `children` (card, list, hLayout,
 
 ## Complete Component Set
 
-Derived from `dsl.py`:
-
-| DSL type | Description | Has children |
+| DSL type | Ant Design / lib | Notes |
 |---|---|---|
-| `vLayout` | Vertical layout — **default root** | yes |
-| `hLayout` | Horizontal layout | yes |
-| `text` | Text / Markdown / HTML content | no |
-| `button` | Button with status + actions | no |
-| `select` | Dropdown select | no |
-| `image` | Image (url / base64 / svg) | no |
-| `link` | Anchor link | no |
-| `card` | Card container with optional header | yes |
-| `list` | Ordered / unordered list | yes |
-| `form` | Form with inline field definitions (label + name + rules + component DSL) | no |
-| `table` | Data table with column definitions | no |
-| `pieChart` | ECharts pie chart | no |
-| `lineChart` | ECharts line chart | no |
-| `barChart` | ECharts bar chart | no |
-| `gaugeChart` | ECharts gauge chart | no |
-| `timeLine` | Timeline with typed items (success/error/default), each containing a DSL children tree | no |
+| `vLayout` | `Flex` (column) | Default root. `gap` prop |
+| `hLayout` | `Flex` (row) | `gap`, `wrap` props |
+| `text` | Native HTML | Supports `default` \| `markdown` \| `html` via `properties.type` |
+| `button` | `Button` | `status` → antd `type`/`danger`; `type: 'text'` → antd `type: 'text'` |
+| `select` | `Select` | `options`, `defaultValue`, `allowClear` direct pass-through |
+| `image` | Native `<img>` / inline SVG | `type: 'url' \| 'base64' \| 'svg'` |
+| `link` | `Typography.Link` | `href`, `target`, `download`, `disabled` |
+| `card` | `Card` | `header` → antd `title`; optional `tag` |
+| `list` | `List` | `header`, `isOrder` (ordered/unordered) |
+| `form` | `Form` | Dynamic `fields[]` with label/name/rules/component DSL |
+| `table` | `Table` | `columns[]` with sortable, filterable, format, tooltip, customized DSL |
+| `pieChart` | ECharts | `src/components/chart/PieChart` + existing theme |
+| `lineChart` | ECharts | `src/components/chart/LineChart` + existing theme |
+| `barChart` | ECharts | `src/components/chart/BarChart` + existing theme |
+| `gaugeChart` | ECharts | `src/components/chart/GaugeChart` + existing theme |
+| `timeLine` | `Timeline` | `iconType: 'success' \| 'error' \| 'default'` → dot color; each item has a DSL children tree |
 
-**Note on charts**: All charts are ECharts-based (`echarts` npm package), not Recharts. Properties extend `Omit<echarts.EChartsOption, 'title'>` with a top-level `title` shorthand.
+**Note on charts**: All charts are ECharts-based (`echarts` npm package). Properties extend `Omit<echarts.EChartsOption, 'title'>` with a top-level `title` string shorthand. The existing theme at `src/components/chart/theme/` (colors, tokens, light/dark variants) is applied inside each chart component.
+
+**Note on Ant Design**: Using v5 with default theme. No `ConfigProvider` theme customization at this stage. No manual CSS imports required (antd v5 uses CSS-in-JS).
 
 ## Package Structure
 
 ```
 packages/react-ui-dsl/
 ├── src/
-│   ├── components/              # Company React components (copied in as source)
+│   ├── components/
+│   │   └── chart/                  # ECharts React components (self-encapsulated)
+│   │       ├── PieChart.tsx
+│   │       ├── LineChart.tsx
+│   │       ├── BarChart.tsx
+│   │       ├── GaugeChart.tsx
+│   │       ├── index.ts
+│   │       └── theme/              # Already exists
+│   │           ├── colors.ts
+│   │           ├── tokens.ts
+│   │           └── index.ts
+│   ├── genui-lib/                  # DSL adapter layer
 │   │   ├── Button/
+│   │   │   ├── index.tsx           # defineComponent wrapper
+│   │   │   └── schema.ts           # Zod schema
 │   │   ├── Text/
 │   │   ├── Select/
 │   │   ├── Image/
@@ -83,33 +103,17 @@ packages/react-ui-dsl/
 │   │   ├── Table/
 │   │   ├── HLayout/
 │   │   ├── VLayout/
-│   │   ├── Charts/              # PieChart, LineChart, BarChart, GaugeChart
-│   │   └── TimeLine/
-│   ├── genui-lib/               # DSL adapter layer
-│   │   ├── Button/
-│   │   │   ├── index.tsx        # defineComponent wrapper
-│   │   │   └── schema.ts        # Zod schema
-│   │   ├── Text/
-│   │   ├── Select/
-│   │   ├── Image/
-│   │   ├── Link/
-│   │   ├── Card/
-│   │   ├── List/
-│   │   ├── Form/
-│   │   ├── Table/
-│   │   ├── HLayout/
-│   │   ├── VLayout/
-│   │   ├── Charts/
+│   │   ├── Charts/                 # PieChart, LineChart, BarChart, GaugeChart
 │   │   ├── TimeLine/
-│   │   └── dslLibrary.tsx       # createLibrary registration entry point
-│   └── styles/                  # Company styles (copied in as needed)
+│   │   └── dslLibrary.tsx          # createLibrary registration
+│   └── index.ts                    # Public exports
 ├── package.json
 └── tsconfig.json
 ```
 
 ## Schema Pattern
 
-Each component's Zod schema mirrors the TypeScript DSL interface directly. The nested `properties` structure is preserved rather than flattened.
+Each component's Zod schema mirrors the TypeScript DSL interface from `dsl.py` directly. The nested `properties` structure is preserved rather than flattened.
 
 Example — Button:
 
@@ -129,37 +133,66 @@ export const ButtonSchema = z.object({
 })
 ```
 
-`actions` is typed as `z.array(z.any())` — the company React component handles action execution internally. No integration with `react-lang`'s `useTriggerAction` at this stage (deferred for future iteration).
-
-`style` is typed as `z.record(z.string(), z.any())` to accept arbitrary CSSProperties.
+`style` is `z.record(z.string(), z.any())` to accept arbitrary CSSProperties.
+`actions` is `z.array(z.any())` — handled opaquely by the component.
 
 ## Component Wrapper Pattern
 
-Each `genui-lib` wrapper uses `defineComponent` from `@openuidev/react-lang` and passes props directly to the underlying React component with minimal transformation:
+Each `genui-lib` wrapper uses `defineComponent` from `@openuidev/react-lang` and imports antd (or chart components) directly:
 
 ```tsx
 // genui-lib/Button/index.tsx
 "use client"
 
+import { Button as AntButton } from "antd"
 import { defineComponent } from "@openuidev/react-lang"
-import { YourButton } from "../../components/Button"
 import { ButtonSchema } from "./schema"
 
 export const Button = defineComponent({
   name: "Button",
   props: ButtonSchema,
   description: "Clickable button",
+  component: ({ props }) => {
+    const { status, text, disabled, type } = props.properties ?? {}
+    return (
+      <AntButton
+        type={type === "text" ? "text" : status === "primary" ? "primary" : "default"}
+        danger={status === "risk"}
+        disabled={disabled}
+        style={props.style}
+      >
+        {text}
+      </AntButton>
+    )
+  },
+})
+```
+
+For components with recursive children (Card, List, HLayout, VLayout, TimeLine), `useRenderNode` from `react-lang` is used to render the `DSL[]` children array.
+
+### Chart Wrapper Pattern
+
+Chart genui-lib wrappers import from `src/components/chart/`:
+
+```tsx
+// genui-lib/Charts/PieChart/index.tsx
+"use client"
+
+import { defineComponent } from "@openuidev/react-lang"
+import { PieChart } from "../../components/chart"
+import { PieChartSchema } from "./schema"
+
+export const PieChartDSL = defineComponent({
+  name: "PieChart",
+  props: PieChartSchema,
+  description: "ECharts pie chart",
   component: ({ props }) => (
-    <YourButton
-      properties={props.properties}
-      style={props.style}
-      actions={props.actions}
-    />
+    <PieChart option={props.properties} data={props.data} style={props.style} />
   ),
 })
 ```
 
-For components with recursive children (e.g. TimeLine), `useRenderNode` from `react-lang` is used to render the `DSL[]` children array.
+The chart component in `src/components/chart/PieChart.tsx` handles ECharts initialization, resize observation, and theme application (`lightTheme` / `darkTheme` from `theme/index.ts`).
 
 ## Library Registration
 
@@ -168,14 +201,22 @@ For components with recursive children (e.g. TimeLine), `useRenderNode` from `re
 "use client"
 
 import { createLibrary } from "@openuidev/react-lang"
-import { Button } from "./Button"
+import { VLayout } from "./VLayout"
+import { HLayout } from "./HLayout"
 import { Text } from "./Text"
-import { GaugeChart } from "./GaugeChart"
+import { Button } from "./Button"
+import { Select } from "./Select"
+import { Image } from "./Image"
+import { Link } from "./Link"
+import { Card } from "./Card"
+import { List } from "./List"
+import { Form } from "./Form"
+import { Table } from "./Table"
+import { PieChartDSL, LineChartDSL, BarChartDSL, GaugeChartDSL } from "./Charts"
 import { TimeLine } from "./TimeLine"
-// ... other components
 
 export const dslLibrary = createLibrary({
-  root: "VLayout",  // vLayout is the default root layout
+  root: "VLayout",
   components: [
     VLayout,
     HLayout,
@@ -188,38 +229,37 @@ export const dslLibrary = createLibrary({
     List,
     Form,
     Table,
-    PieChart,
-    LineChart,
-    BarChart,
-    GaugeChart,
+    PieChartDSL,
+    LineChartDSL,
+    BarChartDSL,
+    GaugeChartDSL,
     TimeLine,
   ],
 })
 ```
 
-## Styles
-
-The company's components bring their own styles. The existing `react-ui` SCSS is not reused. Component-specific SCSS files are copied alongside their React component source. A top-level `styles/index.scss` imports all component stylesheets.
-
 ## package.json
 
 ```json
 {
-  "name": "@yourcompany/react-ui-dsl",
+  "name": "@openuidev/react-ui-dsl",
   "type": "module",
   "peerDependencies": {
     "@openuidev/react-lang": "workspace:^",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0",
+    "antd": "^5.0.0",
     "echarts": "^5.0.0"
   }
 }
 ```
 
-`echarts` is a peer dependency because chart components are ECharts-based. The consuming app is expected to have `echarts` installed.
+Both `antd` and `echarts` are peer dependencies — the consuming app installs them. No separate CSS entry point is needed (antd v5 CSS-in-JS, chart theme is a JS object).
 
 ## Out of Scope (Deferred)
 
-- **`actions` integration with `react-lang`**: The company's `Action[]` type will eventually be mapped to `react-lang`'s `ActionPlan` (ToAssistant, Run, Set, OpenUrl). Deferred to a follow-up iteration.
-- **`openuiLibrary` / `componentGroups` / prompt notes**: AI prompt guidance (component groups, usage notes, examples) is not part of this spec. Add once the component set is stable.
+- **`actions` integration with `react-lang`**: The `Action[]` type will eventually be mapped to `react-lang`'s `ActionPlan` (ToAssistant, Run, Set, OpenUrl). Deferred to a follow-up iteration.
+- **`openuiLibrary` / `componentGroups` / prompt notes**: AI prompt guidance is not part of this spec. Add once the component set is stable.
+- **antd ConfigProvider theme customization**: Using antd defaults for now. Custom design tokens deferred.
+- **TreeTableDSL, PIUDSL, IframeDSL**: Deferred — definitions TBD.
 - **Storybook / tests**: Out of scope for initial implementation.
