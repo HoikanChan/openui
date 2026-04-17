@@ -6,6 +6,7 @@
     "moduleResolution": "bundler",
     "module": "ESNext",
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "skipLibCheck": true
   }
 }
