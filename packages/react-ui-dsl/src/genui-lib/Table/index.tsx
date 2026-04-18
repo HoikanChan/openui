@@ -3,7 +3,8 @@
 import { defineComponent } from "@openuidev/react-lang";
 import { Table as AntTable, Tooltip } from "antd";
 import type { ColumnType } from "antd/es/table";
-import { TableSchema } from "./schema";
+import { z } from "zod";
+import { ColSchema, TableSchema } from "./schema";
 
 function formatCell(value: unknown, format?: "date" | "dateTime" | "time"): string {
   if (value == null) return "";
@@ -17,45 +18,74 @@ function formatCell(value: unknown, format?: "date" | "dateTime" | "time"): stri
   return String(value);
 }
 
+export const Col = defineComponent({
+  name: "Col",
+  props: ColSchema,
+  description:
+    "Declarative table column. Use Col(title, field, options?) instead of writing a raw columns JSON object.",
+  component: () => null,
+});
+
+type TableRow = Record<string, unknown>;
+
+function toAntColumn(
+  col: { title: string; field: string; options?: z.infer<typeof ColSchema>["options"] },
+  renderNode: (value: unknown) => React.ReactNode,
+): ColumnType<TableRow> {
+  const options = col.options ?? {};
+
+  return {
+    title: col.title,
+    dataIndex: col.field,
+    key: col.field,
+    sorter: options.sortable
+      ? (a: TableRow, b: TableRow) =>
+          String(a[col.field] ?? "").localeCompare(String(b[col.field] ?? ""))
+      : undefined,
+    filters:
+      options.filterable && options.filterOptions
+        ? options.filterOptions.map((o) => ({ text: o, value: o }))
+        : undefined,
+    onFilter: options.filterable
+      ? (value: unknown, record: TableRow) => String(record[col.field]) === String(value)
+      : undefined,
+    render: (value: unknown) => {
+      if (options.cell) {
+        return renderNode(options.cell);
+      }
+
+      const text = formatCell(value, options.format);
+      if (options.tooltip) {
+        return (
+          <Tooltip title={text}>
+            <span>{text}</span>
+          </Tooltip>
+        );
+      }
+
+      return text;
+    },
+  };
+}
+
+export function mapColumnsToAntd(
+  columns: Array<{ title: string; field: string; options?: z.infer<typeof ColSchema>["options"] }>,
+  renderNode: (value: unknown) => React.ReactNode,
+): ColumnType<TableRow>[] {
+  return columns.map((col) => toAntColumn(col, renderNode));
+}
+
 export const Table = defineComponent({
   name: "Table",
   props: TableSchema,
-  description: "Data table with column definitions",
+  description: "Data table authored as Table(columns, rows, style?) with Col(title, field, options?).",
   component: ({ props, renderNode }) => {
-    const { columns } = props.properties;
-
-    const antColumns: ColumnType<Record<string, unknown>>[] = columns.map((col) => ({
-      title: col.title,
-      dataIndex: col.field,
-      key: col.field,
-      sorter: col.sortable
-        ? (a: Record<string, unknown>, b: Record<string, unknown>) =>
-            String(a[col.field] ?? "").localeCompare(String(b[col.field] ?? ""))
-        : undefined,
-      filters:
-        col.filterable && col.filterOptions
-          ? col.filterOptions.map((o) => ({ text: o, value: o }))
-          : undefined,
-      onFilter: col.filterable
-        ? (value: unknown, record: Record<string, unknown>) =>
-            String(record[col.field]) === String(value)
-        : undefined,
-      render: (value: unknown) => {
-        if (col.customized) {
-          return renderNode(col.customized);
-        }
-        const text = formatCell(value, col.format);
-        if (col.tooltip) {
-          return <Tooltip title={text}><span>{text}</span></Tooltip>;
-        }
-        return text;
-      },
-    }));
+    const antColumns = mapColumnsToAntd(props.columns, renderNode);
 
     return (
       <AntTable
         columns={antColumns}
-        dataSource={[]}
+        dataSource={props.rows}
         rowKey={(_, i) => String(i)}
         style={props.style as React.CSSProperties}
         pagination={false}

@@ -10,7 +10,7 @@ import { Image } from "./Image";
 import { Link } from "./Link";
 import { List } from "./List";
 import { Select } from "./Select";
-import { Table } from "./Table";
+import { Col, Table } from "./Table";
 import { Text } from "./Text";
 import { TimeLine } from "./TimeLine";
 import { VLayout } from "./VLayout";
@@ -28,6 +28,7 @@ export const dslLibrary = createLibrary({
     Card,
     List,
     Form,
+    Col,
     Table,
     PieChart,
     LineChart,
