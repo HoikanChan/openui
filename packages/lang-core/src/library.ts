@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ComponentPromptSpec, PromptSpec, ToolSpec } from "./parser/prompt";
+import type { ComponentPromptSpec, DataModelSpec, PromptSpec, ToolSpec } from "./parser/prompt";
 import { generatePrompt } from "./parser/prompt";
 import type { LibraryJSONSchema } from "./parser/types";
 import { isReactiveSchema } from "./reactive";
@@ -95,6 +95,7 @@ export interface PromptOptions {
   toolCalls?: boolean;
   /** Enable $variables, @Set, @Reset, interactive filters. Default: true if toolCalls. */
   bindings?: boolean;
+  dataModel?: DataModelSpec;
 }
 
 // ─── Zod introspection ──────────────────────────────────────────────────────
