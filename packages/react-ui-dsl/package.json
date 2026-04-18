@@ -24,6 +24,7 @@
     "README.md"
   ],
   "scripts": {
+    "test": "vitest run --config vitest.config.ts",
     "build": "tsdown",
     "watch": "tsdown --watch",
     "typecheck": "tsc --noEmit",
@@ -82,6 +83,7 @@
   },
   "devDependencies": {
     "@types/react": ">=19.0.0",
-    "@types/react-dom": ">=19.0.0"
+    "@types/react-dom": ">=19.0.0",
+    "vitest": "^4.0.18"
   }
 }
