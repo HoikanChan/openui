@@ -95,6 +95,7 @@ export interface PromptOptions {
   toolCalls?: boolean;
   /** Enable $variables, @Set, @Reset, interactive filters. Default: true if toolCalls. */
   bindings?: boolean;
+  /** Pass host data into the prompt as a fenced JSON block under ## Data Model. */
   dataModel?: DataModelSpec;
 }
 

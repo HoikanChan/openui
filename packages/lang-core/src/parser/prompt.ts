@@ -590,7 +590,7 @@ function generateComponentSignatures(
 
 // ─── Prompt assembly ────────────────────────────────────────────────────────
 
-function dataModelSection(dataModel: DataModelSpec): string {
+function dataModelSection(dataModel: DataModelSpec & { raw: Record<string, unknown> }): string {
   const lines = ["## Data Model", ""];
 
   if (dataModel.description) {
