@@ -34,7 +34,6 @@ export { createParser, createStreamingParser } from "@openuidev/lang-core";
 export { generatePrompt } from "@openuidev/lang-core";
 export type {
   ComponentPromptSpec,
-  DataModelFieldSpec,
   DataModelSpec,
   PromptSpec,
   ToolSpec,

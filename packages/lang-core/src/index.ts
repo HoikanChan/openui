@@ -32,7 +32,6 @@ export { mergeStatements } from "./parser/merge";
 export { generatePrompt } from "./parser/prompt";
 export type {
   ComponentPromptSpec,
-  DataModelFieldSpec,
   DataModelSpec,
   PromptSpec,
   ToolSpec,

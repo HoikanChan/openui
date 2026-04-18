@@ -22,7 +22,6 @@ export { generatePrompt } from "./prompt";
 export type {
   ComponentGroup,
   ComponentPromptSpec,
-  DataModelFieldSpec,
   DataModelSpec,
   PromptSpec,
   ToolSpec,
