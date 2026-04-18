@@ -1,6 +1,6 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
 import { Table as AntTable, Tooltip } from "antd";
 import type { ColumnType } from "antd/es/table";
 import { z } from "zod";
@@ -79,7 +79,7 @@ export const Table = defineComponent({
   name: "Table",
   props: TableSchema,
   description: "Data table authored as Table(columns, rows, style?) with Col(title, field, options?).",
-  component: ({ props, renderNode }) => {
+  component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof TableSchema>>) => {
     const antColumns = mapColumnsToAntd(props.columns, renderNode);
 
     return (

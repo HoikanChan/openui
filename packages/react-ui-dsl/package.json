@@ -27,6 +27,8 @@
     "test": "vitest run --config vitest.config.ts",
     "build": "tsdown",
     "watch": "tsdown --watch",
+    "storybook": "storybook dev -p 6007",
+    "build:storybook": "storybook build",
     "typecheck": "tsc --noEmit",
     "lint:check": "eslint ./src",
     "lint:fix": "eslint ./src --fix",
@@ -82,8 +84,24 @@
     }
   },
   "devDependencies": {
+    "@openuidev/react-lang": "workspace:^",
+    "@storybook/addon-essentials": "^8.5.3",
+    "@storybook/addon-interactions": "^8.5.3",
+    "@storybook/blocks": "^8.5.3",
+    "@storybook/react": "^8.5.3",
+    "@storybook/react-vite": "^8.5.3",
+    "@storybook/test": "^8.5.3",
+    "@types/node": "^22.12.0",
     "@types/react": ">=19.0.0",
     "@types/react-dom": ">=19.0.0",
-    "vitest": "^4.0.18"
+    "antd": "^5.0.0",
+    "echarts": "^5.0.0",
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0",
+    "react-markdown": "^10.1.0",
+    "storybook": "^8.5.3",
+    "vite": "^5.0.0",
+    "vitest": "^4.0.18",
+    "zod": "^4.3.6"
   }
 }

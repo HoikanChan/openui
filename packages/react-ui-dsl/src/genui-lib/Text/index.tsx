@@ -1,14 +1,15 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
 import ReactMarkdown from "react-markdown";
+import { z } from "zod";
 import { TextSchema } from "./schema";
 
 export const Text = defineComponent({
   name: "Text",
   props: TextSchema,
   description: "Text content — supports plain, markdown, and HTML",
-  component: ({ props }) => {
+  component: ({ props }: ComponentRenderProps<z.infer<typeof TextSchema>>) => {
     const { type = "default", content } = props.properties;
     const style = props.style as React.CSSProperties | undefined;
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
 import { Timeline } from "antd";
+import { z } from "zod";
 import { TimeLineSchema } from "./schema";
 
 const iconColorMap = {
@@ -14,9 +15,9 @@ export const TimeLine = defineComponent({
   name: "TimeLine",
   props: TimeLineSchema,
   description: "Timeline with typed items, each containing a DSL children tree",
-  component: ({ props, renderNode }) => {
+  component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof TimeLineSchema>>) => {
     const title = props.properties?.title;
-    const items = props.data.map((item) => ({
+    const items = props.data.map((item: z.infer<typeof TimeLineSchema>["data"][number]) => ({
       color: iconColorMap[item.iconType],
       children: (
         <>

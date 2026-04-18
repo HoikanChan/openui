@@ -1,16 +1,17 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
+import { z } from "zod";
 import { ListSchema } from "./schema";
 
 export const List = defineComponent({
   name: "List",
   props: ListSchema,
   description: "Ordered or unordered list",
-  component: ({ props, renderNode }) => {
+  component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof ListSchema>>) => {
     const { header, isOrder } = props.properties ?? {};
     const Tag = isOrder ? "ol" : "ul";
-    const items = (props.children ?? []).map((child, i) => (
+    const items = (props.children ?? []).map((child: unknown, i: number) => (
       <li key={i}>{renderNode(child)}</li>
     ));
     return (

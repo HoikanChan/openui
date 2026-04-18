@@ -1,14 +1,15 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
 import { Typography } from "antd";
+import { z } from "zod";
 import { LinkSchema } from "./schema";
 
 export const Link = defineComponent({
   name: "Link",
   props: LinkSchema,
   description: "Anchor link",
-  component: ({ props }) => {
+  component: ({ props }: ComponentRenderProps<z.infer<typeof LinkSchema>>) => {
     const { href, text, target, disabled, download } = props.properties;
     return (
       <Typography.Link

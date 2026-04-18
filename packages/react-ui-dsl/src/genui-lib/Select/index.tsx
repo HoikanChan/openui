@@ -1,14 +1,15 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
 import { Select as AntSelect } from "antd";
+import { z } from "zod";
 import { SelectSchema } from "./schema";
 
 export const Select = defineComponent({
   name: "Select",
   props: SelectSchema,
   description: "Dropdown select",
-  component: ({ props }) => {
+  component: ({ props }: ComponentRenderProps<z.infer<typeof SelectSchema>>) => {
     const { options, allowClear, defaultValue } = props.properties;
     return (
       <AntSelect

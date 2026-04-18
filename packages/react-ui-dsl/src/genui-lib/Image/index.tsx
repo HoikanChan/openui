@@ -1,13 +1,14 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
+import { z } from "zod";
 import { ImageSchema } from "./schema";
 
 export const Image = defineComponent({
   name: "Image",
   props: ImageSchema,
   description: "Image — url, base64, or inline SVG",
-  component: ({ props }) => {
+  component: ({ props }: ComponentRenderProps<z.infer<typeof ImageSchema>>) => {
     const { type, content } = props.properties;
     const style = props.style as React.CSSProperties | undefined;
 

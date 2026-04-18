@@ -1,6 +1,7 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
+import { z } from "zod";
 import styles from "./card.module.css";
 import { CardSchema } from "./schema";
 
@@ -19,10 +20,9 @@ export const Card = defineComponent({
   props: CardSchema,
   description:
     "Card container with optional header (title, subtitle, actions) and visual variant (card/clear/sunk)",
-  component: ({ props, renderNode }) => {
+  component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof CardSchema>>) => {
     const { variant = "card", width = "standard", header } = props;
-    const hasHeader =
-      header && (header.title || header.subtitle || header.actions?.length);
+    const hasHeader = header && (header.title || header.subtitle || header.actions?.length);
 
     return (
       <div
@@ -36,17 +36,13 @@ export const Card = defineComponent({
         {hasHeader && (
           <div className={styles.header}>
             <div className={styles.headerLeft}>
-              {header.title && (
-                <div className={styles.headerTitle}>{header.title}</div>
-              )}
+              {header.title && <div className={styles.headerTitle}>{header.title}</div>}
               {header.subtitle && (
                 <div className={styles.headerSubtitle}>{header.subtitle}</div>
               )}
             </div>
             {header.actions?.length ? (
-              <div className={styles.headerActions}>
-                {renderNode(header.actions)}
-              </div>
+              <div className={styles.headerActions}>{renderNode(header.actions)}</div>
             ) : null}
           </div>
         )}
