@@ -25,14 +25,9 @@ export interface ComponentGroup {
   notes?: string[];
 }
 
-export interface DataModelFieldSpec {
-  type: "array" | "object" | "scalar";
-  description?: string;
-}
-
 export interface DataModelSpec {
   description?: string;
-  fields: Record<string, DataModelFieldSpec>;
+  raw?: Record<string, unknown>;
 }
 
 export interface PromptSpec {
@@ -603,12 +598,9 @@ function dataModelSection(dataModel: DataModelSpec): string {
   }
 
   lines.push("The following host data is available via `data.<field>`:", "");
-
-  for (const [fieldName, fieldSpec] of Object.entries(dataModel.fields)) {
-    const suffix = fieldSpec.description ? `: ${fieldSpec.description}` : "";
-    lines.push(`- \`data.${fieldName}\` (${fieldSpec.type})${suffix}`);
-  }
-
+  lines.push("```json");
+  lines.push(JSON.stringify(dataModel.raw, null, 2));
+  lines.push("```");
   lines.push(
     "",
     "Use `data.<field>` to read host data.",
@@ -641,7 +633,7 @@ export function generatePrompt(spec: PromptSpec): string {
   parts.push("");
   parts.push(generateComponentSignatures(spec, { toolCalls, bindings, usesActionExpression }));
 
-  if (spec.dataModel) {
+  if (spec.dataModel?.raw && Object.keys(spec.dataModel.raw).length > 0) {
     parts.push("");
     parts.push(dataModelSection(spec.dataModel));
   }
