@@ -1,11 +1,13 @@
 import { vi } from "vitest";
 
+class MockResizeObserver {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+
 Object.defineProperty(globalThis, "ResizeObserver", {
   writable: true,
   configurable: true,
-  value: vi.fn().mockImplementation(function () {
-    this.observe = vi.fn();
-    this.unobserve = vi.fn();
-    this.disconnect = vi.fn();
-  }),
+  value: MockResizeObserver,
 });
