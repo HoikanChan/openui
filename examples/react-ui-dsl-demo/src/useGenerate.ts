@@ -4,7 +4,7 @@ export interface UseGenerateResult {
   response: string;
   isStreaming: boolean;
   error: string | null;
-  generate: (prompt: string) => Promise<void>;
+  generate: (prompt: string, dataModel?: Record<string, unknown>) => Promise<void>;
   reset: () => void;
 }
 
@@ -19,7 +19,7 @@ export function useGenerate(): UseGenerateResult {
     setError(null);
   }, []);
 
-  const generate = useCallback(async (prompt: string) => {
+  const generate = useCallback(async (prompt: string, dataModel?: Record<string, unknown>) => {
     setResponse("");
     setError(null);
     setIsStreaming(true);
@@ -28,7 +28,7 @@ export function useGenerate(): UseGenerateResult {
       const res = await fetch("http://localhost:3001/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, dataModel }),
       });
 
       if (!res.ok || !res.body) {

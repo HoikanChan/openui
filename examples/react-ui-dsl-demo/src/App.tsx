@@ -100,7 +100,7 @@ export function App() {
   function handleGenerate() {
     if (!prompt.trim() || isStreaming || dataModelError) return;
     reset();
-    void generate(prompt);
+    void generate(prompt, dataModel);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
