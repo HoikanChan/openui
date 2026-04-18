@@ -1,7 +1,8 @@
 import { Renderer } from "@openuidev/react-lang";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { dslLibrary } from "@openuidev/react-ui-dsl";
 import { useGenerate } from "./useGenerate";
+import { useLocalStorage } from "./useLocalStorage";
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 const C = {
@@ -84,8 +85,8 @@ function StatusDot({ streaming }: { streaming: boolean }) {
 // ── Main App ──────────────────────────────────────────────────────────────────
 export function App() {
   const { response, isStreaming, error, generate, reset } = useGenerate();
-  const [prompt, setPrompt] = useState("");
-  const [dataModelRaw, setDataModelRaw] = useState("{}");
+  const [prompt, setPrompt] = useLocalStorage("demo:prompt", "");
+  const [dataModelRaw, setDataModelRaw] = useLocalStorage("demo:dataModelRaw", "{}");
 
   const { dataModel, dataModelError } = useMemo(() => {
     const trimmed = dataModelRaw.trim();
