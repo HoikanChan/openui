@@ -1,6 +1,10 @@
 "use client";
 
-import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
+import {
+  type ComponentRenderProps,
+  defineComponent,
+  type SubComponentOf,
+} from "@openuidev/react-lang";
 import { Table as AntTable, Tooltip } from "antd";
 import type { ColumnType } from "antd/es/table";
 import { z } from "zod";
@@ -27,27 +31,44 @@ export const Col = defineComponent({
 });
 
 type TableRow = Record<string, unknown>;
+type ColProps = z.infer<typeof ColSchema>;
+type ColumnValue = ColProps | SubComponentOf<ColProps>;
+
+function isColumnNode(value: ColumnValue): value is SubComponentOf<ColProps> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "type" in value &&
+    "typeName" in value &&
+    "props" in value
+  );
+}
+
+function getColumnProps(col: ColumnValue): ColProps {
+  return isColumnNode(col) ? col.props : col;
+}
 
 function toAntColumn(
-  col: { title: string; field: string; options?: z.infer<typeof ColSchema>["options"] },
+  col: ColumnValue,
   renderNode: (value: unknown) => React.ReactNode,
 ): ColumnType<TableRow> {
-  const options = col.options ?? {};
+  const column = getColumnProps(col);
+  const options = column.options ?? {};
 
   return {
-    title: col.title,
-    dataIndex: col.field,
-    key: col.field,
+    title: column.title,
+    dataIndex: column.field,
+    key: column.field,
     sorter: options.sortable
       ? (a: TableRow, b: TableRow) =>
-          String(a[col.field] ?? "").localeCompare(String(b[col.field] ?? ""))
+          String(a[column.field] ?? "").localeCompare(String(b[column.field] ?? ""))
       : undefined,
     filters:
       options.filterable && options.filterOptions
         ? options.filterOptions.map((o) => ({ text: o, value: o }))
         : undefined,
     onFilter: options.filterable
-      ? (value: unknown, record: TableRow) => String(record[col.field]) === String(value)
+      ? (value: unknown, record: TableRow) => String(record[column.field]) === String(value)
       : undefined,
     render: (value: unknown) => {
       if (options.cell) {
@@ -69,7 +90,7 @@ function toAntColumn(
 }
 
 export function mapColumnsToAntd(
-  columns: Array<{ title: string; field: string; options?: z.infer<typeof ColSchema>["options"] }>,
+  columns: ColumnValue[],
   renderNode: (value: unknown) => React.ReactNode,
 ): ColumnType<TableRow>[] {
   return columns.map((col) => toAntColumn(col, renderNode));

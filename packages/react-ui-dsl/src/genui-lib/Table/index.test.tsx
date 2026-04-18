@@ -31,6 +31,11 @@ rows = [{name: "Alice", joinDate: "2026-01-02T03:04:05.000Z"}]`);
     expect(result.meta.errors).toHaveLength(0);
     expect(result.root?.typeName).toBe("Table");
     expect(result.root?.props.columns).toHaveLength(2);
+    expect(result.root?.props.columns[0]).toMatchObject({
+      type: "element",
+      typeName: "Col",
+      props: { title: "Name", field: "name" },
+    });
     expect(result.root?.props.rows[0]).toEqual({
       name: "Alice",
       joinDate: "2026-01-02T03:04:05.000Z",
@@ -72,6 +77,23 @@ rows = [{name: "Alice", joinDate: "2026-01-02T03:04:05.000Z"}]`);
 
     const customCell = columns[1].render?.("ignored");
     expect(customCell.props["data-rendered"]).toBe("true");
+  });
+
+  it("maps parsed Col element nodes to antd table columns", () => {
+    const parser = createParser(dslLibrary.toJSONSchema());
+    const result = parser.parse(`root = Table([Col("Name", "name"), Col("Status", "status")], rows)
+rows = [{name: "Alice", status: "Active"}]`);
+
+    const columns = mapColumnsToAntd(
+      result.root?.props.columns as any,
+      (value) => <span data-rendered="true">{JSON.stringify(value)}</span>,
+    );
+
+    expect(columns).toHaveLength(2);
+    expect(columns[0].title).toBe("Name");
+    expect(columns[0].dataIndex).toBe("name");
+    expect(columns[1].title).toBe("Status");
+    expect(columns[1].dataIndex).toBe("status");
   });
 
   it("rejects the legacy JSON-style table signature", () => {
