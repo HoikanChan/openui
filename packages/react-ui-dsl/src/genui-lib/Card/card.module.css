@@ -1,0 +1,61 @@
+.root {
+  border-radius: 8px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* width */
+.widthStandard {
+  /* let parent control width */
+}
+.widthFull {
+  width: 100%;
+}
+
+/* variant */
+.variantCard {
+  border: 1px solid var(--card-border, #333);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background: var(--card-bg, #1a1f2e);
+}
+.variantClear {
+  /* intentionally no border or background */
+}
+.variantSunk {
+  background: var(--card-sunk-bg, #0d1117);
+  border: 1px solid var(--card-sunk-border, #222);
+}
+
+/* header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--card-border, #333);
+}
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.headerTitle {
+  font-weight: 600;
+  font-size: 14px;
+}
+.headerSubtitle {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+}
+.headerActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+/* body */
+.body {
+  padding: 12px 16px;
+}
