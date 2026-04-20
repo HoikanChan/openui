@@ -2,6 +2,7 @@
 import { cleanup, render } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import * as echarts from "echarts";
 import { createParser } from "@openuidev/lang-core";
 import { Renderer } from "@openuidev/react-lang";
 import { dslLibrary } from "../../genui-lib/dslLibrary";
@@ -17,14 +18,16 @@ vi.mock("echarts", () => ({
   registerTheme: vi.fn(),
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.mocked(echarts.init).mockClear();
+});
 
 const parser = createParser(dslLibrary.toJSONSchema());
-const spec = dslLibrary.toSpec();
 
 describe.each(Object.entries(fixtures))("%s", (_component, scenarios) => {
   it.each(scenarios)("$id", async ({ id, prompt, dataModel, assert }) => {
-    const dsl = await loadOrGenerate(id, prompt, dataModel, spec);
+    const dsl = await loadOrGenerate(id, prompt, dataModel);
 
     const parsed = parser.parse(dsl);
     expect(parsed.meta.errors, `parse errors in ${id}:\n${dsl}`).toHaveLength(0);
@@ -36,5 +39,11 @@ describe.each(Object.entries(fixtures))("%s", (_component, scenarios) => {
     for (const text of assert.contains) {
       expect(container.innerHTML).toContain(text);
     }
+
+    for (const text of assert.notContains ?? []) {
+      expect(container.innerHTML, `${id}: raw value "${text}" should not appear (check formatting)`).not.toContain(text);
+    }
+
+    assert.verify?.(container, { echartsInit: vi.mocked(echarts.init) });
   });
 });

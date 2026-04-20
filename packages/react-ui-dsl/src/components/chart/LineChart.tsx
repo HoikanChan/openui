@@ -2,6 +2,7 @@
 import type * as echarts from "echarts";
 import React from "react";
 import { BaseChart } from "./BaseChart";
+import { buildChartOption } from "./utils";
 
 interface LineChartProps {
   properties?: Omit<echarts.EChartsOption, "title"> & { title?: string };
@@ -10,11 +11,6 @@ interface LineChartProps {
 }
 
 export const LineChart: React.FC<LineChartProps> = ({ properties, data, style }) => {
-  const { title, ...rest } = properties ?? {};
-  const option: echarts.EChartsOption = {
-    ...rest,
-    ...(title ? { title: { text: title } } : {}),
-    ...(data ? { dataset: { source: data.source } } : {}),
-  };
+  const option = buildChartOption(properties, data);
   return <BaseChart option={option} style={style} />;
 };

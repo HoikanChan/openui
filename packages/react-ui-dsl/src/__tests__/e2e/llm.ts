@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import OpenAI from "openai";
+import { dslLibrary } from "../../genui-lib/dslLibrary";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT_DIR = resolve(__dirname, "snapshots");
@@ -11,7 +12,6 @@ export async function loadOrGenerate(
   id: string,
   prompt: string,
   dataModel: Record<string, unknown>,
-  spec: object,
 ): Promise<string> {
   const snapshotPath = resolve(SNAPSHOT_DIR, `${id}.dsl`);
 
@@ -27,7 +27,7 @@ export async function loadOrGenerate(
     );
   }
 
-  const dsl = await callLLM(prompt, dataModel, spec, apiKey);
+  const dsl = await callLLM(prompt, dataModel, apiKey);
   mkdirSync(SNAPSHOT_DIR, { recursive: true });
   writeFileSync(snapshotPath, dsl, "utf-8");
   return dsl;
@@ -36,7 +36,6 @@ export async function loadOrGenerate(
 async function callLLM(
   prompt: string,
   dataModel: Record<string, unknown>,
-  spec: object,
   apiKey: string,
 ): Promise<string> {
   const httpAgent = process.env.HTTPS_PROXY
@@ -47,19 +46,10 @@ async function callLLM(
     apiKey,
     baseURL: process.env.LLM_BASE_URL,
     httpAgent,
+    dangerouslyAllowBrowser: true,
   });
 
-  const systemPrompt = `You generate openui-lang DSL.
-
-Available components:
-${JSON.stringify(spec, null, 2)}
-
-The user has runtime data accessible via data.xxx with this shape:
-${JSON.stringify(dataModel, null, 2)}
-
-Rules:
-- Reference data using data.fieldName paths (e.g. data.report.breakdown)
-- Return ONLY the DSL. No explanation, no markdown fences.`;
+  const systemPrompt = dslLibrary.prompt({ dataModel: { raw: dataModel } });
 
   const response = await client.chat.completions.create({
     model: process.env.LLM_MODEL ?? "deepseek-chat",

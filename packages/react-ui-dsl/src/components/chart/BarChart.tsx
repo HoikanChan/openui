@@ -2,6 +2,7 @@
 import type * as echarts from "echarts";
 import React from "react";
 import { BaseChart } from "./BaseChart";
+import { buildChartOption } from "./utils";
 
 interface BarChartProps {
   properties?: Omit<echarts.EChartsOption, "title"> & { title?: string };
@@ -9,10 +10,6 @@ interface BarChartProps {
 }
 
 export const BarChart: React.FC<BarChartProps> = ({ properties, style }) => {
-  const { title, ...rest } = properties ?? {};
-  const option: echarts.EChartsOption = {
-    ...rest,
-    ...(title ? { title: { text: title } } : {}),
-  };
+  const option = buildChartOption(properties);
   return <BaseChart option={option} style={style} />;
 };

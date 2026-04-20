@@ -10,7 +10,7 @@ import type { ColumnType } from "antd/es/table";
 import { z } from "zod";
 import { ColSchema, TableSchema } from "./schema";
 
-function formatCell(value: unknown, format?: "date" | "dateTime" | "time"): string {
+export function formatCell(value: unknown, format?: "date" | "dateTime" | "time"): string {
   if (value == null) return "";
   if (format === "date" || format === "dateTime" || format === "time") {
     const d = new Date(value as string);

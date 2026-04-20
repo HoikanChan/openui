@@ -4,14 +4,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("node:fs");
 vi.mock("openai");
 vi.mock("https-proxy-agent");
+vi.mock("../../genui-lib/dslLibrary", () => ({
+  dslLibrary: { prompt: vi.fn() },
+}));
 
+import { dslLibrary } from "../../genui-lib/dslLibrary";
 import { loadOrGenerate } from "./llm";
-
-const MOCK_SPEC = { root: "VLayout", components: {} } as object;
 
 describe("loadOrGenerate", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(dslLibrary.prompt).mockReturnValue("mock system prompt");
     delete process.env.REGEN_SNAPSHOTS;
     delete process.env.LLM_API_KEY;
   });
@@ -24,7 +27,7 @@ describe("loadOrGenerate", () => {
     vi.mocked(existsSync).mockReturnValue(true);
     vi.mocked(readFileSync).mockReturnValue("root = Table([], [])");
 
-    const result = await loadOrGenerate("table-basic", "Show a table", {}, MOCK_SPEC);
+    const result = await loadOrGenerate("table-basic", "Show a table", {});
 
     expect(result).toBe("root = Table([], [])");
     expect(writeFileSync).not.toHaveBeenCalled();
@@ -34,7 +37,7 @@ describe("loadOrGenerate", () => {
     vi.mocked(existsSync).mockReturnValue(false);
 
     await expect(
-      loadOrGenerate("table-basic", "Show a table", {}, MOCK_SPEC),
+      loadOrGenerate("table-basic", "Show a table", {}),
     ).rejects.toThrow('Snapshot missing for "table-basic" and LLM_API_KEY is not set');
   });
 
@@ -52,7 +55,7 @@ describe("loadOrGenerate", () => {
       return { chat: { completions: { create: mockCreate } } };
     } as any);
 
-    const result = await loadOrGenerate("table-basic", "Show a table", { rows: [] }, MOCK_SPEC);
+    const result = await loadOrGenerate("table-basic", "Show a table", { rows: [] });
 
     expect(mockCreate).toHaveBeenCalledOnce();
     expect(writeFileSync).toHaveBeenCalledOnce();
@@ -74,7 +77,7 @@ describe("loadOrGenerate", () => {
       return { chat: { completions: { create: mockCreate } } };
     } as any);
 
-    await loadOrGenerate("table-basic", "Show a table", {}, MOCK_SPEC);
+    await loadOrGenerate("table-basic", "Show a table", {});
 
     expect(readFileSync).not.toHaveBeenCalled();
     expect(mockCreate).toHaveBeenCalledOnce();
