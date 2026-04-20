@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { TabView } from "../view";
 
@@ -14,7 +15,10 @@ const meta = {
   argTypes: {
     style: { control: "object" },
   },
-  render: (args) => <TabView {...args} onTabChange={() => {}} />,
+  render: (args) => {
+    const [activeTab, setActiveTab] = useState(args.activeTab);
+    return <TabView {...args} activeTab={activeTab} onTabChange={setActiveTab} />;
+  },
 } satisfies Meta<typeof TabView>;
 
 export default meta;
