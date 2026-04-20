@@ -10,8 +10,7 @@
     "noEmit": true,
     "paths": {
       "@openuidev/lang-core": ["../../packages/lang-core/src/index.ts"],
-      "@openuidev/react-lang": ["../../packages/react-lang/src/index.ts"],
-      "@openuidev/react-ui-dsl": ["../../packages/react-ui-dsl/src/index.ts"]
+      "@openuidev/react-lang": ["../../packages/react-lang/src/index.ts"]
     }
   },
   "include": ["src", "server", "vite.config.ts"]
