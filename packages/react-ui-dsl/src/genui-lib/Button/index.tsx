@@ -1,35 +1,31 @@
 "use client";
 
 import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
-import { Button as AntButton } from "antd";
 import { z } from "zod";
 import { ButtonSchema } from "./schema";
+import {
+  ButtonView,
+  resolveButtonAppearance as resolveButtonViewAppearance,
+} from "./view";
 
 export function resolveButtonAppearance(props?: z.infer<typeof ButtonSchema>["properties"]) {
-  const { status, type } = props ?? {};
-
-  return {
-    antType: type === "text" ? "text" : status === "primary" ? "primary" : "default",
-    danger: status === "risk",
-  } as const;
+  return resolveButtonViewAppearance({
+    status: props?.status,
+    type: props?.type,
+  });
 }
 
 export const Button = defineComponent({
   name: "Button",
   props: ButtonSchema,
   description: "Clickable button",
-  component: ({ props }: ComponentRenderProps<z.infer<typeof ButtonSchema>>) => {
-    const { text, disabled } = props.properties ?? {};
-    const { antType, danger } = resolveButtonAppearance(props.properties);
-    return (
-      <AntButton
-        type={antType}
-        danger={danger}
-        disabled={disabled}
-        style={props.style as React.CSSProperties}
-      >
-        {text}
-      </AntButton>
-    );
-  },
+  component: ({ props }: ComponentRenderProps<z.infer<typeof ButtonSchema>>) => (
+    <ButtonView
+      disabled={props.properties?.disabled}
+      status={props.properties?.status}
+      style={props.style as React.CSSProperties}
+      text={props.properties?.text}
+      type={props.properties?.type}
+    />
+  ),
 });
