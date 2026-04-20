@@ -249,4 +249,20 @@ export const fixtures: Record<string, Fixture[]> = {
       },
     },
   ],
+  Tabs: [
+    {
+      id: "tabs-overview-settings",
+      prompt: "Show a tabbed layout with Overview and Settings tabs",
+      dataModel: {},
+      assert: {
+        contains: ["Overview", "Settings"],
+        verify: (container) => {
+          expect(
+            container.innerHTML,
+            'tabs-overview-settings: expected class "ant-tabs"',
+          ).toContain("ant-tabs");
+        },
+      },
+    },
+  ],
 };

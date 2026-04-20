@@ -13,6 +13,7 @@ import { Select } from "./Select";
 import { Col, Table } from "./Table";
 import { Text } from "./Text";
 import { TimeLine } from "./TimeLine";
+import { Tabs } from "./Tabs";
 import { VLayout } from "./VLayout";
 
 export const dslLibrary = createLibrary({
@@ -35,5 +36,6 @@ export const dslLibrary = createLibrary({
     BarChart,
     GaugeChart,
     TimeLine,
+    Tabs,
   ],
 });
