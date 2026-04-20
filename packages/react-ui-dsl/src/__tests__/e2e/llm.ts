@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { HttpsProxyAgent } from "https-proxy-agent";
 import OpenAI from "openai";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -18,11 +19,11 @@ export async function loadOrGenerate(
     return readFileSync(snapshotPath, "utf-8") as string;
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.LLM_API_KEY;
   if (!apiKey) {
     throw new Error(
-      `Snapshot missing for "${id}" and OPENAI_API_KEY is not set. ` +
-        `Run: REGEN_SNAPSHOTS=1 pnpm test:e2e with a valid key.`,
+      `Snapshot missing for "${id}" and LLM_API_KEY is not set. ` +
+        `Run: REGEN_SNAPSHOTS=1 LLM_API_KEY=<key> pnpm test:e2e:regen`,
     );
   }
 
@@ -38,7 +39,15 @@ async function callLLM(
   spec: object,
   apiKey: string,
 ): Promise<string> {
-  const client = new OpenAI({ apiKey });
+  const httpAgent = process.env.HTTPS_PROXY
+    ? new HttpsProxyAgent(process.env.HTTPS_PROXY)
+    : undefined;
+
+  const client = new OpenAI({
+    apiKey,
+    baseURL: process.env.LLM_BASE_URL,
+    httpAgent,
+  });
 
   const systemPrompt = `You generate openui-lang DSL.
 
@@ -53,7 +62,7 @@ Rules:
 - Return ONLY the DSL. No explanation, no markdown fences.`;
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o",
+    model: process.env.LLM_MODEL ?? "deepseek-chat",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: prompt },

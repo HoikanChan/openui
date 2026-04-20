@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs");
 vi.mock("openai");
+vi.mock("https-proxy-agent");
 
 import { loadOrGenerate } from "./llm";
 
@@ -12,7 +13,7 @@ describe("loadOrGenerate", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     delete process.env.REGEN_SNAPSHOTS;
-    delete process.env.OPENAI_API_KEY;
+    delete process.env.LLM_API_KEY;
   });
 
   afterEach(() => {
@@ -29,19 +30,19 @@ describe("loadOrGenerate", () => {
     expect(writeFileSync).not.toHaveBeenCalled();
   });
 
-  it("throws a helpful error when snapshot is missing and OPENAI_API_KEY is unset", async () => {
+  it("throws a helpful error when snapshot is missing and LLM_API_KEY is unset", async () => {
     vi.mocked(existsSync).mockReturnValue(false);
 
     await expect(
       loadOrGenerate("table-basic", "Show a table", {}, MOCK_SPEC),
-    ).rejects.toThrow('Snapshot missing for "table-basic" and OPENAI_API_KEY is not set');
+    ).rejects.toThrow('Snapshot missing for "table-basic" and LLM_API_KEY is not set');
   });
 
   it("calls LLM, saves snapshot, and returns DSL when file is missing and key is set", async () => {
     vi.mocked(existsSync).mockReturnValue(false);
     vi.mocked(mkdirSync).mockReturnValue(undefined);
     vi.mocked(writeFileSync).mockReturnValue(undefined);
-    process.env.OPENAI_API_KEY = "sk-test";
+    process.env.LLM_API_KEY = "sk-test";
 
     const { default: OpenAI } = await import("openai");
     const mockCreate = vi.fn().mockResolvedValue({
@@ -63,7 +64,7 @@ describe("loadOrGenerate", () => {
     vi.mocked(mkdirSync).mockReturnValue(undefined);
     vi.mocked(writeFileSync).mockReturnValue(undefined);
     process.env.REGEN_SNAPSHOTS = "1";
-    process.env.OPENAI_API_KEY = "sk-test";
+    process.env.LLM_API_KEY = "sk-test";
 
     const { default: OpenAI } = await import("openai");
     const mockCreate = vi.fn().mockResolvedValue({

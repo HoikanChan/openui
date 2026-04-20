@@ -99,6 +99,7 @@
     "@types/react-dom": ">=19.0.0",
     "antd": "^5.0.0",
     "echarts": "^5.0.0",
+    "https-proxy-agent": "^9.0.0",
     "openai": "^4.93.0",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0",
