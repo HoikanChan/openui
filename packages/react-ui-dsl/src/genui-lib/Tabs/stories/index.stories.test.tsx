@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, expect, test } from "vitest";
-import meta, { Default, Loading } from "./index.stories";
+import meta, { Loading } from "./index.stories";
 
 describe("Tabs story", () => {
   test("Default story renders two loaded tabs", () => {
