@@ -12,6 +12,7 @@ const componentDirs = [
   "List",
   "Select",
   "Table",
+  "Tabs",
   "Text",
   "TimeLine",
   "VLayout",
