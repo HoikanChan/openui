@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { render } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createParser } from "@openuidev/lang-core";
 import { Renderer } from "@openuidev/react-lang";
 import { dslLibrary } from "../../genui-lib/dslLibrary";
@@ -16,6 +16,8 @@ vi.mock("echarts", () => ({
   })),
   registerTheme: vi.fn(),
 }));
+
+afterEach(cleanup);
 
 const parser = createParser(dslLibrary.toJSONSchema());
 const spec = dslLibrary.toSpec();
