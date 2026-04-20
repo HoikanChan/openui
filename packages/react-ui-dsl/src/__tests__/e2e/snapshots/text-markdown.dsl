@@ -1,1 +1,1 @@
-root = Text({ type: "markdown", content: "## Q1 Results\n\nRevenue grew **15%** year-over-year" })
+root = Text("## Q1 Results\n\nRevenue grew **15%** year-over-year", "markdown")

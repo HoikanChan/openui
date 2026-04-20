@@ -1,6 +1,15 @@
 import { z } from "zod";
 
-export const BarChartSchema = z.object({
-  properties: z.record(z.string(), z.any()).optional(),
-  style: z.record(z.string(), z.any()).optional(),
-});
+const barChartFields = {
+  data: z.object({ source: z.array(z.array(z.number())) }).optional(),
+  title: z.any().optional(),
+  legend: z.any().optional(),
+  tooltip: z.any().optional(),
+  xAxis: z.any().optional(),
+  yAxis: z.any().optional(),
+  series: z.any().optional(),
+  grid: z.any().optional(),
+  color: z.any().optional(),
+};
+
+export const BarChartSchema = z.object(barChartFields).catchall(z.any());

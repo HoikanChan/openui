@@ -1,5 +1,1 @@
-root = PieChart(
-  {},
-  data.pieData,
-  { height: "400px" }
-)
+root = PieChart(data.pieData)

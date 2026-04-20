@@ -1,1 +1,1 @@
-root = Button({ status: "primary", text: "Submit Report" })
+root = Button("Submit Report", "primary")

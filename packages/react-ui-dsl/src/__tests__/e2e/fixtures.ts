@@ -67,8 +67,8 @@ export const fixtures: Record<string, Fixture[]> = {
         verify: (container, { echartsInit }) => {
           expect(echartsInit, "pie-sales-by-region: echarts.init was not called").toHaveBeenCalled();
           expect(
-            container.querySelector('div[style*="400px"]'),
-            'pie-sales-by-region: no container with height "400px" found',
+            container.querySelector('div[style*="300px"]'),
+            'pie-sales-by-region: no container with height "300px" found',
           ).not.toBeNull();
         },
       },
@@ -101,8 +101,8 @@ export const fixtures: Record<string, Fixture[]> = {
         verify: (container, { echartsInit }) => {
           expect(echartsInit, "bar-product-comparison: echarts.init was not called").toHaveBeenCalled();
           expect(
-            container.querySelector('div[style*="400px"]'),
-            'bar-product-comparison: no container with height "400px" found',
+            container.querySelector('div[style*="300px"]'),
+            'bar-product-comparison: no container with height "300px" found',
           ).not.toBeNull();
         },
       },

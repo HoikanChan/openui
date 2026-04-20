@@ -8,7 +8,7 @@ import {
   resolveButtonAppearance as resolveButtonViewAppearance,
 } from "./view";
 
-export function resolveButtonAppearance(props?: z.infer<typeof ButtonSchema>["properties"]) {
+export function resolveButtonAppearance(props?: z.infer<typeof ButtonSchema>) {
   return resolveButtonViewAppearance({
     status: props?.status,
     type: props?.type,
@@ -21,11 +21,10 @@ export const Button = defineComponent({
   description: "Clickable button",
   component: ({ props }: ComponentRenderProps<z.infer<typeof ButtonSchema>>) => (
     <ButtonView
-      disabled={props.properties?.disabled}
-      status={props.properties?.status}
-      style={props.style as React.CSSProperties}
-      text={props.properties?.text}
-      type={props.properties?.type}
+      disabled={props.disabled}
+      status={props.status}
+      text={props.text}
+      type={props.type}
     />
   ),
 });

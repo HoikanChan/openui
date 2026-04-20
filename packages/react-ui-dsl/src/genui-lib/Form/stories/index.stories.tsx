@@ -1,12 +1,30 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { Input, InputNumber } from "antd";
-import { FormView } from "../view";
+import { FormView, type FormViewProps } from "../view";
+
+type FormStoryProps = Omit<FormViewProps, "fields">;
+
+function FormStoryExample(props: FormStoryProps) {
+  return (
+    <FormView
+      {...props}
+      fields={[
+        { component: <Input placeholder="Project name" />, label: "Project", name: "project" },
+        {
+          component: <InputNumber min={0} style={{ width: "100%" }} />,
+          label: "Budget",
+          name: "budget",
+          required: true,
+        },
+      ]}
+    />
+  );
+}
 
 const meta = {
   title: "DSL Components/Form",
-  component: FormView,
+  component: FormStoryExample,
   args: {
-    fields: [],
     initialValues: {
       budget: 120000,
       project: "react-ui-dsl",
@@ -27,21 +45,7 @@ const meta = {
       control: "object",
     },
   },
-  render: (args) => (
-    <FormView
-      {...args}
-      fields={[
-        { component: <Input placeholder="Project name" />, label: "Project", name: "project" },
-        {
-          component: <InputNumber min={0} style={{ width: "100%" }} />,
-          label: "Budget",
-          name: "budget",
-          required: true,
-        },
-      ]}
-    />
-  ),
-} satisfies Meta<typeof FormView>;
+} satisfies Meta<typeof FormStoryExample>;
 
 export default meta;
 

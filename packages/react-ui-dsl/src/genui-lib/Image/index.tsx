@@ -11,9 +11,8 @@ export const Image = defineComponent({
   description: "Image that supports url, base64, or inline SVG",
   component: ({ props }: ComponentRenderProps<z.infer<typeof ImageSchema>>) => (
     <ImageView
-      content={props.properties.content}
-      style={props.style as React.CSSProperties}
-      type={props.properties.type}
+      content={props.content}
+      type={props.type}
     />
   ),
 });

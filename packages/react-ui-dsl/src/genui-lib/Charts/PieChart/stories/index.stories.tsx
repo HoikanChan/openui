@@ -12,7 +12,7 @@ const meta = {
         [3, 35],
       ],
     },
-    properties: {
+    options: {
       series: [{ encode: { itemName: 0, value: 1 }, radius: "60%", type: "pie" }],
       title: "Traffic Split",
     },
@@ -21,10 +21,7 @@ const meta = {
     data: {
       control: "object",
     },
-    properties: {
-      control: "object",
-    },
-    style: {
+    options: {
       control: "object",
     },
   },

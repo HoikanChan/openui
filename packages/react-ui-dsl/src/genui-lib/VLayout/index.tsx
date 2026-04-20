@@ -10,7 +10,7 @@ export const VLayout = defineComponent({
   props: VLayoutSchema,
   description: "Vertical flex layout and default root container",
   component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof VLayoutSchema>>) => (
-    <VLayoutView gap={props.properties?.gap} style={props.style as React.CSSProperties}>
+    <VLayoutView gap={props.gap}>
       {renderNode(props.children)}
     </VLayoutView>
   ),

@@ -1,1 +1,1 @@
-root = Link({ href: "https://reports.example.com/q1", text: "View Q1 Report", target: "_blank" })
+root = Link("https://reports.example.com/q1", "View Q1 Report", "_blank")

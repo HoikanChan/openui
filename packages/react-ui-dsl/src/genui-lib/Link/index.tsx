@@ -11,12 +11,11 @@ export const Link = defineComponent({
   description: "Anchor link",
   component: ({ props }: ComponentRenderProps<z.infer<typeof LinkSchema>>) => (
     <LinkView
-      disabled={props.properties.disabled}
-      download={props.properties.download}
-      href={props.properties.href}
-      style={props.style as React.CSSProperties}
-      target={props.properties.target}
-      text={props.properties.text}
+      disabled={props.disabled}
+      download={props.download}
+      href={props.href}
+      target={props.target}
+      text={props.text}
     />
   ),
 });

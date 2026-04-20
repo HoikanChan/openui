@@ -5,11 +5,12 @@ import { BaseChart } from "./BaseChart";
 import { buildChartOption } from "./utils";
 
 interface BarChartProps {
-  properties?: Omit<echarts.EChartsOption, "title"> & { title?: string };
+  data?: { source: number[][] };
+  options?: Omit<echarts.EChartsOption, "title"> & { title?: string };
   style?: React.CSSProperties;
 }
 
-export const BarChart: React.FC<BarChartProps> = ({ properties, style }) => {
-  const option = buildChartOption(properties);
+export const BarChart: React.FC<BarChartProps> = ({ data, options, style }) => {
+  const option = buildChartOption(options, data);
   return <BaseChart option={option} style={style} />;
 };

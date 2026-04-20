@@ -11,10 +11,9 @@ export const Select = defineComponent({
   description: "Dropdown select",
   component: ({ props }: ComponentRenderProps<z.infer<typeof SelectSchema>>) => (
     <SelectView
-      allowClear={props.properties.allowClear}
-      defaultValue={props.properties.defaultValue}
-      options={props.properties.options}
-      style={props.style as React.CSSProperties}
+      allowClear={props.allowClear}
+      defaultValue={props.defaultValue}
+      options={props.options}
     />
   ),
 });
