@@ -3,19 +3,17 @@
 import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
 import { z } from "zod";
 import { ImageSchema } from "./schema";
+import { ImageView } from "./view";
 
 export const Image = defineComponent({
   name: "Image",
   props: ImageSchema,
-  description: "Image — url, base64, or inline SVG",
-  component: ({ props }: ComponentRenderProps<z.infer<typeof ImageSchema>>) => {
-    const { type, content } = props.properties;
-    const style = props.style as React.CSSProperties | undefined;
-
-    if (type === "svg") {
-      return <div style={style} dangerouslySetInnerHTML={{ __html: content }} />;
-    }
-    const src = type === "base64" ? `data:image/*;base64,${content}` : content;
-    return <img src={src} style={{ maxWidth: "100%", ...style }} alt="" />;
-  },
+  description: "Image that supports url, base64, or inline SVG",
+  component: ({ props }: ComponentRenderProps<z.infer<typeof ImageSchema>>) => (
+    <ImageView
+      content={props.properties.content}
+      style={props.style as React.CSSProperties}
+      type={props.properties.type}
+    />
+  ),
 });
