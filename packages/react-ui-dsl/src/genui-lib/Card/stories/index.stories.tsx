@@ -32,10 +32,8 @@ const meta = {
   render: (args) => (
     <CardView
       {...args}
-      header={{
-        ...args.header,
-        actions: <Button size="small">Inspect</Button>,
-      }}
+      header={args.header}
+      headerActions={<Button size="small">Inspect</Button>}
     >
       Stories now render directly from view props without booting the DSL runtime.
     </CardView>

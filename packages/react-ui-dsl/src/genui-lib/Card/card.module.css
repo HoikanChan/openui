@@ -2,6 +2,7 @@
   border-radius: 8px;
   overflow: hidden;
   box-sizing: border-box;
+  color: var(--card-foreground, #f5f7fb);
 }
 
 /* width */

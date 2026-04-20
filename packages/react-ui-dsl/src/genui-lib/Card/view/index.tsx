@@ -20,6 +20,7 @@ export type CardViewProps = {
     subtitle?: string;
     title?: string;
   };
+  headerActions?: ReactNode;
   style?: CSSProperties;
   variant?: "card" | "clear" | "sunk";
   width?: "standard" | "full";
@@ -28,11 +29,13 @@ export type CardViewProps = {
 export function CardView({
   children,
   header,
+  headerActions,
   style,
   variant = "card",
   width = "standard",
 }: CardViewProps) {
-  const hasHeader = header && (header.title || header.subtitle || header.actions);
+  const resolvedHeaderActions = headerActions ?? header?.actions;
+  const hasHeader = header && (header.title || header.subtitle || resolvedHeaderActions);
 
   return (
     <div
@@ -49,7 +52,9 @@ export function CardView({
             {header.title && <div className={styles["headerTitle"]}>{header.title}</div>}
             {header.subtitle && <div className={styles["headerSubtitle"]}>{header.subtitle}</div>}
           </div>
-          {header.actions ? <div className={styles["headerActions"]}>{header.actions}</div> : null}
+          {resolvedHeaderActions ? (
+            <div className={styles["headerActions"]}>{resolvedHeaderActions}</div>
+          ) : null}
         </div>
       )}
       <div className={styles["body"]}>{children}</div>
