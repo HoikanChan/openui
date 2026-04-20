@@ -75,6 +75,7 @@ describe("loadOrGenerate", () => {
 
     await loadOrGenerate("table-basic", "Show a table", {}, MOCK_SPEC);
 
+    expect(readFileSync).not.toHaveBeenCalled();
     expect(mockCreate).toHaveBeenCalledOnce();
     expect(writeFileSync).toHaveBeenCalledOnce();
   });
