@@ -12,7 +12,7 @@ const meta = {
         [3, 24],
       ],
     },
-    properties: {
+    options: {
       series: [{ encode: { x: 0, y: 1 }, type: "line" }],
       title: "Request Throughput",
       xAxis: { type: "category" },
@@ -23,10 +23,7 @@ const meta = {
     data: {
       control: "object",
     },
-    properties: {
-      control: "object",
-    },
-    style: {
+    options: {
       control: "object",
     },
   },

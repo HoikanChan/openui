@@ -1,4 +1,1 @@
-root = GaugeChart(
-  data.gaugeData,
-  { height: "300px" }
-)
+root = GaugeChart(data.gaugeData)

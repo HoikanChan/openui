@@ -3,17 +3,19 @@
 import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
 import { z } from "zod";
 import { GaugeChartSchema } from "./schema";
-import { type GaugeChartViewProps, GaugeChartView } from "./view";
+import { GaugeChartView } from "./view";
 
 export const GaugeChart = defineComponent({
   name: "GaugeChart",
   props: GaugeChartSchema,
   description: "ECharts gauge chart",
-  component: ({ props }: ComponentRenderProps<z.infer<typeof GaugeChartSchema>>) => (
-    <GaugeChartView
-      data={props.data}
-      properties={props.properties as GaugeChartViewProps["properties"]}
-      style={props.style as React.CSSProperties}
-    />
-  ),
+  component: ({ props }: ComponentRenderProps<z.infer<typeof GaugeChartSchema>>) => {
+    const { data, ...options } = props;
+    return (
+      <GaugeChartView
+        data={data}
+        options={options}
+      />
+    );
+  },
 });

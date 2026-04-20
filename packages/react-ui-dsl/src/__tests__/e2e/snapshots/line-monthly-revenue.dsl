@@ -1,17 +1,17 @@
-root = VLayout([
-  LineChart(
-    {
-      title: {
-        text: "Monthly Revenue Trend"
-      },
-      xAxis: {
+root = VLayout(
+  [
+    LineChart(
+      data.lineData,
+      { text: "Monthly Revenue Trend" },
+      undefined,
+      undefined,
+      {
         type: "category",
         data: ["Jan", "Feb", "Mar"]
       },
-      yAxis: {
+      {
         type: "value"
       }
-    },
-    data.lineData
-  )
-])
+    )
+  ]
+)

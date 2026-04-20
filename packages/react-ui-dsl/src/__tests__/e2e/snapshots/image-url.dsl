@@ -1,1 +1,1 @@
-root = Image({ type: "url", content: "https://example.com/logo.png" })
+root = Image("https://example.com/logo.png", "url")

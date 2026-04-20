@@ -1,12 +1,6 @@
 import { z } from "zod";
 
 export const TimeLineSchema = z.object({
-  properties: z
-    .object({
-      title: z.string().optional(),
-      id: z.string().optional(),
-    })
-    .optional(),
   data: z.array(
     z.object({
       content: z.object({
@@ -16,5 +10,6 @@ export const TimeLineSchema = z.object({
       iconType: z.enum(["success", "error", "default"]),
     }),
   ),
-  style: z.record(z.string(), z.any()).optional(),
+  title: z.string().optional(),
+  id: z.string().optional(),
 });

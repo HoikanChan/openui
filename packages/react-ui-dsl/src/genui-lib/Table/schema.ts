@@ -20,5 +20,4 @@ export const ColSchema = z.object({
 export const TableSchema = z.object({
   columns: z.array(ColSchema),
   rows: z.array(z.record(z.string(), z.any())),
-  style: z.record(z.string(), z.any()).optional(),
 });

@@ -11,9 +11,8 @@ export const Text = defineComponent({
   description: "Text content that supports plain, markdown, and HTML",
   component: ({ props }: ComponentRenderProps<z.infer<typeof TextSchema>>) => (
     <TextView
-      content={props.properties.content}
-      style={props.style as React.CSSProperties}
-      type={props.properties.type}
+      content={props.content}
+      type={props.type}
     />
   ),
 });

@@ -11,9 +11,8 @@ export const HLayout = defineComponent({
   description: "Horizontal flex layout",
   component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof HLayoutSchema>>) => (
     <HLayoutView
-      gap={props.properties?.gap}
-      style={props.style as React.CSSProperties}
-      wrap={props.properties?.wrap}
+      gap={props.gap}
+      wrap={props.wrap}
     >
       {renderNode(props.children)}
     </HLayoutView>

@@ -1,8 +1,8 @@
 root = List(
-  { header: "Action Items" },
   [
-    Text({ content: "Review Q1 financials" }),
-    Text({ content: "Update product roadmap" }),
-    Text({ content: "Prepare board presentation" })
-  ]
+    Text("Review Q1 financials"),
+    Text("Update product roadmap"),
+    Text("Prepare board presentation")
+  ],
+  "Action Items"
 )

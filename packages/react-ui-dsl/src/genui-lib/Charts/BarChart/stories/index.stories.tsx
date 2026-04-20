@@ -5,7 +5,7 @@ const meta = {
   title: "DSL Components/Charts/BarChart",
   component: BarChartView,
   args: {
-    properties: {
+    options: {
       legend: {},
       series: [{ data: [120, 200, 150], type: "bar" }],
       title: "Quarterly Revenue",
@@ -14,10 +14,7 @@ const meta = {
     },
   },
   argTypes: {
-    properties: {
-      control: "object",
-    },
-    style: {
+    options: {
       control: "object",
     },
   },

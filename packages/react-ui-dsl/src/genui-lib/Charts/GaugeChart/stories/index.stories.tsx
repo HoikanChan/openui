@@ -5,7 +5,7 @@ const meta = {
   title: "DSL Components/Charts/GaugeChart",
   component: GaugeChartView,
   args: {
-    properties: {
+    options: {
       series: [{ data: [{ value: 76 }], progress: { show: true }, type: "gauge" }],
       title: "Availability",
     },
@@ -14,10 +14,7 @@ const meta = {
     data: {
       control: "object",
     },
-    properties: {
-      control: "object",
-    },
-    style: {
+    options: {
       control: "object",
     },
   },

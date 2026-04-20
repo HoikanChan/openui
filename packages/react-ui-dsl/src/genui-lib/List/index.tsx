@@ -11,10 +11,9 @@ export const List = defineComponent({
   description: "Ordered or unordered list",
   component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof ListSchema>>) => (
     <ListView
-      header={props.properties?.header}
-      isOrder={props.properties?.isOrder}
+      header={props.header}
+      isOrder={props.isOrder}
       items={(props.children ?? []).map((child: unknown) => renderNode(child))}
-      style={props.style as React.CSSProperties}
     />
   ),
 });

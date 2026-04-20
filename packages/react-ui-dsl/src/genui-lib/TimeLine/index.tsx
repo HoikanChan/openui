@@ -32,8 +32,7 @@ export const TimeLine = defineComponent({
         iconType: item.iconType,
         title: item.content.title,
       }))}
-      style={props.style as React.CSSProperties}
-      title={props.properties?.title}
+      title={props.title}
     />
   ),
 });

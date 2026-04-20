@@ -32,7 +32,7 @@ function getColumnProps(column: ColumnValue): ColViewProps {
 export const Table = defineComponent({
   name: "Table",
   props: TableSchema,
-  description: "Data table authored as Table(columns, rows, style?) with Col(title, field, options?).",
+  description: "Data table authored as Table(columns, rows) with Col(title, field, options?).",
   component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof TableSchema>>) => (
     <TableView
       columns={props.columns.map((column: z.infer<typeof ColSchema> | ColumnValue) =>
@@ -40,7 +40,6 @@ export const Table = defineComponent({
       )}
       renderNode={renderNode}
       rows={props.rows}
-      style={props.style as React.CSSProperties}
     />
   ),
 });

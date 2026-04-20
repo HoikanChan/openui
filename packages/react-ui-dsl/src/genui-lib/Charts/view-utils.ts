@@ -1,13 +1,13 @@
 import type * as echarts from "echarts";
 
 type ChartDataset = { source: number[][] } | undefined;
-type ChartProperties = (Omit<echarts.EChartsOption, "title"> & { title?: string }) | undefined;
+type ChartOptions = (Omit<echarts.EChartsOption, "title"> & { title?: string }) | undefined;
 
 export function buildChartOption(
-  properties?: ChartProperties,
+  options?: ChartOptions,
   data?: ChartDataset,
 ): echarts.EChartsOption {
-  const { title, ...rest } = properties ?? {};
+  const { title, ...rest } = options ?? {};
 
   return {
     ...rest,

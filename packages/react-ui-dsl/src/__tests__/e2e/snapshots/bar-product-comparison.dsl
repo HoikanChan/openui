@@ -1,4 +1,15 @@
 root = BarChart(
   data.barData,
-  { height: "400px" }
+  undefined,
+  undefined,
+  undefined,
+  {
+    type: "category"
+  },
+  {
+    type: "value"
+  },
+  [
+    { type: "bar" }
+  ]
 )

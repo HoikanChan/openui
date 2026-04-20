@@ -5,12 +5,12 @@ import { BaseChart } from "./BaseChart";
 import { buildChartOption } from "./utils";
 
 interface PieChartProps {
-  properties?: Omit<echarts.EChartsOption, "title"> & { title?: string };
+  options?: Omit<echarts.EChartsOption, "title"> & { title?: string };
   data?: { source: number[][] };
   style?: React.CSSProperties;
 }
 
-export const PieChart: React.FC<PieChartProps> = ({ properties, data, style }) => {
-  const option = buildChartOption(properties, data);
+export const PieChart: React.FC<PieChartProps> = ({ options, data, style }) => {
+  const option = buildChartOption(options, data);
   return <BaseChart option={option} style={style} />;
 };
