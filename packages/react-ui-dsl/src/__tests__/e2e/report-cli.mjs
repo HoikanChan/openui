@@ -1,6 +1,7 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import { dirname, extname, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync, spawn } from "node:child_process";
 import { build } from "vite";
 
@@ -8,9 +9,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(__dirname, "../../..");
 const workspaceRoot = resolve(packageRoot, "../..");
 const reportAppRoot = resolve(__dirname, "report-app");
+const REPORT_SERVER_HOST = "127.0.0.1";
+const REPORT_SERVER_DEFAULT_PORT = 4173;
 
 const REPORT_FLAG = "REACT_UI_DSL_E2E_REPORT";
 const REPORT_DIR_FLAG = "REACT_UI_DSL_E2E_REPORT_DIR";
+const CONTENT_TYPES = {
+  ".css": "text/css; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".js": "application/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+};
 
 async function main() {
   const timestamp = formatReportTimestamp(new Date());
@@ -39,8 +49,9 @@ async function main() {
 
   if (existsSync(reportDataPath)) {
     await buildReportApp(reportDir, reportDataPath);
-    console.log(`E2E report: ${resolve(reportDir, "index.html")}`);
-    openReport(resolve(reportDir, "index.html"));
+    const reportServer = await ensureReportServer(reportDir);
+    console.log(`E2E report: ${buildReportUrl(reportServer.origin)}`);
+    openReport(buildReportUrl(reportServer.origin));
   } else {
     console.warn("E2E report data was not generated.");
   }
@@ -98,6 +109,122 @@ async function buildReportApp(reportDir, reportDataPath) {
   writeFileSync(htmlPath, html, "utf-8");
 }
 
+export function buildReportUrl(origin) {
+  return `${origin.replace(/\/$/, "")}/index.html`;
+}
+
+export async function startStaticReportServer(reportDir, preferredPort = REPORT_SERVER_DEFAULT_PORT) {
+  const server = createServer((request, response) => {
+    const requestPath = request.url === "/" ? "/index.html" : request.url ?? "/index.html";
+    const filePath = resolve(reportDir, `.${decodeURIComponent(requestPath.split("?")[0])}`);
+
+    if (!filePath.startsWith(reportDir)) {
+      response.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("Forbidden");
+      return;
+    }
+
+    if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
+      response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      response.end("Not Found");
+      return;
+    }
+
+    response.writeHead(200, {
+      "Content-Type": CONTENT_TYPES[extname(filePath)] ?? "application/octet-stream",
+      "Cache-Control": "no-store",
+    });
+    createReadStream(filePath).pipe(response);
+  });
+
+  const address = await listen(server, preferredPort);
+  const origin = `http://${REPORT_SERVER_HOST}:${address.port}`;
+
+  return {
+    origin,
+    close: () =>
+      new Promise((resolveClose, rejectClose) => {
+        server.close((error) => {
+          if (error) {
+            rejectClose(error);
+            return;
+          }
+
+          resolveClose();
+        });
+      }),
+  };
+}
+
+async function ensureReportServer(reportDir) {
+  if (process.env.REACT_UI_DSL_E2E_REPORT_SERVER === "inline") {
+    return startStaticReportServer(reportDir);
+  }
+
+  const port = Number.parseInt(process.env.REACT_UI_DSL_E2E_REPORT_SERVER_PORT ?? "", 10);
+  const preferredPort = Number.isFinite(port) ? port : REPORT_SERVER_DEFAULT_PORT;
+  const availablePort = await resolveAvailablePort(preferredPort);
+  const child = spawn(
+    process.execPath,
+    [fileURLToPath(import.meta.url), "--serve-report-dir", reportDir, String(availablePort)],
+    {
+      detached: true,
+      stdio: "ignore",
+    },
+  );
+  child.unref();
+
+  const origin = `http://${REPORT_SERVER_HOST}:${availablePort}`;
+  return { origin };
+}
+
+function listen(server, preferredPort) {
+  return new Promise((resolveListen, rejectListen) => {
+    const handleError = (error) => {
+      if (error?.code === "EADDRINUSE" && preferredPort !== 0) {
+        server.off("error", handleError);
+        server.listen(0, REPORT_SERVER_HOST);
+        return;
+      }
+
+      rejectListen(error);
+    };
+
+    server.once("error", handleError);
+    server.listen(preferredPort, REPORT_SERVER_HOST, () => {
+      server.off("error", handleError);
+      resolveListen(server.address());
+    });
+  });
+}
+
+async function resolveAvailablePort(preferredPort) {
+  const probe = createServer();
+
+  try {
+    const address = await listen(probe, preferredPort);
+    return address.port;
+  } finally {
+    await new Promise((resolveClose) => {
+      probe.close(() => resolveClose());
+    });
+  }
+}
+
+async function maybeServeReportDirFromArgs() {
+  if (process.argv[2] !== "--serve-report-dir") {
+    return false;
+  }
+
+  const reportDir = process.argv[3];
+  const preferredPort = Number.parseInt(process.argv[4] ?? "", 10);
+  await startStaticReportServer(
+    reportDir,
+    Number.isFinite(preferredPort) ? preferredPort : REPORT_SERVER_DEFAULT_PORT,
+  );
+  return true;
+}
+
 function openReport(targetPath) {
   try {
     const { command, args } = getOpenCommand(targetPath);
@@ -111,4 +238,9 @@ function openReport(targetPath) {
   }
 }
 
-void main();
+if (pathToFileURL(process.argv[1] ?? "").href === import.meta.url) {
+  const served = await maybeServeReportDirFromArgs();
+  if (!served) {
+    await main();
+  }
+}

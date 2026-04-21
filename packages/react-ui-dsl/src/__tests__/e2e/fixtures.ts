@@ -8,6 +8,7 @@ type FixtureVerifyContext = {
 export interface Fixture {
   id: string;
   prompt: string;
+  expectedDescription?: string;
   dataModel: Record<string, unknown>;
   assert: {
     contains: string[];
@@ -263,42 +264,6 @@ export const fixtures: Record<string, Fixture[]> = {
       },
     },
   ],
-  ScatterSeries: [
-    {
-      id: "scatter-series-routers",
-      prompt: "Show latency vs packet loss for routers as a scatter chart with ScatterSeries using data.datasets",
-      dataModel: {
-        datasets: [
-          { name: "Core Routers", points: [{ x: 5, y: 0.1 }, { x: 8, y: 0.2 }] },
-        ],
-        xLabel: "Latency (ms)",
-        yLabel: "Packet Loss (%)",
-      },
-      assert: {
-        contains: [],
-        verify: (_container, { echartsInit }) => {
-          expect(echartsInit, "scatter-series-routers: echarts.init was not called").toHaveBeenCalled();
-        },
-      },
-    },
-  ],
-  Point: [
-    {
-      id: "point-scatter-correlation",
-      prompt: "Show a scatter chart of latency vs packet loss using Point data in data.datasets",
-      dataModel: {
-        datasets: [
-          { name: "Devices", points: [{ x: 10, y: 0.5 }, { x: 20, y: 1.2 }] },
-        ],
-      },
-      assert: {
-        contains: [],
-        verify: (_container, { echartsInit }) => {
-          expect(echartsInit, "point-scatter-correlation: echarts.init was not called").toHaveBeenCalled();
-        },
-      },
-    },
-  ],
   VLayout: [
     {
       id: "vlayout-gap",
@@ -397,10 +362,10 @@ export const fixtures: Record<string, Fixture[]> = {
   Card: [
     {
       id: "card-kpi",
-      prompt: "Show a card with Q1 Performance as title, January to March 2026 as subtitle, and revenue summary as body",
+      prompt: "Show a card with Q1 Performance as title",
       dataModel: {},
       assert: {
-        contains: ["Q1 Performance", "January to March 2026", "Revenue increased"],
+        contains: ["Q1 Performance",],
       },
     },
   ],

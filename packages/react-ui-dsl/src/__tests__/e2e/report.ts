@@ -63,7 +63,7 @@ export function beginE2EReportEntry(component: string, fixture: Fixture): E2ERep
     component,
     id: fixture.id,
     prompt: fixture.prompt,
-    expectedDescription: fixture.expectedDescription,
+    expectedDescription: fixture.expectedDescription ?? "",
     dataModel: fixture.dataModel,
   };
 
@@ -95,6 +95,23 @@ export function failE2EReportEntry(entry: E2EReportEntry | null, error: unknown)
 
   entry.status = "failed";
   entry.failureReason = getFailureReason(error);
+}
+
+export async function runE2EReportEntry<T>(
+  component: string,
+  fixture: Fixture,
+  run: (entry: E2EReportEntry | null) => Promise<T>,
+): Promise<T> {
+  const entry = beginE2EReportEntry(component, fixture);
+
+  try {
+    const result = await run(entry);
+    passE2EReportEntry(entry);
+    return result;
+  } catch (error) {
+    failE2EReportEntry(entry, error);
+    throw error;
+  }
 }
 
 export function finalizeE2EReport(): string | null {

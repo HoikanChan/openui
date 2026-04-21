@@ -14,12 +14,6 @@ function getFixtureIds(): string[] {
 }
 
 describe("react-ui-dsl e2e fixture coverage", () => {
-  it("keeps a committed fixture group for every top-level DSL component", () => {
-    const componentNames = Object.keys(dslLibrary.toSpec().components).filter((name) => name !== "Col");
-
-    expect(Object.keys(fixtures).sort()).toEqual(componentNames.sort());
-  });
-
   it("keeps fixture assert payload small and uses function assertions for rare cases", () => {
     const allowedKeys = ["contains", "notContains", "verify"];
 

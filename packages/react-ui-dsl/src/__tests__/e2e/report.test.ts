@@ -11,6 +11,7 @@ import {
   isE2EReportEnabled,
   passE2EReportEntry,
   resetE2EReportState,
+  runE2EReportEntry,
   setE2EReportEntryDsl,
 } from "./report";
 
@@ -77,5 +78,42 @@ describe("e2e report helpers", () => {
       status: "failed",
       failureReason: "parse errors in table-basic",
     });
+  });
+
+  it("keeps captured dsl when the fixture fails after generation", async () => {
+    const reportDir = mkdtempSync(join(tmpdir(), "react-ui-dsl-report-"));
+    vi.stubEnv(REPORT_FLAG, "1");
+    vi.stubEnv(REPORT_DIR_FLAG, reportDir);
+
+    await expect(
+      runE2EReportEntry(
+        "Card",
+        {
+          id: "card-kpi",
+          prompt: "prompt",
+          expectedDescription: "description",
+          dataModel: {},
+          assert: { contains: ["Q1 Performance"] },
+        },
+        async (entry) => {
+          setE2EReportEntryDsl(entry, 'root = Card("Q1 Performance")');
+          throw new Error("render blew up");
+        },
+      ),
+    ).rejects.toThrow("render blew up");
+
+    const reportPath = finalizeE2EReport();
+    const report = JSON.parse(readFileSync(reportPath!, "utf-8")) as ReturnType<typeof buildE2EReportData>;
+
+    expect(report.summary).toEqual({ total: 1, passed: 0, failed: 1 });
+    expect(report.entries[0]).toMatchObject({
+      component: "Card",
+      id: "card-kpi",
+      dsl: 'root = Card("Q1 Performance")',
+      status: "failed",
+      failureReason: "render blew up",
+    });
+
+    rmSync(reportDir, { recursive: true, force: true });
   });
 });
