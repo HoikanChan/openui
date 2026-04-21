@@ -14,7 +14,7 @@ export function PieChartView({ labels, values, variant }: PieChartViewProps) {
     series: [{
       type: "pie",
       radius,
-      data: labels.map((name, i) => ({ name, value: values[i] })),
+      data: (labels ?? []).map((name, i) => ({ name, value: (values ?? [])[i] })),
     }],
     legend: { orient: "vertical", left: "left" },
     tooltip: { trigger: "item" },

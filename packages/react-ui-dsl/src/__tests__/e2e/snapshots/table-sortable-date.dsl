@@ -1,8 +1,6 @@
-root = Table(
-  [
-    Col("Name", "name"),
-    Col("Salary", "salary", { sortable: true }),
-    Col("Joined At", "joinedAt", { format: "date" })
-  ],
-  data.employees
-)
+root = VLayout([tableCard])
+tableCard = Card([employeeTable], "card", "standard", {title: "Employees", subtitle: "Sortable salary and formatted join dates"})
+employeeTable = Table([nameCol, salaryCol, joinDateCol], data.employees)
+nameCol = Col("Name", "name")
+salaryCol = Col("Salary", "salary", {sortable: true})
+joinDateCol = Col("Join Date", "joinedAt", {format: "date"})

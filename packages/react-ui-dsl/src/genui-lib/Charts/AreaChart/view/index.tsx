@@ -16,7 +16,7 @@ export function AreaChartView({ labels, series, variant, xLabel, yLabel }: AreaC
   const option: echarts.EChartsOption = {
     xAxis: { type: "category", data: labels, ...(xLabel ? { name: xLabel } : {}) },
     yAxis: { type: "value", ...(yLabel ? { name: yLabel } : {}) },
-    series: series.map(s => ({
+    series: (series ?? []).map(s => ({
       type: "line",
       name: s.category,
       data: s.values,

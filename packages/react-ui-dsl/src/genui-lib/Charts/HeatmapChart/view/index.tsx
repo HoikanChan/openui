@@ -12,17 +12,20 @@ export function HeatmapChartView({ xLabels, yLabels, values }: HeatmapChartViewP
   const data: [number, number, number][] = [];
   let minVal = Infinity;
   let maxVal = -Infinity;
-  for (let y = 0; y < yLabels.length; y++) {
-    for (let x = 0; x < xLabels.length; x++) {
-      const v = values[y]?.[x] ?? 0;
+  const safeYLabels = yLabels ?? [];
+  const safeXLabels = xLabels ?? [];
+  const safeValues = values ?? [];
+  for (let y = 0; y < safeYLabels.length; y++) {
+    for (let x = 0; x < safeXLabels.length; x++) {
+      const v = safeValues[y]?.[x] ?? 0;
       data.push([x, y, v]);
       if (v < minVal) minVal = v;
       if (v > maxVal) maxVal = v;
     }
   }
   const option: echarts.EChartsOption = {
-    xAxis: { type: "category", data: xLabels, splitArea: { show: true } },
-    yAxis: { type: "category", data: yLabels, splitArea: { show: true } },
+    xAxis: { type: "category", data: safeXLabels, splitArea: { show: true } },
+    yAxis: { type: "category", data: safeYLabels, splitArea: { show: true } },
     visualMap: {
       type: "continuous",
       calculable: true,

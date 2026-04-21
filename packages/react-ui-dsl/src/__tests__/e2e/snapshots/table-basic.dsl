@@ -1,4 +1,9 @@
-root = Table(
-  [Col("Region", "region"), Col("Revenue", "revenue"), Col("Updated At", "updatedAt", { format: "date" })],
-  data.report.breakdown
-)
+root = VLayout([title, tableCard])
+title = Text("Regional Sales Breakdown", "markdown")
+tableCard = Card([table])
+table = Table(columns, rows)
+columns = [regionCol, revenueCol, updatedCol]
+regionCol = Col("Region", "region")
+revenueCol = Col("Revenue", "revenue", {format: "date"})
+updatedCol = Col("Last Updated", "updatedAt", {format: "dateTime"})
+rows = data.report.breakdown

@@ -3,6 +3,11 @@ import type { z } from "zod";
 import type { SeriesSchema } from "./Series";
 import type { ScatterSeriesSchema } from "./ScatterSeries";
 
+type ElementLike = {
+  type: "element";
+  props: Record<string, unknown>;
+};
+
 type ChartDataset = { source: number[][] } | undefined;
 type ChartOptions = (Omit<echarts.EChartsOption, "title"> & { title?: string }) | undefined;
 
@@ -29,11 +34,33 @@ export function buildDataset(
 }
 
 export function buildScatterSeries(
-  datasets: z.infer<typeof ScatterSeriesSchema>[],
+  datasets: (z.infer<typeof ScatterSeriesSchema> | ElementLike)[],
 ): echarts.SeriesOption[] {
-  return datasets.map(ds => ({
-    type: 'scatter' as const,
-    name: ds.name,
-    data: ds.points.map(p => [p.x, p.y, ...(p.z !== undefined ? [p.z] : [])]),
-  }));
+  const unwrap = <T extends Record<string, unknown>>(value: T | ElementLike): T =>
+    (typeof value === "object" &&
+    value !== null &&
+    "type" in value &&
+    value.type === "element" &&
+    "props" in value
+      ? value.props
+      : value) as T;
+
+  return datasets.map((rawDataset) => {
+    const ds = unwrap<z.infer<typeof ScatterSeriesSchema>>(rawDataset);
+    const points = (ds.points ?? []).map((rawPoint) => unwrap(rawPoint as z.infer<typeof ScatterSeriesSchema>["points"][number] | ElementLike));
+
+    return {
+      type: "scatter" as const,
+      name: ds.name,
+      data: points.map((p) => [p.x, p.y, ...(p.z !== undefined ? [p.z] : [])]),
+      ...(points.some((p) => p.z !== undefined)
+      ? {
+          symbolSize: (value: number[]) => {
+            const z = value[2];
+            return typeof z === "number" ? Math.max(8, Math.sqrt(Math.max(z, 0)) * 4) : 10;
+          },
+        }
+      : {}),
+    };
+  });
 }

@@ -14,7 +14,7 @@ export function GaugeChartView({ readings, min = 0, max = 100 }: GaugeChartViewP
       type: "gauge",
       min,
       max,
-      data: readings.map(r => ({ name: r.name, value: r.value })),
+      data: (readings ?? []).map(r => ({ name: r.name, value: r.value })),
     }],
     tooltip: { trigger: "item" },
   };

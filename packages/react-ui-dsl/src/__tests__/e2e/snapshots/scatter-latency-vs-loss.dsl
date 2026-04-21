@@ -1,0 +1,5 @@
+root = VLayout([scatterChartContainer])
+scatterChartContainer = Card([scatterChartTitle, scatterChart])
+scatterChartTitle = Text("Latency vs Packet Loss - Core Routers", "default")
+scatterChart = ScatterChart([scatterSeries], data.xLabel, data.yLabel)
+scatterSeries = ScatterSeries(data.scatterSeries.name, data.scatterSeries.points)

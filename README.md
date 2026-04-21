@@ -151,6 +151,25 @@ Good places to start:
 - [`examples/openui-chat`](./examples/openui-chat) for a working app
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) if you want to contribute
 
+## `react-ui-dsl` e2e workflow
+
+The `@openuidev/react-ui-dsl` package keeps committed `.dsl` snapshots under [`packages/react-ui-dsl/src/__tests__/e2e/snapshots`](./packages/react-ui-dsl/src/__tests__/e2e/snapshots) and runs fixture-based e2e coverage with Vitest.
+
+Common commands:
+
+```bash
+cd packages/react-ui-dsl
+pnpm test:e2e
+pnpm test:e2e:report
+pnpm test:e2e:regen
+```
+
+- `pnpm test:e2e` runs the e2e suite without generating a report.
+- `pnpm test:e2e:report` runs the same suite and writes a timestamped HTML report to `src/__tests__/e2e/reports/<timestamp>/index.html`.
+- `pnpm test:e2e:regen` regenerates committed `.dsl` snapshots to match the current fixture set.
+
+If `src/__tests__/e2e/fixtures.test.ts` fails with `DSL snapshot coverage is out of date`, that is a fixture/snapshot sync issue rather than a rendering logic regression. Re-run `pnpm test:e2e:regen` in `packages/react-ui-dsl` and commit the updated snapshot files.
+
 ## Community
 
 - [Discord](https://discord.com/invite/Pbv5PsqUSv) — Ask questions, share what you're building

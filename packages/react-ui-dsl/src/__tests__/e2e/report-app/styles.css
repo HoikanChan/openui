@@ -1,0 +1,165 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", sans-serif;
+  background: #f3f5f9;
+  color: #18202a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.page-header h1,
+.entry-header h2 {
+  margin: 0;
+}
+
+.generated-at,
+.prompt,
+.expected,
+.failure {
+  margin: 12px 0 0;
+  line-height: 1.5;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(96px, 1fr));
+  gap: 12px;
+  min-width: 320px;
+}
+
+.summary-grid div,
+.entry-card {
+  background: #fff;
+  border: 1px solid #d8deea;
+  border-radius: 16px;
+  box-shadow: 0 10px 35px rgba(15, 23, 42, 0.06);
+}
+
+.summary-grid div {
+  padding: 16px;
+}
+
+.summary-grid span {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.summary-grid strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 28px;
+}
+
+.entries {
+  display: grid;
+  gap: 20px;
+}
+
+.entry-card {
+  padding: 20px;
+}
+
+.entry-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.status {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-passed {
+  background: #e7f8ee;
+  color: #177245;
+}
+
+.status-failed {
+  background: #fdecec;
+  color: #b42318;
+}
+
+.expected {
+  font-weight: 600;
+}
+
+.failure,
+.preview-error {
+  color: #b42318;
+}
+
+.preview-shell {
+  margin-top: 16px;
+  padding: 20px;
+  background: #fbfcfe;
+  border: 1px solid #e4e9f2;
+  border-radius: 12px;
+  overflow: auto;
+}
+
+.entry-details {
+  margin-top: 16px;
+}
+
+.entry-details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.entry-details pre {
+  margin: 12px 0 0;
+  padding: 16px;
+  overflow: auto;
+  background: #111827;
+  border-radius: 12px;
+  color: #f9fafb;
+}
+
+@media (max-width: 960px) {
+  .page {
+    padding: 20px;
+  }
+
+  .page-header {
+    flex-direction: column;
+  }
+
+  .summary-grid {
+    width: 100%;
+    min-width: 0;
+  }
+}

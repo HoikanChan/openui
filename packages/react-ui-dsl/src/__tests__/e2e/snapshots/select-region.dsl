@@ -1,3 +1,5 @@
-root = VLayout([regionSelector, regionText])
-regionSelector = Select(data.options, data.defaultValue)
-regionText = Text("Selected region: North America (default)")
+root = VLayout([regionSelector, infoText])
+regionSelector = HLayout([label, select])
+label = Text("Select Region:")
+select = Select(data.options, data.defaultValue)
+infoText = Text("Current selection: North America (default)")

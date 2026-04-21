@@ -1,6 +1,7 @@
-root = HLayout(
-  [
-    Text("Left Panel"),
-    Text("Right Panel")
-  ]
-)
+root = HLayout([leftPanel, rightPanel], 16)
+leftPanel = Card([leftContent], "card", "standard", {title: "Left Panel"})
+rightPanel = Card([rightContent], "card", "standard", {title: "Right Panel"})
+leftContent = VLayout([leftText], 8)
+rightContent = VLayout([rightText], 8)
+leftText = Text("This is the content of the left panel. It can contain any UI components.")
+rightText = Text("This is the content of the right panel. It can also hold charts, tables, or forms.")

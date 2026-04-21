@@ -1,17 +1,4 @@
-root = VLayout(
-  [
-    LineChart(
-      data.lineData,
-      { text: "Monthly Revenue Trend" },
-      undefined,
-      undefined,
-      {
-        type: "category",
-        data: ["Jan", "Feb", "Mar"]
-      },
-      {
-        type: "value"
-      }
-    )
-  ]
-)
+root = VLayout([chartContainer])
+chartContainer = Card([chartTitle, revenueChart])
+chartTitle = Text("Monthly Revenue Trend", "default")
+revenueChart = LineChart(data.labels, data.series, "smooth", "Month", "Revenue ($)")

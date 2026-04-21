@@ -8,8 +8,8 @@ export const CardHeaderSchema = z
   .optional();
 
 export const CardSchema = z.object({
+  children: z.array(z.any()).optional(),
   variant: z.enum(["card", "clear", "sunk"]).optional(),
   width: z.enum(["standard", "full"]).optional(),
   header: CardHeaderSchema,
-  children: z.array(z.any()).optional(),
 });

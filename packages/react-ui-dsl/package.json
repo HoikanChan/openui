@@ -26,6 +26,7 @@
   "scripts": {
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "vitest run src/__tests__/e2e",
+    "test:e2e:report": "node ./src/__tests__/e2e/report-cli.mjs",
     "test:e2e:regen": "cross-env REGEN_SNAPSHOTS=1 vitest run src/__tests__/e2e",
     "build": "tsdown",
     "watch": "tsdown --watch",

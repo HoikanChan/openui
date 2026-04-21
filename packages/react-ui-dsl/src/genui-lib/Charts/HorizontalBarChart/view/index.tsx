@@ -17,7 +17,7 @@ export function HorizontalBarChartView({ labels, series, variant, xLabel, yLabel
   const option: echarts.EChartsOption = {
     xAxis: { type: "value", ...(xLabel ? { name: xLabel } : {}) },
     yAxis: { type: "category", data: labels, ...(yLabel ? { name: yLabel } : {}) },
-    series: series.map(s => ({
+    series: (series ?? []).map(s => ({
       type: "bar",
       name: s.category,
       data: s.values,

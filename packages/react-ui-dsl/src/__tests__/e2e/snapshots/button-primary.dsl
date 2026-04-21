@@ -1,1 +1,2 @@
-root = Button("Submit Report", "primary")
+root = VLayout([submitButton])
+submitButton = Button("Submit Report", "primary")

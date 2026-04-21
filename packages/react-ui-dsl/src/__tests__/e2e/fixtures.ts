@@ -60,10 +60,8 @@ export const fixtures: Record<string, Fixture[]> = {
       id: "pie-sales-by-region",
       prompt: "Show a pie chart of sales distribution by region using data.labels and data.values",
       dataModel: {
-        data: {
-          labels: ["North America", "Europe", "APAC"],
-          values: [1200000, 860000, 1050000],
-        },
+        labels: ["North America", "Europe", "APAC"],
+        values: [1200000, 860000, 1050000],
       },
       assert: {
         contains: [],
@@ -82,10 +80,8 @@ export const fixtures: Record<string, Fixture[]> = {
       id: "line-monthly-revenue",
       prompt: "Show monthly revenue trend as a line chart using data.labels and data.series",
       dataModel: {
-        data: {
-          labels: ["Jan", "Feb", "Mar"],
-          series: [{ category: "Revenue", values: [420000, 530000, 610000] }],
-        },
+        labels: ["Jan", "Feb", "Mar"],
+        series: [{ category: "Revenue", values: [420000, 530000, 610000] }],
       },
       assert: {
         contains: [],
@@ -100,13 +96,11 @@ export const fixtures: Record<string, Fixture[]> = {
       id: "bar-product-comparison",
       prompt: "Compare quarterly revenue for two product lines as a bar chart using data.labels and data.series",
       dataModel: {
-        data: {
-          labels: ["Q1", "Q2"],
-          series: [
-            { category: "Product A", values: [800000, 920000] },
-            { category: "Product B", values: [350000, 410000] },
-          ],
-        },
+        labels: ["Q1", "Q2"],
+        series: [
+          { category: "Product A", values: [800000, 920000] },
+          { category: "Product B", values: [350000, 410000] },
+        ],
       },
       assert: {
         contains: [],
@@ -125,9 +119,7 @@ export const fixtures: Record<string, Fixture[]> = {
       id: "gauge-kpi",
       prompt: "Show a KPI gauge for system health score using data.readings",
       dataModel: {
-        data: {
-          readings: [{ name: "Health", value: 87 }],
-        },
+        readings: [{ name: "Health", value: 87 }],
       },
       assert: {
         contains: [],
@@ -146,10 +138,8 @@ export const fixtures: Record<string, Fixture[]> = {
       id: "hbar-interface-traffic",
       prompt: "Show top interfaces by traffic as a horizontal bar chart using data.labels and data.series",
       dataModel: {
-        data: {
-          labels: ["GigabitEthernet0/0", "GigabitEthernet0/1", "FastEthernet1/0"],
-          series: [{ category: "Traffic (Mbps)", values: [850, 620, 340] }],
-        },
+        labels: ["GigabitEthernet0/0", "GigabitEthernet0/1", "FastEthernet1/0"],
+        series: [{ category: "Traffic (Mbps)", values: [850, 620, 340] }],
       },
       assert: {
         contains: [],
@@ -164,10 +154,8 @@ export const fixtures: Record<string, Fixture[]> = {
       id: "area-bandwidth-utilization",
       prompt: "Show bandwidth utilization over 24 hours as an area chart using data.labels and data.series",
       dataModel: {
-        data: {
-          labels: ["00:00", "06:00", "12:00", "18:00", "24:00"],
-          series: [{ category: "Download (Mbps)", values: [120, 200, 520, 380, 200] }],
-        },
+        labels: ["00:00", "06:00", "12:00", "18:00", "24:00"],
+        series: [{ category: "Download (Mbps)", values: [120, 200, 520, 380, 200] }],
       },
       assert: {
         contains: [],
@@ -182,13 +170,11 @@ export const fixtures: Record<string, Fixture[]> = {
       id: "radar-device-health",
       prompt: "Compare device health metrics across routers as a radar chart using data.labels and data.series",
       dataModel: {
-        data: {
-          labels: ["CPU %", "Memory %", "Disk %", "Bandwidth %", "Packet Loss %"],
-          series: [
-            { category: "Router-A", values: [65, 72, 45, 80, 2] },
-            { category: "Router-B", values: [40, 55, 30, 60, 1] },
-          ],
-        },
+        labels: ["CPU %", "Memory %", "Disk %", "Bandwidth %", "Packet Loss %"],
+        series: [
+          { category: "Router-A", values: [65, 72, 45, 80, 2] },
+          { category: "Router-B", values: [40, 55, 30, 60, 1] },
+        ],
       },
       assert: {
         contains: [],
@@ -203,15 +189,13 @@ export const fixtures: Record<string, Fixture[]> = {
       id: "heatmap-alert-frequency",
       prompt: "Show alert frequency by hour and day of week as a heatmap using data.xLabels, data.yLabels, and data.values",
       dataModel: {
-        data: {
-          xLabels: ["0h", "6h", "12h", "18h"],
-          yLabels: ["Mon", "Tue", "Wed"],
-          values: [
-            [2, 8, 12, 7],
-            [1, 9, 11, 6],
-            [3, 7, 9, 8],
-          ],
-        },
+        xLabels: ["0h", "6h", "12h", "18h"],
+        yLabels: ["Mon", "Tue", "Wed"],
+        values: [
+          [2, 8, 12, 7],
+          [1, 9, 11, 6],
+          [3, 7, 9, 8],
+        ],
       },
       assert: {
         contains: [],
@@ -226,13 +210,11 @@ export const fixtures: Record<string, Fixture[]> = {
       id: "treemap-bandwidth-breakdown",
       prompt: "Show bandwidth breakdown by subnet and interface as a treemap using data.data",
       dataModel: {
-        data: {
-          data: [
-            { name: "eth0", value: 850, group: "Subnet A" },
-            { name: "eth1", value: 620, group: "Subnet A" },
-            { name: "eth2", value: 340, group: "Subnet B" },
-          ],
-        },
+        data: [
+          { name: "eth0", value: 850, group: "Subnet A" },
+          { name: "eth1", value: 620, group: "Subnet A" },
+          { name: "eth2", value: 340, group: "Subnet B" },
+        ],
       },
       assert: {
         contains: [],
@@ -247,16 +229,14 @@ export const fixtures: Record<string, Fixture[]> = {
       id: "scatter-latency-vs-loss",
       prompt: "Show latency vs packet loss correlation for core routers as a scatter chart using data.datasets",
       dataModel: {
-        data: {
-          datasets: [
-            {
-              name: "Core Routers",
-              points: [{ x: 5, y: 0.1 }, { x: 8, y: 0.2 }, { x: 12, y: 0.3 }],
-            },
-          ],
-          xLabel: "Latency (ms)",
-          yLabel: "Packet Loss (%)",
-        },
+        datasets: [
+          {
+            name: "Core Routers",
+            points: [{ x: 5, y: 0.1 }, { x: 8, y: 0.2 }, { x: 12, y: 0.3 }],
+          },
+        ],
+        xLabel: "Latency (ms)",
+        yLabel: "Packet Loss (%)",
       },
       assert: {
         contains: [],
@@ -271,13 +251,11 @@ export const fixtures: Record<string, Fixture[]> = {
       id: "series-interface-traffic",
       prompt: "Show interface traffic as a bar chart with two Series for inbound and outbound using data.labels and data.series",
       dataModel: {
-        data: {
-          labels: ["eth0", "eth1"],
-          series: [
-            { category: "Inbound", values: [320, 450] },
-            { category: "Outbound", values: [280, 390] },
-          ],
-        },
+        labels: ["eth0", "eth1"],
+        series: [
+          { category: "Inbound", values: [320, 450] },
+          { category: "Outbound", values: [280, 390] },
+        ],
       },
       assert: {
         contains: [],
@@ -292,13 +270,11 @@ export const fixtures: Record<string, Fixture[]> = {
       id: "scatter-series-routers",
       prompt: "Show latency vs packet loss for routers as a scatter chart with ScatterSeries using data.datasets",
       dataModel: {
-        data: {
-          datasets: [
-            { name: "Core Routers", points: [{ x: 5, y: 0.1 }, { x: 8, y: 0.2 }] },
-          ],
-          xLabel: "Latency (ms)",
-          yLabel: "Packet Loss (%)",
-        },
+        datasets: [
+          { name: "Core Routers", points: [{ x: 5, y: 0.1 }, { x: 8, y: 0.2 }] },
+        ],
+        xLabel: "Latency (ms)",
+        yLabel: "Packet Loss (%)",
       },
       assert: {
         contains: [],
@@ -313,11 +289,9 @@ export const fixtures: Record<string, Fixture[]> = {
       id: "point-scatter-correlation",
       prompt: "Show a scatter chart of latency vs packet loss using Point data in data.datasets",
       dataModel: {
-        data: {
-          datasets: [
-            { name: "Devices", points: [{ x: 10, y: 0.5 }, { x: 20, y: 1.2 }] },
-          ],
-        },
+        datasets: [
+          { name: "Devices", points: [{ x: 10, y: 0.5 }, { x: 20, y: 1.2 }] },
+        ],
       },
       assert: {
         contains: [],

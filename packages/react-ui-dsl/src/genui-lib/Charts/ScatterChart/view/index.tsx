@@ -1,12 +1,10 @@
 "use client";
 import { BaseChart } from "../../../../components/chart/BaseChart";
 import type * as echarts from "echarts";
-
-type PointItem = { x: number; y: number; z?: number };
-type DatasetItem = { name: string; points: PointItem[] };
+import { buildScatterSeries } from "../../view-utils";
 
 type ScatterChartViewProps = {
-  datasets: DatasetItem[];
+  datasets: { name: string; points: { x: number; y: number; z?: number }[] }[];
   xLabel?: string;
   yLabel?: string;
 };
@@ -15,11 +13,7 @@ export function ScatterChartView({ datasets, xLabel, yLabel }: ScatterChartViewP
   const option: echarts.EChartsOption = {
     xAxis: { type: "value", ...(xLabel ? { name: xLabel } : {}) },
     yAxis: { type: "value", ...(yLabel ? { name: yLabel } : {}) },
-    series: datasets.map(ds => ({
-      type: "scatter",
-      name: ds.name,
-      data: ds.points.map(p => p.z !== undefined ? [p.x, p.y, p.z] : [p.x, p.y]),
-    })),
+    series: buildScatterSeries(datasets ?? []),
     legend: {},
     tooltip: { trigger: "item" },
   };

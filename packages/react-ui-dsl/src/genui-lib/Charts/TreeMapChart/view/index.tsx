@@ -12,7 +12,7 @@ export function TreeMapChartView({ data }: TreeMapChartViewProps) {
   const grouped = new Map<string, { name: string; value: number }[]>();
   const ungrouped: { name: string; value: number }[] = [];
 
-  for (const item of data) {
+  for (const item of (data ?? [])) {
     if (item.group) {
       if (!grouped.has(item.group)) grouped.set(item.group, []);
       grouped.get(item.group)!.push({ name: item.name, value: item.value });
