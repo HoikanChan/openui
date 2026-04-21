@@ -1,8 +1,3 @@
-root = Select(
-  [
-    { label: "North America", value: "na" },
-    { label: "Europe", value: "eu" },
-    { label: "APAC", value: "apac" }
-  ],
-  "na"
-)
+root = VLayout([regionSelector, regionText])
+regionSelector = Select(data.options, data.defaultValue)
+regionText = Text("Selected region: North America (default)")

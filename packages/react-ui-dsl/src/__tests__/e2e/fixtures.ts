@@ -331,7 +331,11 @@ export const fixtures: Record<string, Fixture[]> = {
     {
       id: "vlayout-gap",
       prompt: "Show two revenue text lines stacked vertically with a gap",
-      dataModel: {},
+      dataModel: {
+        report: {
+          revenueLines: ["Q1 Revenue: $1.2M", "Q2 Revenue: $1.4M"],
+        },
+      },
       assert: {
         contains: ["Q1 Revenue: $1.2M", "Q2 Revenue: $1.4M"],
       },
@@ -351,7 +355,12 @@ export const fixtures: Record<string, Fixture[]> = {
     {
       id: "text-markdown",
       prompt: "Show a markdown summary of Q1 results with a heading and bold growth figure",
-      dataModel: {},
+      dataModel: {
+        summary: {
+          heading: "Q1 Results",
+          growth: "15%",
+        },
+      },
       assert: {
         contains: ["Q1 Results", "15%"],
       },
@@ -370,8 +379,15 @@ export const fixtures: Record<string, Fixture[]> = {
   Select: [
     {
       id: "select-region",
-      prompt: "Show a region selector dropdown with North America, Europe, APAC options",
-      dataModel: {},
+      prompt: "Show a region selector dropdown using data.options and default it to North America",
+      dataModel: {
+        options: [
+          { label: "North America", value: "na" },
+          { label: "Europe", value: "eu" },
+          { label: "APAC", value: "apac" },
+        ],
+        defaultValue: "na",
+      },
       assert: {
         contains: ["ant-select", "North America"],
       },
@@ -381,7 +397,11 @@ export const fixtures: Record<string, Fixture[]> = {
     {
       id: "image-url",
       prompt: "Show a logo image from a URL",
-      dataModel: {},
+      dataModel: {
+        branding: {
+          logoUrl: "https://example.com/logo.png",
+        },
+      },
       assert: {
         contains: ["<img", "example.com/logo.png"],
       },
@@ -391,7 +411,12 @@ export const fixtures: Record<string, Fixture[]> = {
     {
       id: "link-report",
       prompt: "Show a link to the Q1 report that opens in a new tab",
-      dataModel: {},
+      dataModel: {
+        report: {
+          label: "View Q1 Report",
+          url: "https://reports.example.com/q1",
+        },
+      },
       assert: {
         contains: ["View Q1 Report", "reports.example.com"],
       },
@@ -410,8 +435,14 @@ export const fixtures: Record<string, Fixture[]> = {
   List: [
     {
       id: "list-action-items",
-      prompt: "Show an unordered list of action items with a header",
-      dataModel: {},
+      prompt:
+        "Show an unordered list with the header Action Items and exactly these list items: Review Q1 financials and Update product roadmap",
+      dataModel: {
+        list: {
+          title: "Action Items",
+          items: ["Review Q1 financials", "Update product roadmap"],
+        },
+      },
       assert: {
         contains: ["Action Items", "Review Q1 financials", "Update product roadmap"],
         verify: (container) => {
@@ -437,7 +468,28 @@ export const fixtures: Record<string, Fixture[]> = {
     {
       id: "timeline-deployments",
       prompt: "Show a deployment history timeline with success, default, and error events",
-      dataModel: {},
+      dataModel: {
+        timeline: {
+          title: "Deployment History",
+          items: [
+            {
+              status: "success",
+              title: "v2.1.0 deployed to production",
+              description: "Production deployment completed successfully.",
+            },
+            {
+              status: "default",
+              title: "v2.0.1 staged for rollout",
+              description: "Rollout is pending approval.",
+            },
+            {
+              status: "error",
+              title: "v2.0.0 deployment failed",
+              description: "Deployment failed during verification.",
+            },
+          ],
+        },
+      },
       assert: {
         contains: ["Deployment History", "v2.1.0 deployed to production", "v2.0.0 deployment failed"],
         verify: (container) => {
