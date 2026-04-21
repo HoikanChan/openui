@@ -1,4 +1,13 @@
-export { PieChart } from "./PieChart";
-export { LineChart } from "./LineChart";
 export { BarChart } from "./BarChart";
+export { LineChart } from "./LineChart";
+export { PieChart } from "./PieChart";
 export { GaugeChart } from "./GaugeChart";
+export { HorizontalBarChart } from "./HorizontalBarChart";
+export { AreaChart } from "./AreaChart";
+export { RadarChart } from "./RadarChart";
+export { HeatmapChart } from "./HeatmapChart";
+export { TreeMapChart } from "./TreeMapChart";
+export { ScatterChart } from "./ScatterChart";
+export { Series } from "./Series";
+export { ScatterSeries } from "./ScatterSeries";
+export { Point } from "./Point";

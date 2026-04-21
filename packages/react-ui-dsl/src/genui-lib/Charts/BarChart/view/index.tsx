@@ -1,18 +1,30 @@
 "use client";
-
-import { BarChart as BarChartComponent } from "../../../../components/chart";
+import { BaseChart } from "../../../../components/chart/BaseChart";
 import type * as echarts from "echarts";
 
-export type BarChartViewProps = {
-  data?: { source: number[][] };
-  options?: Omit<echarts.EChartsOption, "title"> & { title?: string };
+type SeriesItem = { category: string; values: number[] };
+
+type BarChartViewProps = {
+  labels: string[];
+  series: SeriesItem[];
+  variant?: "grouped" | "stacked";
+  xLabel?: string;
+  yLabel?: string;
 };
 
-export function BarChartView(props: BarChartViewProps) {
-  return (
-    <BarChartComponent
-      data={props.data}
-      options={props.options}
-    />
-  );
+export function BarChartView({ labels, series, variant, xLabel, yLabel }: BarChartViewProps) {
+  const isStacked = variant === "stacked";
+  const option: echarts.EChartsOption = {
+    xAxis: { type: "category", data: labels, ...(xLabel ? { name: xLabel } : {}) },
+    yAxis: { type: "value", ...(yLabel ? { name: yLabel } : {}) },
+    series: series.map(s => ({
+      type: "bar",
+      name: s.category,
+      data: s.values,
+      ...(isStacked ? { stack: "total" } : {}),
+    })),
+    legend: {},
+    tooltip: { trigger: "axis" },
+  };
+  return <BaseChart option={option} />;
 }

@@ -1,4 +1,7 @@
 import { vi } from "vitest";
+import { loadRegenEnvIfNeeded } from "./env";
+
+loadRegenEnvIfNeeded();
 
 class MockResizeObserver {
   observe = vi.fn();

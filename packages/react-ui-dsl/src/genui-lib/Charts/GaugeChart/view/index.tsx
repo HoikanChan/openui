@@ -1,18 +1,22 @@
 "use client";
-
-import { GaugeChart as GaugeChartComponent } from "../../../../components/chart";
+import { BaseChart } from "../../../../components/chart/BaseChart";
 import type * as echarts from "echarts";
 
-export type GaugeChartViewProps = {
-  data?: { source: number[][] };
-  options?: Omit<echarts.EChartsOption, "title"> & { title?: string };
+type GaugeChartViewProps = {
+  readings: { name: string; value: number }[];
+  min?: number;
+  max?: number;
 };
 
-export function GaugeChartView(props: GaugeChartViewProps) {
-  return (
-    <GaugeChartComponent
-      data={props.data}
-      options={props.options}
-    />
-  );
+export function GaugeChartView({ readings, min = 0, max = 100 }: GaugeChartViewProps) {
+  const option: echarts.EChartsOption = {
+    series: [{
+      type: "gauge",
+      min,
+      max,
+      data: readings.map(r => ({ name: r.name, value: r.value })),
+    }],
+    tooltip: { trigger: "item" },
+  };
+  return <BaseChart option={option} />;
 }

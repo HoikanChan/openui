@@ -1,7 +1,21 @@
 "use client";
 
 import { createLibrary } from "@openuidev/react-lang";
-import { BarChart, GaugeChart, LineChart, PieChart } from "./Charts";
+import {
+  AreaChart,
+  BarChart,
+  GaugeChart,
+  HeatmapChart,
+  HorizontalBarChart,
+  LineChart,
+  PieChart,
+  Point,
+  RadarChart,
+  ScatterChart,
+  ScatterSeries,
+  Series,
+  TreeMapChart,
+} from "./Charts";
 import { Button } from "./Button";
 import { Card } from "./Card";
 import { Form } from "./Form";
@@ -35,6 +49,15 @@ export const dslLibrary = createLibrary({
     LineChart,
     BarChart,
     GaugeChart,
+    HorizontalBarChart,
+    AreaChart,
+    RadarChart,
+    HeatmapChart,
+    TreeMapChart,
+    ScatterChart,
+    Series,
+    ScatterSeries,
+    Point,
     TimeLine,
     Tabs,
   ],

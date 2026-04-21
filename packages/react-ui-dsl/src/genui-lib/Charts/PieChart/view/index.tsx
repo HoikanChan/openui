@@ -1,18 +1,23 @@
 "use client";
-
-import { PieChart as PieChartComponent } from "../../../../components/chart";
+import { BaseChart } from "../../../../components/chart/BaseChart";
 import type * as echarts from "echarts";
 
-export type PieChartViewProps = {
-  data?: { source: number[][] };
-  options?: Omit<echarts.EChartsOption, "title"> & { title?: string };
+type PieChartViewProps = {
+  labels: string[];
+  values: number[];
+  variant?: "pie" | "donut";
 };
 
-export function PieChartView(props: PieChartViewProps) {
-  return (
-    <PieChartComponent
-      data={props.data}
-      options={props.options}
-    />
-  );
+export function PieChartView({ labels, values, variant }: PieChartViewProps) {
+  const radius = variant === "donut" ? ["40%", "70%"] : "70%";
+  const option: echarts.EChartsOption = {
+    series: [{
+      type: "pie",
+      radius,
+      data: labels.map((name, i) => ({ name, value: values[i] })),
+    }],
+    legend: { orient: "vertical", left: "left" },
+    tooltip: { trigger: "item" },
+  };
+  return <BaseChart option={option} />;
 }

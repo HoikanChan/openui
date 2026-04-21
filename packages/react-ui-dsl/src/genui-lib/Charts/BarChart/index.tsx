@@ -8,14 +8,8 @@ import { BarChartView } from "./view";
 export const BarChart = defineComponent({
   name: "BarChart",
   props: BarChartSchema,
-  description: "ECharts bar chart",
-  component: ({ props }: ComponentRenderProps<z.infer<typeof BarChartSchema>>) => {
-    const { data, ...options } = props;
-    return (
-      <BarChartView
-        data={data}
-        options={options}
-      />
-    );
-  },
+  description: "Vertical bars; use for comparing values across categories or devices",
+  component: ({ props }: ComponentRenderProps<z.infer<typeof BarChartSchema>>) => (
+    <BarChartView {...props} />
+  ),
 });

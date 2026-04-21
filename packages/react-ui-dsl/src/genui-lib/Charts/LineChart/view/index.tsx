@@ -1,18 +1,30 @@
 "use client";
-
-import { LineChart as LineChartComponent } from "../../../../components/chart";
+import { BaseChart } from "../../../../components/chart/BaseChart";
 import type * as echarts from "echarts";
 
-export type LineChartViewProps = {
-  data?: { source: number[][] };
-  options?: Omit<echarts.EChartsOption, "title"> & { title?: string };
+type SeriesItem = { category: string; values: number[] };
+
+type LineChartViewProps = {
+  labels: string[];
+  series: SeriesItem[];
+  variant?: "linear" | "smooth" | "step";
+  xLabel?: string;
+  yLabel?: string;
 };
 
-export function LineChartView(props: LineChartViewProps) {
-  return (
-    <LineChartComponent
-      data={props.data}
-      options={props.options}
-    />
-  );
+export function LineChartView({ labels, series, variant, xLabel, yLabel }: LineChartViewProps) {
+  const option: echarts.EChartsOption = {
+    xAxis: { type: "category", data: labels, ...(xLabel ? { name: xLabel } : {}) },
+    yAxis: { type: "value", ...(yLabel ? { name: yLabel } : {}) },
+    series: series.map(s => ({
+      type: "line",
+      name: s.category,
+      data: s.values,
+      smooth: variant === "smooth",
+      ...(variant === "step" ? { step: "middle" as const } : {}),
+    })),
+    legend: {},
+    tooltip: { trigger: "axis" },
+  };
+  return <BaseChart option={option} />;
 }

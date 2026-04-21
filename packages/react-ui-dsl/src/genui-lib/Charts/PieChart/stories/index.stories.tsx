@@ -5,30 +5,13 @@ const meta = {
   title: "DSL Components/Charts/PieChart",
   component: PieChartView,
   args: {
-    data: {
-      source: [
-        [1, 38],
-        [2, 27],
-        [3, 35],
-      ],
-    },
-    options: {
-      series: [{ encode: { itemName: 0, value: 1 }, radius: "60%", type: "pie" }],
-      title: "Traffic Split",
-    },
-  },
-  argTypes: {
-    data: {
-      control: "object",
-    },
-    options: {
-      control: "object",
-    },
+    labels: ["TCP", "UDP", "HTTP", "HTTPS", "Other"],
+    values: [45, 20, 15, 15, 5],
   },
 } satisfies Meta<typeof PieChartView>;
 
 export default meta;
-
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+export const Donut: Story = { args: { variant: "donut" } };

@@ -8,14 +8,8 @@ import { PieChartView } from "./view";
 export const PieChart = defineComponent({
   name: "PieChart",
   props: PieChartSchema,
-  description: "ECharts pie chart",
-  component: ({ props }: ComponentRenderProps<z.infer<typeof PieChartSchema>>) => {
-    const { data, ...options } = props;
-    return (
-      <PieChartView
-        data={data}
-        options={options}
-      />
-    );
-  },
+  description: "Circular slices; use for protocol distribution or traffic breakdown by source",
+  component: ({ props }: ComponentRenderProps<z.infer<typeof PieChartSchema>>) => (
+    <PieChartView {...props} />
+  ),
 });

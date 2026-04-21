@@ -5,23 +5,19 @@ const meta = {
   title: "DSL Components/Charts/GaugeChart",
   component: GaugeChartView,
   args: {
-    options: {
-      series: [{ data: [{ value: 76 }], progress: { show: true }, type: "gauge" }],
-      title: "Availability",
-    },
-  },
-  argTypes: {
-    data: {
-      control: "object",
-    },
-    options: {
-      control: "object",
-    },
+    readings: [
+      { name: "CPU", value: 76 },
+      { name: "Memory", value: 54 },
+    ],
+    min: 0,
+    max: 100,
   },
 } satisfies Meta<typeof GaugeChartView>;
 
 export default meta;
-
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+export const HighLatency: Story = {
+  args: { readings: [{ name: "Latency", value: 120 }], min: 0, max: 200 },
+};
