@@ -1,62 +1,42 @@
 .root {
-  border-radius: 8px;
-  overflow: hidden;
+  --card-bg: var(--openui-foreground, #ffffff);
+  --card-clear-bg: transparent;
+  --card-sunk-bg: var(--openui-sunk, #f3f4f6);
+  --card-border: var(--openui-border-default, #d9dde6);
+  --card-foreground: var(--openui-text-neutral-primary, #111827);
+  --card-radius: var(--openui-radius-3xl, 24px);
+  --card-padding: var(--openui-space-l, 16px);
+  --card-gap: var(--openui-space-xl, 20px);
+  --card-shadow-sunk: var(--openui-shadow-m, 0 12px 24px rgba(15, 23, 42, 0.12));
+
   box-sizing: border-box;
-  color: var(--card-foreground, #f5f7fb);
-}
-
-/* width */
-.widthStandard {
-  /* let parent control width */
-}
-.widthFull {
   width: 100%;
-}
-
-/* variant */
-.variantCard {
-  border: 1px solid var(--card-border, #333);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  background: var(--card-bg, #1a1f2e);
-}
-.variantClear {
-  /* intentionally no border or background */
-}
-.variantSunk {
-  background: var(--card-sunk-bg, #0d1117);
-  border: 1px solid var(--card-sunk-border, #222);
-}
-
-/* header */
-.header {
+  min-width: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--card-border, #333);
-}
-.headerLeft {
-  display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
-  gap: 2px;
-}
-.headerTitle {
-  font-weight: 600;
-  font-size: 14px;
-}
-.headerSubtitle {
-  font-size: 12px;
-  color: var(--text-secondary, #888);
-}
-.headerActions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-shrink: 0;
-  margin-left: 12px;
+  gap: var(--card-gap);
+  border: 1px solid transparent;
+  border-radius: var(--card-radius);
+  color: var(--card-foreground);
 }
 
-/* body */
-.body {
-  padding: 12px 16px;
+.variantCard {
+  padding: var(--card-padding);
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  box-shadow: none;
+}
+
+.variantClear {
+  padding: 0 var(--card-padding);
+  background: var(--card-clear-bg);
+  box-shadow: none;
+}
+
+.variantSunk {
+  padding: var(--card-padding);
+  border-color: var(--card-border);
+  background: var(--card-sunk-bg);
+  box-shadow: var(--card-shadow-sunk);
 }

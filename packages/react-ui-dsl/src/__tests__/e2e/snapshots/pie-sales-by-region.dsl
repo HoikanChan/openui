@@ -1,4 +1,2 @@
-root = VLayout([chartContainer])
-chartContainer = Card([chartTitle, chart])
-chartTitle = Text("Sales Distribution by Region", "markdown")
-chart = PieChart(data.labels, data.values)
+root = VLayout([salesPieChart])
+salesPieChart = PieChart(data.labels, data.values)

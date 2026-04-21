@@ -1,41 +1,29 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Button } from "antd";
+import { CardHeaderView } from "../../CardHeader/view";
 import { CardView } from "../view";
 
 const meta = {
   title: "DSL Components/Card",
   component: CardView,
   args: {
-    header: {
-      subtitle: "Deployment health",
-      title: "Runtime rollout",
-    },
     variant: "card",
-    width: "standard",
   },
   argTypes: {
     variant: {
       control: "select",
       options: ["card", "clear", "sunk"],
     },
-    width: {
-      control: "select",
-      options: ["standard", "full"],
-    },
-    header: {
-      control: "object",
-    },
     style: {
       control: "object",
     },
   },
   render: (args) => (
-    <CardView
-      {...args}
-      header={args.header}
-      headerActions={<Button size="small">Inspect</Button>}
-    >
-      Stories now render directly from view props without booting the DSL runtime.
+    <CardView {...args}>
+      <CardHeaderView
+        subtitle="Deployment health"
+        title="Runtime rollout"
+      />
+      Stories now compose header content through a dedicated CardHeader child.
     </CardView>
   ),
 } satisfies Meta<typeof CardView>;

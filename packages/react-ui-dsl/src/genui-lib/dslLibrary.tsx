@@ -18,6 +18,7 @@ import {
 } from "./Charts";
 import { Button } from "./Button";
 import { Card } from "./Card";
+import { CardHeader } from "./CardHeader";
 import { Form } from "./Form";
 import { HLayout } from "./HLayout";
 import { Image } from "./Image";
@@ -41,6 +42,7 @@ export const dslLibrary = createLibrary({
     Image,
     Link,
     Card,
+    CardHeader,
     List,
     Form,
     Col,

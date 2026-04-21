@@ -8,4 +8,13 @@ describe("Card stylesheet", () => {
 
     expect(stylesheet).toMatch(/\.root\s*\{[^}]*\bcolor\s*:/s);
   });
+
+  test("uses the same core theme variables as react-ui Card", () => {
+    const stylesheet = fs.readFileSync(path.resolve(__dirname, "card.module.css"), "utf8");
+
+    expect(stylesheet).toContain("var(--openui-foreground");
+    expect(stylesheet).toContain("var(--openui-sunk");
+    expect(stylesheet).toContain("var(--openui-text-neutral-primary");
+    expect(stylesheet).toContain("var(--openui-border-default");
+  });
 });

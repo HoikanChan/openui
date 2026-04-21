@@ -1,4 +1,5 @@
 root = VLayout([heatmapTitle, heatmapCard])
-heatmapTitle = Text("Alert Frequency Heatmap", "default")
-heatmapCard = Card([heatmapChart], "card", "standard")
+heatmapTitle = Text("Alert Frequency Heatmap (Hour vs Day of Week)", "default")
+heatmapCard = Card([heatmapHeader, heatmapChart])
+heatmapHeader = CardHeader("Alert Frequency by Hour and Day", "Color intensity indicates number of alerts")
 heatmapChart = HeatmapChart(data.xLabels, data.yLabels, data.values)

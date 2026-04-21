@@ -1,4 +1,3 @@
-root = VLayout([chartContainer])
-chartContainer = Card([chartTitle, revenueChart])
+root = VLayout([chartTitle, revenueChart])
 chartTitle = Text("Monthly Revenue Trend", "default")
-revenueChart = LineChart(data.labels, data.series, "smooth", "Month", "Revenue ($)")
+revenueChart = LineChart(data.labels, data.series, "linear", "Month", "Revenue ($)")

@@ -1,15 +1,13 @@
 import { z } from "zod";
+import { CardHeader } from "../CardHeader";
+import { FlexPropsSchema } from "./flexPropsSchema";
 
-export const CardHeaderSchema = z
+export const CardChildSchema = z.union([CardHeader.ref, z.any()]);
+
+export const CardSchema = z
   .object({
-    title: z.string().optional(),
-    subtitle: z.string().optional(),
+    children: z.array(CardChildSchema).optional(),
+    variant: z.enum(["card", "clear", "sunk"]).optional(),
   })
-  .optional();
-
-export const CardSchema = z.object({
-  children: z.array(z.any()).optional(),
-  variant: z.enum(["card", "clear", "sunk"]).optional(),
-  width: z.enum(["standard", "full"]).optional(),
-  header: CardHeaderSchema,
-});
+  .merge(FlexPropsSchema)
+  .strict();

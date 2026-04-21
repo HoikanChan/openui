@@ -1,3 +1,5 @@
-root = VLayout([chartTitle, interfaceChart])
-chartTitle = Text("Top Interfaces by Traffic (Mbps)", "default")
-interfaceChart = HorizontalBarChart(data.labels, data.series, "grouped", "Interface", "Traffic (Mbps)")
+root = VLayout([header, chartContainer])
+header = Card([titleCard])
+titleCard = CardHeader("Top Interfaces by Traffic", "Traffic in Mbps")
+chartContainer = Card([chart])
+chart = HorizontalBarChart(data.labels, data.series, "grouped", "Interface", "Traffic (Mbps)")

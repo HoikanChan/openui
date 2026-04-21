@@ -1,2 +1,2 @@
 root = VLayout([healthGauge])
-healthGauge = GaugeChart(data.readings, 0, 100)
+healthGauge = GaugeChart(data.readings)

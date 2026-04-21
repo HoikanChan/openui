@@ -3,17 +3,19 @@ import { describe, expect, test } from "vitest";
 import meta from "./index.stories";
 
 describe("Card story", () => {
-  test("keeps header args serializable for Storybook controls", () => {
+  test("keeps only variant controls in args and composes header content through children", () => {
     if (!meta.render || !meta.args) {
       throw new Error("Card story meta must define render and args");
     }
 
     const rendered = meta.render(meta.args, {} as never);
+    const children = React.Children.toArray(rendered.props.children);
 
-    expect(rendered.props.header).toEqual({
-      subtitle: "Deployment health",
-      title: "Runtime rollout",
+    expect(meta.args).toEqual({
+      variant: "card",
     });
-    expect(rendered.props.headerActions).toBeTruthy();
+    expect(meta.args).not.toHaveProperty("header");
+    expect(meta.args).not.toHaveProperty("width");
+    expect(children).toHaveLength(2);
   });
 });
