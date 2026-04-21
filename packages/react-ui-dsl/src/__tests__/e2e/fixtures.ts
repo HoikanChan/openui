@@ -227,14 +227,12 @@ export const fixtures: Record<string, Fixture[]> = {
   ScatterChart: [
     {
       id: "scatter-latency-vs-loss",
-      prompt: "Show latency vs packet loss correlation for core routers as a scatter chart using data.datasets",
+      prompt: "Show latency vs packet loss for core routers as a scatter chart using data.scatterSeries",
       dataModel: {
-        datasets: [
-          {
-            name: "Core Routers",
-            points: [{ x: 5, y: 0.1 }, { x: 8, y: 0.2 }, { x: 12, y: 0.3 }],
-          },
-        ],
+        scatterSeries: {
+          name: "Core Routers",
+          points: [{ x: 5, y: 0.1 }, { x: 8, y: 0.2 }, { x: 12, y: 0.3 }],
+        },
         xLabel: "Latency (ms)",
         yLabel: "Packet Loss (%)",
       },
