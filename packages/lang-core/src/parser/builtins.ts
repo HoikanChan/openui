@@ -176,6 +176,21 @@ export const BUILTINS: Record<string, BuiltinDef> = {
     description: "Round up to nearest integer",
     fn: (n) => Math.ceil(toNumber(n)),
   },
+  Switch: {
+    name: "Switch",
+    signature: "Switch(value, cases, default?) → result",
+    description:
+      "Map an enum value to a display result via a cases object. Numeric values are coerced to strings for key lookup. Returns default (null if omitted) when no case matches.",
+    fn: (value, cases, defaultVal) => {
+      if (cases == null || typeof cases !== "object" || Array.isArray(cases)) {
+        return defaultVal ?? null;
+      }
+      const key = String(value ?? "");
+      return key in (cases as Record<string, unknown>)
+        ? (cases as Record<string, unknown>)[key]
+        : (defaultVal ?? null);
+    },
+  },
 };
 
 /**
