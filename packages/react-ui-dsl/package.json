@@ -28,6 +28,7 @@
     "test:e2e": "vitest run src/__tests__/e2e",
     "test:e2e:report": "node ./src/__tests__/e2e/report-cli.mjs",
     "test:e2e:regen": "cross-env REGEN_SNAPSHOTS=1 vitest run src/__tests__/e2e",
+    "test:e2e:regen:fixture": "cross-env REGEN_SNAPSHOTS=1 vitest run src/__tests__/e2e/dsl-e2e.test.tsx",
     "report:view": "npx serve ./src/__tests__/e2e/reports",
     "build": "tsdown",
     "watch": "tsdown --watch",

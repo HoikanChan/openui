@@ -14,6 +14,7 @@ const REPORT_SERVER_DEFAULT_PORT = 4173;
 
 const REPORT_FLAG = "REACT_UI_DSL_E2E_REPORT";
 const REPORT_DIR_FLAG = "REACT_UI_DSL_E2E_REPORT_DIR";
+const REGEN_SNAPSHOTS_FLAG = "REGEN_SNAPSHOTS";
 const CONTENT_TYPES = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
@@ -22,26 +23,71 @@ const CONTENT_TYPES = {
   ".svg": "image/svg+xml",
 };
 
-async function main() {
+export function parseReportCliArgs(argv) {
+  if (argv[0] === "--serve-report-dir") {
+    return {
+      mode: "serve",
+      reportDir: argv[1],
+      preferredPort: Number.parseInt(argv[2] ?? "", 10),
+    };
+  }
+
+  const updateSnapshotIndex = argv.indexOf("--update-snapshot");
+  if (updateSnapshotIndex === -1) {
+    return { mode: "run" };
+  }
+
+  const updateSnapshotFixtureId = argv[updateSnapshotIndex + 1];
+  if (!updateSnapshotFixtureId || updateSnapshotFixtureId.startsWith("--")) {
+    throw new Error("`--update-snapshot` requires a fixture id, for example `--update-snapshot table-basic`.");
+  }
+
+  return {
+    mode: "run",
+    updateSnapshotFixtureId,
+  };
+}
+
+export function buildVitestRunConfig({ reportDir, updateSnapshotFixtureId, baseEnv = process.env }) {
+  const args = updateSnapshotFixtureId
+    ? ["exec", "vitest", "run", "src/__tests__/e2e/dsl-e2e.test.tsx", "-t", updateSnapshotFixtureId]
+    : ["exec", "vitest", "run", "src/__tests__/e2e"];
+
+  const env = {
+    ...baseEnv,
+    [REPORT_FLAG]: "1",
+    [REPORT_DIR_FLAG]: reportDir,
+  };
+
+  if (updateSnapshotFixtureId) {
+    env[REGEN_SNAPSHOTS_FLAG] = "1";
+  }
+
+  return {
+    command: process.platform === "win32" ? "pnpm.cmd" : "pnpm",
+    args,
+    env,
+  };
+}
+
+async function main(argv = process.argv.slice(2)) {
+  const cliArgs = parseReportCliArgs(argv);
   const timestamp = formatReportTimestamp(new Date());
   const reportDir = resolve(__dirname, "reports", timestamp);
   const reportDataPath = resolve(reportDir, "report-data.json");
   mkdirSync(reportDir, { recursive: true });
 
-  const vitestResult = spawnSync(
-    "pnpm exec vitest run src/__tests__/e2e",
-    [],
-    {
-      cwd: packageRoot,
-      env: {
-        ...process.env,
-        [REPORT_FLAG]: "1",
-        [REPORT_DIR_FLAG]: reportDir,
-      },
-      shell: true,
-      stdio: "inherit",
-    },
-  );
+  const vitestRunConfig = buildVitestRunConfig({
+    reportDir,
+    updateSnapshotFixtureId: cliArgs.mode === "run" ? cliArgs.updateSnapshotFixtureId : undefined,
+  });
+
+  const vitestResult = spawnSync(vitestRunConfig.command, vitestRunConfig.args, {
+    cwd: packageRoot,
+    env: vitestRunConfig.env,
+    stdio: "inherit",
+    shell: true,
+  });
 
   if (vitestResult.error) {
     throw vitestResult.error;
@@ -212,15 +258,14 @@ async function resolveAvailablePort(preferredPort) {
 }
 
 async function maybeServeReportDirFromArgs() {
-  if (process.argv[2] !== "--serve-report-dir") {
+  const cliArgs = parseReportCliArgs(process.argv.slice(2));
+  if (cliArgs.mode !== "serve") {
     return false;
   }
 
-  const reportDir = process.argv[3];
-  const preferredPort = Number.parseInt(process.argv[4] ?? "", 10);
   await startStaticReportServer(
-    reportDir,
-    Number.isFinite(preferredPort) ? preferredPort : REPORT_SERVER_DEFAULT_PORT,
+    cliArgs.reportDir,
+    Number.isFinite(cliArgs.preferredPort) ? cliArgs.preferredPort : REPORT_SERVER_DEFAULT_PORT,
   );
   return true;
 }

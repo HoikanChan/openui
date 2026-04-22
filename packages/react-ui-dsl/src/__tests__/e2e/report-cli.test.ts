@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildReportUrl, startStaticReportServer } from "./report-cli.mjs";
+import {
+  buildReportUrl,
+  buildVitestRunConfig,
+  parseReportCliArgs,
+  startStaticReportServer,
+} from "./report-cli.mjs";
 
 const tempDirs: string[] = [];
 const closers: Array<() => Promise<void>> = [];
@@ -19,6 +24,34 @@ afterEach(async () => {
 });
 
 describe("report-cli", () => {
+  it("parses a single-fixture snapshot update request", () => {
+    expect(parseReportCliArgs(["--update-snapshot", "table-basic"])).toEqual({
+      mode: "run",
+      updateSnapshotFixtureId: "table-basic",
+    });
+  });
+
+  it("builds a targeted vitest run config when updating one fixture snapshot", () => {
+    const config = buildVitestRunConfig({
+      baseEnv: { LLM_API_KEY: "sk-test" },
+      reportDir: "/tmp/react-ui-dsl-report",
+      updateSnapshotFixtureId: "table-basic",
+    });
+
+    expect(config.args).toEqual([
+      "exec",
+      "vitest",
+      "run",
+      "src/__tests__/e2e/dsl-e2e.test.tsx",
+      "-t",
+      "table-basic",
+    ]);
+    expect(config.env.REACT_UI_DSL_E2E_REPORT).toBe("1");
+    expect(config.env.REACT_UI_DSL_E2E_REPORT_DIR).toBe("/tmp/react-ui-dsl-report");
+    expect(config.env.REGEN_SNAPSHOTS).toBe("1");
+    expect(config.env.LLM_API_KEY).toBe("sk-test");
+  });
+
   it("builds an http report url instead of a file path", () => {
     expect(buildReportUrl("http://127.0.0.1:4173")).toBe("http://127.0.0.1:4173/index.html");
   });
