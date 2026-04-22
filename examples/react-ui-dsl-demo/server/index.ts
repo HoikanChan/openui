@@ -2,7 +2,7 @@ import cors from "cors";
 import express from "express";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import OpenAI from "openai";
-import { buildSystemPrompt } from "./systemPrompt.js";
+import { resolveSystemPrompt } from "./systemPrompt.js";
 
 if (!process.env.LLM_API_KEY) {
   console.error("[server] LLM_API_KEY is not set. Please copy .env.example to .env and fill in your key.");
@@ -26,7 +26,11 @@ const openai = new OpenAI({
 });
 
 app.post("/api/generate", async (req, res) => {
-  const { prompt, dataModel } = req.body as { prompt: string; dataModel?: Record<string, unknown> };
+  const { prompt, dataModel, systemPrompt } = req.body as {
+    prompt: string;
+    dataModel?: Record<string, unknown>;
+    systemPrompt?: string;
+  };
 
   if (!prompt?.trim()) {
     res.status(400).json({ error: "prompt is required" });
@@ -42,7 +46,7 @@ app.post("/api/generate", async (req, res) => {
     const stream = await openai.chat.completions.create({
       model: process.env.LLM_MODEL ?? "deepseek-chat",
       messages: [
-        { role: "system", content: buildSystemPrompt(dataModel) },
+        { role: "system", content: resolveSystemPrompt(systemPrompt, dataModel) },
         { role: "user", content: prompt },
       ],
       stream: true,

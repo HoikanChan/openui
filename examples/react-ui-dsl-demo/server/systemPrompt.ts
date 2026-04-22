@@ -6,3 +6,10 @@ export function buildSystemPrompt(dataModel?: Record<string, unknown>): string {
   }
   return dslLibrary.prompt({ dataModel: { raw: dataModel } });
 }
+
+export function resolveSystemPrompt(systemPromptOverride?: string, dataModel?: Record<string, unknown>): string {
+  if (systemPromptOverride?.trim()) {
+    return systemPromptOverride;
+  }
+  return buildSystemPrompt(dataModel);
+}
