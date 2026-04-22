@@ -1,5 +1,5 @@
 import { Renderer, createParser } from "@openuidev/react-lang";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { dslLibrary } from "@openuidev/react-ui-dsl";
 import { useGenerate } from "./useGenerate";
 import { useLocalStorage } from "./useLocalStorage";
@@ -88,16 +88,33 @@ export function App() {
   const [prompt, setPrompt] = useLocalStorage("demo:prompt", "");
   const [dataModelRaw, setDataModelRaw] = useLocalStorage("demo:dataModelRaw", "{}");
   const [sourceTab, setSourceTab] = useState<"lang" | "json">("lang");
+  const [editedLang, setEditedLang] = useState("");
+  const [debouncedLang, setDebouncedLang] = useState("");
+
+  // Track stream output; clear on reset
+  useEffect(() => {
+    if (isStreaming || !response) {
+      setEditedLang(response ?? "");
+      setDebouncedLang(response ?? "");
+    }
+  }, [response, isStreaming]);
+
+  // Debounce user edits (no debounce while streaming)
+  useEffect(() => {
+    if (isStreaming) return;
+    const id = setTimeout(() => setDebouncedLang(editedLang), 500);
+    return () => clearTimeout(id);
+  }, [editedLang, isStreaming]);
 
   const parsedJson = useMemo(() => {
-    if (!response) return null;
+    if (!debouncedLang) return null;
     try {
       const parser = createParser(dslLibrary);
-      return parser.parse(response);
+      return parser.parse(debouncedLang);
     } catch {
       return null;
     }
-  }, [response]);
+  }, [debouncedLang]);
 
   const { dataModel, dataModelError } = useMemo(() => {
     const trimmed = dataModelRaw.trim();
@@ -188,28 +205,49 @@ export function App() {
                   );
                 })}
               </div>
-              {response && (
+              {editedLang && (
                 <span style={{
                   display: "flex", alignItems: "center", paddingRight: 14,
                   fontFamily: mono, fontSize: 10, color: C.codeMuted,
                 }}>
-                  {response.length} chars
+                  {editedLang.length} chars
                 </span>
               )}
             </div>
             <div style={{ flex: 1, overflow: "auto", background: C.codeBg, padding: "14px 18px" }}>
               {sourceTab === "lang" ? (
-                <pre style={{
-                  margin: 0, fontFamily: mono, fontSize: 12.5, lineHeight: 1.65,
-                  color: C.codeText, whiteSpace: "pre-wrap", wordBreak: "break-all",
-                }}>
-                  {response
-                    ? <>{response}{isStreaming && <Cursor />}</>
-                    : <span style={{ color: C.codeMuted, fontStyle: "italic" }}>
-                        {isStreaming ? "Waiting for response…" : "// DSL will stream here"}
-                      </span>
-                  }
-                </pre>
+                isStreaming ? (
+                  <pre style={{
+                    margin: 0, fontFamily: mono, fontSize: 12.5, lineHeight: 1.65,
+                    color: C.codeText, whiteSpace: "pre-wrap", wordBreak: "break-all",
+                  }}>
+                    {editedLang
+                      ? <>{editedLang}<Cursor /></>
+                      : <span style={{ color: C.codeMuted, fontStyle: "italic" }}>Waiting for response…</span>
+                    }
+                  </pre>
+                ) : editedLang ? (
+                  <textarea
+                    value={editedLang}
+                    onChange={(e) => setEditedLang(e.target.value)}
+                    spellCheck={false}
+                    style={{
+                      display: "block", width: "100%", height: "100%",
+                      margin: 0, padding: 0, border: "none", outline: "none",
+                      resize: "none", background: "transparent",
+                      fontFamily: mono, fontSize: 12.5, lineHeight: 1.65,
+                      color: C.codeText, whiteSpace: "pre", overflowWrap: "normal",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                ) : (
+                  <pre style={{
+                    margin: 0, fontFamily: mono, fontSize: 12.5, lineHeight: 1.65,
+                    color: C.codeText, whiteSpace: "pre-wrap", wordBreak: "break-all",
+                  }}>
+                    <span style={{ color: C.codeMuted, fontStyle: "italic" }}>// DSL will stream here</span>
+                  </pre>
+                )
               ) : (
                 <pre style={{
                   margin: 0, fontFamily: mono, fontSize: 12, lineHeight: 1.65,
@@ -243,10 +281,10 @@ export function App() {
                   ⚠ {error}
                 </div>
               )}
-              {response
+              {debouncedLang
                 ? <div style={{ animation: "fadeIn 0.25s ease" }}>
                     <Renderer
-                      response={response}
+                      response={debouncedLang}
                       library={dslLibrary}
                       isStreaming={isStreaming}
                       dataModel={dataModel}
