@@ -69,6 +69,34 @@ export const fixtures: Record<string, Fixture[]> = {
         contains: ["A-100: Paid", "A-101: Pending", "A-102: Unknown", "Order", "Status"],
       },
     },
+    {
+      id: "table-employee-detail-link",
+      prompt: "生成table，员工详情链接是http://localhost:5173/:name",
+      dataModel: {
+        employees: [
+          { name: "Alice", salary: 95000, joinedAt: "2023-06-15T00:00:00.000Z", active: 1 },
+          { name: "Bob", salary: 82000, joinedAt: "2022-01-10T00:00:00.000Z", active: 0 },
+        ],
+      },
+      assert: {
+        contains: [
+          "Alice",
+          "Bob",
+          "95000",
+          "82000",
+        ],
+        notContains: ["T00:00:00.000Z", "View Profile", "View Details"],
+        verify: (container) => {
+          const aliceLink = container.querySelector('a[href="http://localhost:5173/Alice"]');
+          const bobLink = container.querySelector('a[href="http://localhost:5173/Bob"]');
+
+          expect(aliceLink, "table-employee-detail-link: Alice name should be the detail link").not.toBeNull();
+          expect(aliceLink?.textContent).toContain("Alice");
+          expect(bobLink, "table-employee-detail-link: Bob name should be the detail link").not.toBeNull();
+          expect(bobLink?.textContent).toContain("Bob");
+        },
+      },
+    },
   ],
   PieChart: [
     {

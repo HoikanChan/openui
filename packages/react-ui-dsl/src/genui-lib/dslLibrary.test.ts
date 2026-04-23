@@ -81,4 +81,26 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain('@Render("v", expr)');
     expect(prompt).not.toContain("@Count(array)");
   });
+
+  it("includes table-specific render and formatting guidance in the default prompt", () => {
+    const prompt = dslLibrary.prompt({
+      dataModel: {
+        raw: {
+          employees: [{ name: "Alice", salary: 95000, joinedAt: "2023-06-15T00:00:00.000Z", active: 1 }],
+        },
+      },
+    });
+
+    expect(prompt).toContain('For Table column options.cell, `@Render("v", expr)` receives the cell value');
+    expect(prompt).toContain('If the render body needs other fields from the row, use `@Render("v", "row", expr)`');
+    expect(prompt).toContain(
+      "Use `format` only for ISO date/time string fields, never for numeric fields like salary or revenue",
+    );
+    expect(prompt).toContain(
+      'nameCol = Col("Name", "name", {cell: @Render("v", "row", Link("http://localhost:5173/" + row.name, v))})',
+    );
+    expect(prompt).toContain(
+      'statusCol = Col("Status", "active", {cell: @Render("v", @Switch(v, {"1": Text("Active"), "0": Text("Inactive")}, Text("Unknown")))})',
+    );
+  });
 });
