@@ -1,7 +1,10 @@
 import { z } from "zod";
+import { FlexPropsSchema } from "../flexPropsSchema";
 
 export const HLayoutSchema = z.object({
   children: z.array(z.any()).optional(),
-  gap: z.number().optional(),
-  wrap: z.boolean().optional(),
+  gap: FlexPropsSchema.shape.gap,
+  wrap: FlexPropsSchema.shape.wrap,
+  align: FlexPropsSchema.shape.align,
+  justify: FlexPropsSchema.shape.justify,
 });
