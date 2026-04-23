@@ -1,0 +1,28 @@
+.default {
+  color: var(--openui-text-color, var(--openui-text-neutral-primary, inherit));
+  font-size: var(--openui-text-font-size, inherit);
+  font-weight: var(--openui-text-font-weight, inherit);
+  line-height: var(--openui-text-line-height, inherit);
+}
+
+.markdown {
+  color: var(--openui-text-color, var(--openui-text-neutral-primary, inherit));
+  font-size: var(--openui-text-font-size, inherit);
+  font-weight: var(--openui-text-font-weight, inherit);
+  line-height: var(--openui-text-line-height, inherit);
+}
+
+.markdown :global(p:first-child) {
+  margin-top: 0;
+}
+
+.markdown :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+.html {
+  color: var(--openui-text-color, var(--openui-text-neutral-primary, inherit));
+  font-size: var(--openui-text-font-size, inherit);
+  font-weight: var(--openui-text-font-weight, inherit);
+  line-height: var(--openui-text-line-height, inherit);
+}

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
 export const TextSchema = z.object({
-  content: z.string(),
-  type: z.enum(["default", "markdown", "html"]).optional(),
+  text: z.string(),
+  size: z.enum(["small", "default", "large", "small-heavy", "large-heavy"]).optional(),
 });
