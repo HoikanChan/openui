@@ -251,7 +251,7 @@ function renderSystemPromptTab(
 }
 
 export function App() {
-  const { response, isStreaming, error, generate, reset } = useGenerate();
+  const { response, isStreaming, error, lastGenerateTime, generate, reset } = useGenerate();
   const [prompt, setPrompt] = useLocalStorage("demo:prompt", "");
   const [dataModelRaw, setDataModelRaw] = useLocalStorage("demo:dataModelRaw", "{}");
   const [sourceTab, setSourceTab] = useState<"lang" | "json" | "prompt">("lang");
@@ -365,7 +365,20 @@ export function App() {
             demo
           </span>
         </div>
-        <StatusDot streaming={isStreaming} />
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <StatusDot streaming={isStreaming} />
+          {!isStreaming && lastGenerateTime !== null && (
+            <span
+              style={{
+                fontFamily: mono,
+                fontSize: 11,
+                color: C.headerMuted,
+              }}
+            >
+              {(lastGenerateTime / 1000).toFixed(1)}s
+            </span>
+          )}
+        </div>
       </header>
 
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>

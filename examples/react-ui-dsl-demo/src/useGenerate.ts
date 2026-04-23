@@ -4,6 +4,7 @@ export interface UseGenerateResult {
   response: string;
   isStreaming: boolean;
   error: string | null;
+  lastGenerateTime: number | null;
   generate: (prompt: string, dataModel?: Record<string, unknown>, systemPrompt?: string) => Promise<void>;
   reset: () => void;
 }
@@ -12,17 +13,20 @@ export function useGenerate(): UseGenerateResult {
   const [response, setResponse] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastGenerateTime, setLastGenerateTime] = useState<number | null>(null);
 
   const reset = useCallback(() => {
     setResponse("");
     setIsStreaming(false);
     setError(null);
+    setLastGenerateTime(null);
   }, []);
 
   const generate = useCallback(async (prompt: string, dataModel?: Record<string, unknown>, systemPrompt?: string) => {
     setResponse("");
     setError(null);
     setIsStreaming(true);
+    const startTime = performance.now();
 
     try {
       const res = await fetch("http://localhost:3001/api/generate", {
@@ -52,8 +56,9 @@ export function useGenerate(): UseGenerateResult {
       setError(msg);
     } finally {
       setIsStreaming(false);
+      setLastGenerateTime(performance.now() - startTime);
     }
   }, []);
 
-  return { response, isStreaming, error, generate, reset };
+  return { response, isStreaming, error, lastGenerateTime, generate, reset };
 }
