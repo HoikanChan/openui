@@ -2,6 +2,7 @@ import { Renderer, createParser } from "@openuidev/react-lang";
 import { dslLibrary } from "@openuidev/react-ui-dsl";
 import type { KeyboardEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { presets } from "./presets";
 import { useGenerate } from "./useGenerate";
 import { useLocalStorage } from "./useLocalStorage";
 
@@ -326,6 +327,16 @@ export function App() {
 
   const canGenerate = !isStreaming && !!prompt.trim() && !dataModelError;
 
+  function handlePresetChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const preset = presets.find((p) => p.label === e.target.value);
+    if (preset) {
+      setPrompt(preset.prompt);
+      setDataModelRaw(JSON.stringify(preset.dataModel, null, 2));
+      reset();
+    }
+    e.target.value = "";
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
       <header
@@ -637,13 +648,60 @@ export function App() {
             )}
           </div>
 
-          <div style={{ padding: "14px 18px", flexShrink: 0 }}>
+          <div style={{ padding: "14px 18px", flexShrink: 0, display: "flex", gap: 12 }}>
+            <div style={{ position: "relative" }}>
+              <button
+                title="选择场景模板"
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 8,
+                  border: `1px solid ${C.inputBorder}`,
+                  background: C.inputBg,
+                  color: C.textMuted,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 18,
+                  transition: "border-color 0.15s",
+                }}
+                onClick={(e) => {
+                  const select = e.currentTarget.nextElementSibling as HTMLSelectElement;
+                  select.showPicker?.() || select.click();
+                }}
+              >
+                ☰
+              </button>
+              <select
+                onChange={handlePresetChange}
+                defaultValue=""
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  width: 40,
+                  height: 40,
+                  opacity: 0,
+                  cursor: "pointer",
+                }}
+              >
+                <option value="" disabled>
+                  选择场景模板...
+                </option>
+                {presets.map((p) => (
+                  <option key={p.label} value={p.label}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button
               onClick={handleGenerate}
               disabled={!canGenerate}
               style={{
-                width: "100%",
-                padding: "11px 0",
+                flex: 1,
+                padding: "11px 24px",
                 borderRadius: 8,
                 border: "none",
                 background: canGenerate ? C.accent : C.accentDisabled,
@@ -684,7 +742,7 @@ export function App() {
                   Generating...
                 </span>
               ) : (
-                "Generate UI"
+                "Generate"
               )}
             </button>
           </div>
