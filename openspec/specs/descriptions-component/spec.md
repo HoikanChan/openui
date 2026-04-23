@@ -1,7 +1,7 @@
 # descriptions-component Specification
 
 ## Purpose
-TBD - created by archiving change add-descriptions-component. Update Purpose after archive.
+Define the React UI DSL descriptions component family for object-detail layouts, including explicit field authoring, grouping, and metric-card-style rendering behavior.
 ## Requirements
 ### Requirement: React UI DSL SHALL expose a dedicated descriptions component family for object detail layouts
 
@@ -114,4 +114,3 @@ The descriptions component family SHALL be implemented with a custom React UI DS
 - **WHEN** the descriptions component family renders with default styling
 - **THEN** it uses a card-grid presentation consistent with the approved metric-cards reference
 - **AND** that presentation includes the same overall visual direction for title spacing, grid gaps, card chrome, label tone, and value emphasis
-
