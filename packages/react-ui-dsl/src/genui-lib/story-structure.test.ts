@@ -10,6 +10,7 @@ const componentDirs = [
   "Image",
   "Link",
   "List",
+  "Descriptions",
   "Select",
   "Tag",
   "Table",

@@ -30,6 +30,20 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(spec.components.Tag.signature).toContain("icon?:");
     expect(spec.components.Tag.signature).toContain("size?:");
     expect(spec.components.Tag.signature).toContain("variant?:");
+
+    expect(spec.components.Descriptions.signature).toContain("Descriptions(items:");
+    expect(spec.components.Descriptions.signature).toContain("title?:");
+    expect(spec.components.Descriptions.signature).toContain("extra?:");
+    expect(spec.components.Descriptions.signature).toContain("columns?:");
+
+    expect(spec.components.DescGroup.signature).toContain("DescGroup(title: string");
+    expect(spec.components.DescGroup.signature).toContain("fields:");
+    expect(spec.components.DescGroup.signature).toContain("columns?:");
+
+    expect(spec.components.DescField.signature).toContain("DescField(label: string");
+    expect(spec.components.DescField.signature).toContain("value:");
+    expect(spec.components.DescField.signature).toContain("span?:");
+    expect(spec.components.DescField.signature).toContain("format?:");
   });
 
   it("exports json schema without legacy properties wrappers or removed host-control fields", () => {
@@ -40,6 +54,9 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     const text = defs.Text;
     const card = defs.Card;
     const cardHeader = defs.CardHeader;
+    const descriptions = defs.Descriptions;
+    const descGroup = defs.DescGroup;
+    const descField = defs.DescField;
     const tag = defs.Tag;
     const table = defs.Table;
 
@@ -85,6 +102,24 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     });
 
     expect(table.properties).not.toHaveProperty("style");
+
+    expect(descriptions.properties).toMatchObject({
+      items: expect.anything(),
+      title: expect.anything(),
+      extra: expect.anything(),
+      columns: expect.anything(),
+    });
+    expect(descGroup.properties).toMatchObject({
+      title: expect.anything(),
+      fields: expect.anything(),
+      columns: expect.anything(),
+    });
+    expect(descField.properties).toMatchObject({
+      label: expect.anything(),
+      value: expect.anything(),
+      span: expect.anything(),
+      format: expect.anything(),
+    });
   });
 
   it("includes Render in static-library prompts while omitting data-only builtins", () => {
@@ -114,5 +149,19 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain(
       'statusCol = Col("Status", "active", {cell: @Render("v", @Switch(v, {"1": Text("Active"), "0": Text("Inactive")}, Text("Unknown")))})',
     );
+  });
+
+  it("includes descriptions-specific guidance in the default prompt", () => {
+    const prompt = dslLibrary.prompt({
+      dataModel: {
+        raw: {
+          user: { name: "Alice", email: "alice@example.com", status: "active" },
+        },
+      },
+    });
+
+    expect(prompt).toContain("Use Descriptions for single-record detail views instead of Table");
+    expect(prompt).toContain('detail = Descriptions([DescField("Name", data.user.name)');
+    expect(prompt).toContain('DescField("Status", Tag(data.user.status, "success"))');
   });
 });

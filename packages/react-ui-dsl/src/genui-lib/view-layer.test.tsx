@@ -2,6 +2,7 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 import { buildChartOption } from "../components/chart/utils";
 import { resolveButtonAppearance } from "./Button";
+import { DescriptionsView, formatDescriptionValue, resolveAutoSpan } from "./Descriptions";
 import { resolveTagAppearance, TagView } from "./Tag";
 import { formatCell } from "./Table";
 import { buildTimelineItems } from "./TimeLine";
@@ -90,5 +91,44 @@ describe("react-ui-dsl view layer helpers", () => {
 
     expect(element.props["data-icon-token"]).toBe("alert-circle");
     expect(element.props.children).toBe("Escalated");
+  });
+
+  it("computes auto span for long metric-card values", () => {
+    expect(resolveAutoSpan("OK", 220)).toBe(1);
+    expect(resolveAutoSpan("this-is-a-very-long-value-that-should-span-multiple-columns", 140)).toBeGreaterThan(1);
+  });
+
+  it("keeps component values untouched during formatting", () => {
+    const tagValue = <TagView text="Active" variant="success" />;
+    expect(formatDescriptionValue(tagValue, "date")).toBe(tagValue);
+  });
+
+  it("renders descriptions cards with title and metric-card styling hooks", () => {
+    const element = DescriptionsView({
+      title: "Profile",
+      columns: 3,
+      items: [
+        { kind: "field", label: "Name", renderedValue: "Alice", resolvedSpan: 1 },
+        { kind: "field", label: "Status", renderedValue: <TagView text="Active" variant="success" />, resolvedSpan: 1 },
+      ],
+    });
+
+    expect(element.props["data-descriptions-columns"]).toBe(3);
+    expect(element.props.children[0].props.children[0].props.children).toBe("Profile");
+  });
+
+  it("renders consecutive top-level fields into a shared grid section", () => {
+    const element = DescriptionsView({
+      title: "Profile",
+      columns: 3,
+      items: [
+        { kind: "field", label: "Name", renderedValue: "Alice", resolvedSpan: 1 },
+        { kind: "field", label: "Email", renderedValue: "alice@example.com", resolvedSpan: 2 },
+      ],
+    });
+
+    const content = element.props.children[1];
+    expect(content.props.children).toHaveLength(1);
+    expect(content.props.children[0].props.children).toHaveLength(2);
   });
 });

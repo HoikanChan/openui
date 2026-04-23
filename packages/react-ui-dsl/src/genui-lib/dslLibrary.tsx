@@ -20,6 +20,7 @@ import {
 import { Button } from "./Button";
 import { Card } from "./Card";
 import { CardHeader } from "./CardHeader";
+import { DescField, DescGroup, Descriptions } from "./Descriptions";
 import { Form } from "./Form";
 import { HLayout } from "./HLayout";
 import { Image } from "./Image";
@@ -37,6 +38,7 @@ const DEFAULT_PROMPT_ADDITIONAL_RULES = [
   'For Table column options.cell, `@Render("v", expr)` receives the cell value as `v`.',
   'If the render body needs other fields from the row, use `@Render("v", "row", expr)`. Do not reference `row` unless you declared it as the second binder.',
   "Use `format` only for ISO date/time string fields, never for numeric fields like salary or revenue.",
+  "Use Descriptions for single-record detail views instead of Table.",
 ];
 
 const DEFAULT_PROMPT_EXAMPLES = [
@@ -46,6 +48,9 @@ nameCol = Col("Name", "name", {cell: @Render("v", "row", Link("http://localhost:
 salaryCol = Col("Salary", "salary")
 joinedCol = Col("Joined", "joinedAt", {format: "date"})
 statusCol = Col("Status", "active", {cell: @Render("v", @Switch(v, {"1": Text("Active"), "0": Text("Inactive")}, Text("Unknown")))})`,
+  `root = VLayout([detail])
+detail = Descriptions([DescField("Name", data.user.name), DescField("Email", data.user.email), account], "Profile")
+account = DescGroup("Account", [DescField("Status", Tag(data.user.status, "success")), DescField("Joined", data.user.joinedAt, 2, "dateTime")], 2)`,
 ];
 
 function mergePromptOptions(options?: PromptOptions): PromptOptions {
@@ -69,6 +74,9 @@ const baseDslLibrary = createLibrary({
     Link,
     Card,
     CardHeader,
+    Descriptions,
+    DescGroup,
+    DescField,
     List,
     Form,
     Col,
