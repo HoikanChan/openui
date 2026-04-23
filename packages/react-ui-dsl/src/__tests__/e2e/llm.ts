@@ -8,6 +8,10 @@ import { dslLibrary } from "../../genui-lib/dslLibrary";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT_DIR = resolve(__dirname, "snapshots");
 
+function isSnapshotRegenEnabled(): boolean {
+  return process.env.REGEN_SNAPSHOTS === "1";
+}
+
 export async function loadOrGenerate(
   id: string,
   prompt: string,
@@ -15,7 +19,7 @@ export async function loadOrGenerate(
 ): Promise<string> {
   const snapshotPath = resolve(SNAPSHOT_DIR, `${id}.dsl`);
 
-  if (!process.env.REGEN_SNAPSHOTS && existsSync(snapshotPath)) {
+  if (!isSnapshotRegenEnabled() && existsSync(snapshotPath)) {
     return readFileSync(snapshotPath, "utf-8") as string;
   }
 
