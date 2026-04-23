@@ -5,7 +5,24 @@ description: Transform, filter, and aggregate data with @-prefixed built-in func
 
 Built-in functions start with `@` - this tells the LLM "this is a function, not a component."
 
-Built-ins are included in the system prompt when `toolCalls` or `bindings` is enabled. They are primarily used with `Query` results for data transformation, filtering, and aggregation.
+Template built-ins (`@Each`, `@Switch`, `@Render`) are always included in the system prompt. Data built-ins are included when `toolCalls` or `bindings` is enabled and are primarily used with `Query` results for data transformation, filtering, and aggregation.
+
+## Template built-ins
+
+| Function                    | What it does                                                           |
+| --------------------------- | ---------------------------------------------------------------------- |
+| `@Each(array, "item", tpl)` | Render a template for each element in an array                         |
+| `@Switch(value, cases)`     | Map a value to a result using a cases object                           |
+| `@Render("v", expr)`        | Create a deferred render template for component props                  |
+| `@Render("v", "row", expr)` | Create a deferred render template with both cell value and full record |
+
+Examples:
+
+```text
+@Each(tickets.rows, "t", Text(t.title))
+@Switch(data.status, {"open": Text("Open")}, Text("Unknown"))
+Col("Status", "status", {cell: @Render("v", "row", @Switch(v, {"paid": Text(row.id + ": Paid")}, Text(row.id + ": Unknown")))})
+```
 
 ## Aggregation
 
@@ -68,6 +85,14 @@ Render a template for every item in an array:
 ```
 
 The second argument (`"t"`) is the loop variable name. Use it inside the template.
+
+## Deferred cell rendering with @Render
+
+Use `@Render` when a component expects a render function prop. The binder names must be string literals and are only available inside the template body.
+
+```text
+statusCol = Col("Status", "status", {cell: @Render("v", "row", @Switch(v, {"paid": Text(row.id + ": Paid")}, Text(row.id + ": Unknown")))})
+```
 
 ## Action steps
 

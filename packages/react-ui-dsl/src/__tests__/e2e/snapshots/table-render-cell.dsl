@@ -1,0 +1,6 @@
+root = VLayout([ordersCard])
+ordersCard = Card([ordersHeader, ordersTable])
+ordersHeader = CardHeader("Orders", "Custom status rendering per row")
+ordersTable = Table([orderCol, statusCol], data.orders)
+orderCol = Col("Order", "id")
+statusCol = Col("Status", "status", {cell: @Render("v", "row", @Switch(v, {"paid": Text(row.id + ": Paid"), "pending": Text(row.id + ": Pending")}, Text(row.id + ": Unknown")))})

@@ -79,6 +79,22 @@ rows = [{name: "Alice", joinDate: "2026-01-02T03:04:05.000Z"}]`);
     expect(customCell.props["data-rendered"]).toBe("true");
   });
 
+  it("invokes function cell renderers with value and row record", () => {
+    const columns = mapColumnsToAntd([
+      createCol({
+        title: "Status",
+        field: "status",
+        options: {
+          cell: (value: unknown, record: { id: number; status: string }) =>
+            `${record.id}:${String(value)}:${record.status}`,
+        },
+      }).props,
+    ]);
+
+    const rendered = columns[0].render?.("Open", { id: 7, status: "Open" } as any);
+    expect(rendered).toBe("7:Open:Open");
+  });
+
   it("maps parsed Col element nodes to antd table columns", () => {
     const parser = createParser(dslLibrary.toJSONSchema());
     const result = parser.parse(`root = Table([Col("Name", "name"), Col("Status", "status")], rows)

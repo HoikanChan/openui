@@ -55,6 +55,20 @@ export const fixtures: Record<string, Fixture[]> = {
         },
       },
     },
+    {
+      id: "table-render-cell",
+      prompt: "Show an orders table where each status cell renders a custom label using the cell value and full row",
+      dataModel: {
+        orders: [
+          { id: "A-100", status: "paid" },
+          { id: "A-101", status: "pending" },
+          { id: "A-102", status: "mystery" },
+        ],
+      },
+      assert: {
+        contains: ["A-100: Paid", "A-101: Pending", "A-102: Unknown", "Order", "Status"],
+      },
+    },
   ],
   PieChart: [
     {

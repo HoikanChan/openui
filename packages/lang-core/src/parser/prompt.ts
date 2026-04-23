@@ -130,46 +130,64 @@ function syntaxRules(
       `${ruleNum++}. Declare mutable state with \`$varName = defaultValue\`. Components marked with \`$binding\` can read/write these. Undeclared $variables are auto-created with null default.`,
     );
   }
-  if (flags.supportsExpressions) {
-    lines.push(
-      `${ruleNum++}. String concatenation: \`"text" + $var + "more"\``,
-      `${ruleNum++}. Dot member access: \`query.field\` reads a field; on arrays it extracts that field from every element`,
-      `${ruleNum++}. Index access: \`arr[0]\`, \`data[index]\``,
-      `${ruleNum++}. Arithmetic operators: +, -, *, /, % (work on numbers; + is string concat when either side is a string)`,
-      `${ruleNum++}. Comparison: ==, !=, >, <, >=, <=`,
-      `${ruleNum++}. Logical: &&, ||, ! (prefix)`,
-      `${ruleNum++}. Ternary: \`condition ? valueIfTrue : valueIfFalse\``,
-      `${ruleNum++}. Parentheses for grouping: \`(a + b) * c\``,
-    );
-  }
+  lines.push(
+    `${ruleNum++}. String concatenation: \`"text" + value + "more"\``,
+    `${ruleNum++}. Dot member access: \`obj.field\` reads a field; on arrays it extracts that field from every element`,
+    `${ruleNum++}. Index access: \`arr[0]\`, \`items[index]\``,
+    `${ruleNum++}. Arithmetic operators: +, -, *, /, % (work on numbers; + is string concat when either side is a string)`,
+    `${ruleNum++}. Comparison: ==, !=, >, <, >=, <=`,
+    `${ruleNum++}. Logical: &&, ||, ! (prefix)`,
+    `${ruleNum++}. Ternary: \`condition ? valueIfTrue : valueIfFalse\``,
+    `${ruleNum++}. Parentheses for grouping: \`(a + b) * c\``,
+  );
 
   lines.push("- Strings use double quotes with backslash escaping");
 
   return lines.join("\n");
 }
 
-function builtinFunctionsSection(): string {
-  // Auto-generated from shared builtin registry — single source of truth
-  const builtinLines = Object.values(BUILTINS).map((b) => `@${b.signature} — ${b.description}`);
-  const lazyLines = Object.values(LAZY_BUILTIN_DEFS).map(
-    (b) => `@${b.signature} — ${b.description}`,
-  );
-  const lines = [...builtinLines, ...lazyLines].join("\n");
+function templateBuiltinFunctionsSection(): string {
+  const builtinLines = Object.values(BUILTINS)
+    .filter((b) => b.templateBuiltin)
+    .map((b) => `@${b.signature} — ${b.description}`);
+  const lazyLines = Object.values(LAZY_BUILTIN_DEFS)
+    .filter((b) => b.templateBuiltin)
+    .map((b) => `@${b.signature} — ${b.description}`);
 
-  return `## Built-in Functions
+  return `## Template Built-ins
 
-Data functions prefixed with \`@\` to distinguish from components. These are the ONLY functions available — do NOT invent new ones.
-Use @-prefixed built-in functions (@Count, @Sum, @Avg, @Min, @Max, @Round) on Query results — do NOT hardcode computed values.
+Template/render functions are prefixed with \`@\` to distinguish them from components. These are available in every prompt configuration.
 
-${lines}
+${[...builtinLines, ...lazyLines].join("\n")}
 
 Builtins compose — output of one is input to the next:
-\`@Count(@Filter(data.rows, "field", "==", "val"))\` for KPIs/chart values, \`@Round(@Avg(data.rows.score), 1)\`, \`@Each(data.rows, "item", Comp(item.field))\` for per-item rendering.
-Array pluck: \`data.rows.field\` extracts a field from every row → use with @Sum, @Avg, charts, tables.
+\`@Each(data.rows, "item", Comp(@Switch(item.status, {"open": "Open"}, "Unknown")))\` for per-item rendering and enum display.
 
 IMPORTANT @Each rule: The loop variable (e.g. "item") is ONLY available inside the @Each template expression. Always inline the template — do NOT extract it to a separate statement.
 CORRECT: \`Col("Actions", @Each(rows, "t", Button("Edit", Action([@Set($id, t.id)]))))\`
-WRONG: \`myBtn = Button("Edit", Action([@Set($id, t.id)]))\` then \`Col("Actions", @Each(rows, "t", myBtn))\` — t is undefined in myBtn.`;
+WRONG: \`myBtn = Button("Edit", Action([@Set($id, t.id)]))\` then \`Col("Actions", @Each(rows, "t", myBtn))\` — t is undefined in myBtn.
+
+IMPORTANT @Render rule: Use \`@Render("v", expr)\` or \`@Render("v", "row", expr)\` as a prop value when a component expects a render function (for example, a table cell renderer). \`@Render\` outside a prop context renders as null.`;
+}
+
+function dataBuiltinFunctionsSection(): string {
+  const builtinLines = Object.values(BUILTINS)
+    .filter((b) => !b.templateBuiltin)
+    .map((b) => `@${b.signature} — ${b.description}`);
+  const lazyLines = Object.values(LAZY_BUILTIN_DEFS)
+    .filter((b) => !b.templateBuiltin)
+    .map((b) => `@${b.signature} — ${b.description}`);
+
+  return `## Data Built-ins
+
+Data functions prefixed with \`@\` are available when expressions are enabled. These are the ONLY data functions available — do NOT invent new ones.
+Use @-prefixed built-in functions (@Count, @Sum, @Avg, @Min, @Max, @Round) on Query results — do NOT hardcode computed values.
+
+${[...builtinLines, ...lazyLines].join("\n")}
+
+Builtins compose — output of one is input to the next:
+\`@Count(@Filter(data.rows, "field", "==", "val"))\` for KPIs/chart values, \`@Round(@Avg(data.rows.score), 1)\`.
+Array pluck: \`data.rows.field\` extracts a field from every row → use with @Sum, @Avg, charts, tables.`;
 }
 
 function querySection(): string {
@@ -611,6 +629,12 @@ function dataModelSection(dataModel: DataModelSpec & { raw: Record<string, unkno
   return lines.join("\n");
 }
 
+function hasRawDataModel(
+  dataModel: DataModelSpec | undefined,
+): dataModel is DataModelSpec & { raw: Record<string, unknown> } {
+  return !!dataModel?.raw && Object.keys(dataModel.raw).length > 0;
+}
+
 export function generatePrompt(spec: PromptSpec): string {
   const rootName = spec.root ?? "Root";
   const hasTools = !!spec.tools?.length;
@@ -633,15 +657,17 @@ export function generatePrompt(spec: PromptSpec): string {
   parts.push("");
   parts.push(generateComponentSignatures(spec, { toolCalls, bindings, usesActionExpression }));
 
-  if (spec.dataModel?.raw && Object.keys(spec.dataModel.raw).length > 0) {
+  if (hasRawDataModel(spec.dataModel)) {
     parts.push("");
     parts.push(dataModelSection(spec.dataModel));
   }
 
-  // Built-in functions — only when expressions are enabled (Query/reactive state)
+  parts.push("");
+  parts.push(templateBuiltinFunctionsSection());
+
   if (supportsExpressions) {
     parts.push("");
-    parts.push(builtinFunctionsSection());
+    parts.push(dataBuiltinFunctionsSection());
   }
 
   // Query + Mutation sections

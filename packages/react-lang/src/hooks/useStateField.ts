@@ -17,7 +17,8 @@ export function useStateField<T = unknown>(
     value,
     ctx.store ?? null,
     ctx.evaluationContext ?? null,
-    (fieldName) => ctx.getFieldValue(formName, fieldName),
-    (fieldName, nextValue) => ctx.setFieldValue(formName, undefined, fieldName, nextValue),
+    (fieldName: string) => ctx.getFieldValue(formName, fieldName),
+    (fieldName: string, nextValue: unknown) =>
+      ctx.setFieldValue(formName, undefined, fieldName, nextValue),
   );
 }

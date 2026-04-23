@@ -12,8 +12,17 @@ export interface BuiltinDef {
   signature: string;
   /** One-line description for prompt docs */
   description: string;
+  /** Template/render builtins are always included in prompt docs. */
+  templateBuiltin?: boolean;
   /** Runtime implementation */
   fn: (...args: unknown[]) => unknown;
+}
+
+export interface LazyBuiltinDef {
+  signature: string;
+  description: string;
+  /** Template/render builtins are always included in prompt docs. */
+  templateBuiltin?: boolean;
 }
 
 /** Resolve a field path on an object. Supports dot-paths: "state.name" → obj.state.name */
@@ -181,6 +190,7 @@ export const BUILTINS: Record<string, BuiltinDef> = {
     signature: "Switch(value, cases, default?) → result",
     description:
       "Map an enum value to a display result via a cases object. Numeric values are coerced to strings for key lookup. Returns default (null if omitted) when no case matches.",
+    templateBuiltin: true,
     fn: (value, cases, defaultVal) => {
       if (cases == null || typeof cases !== "object" || Array.isArray(cases)) {
         return defaultVal ?? null;
@@ -197,13 +207,20 @@ export const BUILTINS: Record<string, BuiltinDef> = {
  * Lazy builtins — these receive AST nodes (not evaluated values) and
  * control their own evaluation. Handled specially in evaluator.ts.
  */
-export const LAZY_BUILTINS: Set<string> = new Set(["Each"]);
+export const LAZY_BUILTINS: Set<string> = new Set(["Each", "Render"]);
 
-export const LAZY_BUILTIN_DEFS: Record<string, { signature: string; description: string }> = {
+export const LAZY_BUILTIN_DEFS: Record<string, LazyBuiltinDef> = {
   Each: {
     signature: "Each(array, varName, template)",
     description:
       "Evaluate template for each element. varName is the loop variable — use it ONLY inside the template expression (inline). Do NOT create a separate statement for the template.",
+    templateBuiltin: true,
+  },
+  Render: {
+    signature: 'Render("v", expr) / Render("v", "row", expr)',
+    description:
+      "Create a deferred render template for prop values. Binder names are string literals and are only in scope inside the template body.",
+    templateBuiltin: true,
   },
 };
 

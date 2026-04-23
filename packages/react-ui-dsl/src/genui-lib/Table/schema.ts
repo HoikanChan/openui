@@ -1,6 +1,25 @@
+import type { ElementNode } from "@openuidev/react-lang";
+import type { ReactNode } from "react";
 import { z } from "zod";
 
-export const ColOptionsSchema = z
+export type ColCellRenderer = (value: unknown, record: unknown) => ReactNode;
+
+export interface ColOptions {
+  sortable?: boolean;
+  filterable?: boolean;
+  filterOptions?: string[];
+  cell?: ColCellRenderer | ElementNode;
+  format?: "date" | "dateTime" | "time";
+  tooltip?: boolean;
+}
+
+export interface ColProps {
+  title: string;
+  field: string;
+  options?: ColOptions;
+}
+
+export const ColOptionsSchema: z.ZodType<ColOptions | undefined> = z
   .object({
     sortable: z.boolean().optional(),
     filterable: z.boolean().optional(),
@@ -11,7 +30,7 @@ export const ColOptionsSchema = z
   })
   .optional();
 
-export const ColSchema = z.object({
+export const ColSchema: z.ZodType<ColProps> = z.object({
   title: z.string(),
   field: z.string(),
   options: ColOptionsSchema,

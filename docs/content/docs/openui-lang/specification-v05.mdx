@@ -83,7 +83,22 @@ Two-way binding: passing `$days` to `Select("days", $days, [...])` binds the var
 
 All built-in functions use the `@` prefix. Using bare names (`Count(...)`) is **not supported** - only `@Count(...)`.
 
+### Template builtins
+
+These are available in every prompt configuration:
+
+| Function                                  | Signature                                         |
+| ----------------------------------------- | ------------------------------------------------- |
+| `@Each`                                   | `@Each(array, "item", template)`                  |
+| `@Switch`                                 | `@Switch(value, cases, default?) → result`        |
+| `@Render`                                 | `@Render("v", expr)`                              |
+| `@Render` with full row binding           | `@Render("v", "row", expr)`                       |
+
+`@Render` is intended for prop values where a component expects a render function. Outside a prop context it evaluates to a deferred node and renders as `null`.
+
 ### Data builtins
+
+These are available when expression support is enabled:
 
 | Function  | Signature                                                                                                    |
 | --------- | ------------------------------------------------------------------------------------------------------------ |
@@ -101,9 +116,10 @@ All built-in functions use the `@` prefix. Using bare names (`Count(...)`) is **
 | `@Floor`  | `@Floor(number) → number`                                                                                    |
 | `@Ceil`   | `@Ceil(number) → number`                                                                                     |
 
-### Iteration
+### Iteration and deferred templates
 
-`@Each(array, varName, template)` - render template for each element. Loop variable is only available inline.
+- `@Each(array, varName, template)` - render template for each element. Loop variable is only available inline.
+- `@Render("v", expr)` / `@Render("v", "row", expr)` - defer template evaluation until the consuming component injects runtime values.
 
 ### Action steps (inside `Action([...])`)
 

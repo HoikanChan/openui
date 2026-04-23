@@ -1,8 +1,10 @@
 "use client";
 
+import type { ElementNode } from "@openuidev/react-lang";
 import { Table as AntTable, Tooltip } from "antd";
 import type { ColumnType } from "antd/es/table";
 import type { CSSProperties, ReactNode } from "react";
+import type { ColCellRenderer } from "../schema";
 
 export function formatCell(value: unknown, format?: "date" | "dateTime" | "time"): string {
   if (value == null) return "";
@@ -23,7 +25,7 @@ export type TableRow = Record<string, unknown>;
 export type ColViewProps = {
   field: string;
   options?: {
-    cell?: ReactNode | unknown;
+    cell?: ColCellRenderer | ElementNode;
     filterOptions?: string[];
     filterable?: boolean;
     format?: "date" | "dateTime" | "time";
@@ -49,6 +51,18 @@ function getColumnProps(column: ColumnValue): ColViewProps {
   return isColumnNode(column) ? column.props : column;
 }
 
+function isElementNode(value: unknown): value is ElementNode {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as ElementNode).type === "element" &&
+    typeof (value as ElementNode).typeName === "string" &&
+    typeof (value as ElementNode).props === "object" &&
+    (value as ElementNode).props !== null &&
+    typeof (value as ElementNode).partial === "boolean"
+  );
+}
+
 export function mapColumnsToAntd(
   columns: ColumnValue[],
   renderNode?: (value: unknown) => ReactNode,
@@ -67,8 +81,12 @@ export function mapColumnsToAntd(
       onFilter: options.filterable
         ? (value, record) => String(record[column.field]) === String(value)
         : undefined,
-      render: (value: unknown) => {
-        if (options.cell) {
+      render: (value: unknown, record: TableRow) => {
+        if (typeof options.cell === "function") {
+          return options.cell(value, record);
+        }
+
+        if (options.cell && isElementNode(options.cell)) {
           return renderNode ? renderNode(options.cell) : (options.cell as ReactNode);
         }
 

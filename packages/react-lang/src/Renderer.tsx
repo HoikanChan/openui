@@ -7,10 +7,11 @@ import type {
   ToolProvider,
 } from "@openuidev/lang-core";
 import { ToolNotFoundError, extractToolResult } from "@openuidev/lang-core";
-import React, { Component, Fragment, useEffect, useInsertionEffect, useRef } from "react";
+import React, { Component, Fragment, useEffect, useInsertionEffect, useMemo, useRef } from "react";
 import { OpenUIContext, useOpenUI, useRenderNode } from "./context";
+import { hydrateSlots } from "./hydrateSlots";
 import { useOpenUIState } from "./hooks/useOpenUIState";
-import type { ComponentRenderer, Library } from "./library";
+import type { ComponentRenderProps, ComponentRenderer, Library } from "./library";
 
 export interface RendererProps {
   /** Raw response text (openui-lang code). */
@@ -172,7 +173,17 @@ function RenderNode({ node }: { node: ElementNode }) {
  */
 function RenderNodeInner({ el, Comp }: { el: ElementNode; Comp: ComponentRenderer<any> }) {
   const renderNode = useRenderNode();
-  return <Comp props={el.props} renderNode={renderNode} />;
+  const { evaluationContext } = useOpenUI();
+  const hydratedProps = useMemo(
+    () => hydrateSlots(el.props, renderNode, evaluationContext) as typeof el.props,
+    [el.props, renderNode, evaluationContext],
+  );
+  const componentProps: ComponentRenderProps<typeof hydratedProps> = {
+    props: hydratedProps,
+    renderNode,
+  };
+
+  return React.createElement(Comp, componentProps);
 }
 
 // ─── Loading style injection (once per document) ───

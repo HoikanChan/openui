@@ -74,4 +74,11 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
 
     expect(table.properties).not.toHaveProperty("style");
   });
+
+  it("includes Render in static-library prompts while omitting data-only builtins", () => {
+    const prompt = dslLibrary.prompt({ toolCalls: false, bindings: false });
+
+    expect(prompt).toContain('@Render("v", expr)');
+    expect(prompt).not.toContain("@Count(array)");
+  });
 });

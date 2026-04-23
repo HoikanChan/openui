@@ -76,7 +76,7 @@ export function evaluate(
     case "Comp": {
       // Lazy builtins — control their own evaluation
       if (LAZY_BUILTINS.has(node.name)) {
-        return evaluateLazyBuiltin(node.name, node.args, context, schemaCtx);
+        return evaluateLazyBuiltin(node, context, schemaCtx);
       }
       // Check shared builtin registry first
       const builtin = BUILTINS[node.name];
@@ -445,20 +445,27 @@ function substituteRef(node: ASTNode, varName: string, value: unknown): ASTNode 
  * Action/Set steps) capture concrete values instead of dangling loop refs.
  */
 function evaluateLazyBuiltin(
-  name: string,
-  args: ASTNode[],
+  node: ASTNode & { k: "Comp" },
   context: EvaluationContext,
   schemaCtx?: SchemaContext,
 ): unknown {
-  if (name === "Each") {
-    if (args.length < 3) return [];
-    const arr = evaluate(args[0], context);
+  if (node.name === "Render") {
+    return node;
+  }
+
+  if (node.name === "Each") {
+    if (node.args.length < 3) return [];
+    const arr = evaluate(node.args[0], context);
     if (!Array.isArray(arr)) return [];
 
     const varName =
-      args[1].k === "Ref" ? args[1].n : args[1].k === "Str" ? (args[1] as any).v : null;
+      node.args[1].k === "Ref"
+        ? node.args[1].n
+        : node.args[1].k === "Str"
+          ? node.args[1].v
+          : null;
     if (!varName) return [];
-    const template = args[2];
+    const template = node.args[2];
 
     return arr.map((item, _idx) => {
       // Pre-substitute loop variable refs with concrete values in the template AST.

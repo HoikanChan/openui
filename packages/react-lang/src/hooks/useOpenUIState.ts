@@ -150,6 +150,7 @@ export function useOpenUIState(
 
   // ─── Subscribe to Store and QueryManager for re-renders ───
   const storeSnapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+  const typedStoreSnapshot = storeSnapshot as Record<string, unknown>;
   const querySnapshot = useSyncExternalStore(
     queryManager.subscribe,
     queryManager.getSnapshot,
@@ -174,12 +175,12 @@ export function useOpenUIState(
   useEffect(() => {
     if (isStreaming) return;
 
-    const queryStmts = result?.queryStatements ?? [];
-    const evaluatedNodes = queryStmts.map((qn) => {
+    const queryStmts: ParseResult["queryStatements"] = result?.queryStatements ?? [];
+    const evaluatedNodes = queryStmts.map((qn: ParseResult["queryStatements"][number]) => {
       const relevantDeps: Record<string, unknown> = {};
       if (qn.deps) {
         for (const ref of qn.deps) {
-          relevantDeps[ref] = storeSnapshot[ref];
+          relevantDeps[ref] = typedStoreSnapshot[ref];
         }
       }
       return {
@@ -197,14 +198,14 @@ export function useOpenUIState(
 
     // Always call — empty array clears removed queries and their errors
     queryManager.evaluateQueries(evaluatedNodes);
-  }, [isStreaming, result?.queryStatements, evaluationContext, queryManager, storeSnapshot]);
+  }, [isStreaming, result?.queryStatements, evaluationContext, queryManager, typedStoreSnapshot]);
 
   // ─── Register mutations ───
   useEffect(() => {
     if (isStreaming) return;
 
-    const mutStmts = result?.mutationStatements ?? [];
-    const nodes = mutStmts.map((mn) => ({
+    const mutStmts: ParseResult["mutationStatements"] = result?.mutationStatements ?? [];
+    const nodes = mutStmts.map((mn: ParseResult["mutationStatements"][number]) => ({
       statementId: mn.statementId,
       toolName: mn.toolAST ? (evaluate(mn.toolAST, evaluationContext) as string) : "",
     }));
@@ -319,7 +320,8 @@ export function useOpenUIState(
             case ACTION_STEPS.Run: {
               if (step.refType === "mutation") {
                 const mn = resultRef.current?.mutationStatements?.find(
-                  (m) => m.statementId === step.statementId,
+                  (mutationStatement: ParseResult["mutationStatements"][number]) =>
+                    mutationStatement.statementId === step.statementId,
                 );
                 const evaluatedArgs = mn?.argsAST
                   ? (evaluate(mn.argsAST, evaluationContext) as Record<string, unknown>)

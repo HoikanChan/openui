@@ -86,16 +86,30 @@ function materializeLazyBuiltin(
   ctx: MaterializeCtx,
   scopedRefs: ReadonlySet<string>,
 ): ASTNode | null {
-  if (!LAZY_BUILTINS.has(node.name) || node.args.length < 3) return null;
-  const varArg = node.args[1];
-  const varName = varArg.k === "Ref" ? varArg.n : varArg.k === "Str" ? varArg.v : null;
-  if (!varName) return null;
+  if (!LAZY_BUILTINS.has(node.name)) return null;
+
+  const binderIndexes =
+    node.name === "Each"
+      ? node.args.length >= 3
+        ? [1]
+        : []
+      : node.name === "Render"
+        ? node.args.length >= 2
+          ? node.args.slice(0, -1).map((_, index) => index)
+          : []
+        : [];
+  if (binderIndexes.length === 0) return null;
 
   const nextScopedRefs = new Set(scopedRefs);
-  nextScopedRefs.add(varName);
-  // Skip args[1] (the iterator declaration) but preserve scoped refs elsewhere.
+  for (const index of binderIndexes) {
+    const binderArg = node.args[index];
+    const binderName = binderArg.k === "Ref" ? binderArg.n : binderArg.k === "Str" ? binderArg.v : null;
+    if (!binderName) return null;
+    nextScopedRefs.add(binderName);
+  }
+
   const recursedArgs = node.args.map((a, i) =>
-    i === 1 ? a : materializeExprInternal(a, ctx, nextScopedRefs),
+    binderIndexes.includes(i) ? a : materializeExprInternal(a, ctx, nextScopedRefs),
   );
   return { ...node, args: recursedArgs };
 }
