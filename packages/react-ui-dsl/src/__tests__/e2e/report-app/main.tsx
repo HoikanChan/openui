@@ -29,13 +29,13 @@ class PreviewErrorBoundary extends React.Component<
   React.PropsWithChildren<{ entry: ReportEntry }>,
   { hasError: boolean; message: string }
 > {
-  state = { hasError: false, message: "" };
+  override state = { hasError: false, message: "" };
 
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, message: error.message };
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div className="preview-error">

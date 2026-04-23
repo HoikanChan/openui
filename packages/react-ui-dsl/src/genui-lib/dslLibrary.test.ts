@@ -10,8 +10,8 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(spec.components.Button.signature).not.toContain("style");
     expect(spec.components.Button.signature).not.toContain("actions");
 
-    expect(spec.components.Text.signature).toContain("Text(content: string");
-    expect(spec.components.Text.signature).toContain("type?:");
+    expect(spec.components.Text.signature).toContain("Text(text: string");
+    expect(spec.components.Text.signature).toContain("size?:");
     expect(spec.components.Text.signature).not.toContain("properties");
     expect(spec.components.Text.signature).not.toContain("style");
 
@@ -26,6 +26,10 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(spec.components.Card.signature).not.toContain("width");
 
     expect(spec.components.Table.signature).not.toContain("style");
+    expect(spec.components.Tag.signature).toContain("Tag(text:");
+    expect(spec.components.Tag.signature).toContain("icon?:");
+    expect(spec.components.Tag.signature).toContain("size?:");
+    expect(spec.components.Tag.signature).toContain("variant?:");
   });
 
   it("exports json schema without legacy properties wrappers or removed host-control fields", () => {
@@ -36,6 +40,7 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     const text = defs.Text;
     const card = defs.Card;
     const cardHeader = defs.CardHeader;
+    const tag = defs.Tag;
     const table = defs.Table;
 
     expect(button.properties).toMatchObject({
@@ -49,8 +54,8 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(button.properties).not.toHaveProperty("actions");
 
     expect(text.properties).toMatchObject({
-      content: expect.anything(),
-      type: expect.anything(),
+      size: expect.anything(),
+      text: expect.anything(),
     });
     expect(text.properties).not.toHaveProperty("properties");
     expect(text.properties).not.toHaveProperty("style");
@@ -71,6 +76,13 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
       wrap: expect.anything(),
     });
     expect(JSON.stringify(card.properties)).not.toContain("\"actions\"");
+
+    expect(tag.properties).toMatchObject({
+      text: expect.anything(),
+      icon: expect.anything(),
+      size: expect.anything(),
+      variant: expect.anything(),
+    });
 
     expect(table.properties).not.toHaveProperty("style");
   });

@@ -34,6 +34,7 @@
     "watch": "tsdown --watch",
     "storybook": "storybook dev -p 6007",
     "build:storybook": "storybook build",
+    "pretypecheck": "pnpm --dir ../react-lang build",
     "typecheck": "tsc --noEmit",
     "lint:check": "eslint ./src",
     "lint:fix": "eslint ./src --fix",

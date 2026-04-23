@@ -7,6 +7,7 @@ const meta = {
   component: TabView,
   args: {
     activeTab: "overview",
+    onTabChange: () => {},
     items: [
       { value: "overview", label: "Overview", children: "Overview content", loading: false },
       { value: "settings", label: "Settings", children: "Settings content", loading: false },
@@ -30,6 +31,7 @@ export const Default: Story = {};
 export const Loading: Story = {
   args: {
     activeTab: "overview",
+    onTabChange: () => {},
     items: [
       { value: "overview", label: "Overview", children: "Overview content", loading: false },
       { value: "settings", label: "Settings", children: null, loading: true },

@@ -17,7 +17,7 @@ function stripMatchingQuotes(value: string): string {
 }
 
 export function loadRegenEnvIfNeeded(envPath = DEFAULT_ENV_PATH): void {
-  if (!process.env.REGEN_SNAPSHOTS || !existsSync(envPath)) {
+  if (!process.env["REGEN_SNAPSHOTS"] || !existsSync(envPath)) {
     return;
   }
 

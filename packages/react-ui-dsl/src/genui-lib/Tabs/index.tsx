@@ -12,6 +12,7 @@ export const Tabs = defineComponent({
   description: "Tabbed container with streaming-aware skeleton and auto tab-switching",
   component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof TabsSchema>>) => {
     const items = props.items ?? [];
+    type TabItem = z.infer<typeof TabsSchema>["items"][number];
     const [activeTab, setActiveTab] = React.useState("");
     const userHasInteracted = React.useRef(false);
     const prevContentSizes = React.useRef<Record<string, number>>({});
@@ -57,7 +58,7 @@ export const Tabs = defineComponent({
         activeTab={activeTab}
         onTabChange={handleTabChange}
         style={props.style as React.CSSProperties}
-        items={items.map((item) => ({
+        items={items.map((item: TabItem) => ({
           value: item.value,
           label: item.label,
           children: renderNode(item.content),

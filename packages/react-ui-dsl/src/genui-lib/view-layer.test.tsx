@@ -2,6 +2,7 @@ import React from "react";
 import { describe, expect, it } from "vitest";
 import { buildChartOption } from "../components/chart/utils";
 import { resolveButtonAppearance } from "./Button";
+import { resolveTagAppearance, TagView } from "./Tag";
 import { formatCell } from "./Table";
 import { buildTimelineItems } from "./TimeLine";
 
@@ -65,5 +66,29 @@ describe("react-ui-dsl view layer helpers", () => {
     expect(items).toHaveLength(1);
     expect(items[0].color).toBe("green");
     expect(items[0].children.props.children[0].props.children).toBe("Deployed");
+  });
+
+  it("maps DSL tag props to deterministic antd appearance", () => {
+    expect(resolveTagAppearance({ size: "sm", variant: "danger" })).toEqual({
+      color: "error",
+      style: { fontSize: 12, lineHeight: "18px", paddingInline: 7, paddingBlock: 0 },
+    });
+
+    expect(resolveTagAppearance({ size: "lg", variant: "info" })).toEqual({
+      color: "processing",
+      style: { fontSize: 16, lineHeight: "26px", paddingInline: 13, paddingBlock: 2 },
+    });
+  });
+
+  it("keeps icon as an explicit token without rendering an implicit icon graphic", () => {
+    const element = TagView({
+      icon: "alert-circle",
+      size: "md",
+      text: "Escalated",
+      variant: "warning",
+    });
+
+    expect(element.props["data-icon-token"]).toBe("alert-circle");
+    expect(element.props.children).toBe("Escalated");
   });
 });

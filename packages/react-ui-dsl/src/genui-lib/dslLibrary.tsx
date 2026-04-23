@@ -26,6 +26,7 @@ import { Image } from "./Image";
 import { Link } from "./Link";
 import { List } from "./List";
 import { Select } from "./Select";
+import { Tag } from "./Tag";
 import { Col, Table } from "./Table";
 import { Text } from "./Text";
 import { TimeLine } from "./TimeLine";
@@ -63,6 +64,7 @@ const baseDslLibrary = createLibrary({
     Text,
     Button,
     Select,
+    Tag,
     Image,
     Link,
     Card,
