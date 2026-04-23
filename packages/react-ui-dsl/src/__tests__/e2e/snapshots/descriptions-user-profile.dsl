@@ -1,0 +1,7 @@
+root = VLayout([profileDetails])
+profileDetails = Descriptions([nameField, emailField, accountGroup], "Employee Profile", Tag("Live", "success"), 3)
+nameField = DescField("Name", data.profile.name)
+emailField = DescField("Email", data.profile.email)
+accountGroup = DescGroup("Account", [statusField, roleField], 2)
+statusField = DescField("Status", Tag(data.profile.status, "success"))
+roleField = DescField("Role", data.profile.role)

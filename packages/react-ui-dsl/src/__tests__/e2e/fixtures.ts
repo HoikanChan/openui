@@ -411,6 +411,29 @@ export const fixtures: Record<string, Fixture[]> = {
       },
     },
   ],
+  Descriptions: [
+    {
+      id: "descriptions-user-profile",
+      prompt: "Show a user profile detail view with Name and Email fields, plus an Account group with Status tag and Role",
+      dataModel: {
+        profile: {
+          name: "Alice",
+          email: "alice@example.com",
+          status: "Active",
+          role: "Administrator",
+        },
+      },
+      assert: {
+        contains: ["Employee Profile", "Name", "Alice", "Email", "alice@example.com", "Account", "Status", "Active", "Role", "Administrator"],
+        verify: (container) => {
+          expect(
+            container.innerHTML,
+            'descriptions-user-profile: expected Tag-rendered status badge with class "ant-tag"',
+          ).toContain("ant-tag");
+        },
+      },
+    },
+  ],
   List: [
     {
       id: "list-action-items",
