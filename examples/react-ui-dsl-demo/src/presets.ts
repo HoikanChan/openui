@@ -6,6 +6,11 @@ export interface Preset {
 
 export const presets: Preset[] = [
   {
+    label: "真实数据-折线图",
+    prompt: "展示UI",
+    dataModel: { "rows": [{ "deviceName": "NE-01-Core-Switch", "showName": "GigabitEthernet0/0/1", "time": 1717200000000, "PeakBandwidthUtilization": 45.7, "Traffic": 1234567.89, "portResId": "550e8400-e29b-41d4-a716-446655440001" }, { "deviceName": "NE-01-Core-Switch", "showName": "GigabitEthernet0/0/1", "time": 1717203600000, "PeakBandwidthUtilization": 52.3, "Traffic": 1345678.9, "portResId": "550e8400-e29b-41d4-a716-446655440001" }, { "deviceName": "NE-02-Access-Router", "showName": "Ethernet1/1", "time": 1717200000000, "PeakBandwidthUtilization": 18.2, "Traffic": 456789.12, "portResId": "550e8400-e29b-41d4-a716-446655440002" }, { "deviceName": "NE-02-Access-Router", "showName": "Ethernet1/1", "time": 1717203600000, "PeakBandwidthUtilization": 22.5, "Traffic": 512345.67, "portResId": "550e8400-e29b-41d4-a716-446655440002" }], "times": { "period": 60, "startTime": 1716595200000, "endTime": 1717200000000, "valid_period": 60, "valid_startTime": 1716595200000, "valid_endTime": 1717200000000 }, "statistics": [{ "portResId": "550e8400-e29b-41d4-a716-446655440001", "deviceName": "NE-01-Core-Switch", "showName": "GigabitEthernet0/0/1", "indicatorName": "Traffic", "max": 1345678.9, "min": 1234567.89, "avg": 1290123.395, "last": 1345678.9 }, { "portResId": "550e8400-e29b-41d4-a716-446655440002", "deviceName": "NE-02-Access-Router", "showName": "Ethernet1/1", "indicatorName": "Traffic", "max": 512345.67, "min": 456789.12, "avg": 484567.395, "last": 512345.67 }] }
+  },
+  {
     label: "设备列表",
     prompt: "展示设备清单表格，包含名称、IP、状态、类型，状态列用标签样式区分",
     dataModel: {
@@ -74,7 +79,7 @@ export const presets: Preset[] = [
   },
   {
     label: "告警列表",
-    prompt: "展示当前告警列表表格，按级别排序，级别列用颜色标签区分",
+    prompt: "展示当前告警列表表格",
     dataModel: {
       alerts: [
         { id: "A001", level: "critical", source: "Router-Core-01", message: "CPU使用率超过90%", time: "2026-04-20 10:30" },
