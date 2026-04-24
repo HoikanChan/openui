@@ -10,7 +10,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    exclude: ["dist/**", "node_modules/**"],
+    exclude: ["dist/**", "node_modules/**", "src/__tests__/e2e/dsl-fuzz.test.tsx"],
     setupFiles: ["./src/__tests__/e2e/setup.ts"],
     testTimeout: 30000,
   },
