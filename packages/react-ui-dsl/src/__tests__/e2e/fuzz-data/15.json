@@ -1,0 +1,14 @@
+{
+  "boardList": [
+    {
+      "softVersion": "V800R022C00",
+      "bom": "02115200",
+      "frameName": "TPK1CHASSIS",
+      "frameId": "1",
+      "sn": "21021152006TK4900660",
+      "neName": "P33338-广州市番禺番禺渔民新村酒家-室分CRAN机房（970）",
+      "frameResId": "305e7bbd-0d4e-11ea-92c4-286ed4bd8a00",
+      "refParentNeResId": "e0a829e9-6ec9-421a-b136-1fb17021b606"
+    }
+  ]
+}

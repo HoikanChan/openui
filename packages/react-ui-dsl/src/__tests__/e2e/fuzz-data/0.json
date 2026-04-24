@@ -1,0 +1,28 @@
+{
+  "tunnelTrails": [
+    {
+      "signalType": "static-cr",
+      "snkNeName": "14193-南海里水大冲3",
+      "srcNeName": "1156-佛山禅城第二机楼-PTN-L2/L309",
+      "tunnelResId": "b1531c67-0d75-11ea-bdf6-286ed4bd8ae1",
+      "tunnelName": "1156-佛山禅城第二机楼:14193-南海里水大冲3-VLAN160",
+      "direction": "bidirectional"
+    },
+    {
+      "signalType": "static-cr",
+      "snkNeName": "1156-佛山禅城第二机楼-PTN-L2/L309",
+      "srcNeName": "14193-南海里水大冲3",
+      "tunnelResId": "d2c216f6-4588-475a-b8ad-5b33a6e265aa",
+      "tunnelName": "1156-第二机楼L2/L309--14193-南海里水大冲3/482",
+      "direction": "bidirectional"
+    },
+    {
+      "signalType": "static-cr",
+      "snkNeName": "1156-佛山禅城第二机楼-PTN-L2/L309",
+      "srcNeName": "14193-南海里水大冲3",
+      "tunnelResId": "0e2c1734-c7c0-484a-943b-84c9ef18eb8a",
+      "tunnelName": "1156-第二机楼L2/L309--14193-南海里水大冲3/477",
+      "direction": "bidirectional"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "tunnelTrails": [
+    {
+      "snkNeResId": "4a8b9555-38dd-414a-bfe9-c6a2e5957ca1",
+      "signalType": "sr-policy",
+      "tunnelResId": "2af06f6e-4d97-49ee-885e-6124194598da",
+      "tunnelName": "S2_MIS",
+      "srcNeResId": "51ca3b5f-bb28-4e30-b701-ca94f549c452",
+      "direction": "bidirectional"
+    }
+  ]
+}
