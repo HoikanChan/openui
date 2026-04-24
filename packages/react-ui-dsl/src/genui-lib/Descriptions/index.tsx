@@ -105,7 +105,7 @@ export function resolveDescriptionRenderedValue(
 export const Descriptions = defineComponent({
   name: "Descriptions",
   props: DescriptionsSchema,
-  description: "Metric-card style detail view for a single record using DescField and DescGroup items.",
+  description: "Descriptions-style detail view for a single record with optional bordered and plain visual modes.",
   component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof DescriptionsSchema>>) => {
     const normalizedItems = props.items.map((item: DescFieldValue | DescGroupValue) =>
       isGroupNode(item)
@@ -117,6 +117,7 @@ export const Descriptions = defineComponent({
 
     return (
       <DescriptionsRuntimeView
+        border={props.border}
         columns={props.columns}
         extra={extra}
         items={normalizedItems}

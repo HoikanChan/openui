@@ -8,6 +8,16 @@ import { dslLibrary } from "../dslLibrary";
 import { formatDescriptionValue, resolveAutoSpan, resolveDescriptionFieldValue } from "./index";
 
 describe("react-ui-dsl Descriptions schema", () => {
+  it("parses descriptions with the optional border toggle", () => {
+    const parser = createParser(dslLibrary.toJSONSchema());
+    const result = parser.parse(`root = Descriptions([nameField], "Profile", null, 3, false)
+nameField = DescField("Name", "Alice")`);
+
+    expect(result.meta.errors).toHaveLength(0);
+    expect(result.root?.typeName).toBe("Descriptions");
+    expect(result.root?.props.border).toBe(false);
+  });
+
   it("parses descriptions with mixed fields and groups", () => {
     const parser = createParser(dslLibrary.toJSONSchema());
     const result = parser.parse(`root = Descriptions([nameField, accountGroup], "Profile", Tag("Ready", "success"), 3)

@@ -20,6 +20,7 @@ export const DescriptionsSchema = z.object({
   title: z.string().optional(),
   extra: z.any().optional(),
   columns: z.number().int().positive().optional(),
+  border: z.boolean().optional(),
 });
 
 export type DescFieldProps = z.infer<typeof DescFieldSchema>;

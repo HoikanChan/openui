@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { DescFieldProps, DescGroupProps } from "../schema";
 
 export type DescriptionFormat = DescFieldProps["format"];
+export type DescriptionsVariant = "bordered" | "plain";
 
 const DEFAULT_COLUMNS = 3;
 const DEFAULT_GAP = 12;
+const PLAIN_COLUMN_GAP = 40;
+const PLAIN_ROW_GAP = 18;
 const DEFAULT_LINE_HEIGHT = 24;
 const DEFAULT_FONT_SIZE = 18;
 const DEFAULT_ASCII_CHAR_WIDTH = 9;
@@ -23,49 +26,85 @@ const headerStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: 12,
-  marginBottom: 12,
+  marginBottom: 16,
 };
 
 const titleStyle: CSSProperties = {
   fontSize: 16,
   fontWeight: 600,
-  color: "#1a1a1a",
+  color: "#1f1f1f",
 };
 
 const groupTitleStyle: CSSProperties = {
   fontSize: 14,
   fontWeight: 600,
-  color: "#1a1a1a",
-  marginBottom: 10,
+  color: "#1f1f1f",
+  marginBottom: 12,
 };
 
-const cardStyle: CSSProperties = {
-  padding: "20px 24px",
-  borderRadius: 12,
-  backgroundColor: "#f0f4f8",
-  boxShadow: "0 1px 6px rgba(0, 0, 0, 0.06)",
+const borderedGridStyle = (columns: number): CSSProperties => ({
   display: "flex",
   flexDirection: "column",
-  justifyContent: "center",
-  gap: 10,
-  minWidth: 0,
-};
-
-const labelStyle: CSSProperties = {
-  fontSize: 13,
-  fontWeight: 400,
-  color: "#999999",
-  lineHeight: 1,
-};
-
-const valueTextStyle: CSSProperties = {
-  fontSize: DEFAULT_FONT_SIZE,
-  fontWeight: 500,
-  color: "#1a1a1a",
-  lineHeight: 1.4,
-  whiteSpace: "nowrap",
+  border: "1px solid #f0f0f0",
+  borderRadius: 8,
   overflow: "hidden",
-  textOverflow: "ellipsis",
+  backgroundColor: "#ffffff",
+});
+
+const borderedRowStyle = (columns: number, isLastRow: boolean): CSSProperties => ({
+  display: "grid",
+  gridTemplateColumns: `repeat(${columns * 2}, minmax(0, 1fr))`,
+  borderBottom: isLastRow ? undefined : "1px solid #f0f0f0",
+});
+
+const borderedLabelCellStyle: CSSProperties = {
+  padding: "16px 24px",
+  backgroundColor: "#fafafa",
+  borderRight: "1px solid #f0f0f0",
+  color: "#8c8c8c",
+  fontSize: 14,
+  lineHeight: 1.5715,
+};
+
+const borderedValueCellStyle: CSSProperties = {
+  padding: "16px 24px",
+  backgroundColor: "#ffffff",
+  borderRight: "1px solid #f0f0f0",
+  color: "#262626",
+  fontSize: 14,
+  lineHeight: 1.5715,
+  minWidth: 0,
+  overflowWrap: "anywhere",
+};
+
+const plainGridStyle = (columns: number): CSSProperties => ({
+  display: "grid",
+  gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+  columnGap: PLAIN_COLUMN_GAP,
+  rowGap: PLAIN_ROW_GAP,
+});
+
+const plainFieldStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "baseline",
+  gap: 8,
+  minWidth: 0,
+  flexWrap: "wrap",
+};
+
+const plainLabelStyle: CSSProperties = {
+  color: "#bfbfbf",
+  fontSize: 14,
+  lineHeight: 1.5715,
+  whiteSpace: "nowrap",
+};
+
+const plainValueStyle: CSSProperties = {
+  color: "#1f1f1f",
+  fontSize: 14,
+  lineHeight: 1.5715,
+  minWidth: 0,
+  overflowWrap: "anywhere",
 };
 
 export type ResolvedDescriptionsField = {
@@ -85,6 +124,7 @@ export type ResolvedDescriptionsGroup = {
 export type ResolvedDescriptionsItem = ResolvedDescriptionsField | ResolvedDescriptionsGroup;
 
 export type DescriptionsViewProps = {
+  border?: boolean;
   columns?: number;
   extra?: ReactNode;
   items: ResolvedDescriptionsItem[];
@@ -93,6 +133,43 @@ export type DescriptionsViewProps = {
 
 function isRenderableNode(value: unknown): boolean {
   return React.isValidElement(value);
+}
+
+function getVariant(border?: boolean): DescriptionsVariant {
+  return border === false ? "plain" : "bordered";
+}
+
+function normalizeDescriptionContent(value: ReactNode): ReactNode {
+  if (Array.isArray(value)) {
+    return value.map((child, index) => <Fragment key={index}>{normalizeDescriptionContent(child)}</Fragment>);
+  }
+
+  if (!React.isValidElement(value)) return value;
+
+  const element = value as React.ReactElement<{ children?: ReactNode; style?: CSSProperties }>;
+  const tagName = typeof element.type === "string" ? element.type : null;
+  const normalizedChildren =
+    element.props.children == null ? element.props.children : React.Children.map(element.props.children, normalizeDescriptionContent);
+
+  let style = element.props.style;
+
+  if (tagName === "ul" || tagName === "ol") {
+    style = {
+      listStyle: "none",
+      margin: 0,
+      paddingInlineStart: 0,
+      paddingLeft: 0,
+      ...style,
+    };
+  } else if (tagName === "li") {
+    style = {
+      listStyle: "none",
+      margin: 0,
+      ...style,
+    };
+  }
+
+  return React.cloneElement(element, { style }, normalizedChildren);
 }
 
 export function formatDescriptionValue(value: unknown, format?: DescriptionFormat): ReactNode {
@@ -152,44 +229,125 @@ export function resolveAutoSpan(
   return columns;
 }
 
-function renderField(field: ResolvedDescriptionsField, key: string) {
-  return (
-    <div
-      key={key}
-      style={{
-        ...cardStyle,
-        gridColumn: field.resolvedSpan > 1 ? `span ${field.resolvedSpan}` : undefined,
-      }}
-    >
-      <span style={labelStyle}>{field.label}</span>
-      <span style={valueTextStyle}>{field.renderedValue}</span>
-    </div>
-  );
-}
+function renderBorderedGrid(fields: ResolvedDescriptionsField[], columns: number, key?: string) {
+  const rows: ResolvedDescriptionsField[][] = [];
+  let currentRow: ResolvedDescriptionsField[] = [];
+  let usedColumns = 0;
 
-function renderGrid(fields: ResolvedDescriptionsField[], columns: number, key?: string) {
+  fields.forEach((field) => {
+    const fieldSpan = Math.max(1, Math.min(field.resolvedSpan, columns));
+
+    if (usedColumns + fieldSpan > columns) {
+      rows.push(currentRow);
+      currentRow = [field];
+      usedColumns = fieldSpan;
+      return;
+    }
+
+    currentRow.push(field);
+    usedColumns += fieldSpan;
+  });
+
+  if (currentRow.length > 0) rows.push(currentRow);
+
   return (
     <div
       key={key}
       data-descriptions-columns={columns}
-      style={{
-        display: "grid",
-        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-        gap: DEFAULT_GAP,
-      }}
+      data-descriptions-layout="bordered"
+      style={borderedGridStyle(columns)}
     >
-      {fields.map((field, index) => renderField(field, `${field.label}-${index}`))}
+      {rows.map((row, rowIndex) => (
+        <div
+          key={`bordered-row-${rowIndex}`}
+          data-descriptions-row="bordered"
+          style={borderedRowStyle(columns, rowIndex === rows.length - 1)}
+        >
+          {row.map((field, index) => {
+            const fieldSpan = Math.max(1, Math.min(field.resolvedSpan, columns));
+            const valueSpan = Math.max(1, fieldSpan * 2 - 1);
+            const isLastFieldInRow = index === row.length - 1;
+
+            return (
+              <Fragment key={`${field.label}-${rowIndex}-${index}`}>
+                <div
+                  style={{
+                    ...borderedLabelCellStyle,
+                    borderRight: isLastFieldInRow && valueSpan === columns * 2 - 1 ? undefined : borderedLabelCellStyle.borderRight,
+                  }}
+                >
+                  {field.label}
+                </div>
+                <div
+                  style={{
+                    ...borderedValueCellStyle,
+                    borderRight: isLastFieldInRow ? undefined : borderedValueCellStyle.borderRight,
+                    gridColumn: valueSpan > 1 ? `span ${valueSpan}` : undefined,
+                  }}
+                >
+                  {normalizeDescriptionContent(field.renderedValue)}
+                </div>
+              </Fragment>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
 
-export function DescriptionsView({ columns = DEFAULT_COLUMNS, extra, items, title }: DescriptionsViewProps) {
+function renderPlainField(field: ResolvedDescriptionsField, key: string) {
+  return (
+    <div
+      key={key}
+      style={{
+        ...plainFieldStyle,
+        gridColumn: field.resolvedSpan > 1 ? `span ${field.resolvedSpan}` : undefined,
+      }}
+    >
+      <span style={plainLabelStyle}>{field.label} :</span>
+      <span style={plainValueStyle}>{normalizeDescriptionContent(field.renderedValue)}</span>
+    </div>
+  );
+}
+
+function renderPlainGrid(fields: ResolvedDescriptionsField[], columns: number, key?: string) {
+  return (
+    <div
+      key={key}
+      data-descriptions-columns={columns}
+      data-descriptions-layout="plain"
+      style={plainGridStyle(columns)}
+    >
+      {fields.map((field, index) => renderPlainField(field, `${field.label}-${index}`))}
+    </div>
+  );
+}
+
+function renderGrid(
+  fields: ResolvedDescriptionsField[],
+  columns: number,
+  variant: DescriptionsVariant,
+  key?: string,
+) {
+  if (variant === "plain") return renderPlainGrid(fields, columns, key);
+  return renderBorderedGrid(fields, columns, key);
+}
+
+export function DescriptionsView({
+  border = true,
+  columns = DEFAULT_COLUMNS,
+  extra,
+  items,
+  title,
+}: DescriptionsViewProps) {
+  const variant = getVariant(border);
   const sections: ReactNode[] = [];
   let pendingFields: ResolvedDescriptionsField[] = [];
 
   const flushPendingFields = () => {
     if (pendingFields.length === 0) return;
-    sections.push(renderGrid(pendingFields, columns, `top-level-fields-${sections.length}`));
+    sections.push(renderGrid(pendingFields, columns, variant, `top-level-fields-${sections.length}`));
     pendingFields = [];
   };
 
@@ -203,7 +361,7 @@ export function DescriptionsView({ columns = DEFAULT_COLUMNS, extra, items, titl
     sections.push(
       <section key={`${item.title}-${index}`}>
         <div style={groupTitleStyle}>{item.title}</div>
-        {renderGrid(item.fields, item.columns)}
+        {renderGrid(item.fields, item.columns, variant)}
       </section>,
     );
   });
@@ -211,7 +369,7 @@ export function DescriptionsView({ columns = DEFAULT_COLUMNS, extra, items, titl
   flushPendingFields();
 
   return (
-    <div data-descriptions-columns={columns} style={wrapperStyle}>
+    <div data-descriptions-columns={columns} data-descriptions-variant={variant} style={wrapperStyle}>
       {(title || extra) && (
         <div style={headerStyle}>
           <div style={titleStyle}>{title}</div>
@@ -219,7 +377,7 @@ export function DescriptionsView({ columns = DEFAULT_COLUMNS, extra, items, titl
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: DEFAULT_GAP }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: variant === "plain" ? 20 : DEFAULT_GAP }}>
         {sections}
       </div>
     </div>
@@ -230,6 +388,7 @@ type RuntimeDescriptionsField = DescFieldProps & { kind?: "field" };
 type RuntimeDescriptionsGroup = DescGroupProps & { kind?: "group" };
 
 export type DescriptionsRuntimeViewProps = {
+  border?: boolean;
   columns?: number;
   extra?: ReactNode;
   items: (RuntimeDescriptionsField | RuntimeDescriptionsGroup)[];
@@ -242,6 +401,7 @@ function isGroup(value: RuntimeDescriptionsField | RuntimeDescriptionsGroup): va
 }
 
 export function DescriptionsRuntimeView({
+  border = true,
   columns = DEFAULT_COLUMNS,
   extra,
   items,
@@ -250,6 +410,7 @@ export function DescriptionsRuntimeView({
 }: DescriptionsRuntimeViewProps) {
   const gridRef = useRef<HTMLDivElement | null>(null);
   const [gridWidth, setGridWidth] = useState(0);
+  const variant = getVariant(border);
 
   useEffect(() => {
     const element = gridRef.current;
@@ -264,10 +425,12 @@ export function DescriptionsRuntimeView({
     return () => observer.disconnect();
   }, []);
 
+  const columnGap = variant === "plain" ? PLAIN_COLUMN_GAP : DEFAULT_GAP;
+
   const columnWidth = useMemo(() => {
     if (gridWidth <= 0) return 0;
-    return (gridWidth - DEFAULT_GAP * (columns - 1)) / columns;
-  }, [columns, gridWidth]);
+    return (gridWidth - columnGap * (columns - 1)) / columns;
+  }, [columnGap, columns, gridWidth]);
 
   const resolvedItems = useMemo<ResolvedDescriptionsItem[]>(() => {
     return items.map((item) => {
@@ -279,21 +442,23 @@ export function DescriptionsRuntimeView({
           columns: groupColumns,
           fields: item.fields.map((field) => {
             const resolvedSpan =
-              field.span ?? resolveAutoSpan(resolveDescriptionAutoSpanValue(field.value, field.format), columnWidth, groupColumns);
+              field.span ??
+              resolveAutoSpan(resolveDescriptionAutoSpanValue(field.value, field.format), columnWidth, groupColumns, columnGap);
             return renderValue(field, resolvedSpan);
           }),
         };
       }
 
       const resolvedSpan =
-        item.span ?? resolveAutoSpan(resolveDescriptionAutoSpanValue(item.value, item.format), columnWidth, columns);
+        item.span ??
+        resolveAutoSpan(resolveDescriptionAutoSpanValue(item.value, item.format), columnWidth, columns, columnGap);
       return renderValue(item, resolvedSpan);
     });
-  }, [columnWidth, columns, items, renderValue]);
+  }, [columnGap, columnWidth, columns, items, renderValue]);
 
   return (
     <div ref={gridRef}>
-      <DescriptionsView columns={columns} extra={extra} items={resolvedItems} title={title} />
+      <DescriptionsView border={border} columns={columns} extra={extra} items={resolvedItems} title={title} />
     </div>
   );
 }
