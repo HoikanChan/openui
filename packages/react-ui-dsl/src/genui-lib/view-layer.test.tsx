@@ -1,4 +1,6 @@
+// @vitest-environment jsdom
 import React from "react";
+import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { buildChartOption } from "../components/chart/utils";
 import { resolveButtonAppearance } from "./Button";
@@ -114,21 +116,110 @@ describe("react-ui-dsl view layer helpers", () => {
     });
 
     expect(element.props["data-descriptions-columns"]).toBe(3);
+    expect(element.props["data-descriptions-variant"]).toBe("bordered");
     expect(element.props.children[0].props.children[0].props.children).toBe("Profile");
   });
 
-  it("renders consecutive top-level fields into a shared grid section", () => {
+  it("renders a plain minimal layout when border is false", () => {
     const element = DescriptionsView({
-      title: "Profile",
-      columns: 3,
+      title: "User Info",
+      border: false,
+      columns: 4,
       items: [
-        { kind: "field", label: "Name", renderedValue: "Alice", resolvedSpan: 1 },
-        { kind: "field", label: "Email", renderedValue: "alice@example.com", resolvedSpan: 2 },
+        { kind: "field", label: "UserName", renderedValue: "Zhou Maomao", resolvedSpan: 1 },
+        { kind: "field", label: "Telephone", renderedValue: "1810000000", resolvedSpan: 1 },
       ],
     });
 
+    expect(element.props["data-descriptions-variant"]).toBe("plain");
     const content = element.props.children[1];
-    expect(content.props.children).toHaveLength(1);
-    expect(content.props.children[0].props.children).toHaveLength(2);
+    expect(content.props.children[0].props["data-descriptions-layout"]).toBe("plain");
+  });
+
+  it("renders consecutive top-level fields into a shared grid section", () => {
+    const { container } = render(
+      DescriptionsView({
+        title: "Profile",
+        columns: 3,
+        items: [
+          { kind: "field", label: "Name", renderedValue: "Alice", resolvedSpan: 1 },
+          { kind: "field", label: "Email", renderedValue: "alice@example.com", resolvedSpan: 2 },
+        ],
+      }),
+    );
+
+    const grids = container.querySelectorAll('[data-descriptions-layout="bordered"]');
+    const rows = container.querySelectorAll('[data-descriptions-row="bordered"]');
+
+    expect(grids).toHaveLength(1);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.textContent).toContain("Name");
+    expect(rows[0]?.textContent).toContain("Email");
+  });
+
+  it("strips default list bullets from description field content", () => {
+    const { container } = render(
+      DescriptionsView({
+        title: "Summary",
+        items: [
+          {
+            kind: "field",
+            label: "Stats",
+            renderedValue: (
+              <ul>
+                <li>NE-01-Core-Switch GigabitEthernet0/0/1</li>
+                <li>NE-02-Access-Router Ethernet1/1</li>
+              </ul>
+            ),
+            resolvedSpan: 3,
+          },
+        ],
+      }),
+    );
+
+    const list = container.querySelector("ul");
+    const item = container.querySelector("li");
+
+    expect(list?.getAttribute("style")).toContain("list-style: none");
+    expect(list?.getAttribute("style")).toContain("padding-inline-start: 0");
+    expect(item?.getAttribute("style")).toContain("list-style: none");
+  });
+
+  it("packs bordered rows deterministically when a wide field does not fit the current row", () => {
+    const { container } = render(
+      DescriptionsView({
+        title: "Configuration",
+        columns: 2,
+        items: [
+          { kind: "field", label: "Time", renderedValue: "18:00:00", resolvedSpan: 1 },
+          {
+            kind: "field",
+            label: "Config Info",
+            renderedValue: (
+              <ul>
+                <li>Data disk type: MongoDB</li>
+                <li>Database version: 3.4</li>
+              </ul>
+            ),
+            resolvedSpan: 2,
+          },
+          { kind: "field", label: "Status", renderedValue: <TagView text="Running" variant="success" />, resolvedSpan: 1 },
+          { kind: "field", label: "Discount", renderedValue: "$20.00", resolvedSpan: 1 },
+        ],
+      }),
+    );
+
+    const rows = Array.from(container.querySelectorAll('[data-descriptions-row="bordered"]'));
+
+    expect(rows).toHaveLength(3);
+    expect(rows[0]?.textContent).toContain("Time");
+    expect(rows[0]?.textContent).toContain("18:00:00");
+    expect(rows[0]?.textContent).not.toContain("Config Info");
+    expect(rows[1]?.textContent).toContain("Config Info");
+    expect(rows[1]?.textContent).toContain("Data disk type: MongoDB");
+    expect(rows[2]?.textContent).toContain("Status");
+    expect(rows[2]?.textContent).toContain("Running");
+    expect(rows[2]?.textContent).toContain("Discount");
+    expect(rows[2]?.textContent).toContain("$20.00");
   });
 });
