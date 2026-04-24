@@ -38,5 +38,4 @@
   padding: var(--card-padding);
   border-color: var(--card-border);
   background: var(--card-sunk-bg);
-  box-shadow: var(--card-shadow-sunk);
 }
