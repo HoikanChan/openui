@@ -54,6 +54,11 @@ The chart capability SHALL define virtual DSL components `Series`, `ScatterSerie
 - **WHEN** `dslLibrary.toSpec()` is called
 - **THEN** Series, ScatterSeries, and Point appear as component entries with their signatures
 
+#### Scenario: Multi-series charts accept Series element wrappers
+- **WHEN** a LineChart, BarChart, AreaChart, HorizontalBarChart, or RadarChart receives `series` entries parsed from virtual `Series(...)` DSL nodes
+- **THEN** the chart runtime MUST unwrap those entries into `{ category, values }` semantics before building the final chart option
+- **AND** the resulting ECharts option MUST contain the expected series names and data arrays instead of undefined placeholders
+
 ### Requirement: Additional chart types SHALL be registered and exported
 The chart capability SHALL register and export HorizontalBarChart, AreaChart, RadarChart, HeatmapChart, TreeMapChart, and ScatterChart alongside BarChart, LineChart, PieChart, and GaugeChart.
 

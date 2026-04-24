@@ -1,6 +1,7 @@
 "use client";
 import { BaseChart } from "../../../../components/chart/BaseChart";
 import type * as echarts from "echarts";
+import { normalizeSeriesItems } from "../../view-utils";
 
 type SeriesItem = { category: string; values: number[] };
 
@@ -11,7 +12,7 @@ type RadarChartViewProps = {
 
 export function RadarChartView({ labels, series }: RadarChartViewProps) {
   const safeLabels = labels ?? [];
-  const safeSeries = series ?? [];
+  const safeSeries = normalizeSeriesItems(series as Array<SeriesItem | { type: "element"; props: SeriesItem }>);
   const maxValues = safeLabels.map((_, i) =>
     Math.max(...safeSeries.map(s => s.values[i] ?? 0))
   );

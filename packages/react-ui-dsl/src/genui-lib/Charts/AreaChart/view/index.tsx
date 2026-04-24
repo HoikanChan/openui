@@ -1,6 +1,7 @@
 "use client";
 import { BaseChart } from "../../../../components/chart/BaseChart";
 import type * as echarts from "echarts";
+import { normalizeSeriesItems } from "../../view-utils";
 
 type SeriesItem = { category: string; values: number[] };
 
@@ -13,10 +14,11 @@ type AreaChartViewProps = {
 };
 
 export function AreaChartView({ labels, series, variant, xLabel, yLabel }: AreaChartViewProps) {
+  const safeSeries = normalizeSeriesItems(series as Array<SeriesItem | { type: "element"; props: SeriesItem }>);
   const option: echarts.EChartsOption = {
     xAxis: { type: "category", data: labels, ...(xLabel ? { name: xLabel } : {}) },
     yAxis: { type: "value", ...(yLabel ? { name: yLabel } : {}) },
-    series: (series ?? []).map(s => ({
+    series: safeSeries.map(s => ({
       type: "line",
       name: s.category,
       data: s.values,

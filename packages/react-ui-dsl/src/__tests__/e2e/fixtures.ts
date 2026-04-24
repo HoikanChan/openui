@@ -5,6 +5,21 @@ type FixtureVerifyContext = {
   echartsInit: MockedFunction<typeof echarts.init>;
 };
 
+function getFirstChartOption(
+  echartsInit: MockedFunction<typeof echarts.init>,
+  fixtureId: string,
+): {
+  xAxis?: { data?: unknown[] };
+  series?: Array<{ type?: string; name?: string; data?: unknown[] }>;
+} {
+  const chartInstance = echartsInit.mock.results[0]?.value as { setOption?: MockedFunction<any> } | undefined;
+  expect(chartInstance?.setOption, `${fixtureId}: chart.setOption should be called`).toHaveBeenCalled();
+  return (chartInstance?.setOption?.mock.calls[0]?.[0] ?? {}) as {
+    xAxis?: { data?: unknown[] };
+    series?: Array<{ type?: string; name?: string; data?: unknown[] }>;
+  };
+}
+
 export interface Fixture {
   id: string;
   prompt: string;
@@ -130,6 +145,112 @@ export const fixtures: Record<string, Fixture[]> = {
         contains: [],
         verify: (_container, { echartsInit }) => {
           expect(echartsInit, "line-monthly-revenue: echarts.init was not called").toHaveBeenCalled();
+          const option = getFirstChartOption(echartsInit, "line-monthly-revenue");
+          expect(option.xAxis?.data).toEqual(["Jan", "Feb", "Mar"]);
+          expect(option.series).toHaveLength(1);
+          expect(option.series?.[0]).toMatchObject({
+            type: "line",
+            name: "Revenue",
+            data: [420000, 530000, 610000],
+          });
+        },
+      },
+    },
+    {
+      id: "line-bandwidth-utilization-raw-rows",
+      prompt: "Show bandwidth utilization time trend for each device interface",
+      dataModel: {
+        rows: [
+          {
+            deviceName: "NE-01-Core-Switch",
+            showName: "GigabitEthernet0/0/1",
+            time: 1717200000000,
+            PeakBandwidthUtilization: 45.7,
+            Traffic: 1234567.89,
+            portResId: "550e8400-e29b-41d4-a716-446655440001",
+          },
+          {
+            deviceName: "NE-01-Core-Switch",
+            showName: "GigabitEthernet0/0/1",
+            time: 1717203600000,
+            PeakBandwidthUtilization: 52.3,
+            Traffic: 1345678.9,
+            portResId: "550e8400-e29b-41d4-a716-446655440001",
+          },
+          {
+            deviceName: "NE-02-Access-Router",
+            showName: "Ethernet1/1",
+            time: 1717200000000,
+            PeakBandwidthUtilization: 18.2,
+            Traffic: 456789.12,
+            portResId: "550e8400-e29b-41d4-a716-446655440002",
+          },
+          {
+            deviceName: "NE-02-Access-Router",
+            showName: "Ethernet1/1",
+            time: 1717203600000,
+            PeakBandwidthUtilization: 22.5,
+            Traffic: 512345.67,
+            portResId: "550e8400-e29b-41d4-a716-446655440002",
+          },
+        ],
+        times: {
+          period: 60,
+          startTime: 1716595200000,
+          endTime: 1717200000000,
+          valid_period: 60,
+          valid_startTime: 1716595200000,
+          valid_endTime: 1717200000000,
+        },
+        statistics: [
+          {
+            portResId: "550e8400-e29b-41d4-a716-446655440001",
+            deviceName: "NE-01-Core-Switch",
+            showName: "GigabitEthernet0/0/1",
+            indicatorName: "Traffic",
+            max: 1345678.9,
+            min: 1234567.89,
+            avg: 1290123.395,
+            last: 1345678.9,
+          },
+          {
+            portResId: "550e8400-e29b-41d4-a716-446655440002",
+            deviceName: "NE-02-Access-Router",
+            showName: "Ethernet1/1",
+            indicatorName: "Traffic",
+            max: 512345.67,
+            min: 456789.12,
+            avg: 484567.395,
+            last: 512345.67,
+          },
+        ],
+      },
+      assert: {
+        contains: [
+          "NE-01-Core-Switch",
+          "NE-02-Access-Router",
+          "GigabitEthernet0/0/1",
+          "Ethernet1/1",
+        ],
+        verify: (_container, { echartsInit }) => {
+          expect(
+            echartsInit,
+            "line-bandwidth-utilization-raw-rows: echarts.init should be called for a valid line chart",
+          ).toHaveBeenCalled();
+          const option = getFirstChartOption(echartsInit, "line-bandwidth-utilization-raw-rows");
+
+          expect(option?.xAxis?.data).toEqual(["2024-06-01 00:00", "2024-06-01 01:00"]);
+          expect(option?.series).toHaveLength(2);
+          expect(option?.series?.[0]).toMatchObject({
+            type: "line",
+            name: "NE-01-Core-Switch GigabitEthernet0/0/1",
+            data: [45.7, 52.3],
+          });
+          expect(option?.series?.[1]).toMatchObject({
+            type: "line",
+            name: "NE-02-Access-Router Ethernet1/1",
+            data: [18.2, 22.5],
+          });
         },
       },
     },
@@ -153,6 +274,19 @@ export const fixtures: Record<string, Fixture[]> = {
             container.querySelector('div[style*="300px"]'),
             'bar-product-comparison: no container with height "300px" found',
           ).not.toBeNull();
+          const option = getFirstChartOption(echartsInit, "bar-product-comparison");
+          expect(option.xAxis?.data).toEqual(["Q1", "Q2"]);
+          expect(option.series).toHaveLength(2);
+          expect(option.series?.[0]).toMatchObject({
+            type: "bar",
+            name: "Product A",
+            data: [800000, 920000],
+          });
+          expect(option.series?.[1]).toMatchObject({
+            type: "bar",
+            name: "Product B",
+            data: [350000, 410000],
+          });
         },
       },
     },

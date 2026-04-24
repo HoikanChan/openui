@@ -11,6 +11,16 @@ type ElementLike = {
 type ChartDataset = { source: number[][] } | undefined;
 type ChartOptions = (Omit<echarts.EChartsOption, "title"> & { title?: string }) | undefined;
 
+function unwrapElement<T extends Record<string, unknown>>(value: T | ElementLike): T {
+  return (typeof value === "object" &&
+  value !== null &&
+  "type" in value &&
+  value.type === "element" &&
+  "props" in value
+    ? value.props
+    : value) as T;
+}
+
 export function buildChartOption(
   options?: ChartOptions,
   data?: ChartDataset,
@@ -26,28 +36,26 @@ export function buildChartOption(
 
 export function buildDataset(
   labels: string[],
-  series: z.infer<typeof SeriesSchema>[],
+  series: (z.infer<typeof SeriesSchema> | ElementLike)[],
 ): { source: (string | number)[][] } {
   const header: (string | number)[] = ['category', ...labels];
-  const rows = series.map(s => [s.category, ...s.values] as (string | number)[]);
+  const rows = normalizeSeriesItems(series).map(s => [s.category, ...s.values] as (string | number)[]);
   return { source: [header, ...rows] };
+}
+
+export function normalizeSeriesItems(
+  series: (z.infer<typeof SeriesSchema> | ElementLike)[],
+): z.infer<typeof SeriesSchema>[] {
+  return (series ?? []).map((value) => unwrapElement<z.infer<typeof SeriesSchema>>(value));
 }
 
 export function buildScatterSeries(
   datasets: (z.infer<typeof ScatterSeriesSchema> | ElementLike)[],
 ): echarts.SeriesOption[] {
-  const unwrap = <T extends Record<string, unknown>>(value: T | ElementLike): T =>
-    (typeof value === "object" &&
-    value !== null &&
-    "type" in value &&
-    value.type === "element" &&
-    "props" in value
-      ? value.props
-      : value) as T;
-
   return datasets.map((rawDataset) => {
-    const ds = unwrap<z.infer<typeof ScatterSeriesSchema>>(rawDataset);
-    const points = (ds.points ?? []).map((rawPoint) => unwrap(rawPoint as z.infer<typeof ScatterSeriesSchema>["points"][number] | ElementLike));
+    const ds = unwrapElement<z.infer<typeof ScatterSeriesSchema>>(rawDataset);
+    const points = (ds.points ?? []).map((rawPoint) =>
+      unwrapElement(rawPoint as z.infer<typeof ScatterSeriesSchema>["points"][number] | ElementLike));
 
     return {
       type: "scatter" as const,

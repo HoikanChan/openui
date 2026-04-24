@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildScatterSeries } from "./view-utils";
+import { buildScatterSeries, normalizeSeriesItems } from "./view-utils";
 
 describe("chart view utils", () => {
   it("maps scatter z values to bubble sizes", () => {
@@ -54,5 +54,26 @@ describe("chart view utils", () => {
         [12, 0.3],
       ],
     });
+  });
+
+  it("unwraps Series element nodes passed through DSL props", () => {
+    expect(
+      normalizeSeriesItems([
+        {
+          type: "element",
+          typeName: "Series",
+          partial: false,
+          props: {
+            category: "Revenue",
+            values: [420000, 530000, 610000],
+          },
+        } as any,
+      ]),
+    ).toEqual([
+      {
+        category: "Revenue",
+        values: [420000, 530000, 610000],
+      },
+    ]);
   });
 });

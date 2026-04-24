@@ -39,6 +39,9 @@ const DEFAULT_PROMPT_ADDITIONAL_RULES = [
   'If the render body needs other fields from the row, use `@Render("v", "row", expr)`. Do not reference `row` unless you declared it as the second binder.',
   "Use `format` only for ISO date/time string fields, never for numeric fields like salary or revenue.",
   "Use Descriptions for single-record detail views instead of Table.",
+  "Only use chart components when the data model already exposes chart-ready fields that match the component signature.",
+  "Do not invent labels, series, categories, or missing time points from raw rows, statistics, or time ranges just to make a chart render.",
+  "If the data model only contains raw row records, prefer Table or Descriptions instead of fabricating chart props.",
 ];
 
 const DEFAULT_PROMPT_EXAMPLES = [
@@ -51,6 +54,13 @@ statusCol = Col("Status", "active", {cell: @Render("v", @Switch(v, {"1": Text("A
   `root = VLayout([detail])
 detail = Descriptions([DescField("Name", data.user.name), DescField("Email", data.user.email), account], "Profile")
 account = DescGroup("Account", [DescField("Status", Tag(data.user.status, "success")), DescField("Joined", data.user.joinedAt, 2, "dateTime")], 2)`,
+  `root = VLayout([rawRowsTitle, rawRowsTable])
+rawRowsTitle = Text("Bandwidth Utilization Records", "large")
+rawRowsTable = Table([deviceCol, interfaceCol, timeCol, utilizationCol], data.rows)
+deviceCol = Col("Device", "deviceName")
+interfaceCol = Col("Interface", "showName")
+timeCol = Col("Time", "time")
+utilizationCol = Col("Peak Utilization", "PeakBandwidthUtilization")`,
 ];
 
 function mergePromptOptions(options?: PromptOptions): PromptOptions {
