@@ -1,0 +1,13 @@
+{
+  "result": "Connected",
+  "minDelay": 1,
+  "maxDelay": 1,
+  "initFailNum": 0,
+  "avgDelay": 1,
+  "txFailNum": 0,
+  "lossRate": 0,
+  "txNum": 3,
+  "timeoutNum": 0,
+  "rtdOverThresholds": 0,
+  "rxNum": 3
+}

@@ -1,0 +1,53 @@
+{
+  "ipv4RouterTables": [
+    {
+      "protocolType": "IP",
+      "distance": 0,
+      "targetNeId": "22-5635",
+      "prefix": "128.22.22.3",
+      "neResId": "76cc6c2c-a801-40d5-8b52-3e8a86158a83"
+    },
+    {
+      "protocolType": "IP",
+      "distance": 4,
+      "targetNeId": "79-222",
+      "prefix": "10.137.110.222",
+      "neResId": "76cc6c2c-a801-40d5-8b52-3e8a86158a83"
+    },
+    {
+      "protocolType": "IP",
+      "distance": 3,
+      "targetNeId": "79-224",
+      "prefix": "10.137.110.224",
+      "neResId": "76cc6c2c-a801-40d5-8b52-3e8a86158a83"
+    },
+    {
+      "protocolType": "IP",
+      "distance": 1,
+      "targetNeId": "79-225",
+      "prefix": "10.137.110.225",
+      "neResId": "76cc6c2c-a801-40d5-8b52-3e8a86158a83"
+    },
+    {
+      "protocolType": "IP",
+      "distance": 0,
+      "targetNeId": "79-226",
+      "prefix": "10.137.110.226",
+      "neResId": "76cc6c2c-a801-40d5-8b52-3e8a86158a83"
+    },
+    {
+      "protocolType": "IP",
+      "distance": 3,
+      "targetNeId": "80-221",
+      "prefix": "10.137.110.221",
+      "neResId": "76cc6c2c-a801-40d5-8b52-3e8a86158a83"
+    },
+    {
+      "protocolType": "IP",
+      "distance": 2,
+      "targetNeId": "80-223",
+      "prefix": "10.137.110.223",
+      "neResId": "76cc6c2c-a801-40d5-8b52-3e8a86158a83"
+    }
+  ]
+}

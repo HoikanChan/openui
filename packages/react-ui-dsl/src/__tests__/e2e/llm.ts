@@ -16,8 +16,9 @@ export async function loadOrGenerate(
   id: string,
   prompt: string,
   dataModel: Record<string, unknown>,
+  snapshotDir: string = SNAPSHOT_DIR,
 ): Promise<string> {
-  const snapshotPath = resolve(SNAPSHOT_DIR, `${id}.dsl`);
+  const snapshotPath = resolve(snapshotDir, `${id}.dsl`);
 
   if (!isSnapshotRegenEnabled() && existsSync(snapshotPath)) {
     return readFileSync(snapshotPath, "utf-8") as string;
@@ -32,7 +33,7 @@ export async function loadOrGenerate(
   }
 
   const dsl = await callLLM(prompt, dataModel, apiKey);
-  mkdirSync(SNAPSHOT_DIR, { recursive: true });
+  mkdirSync(snapshotDir, { recursive: true });
   writeFileSync(snapshotPath, dsl, "utf-8");
   return dsl;
 }
