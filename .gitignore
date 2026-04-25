@@ -60,3 +60,4 @@ lint-fix.sh
 
 draft/
 reports/
+packages/react-ui-dsl/src/__tests__/e2e/fuzz-snapshots/*.dsl
