@@ -49,10 +49,12 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
   });
 
   it("exports json schema without legacy properties wrappers or removed host-control fields", () => {
+    const spec = dslLibrary.toSpec();
     const schema = dslLibrary.toJSONSchema();
     const defs = ("$defs" in schema ? schema.$defs : {}) as Record<string, { properties?: Record<string, unknown> }>;
 
     const button = defs.Button;
+    const separator = defs.Separator;
     const text = defs.Text;
     const card = defs.Card;
     const cardHeader = defs.CardHeader;
@@ -71,6 +73,15 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(button.properties).not.toHaveProperty("properties");
     expect(button.properties).not.toHaveProperty("style");
     expect(button.properties).not.toHaveProperty("actions");
+
+    expect(spec.components.Separator.signature).toContain("Separator(");
+    expect(spec.components.Separator.signature).toContain("orientation?:");
+    expect(spec.components.Separator.signature).toContain("decorative?:");
+
+    expect(separator.properties).toMatchObject({
+      orientation: expect.anything(),
+      decorative: expect.anything(),
+    });
 
     expect(text.properties).toMatchObject({
       size: expect.anything(),

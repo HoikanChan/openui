@@ -26,6 +26,7 @@ import { HLayout } from "./HLayout";
 import { Image } from "./Image";
 import { Link } from "./Link";
 import { List } from "./List";
+import { Separator } from "./Separator";
 import { Select } from "./Select";
 import { Tag } from "./Tag";
 import { Col, Table } from "./Table";
@@ -98,6 +99,7 @@ const baseDslLibrary = createLibrary({
     Text,
     Button,
     Select,
+    Separator,
     Tag,
     Image,
     Link,
