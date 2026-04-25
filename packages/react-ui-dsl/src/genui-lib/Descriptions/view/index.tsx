@@ -3,8 +3,6 @@
 import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { DescFieldProps, DescGroupProps } from "../schema";
-
-export type DescriptionFormat = DescFieldProps["format"];
 export type DescriptionsVariant = "bordered" | "plain";
 
 const DEFAULT_COLUMNS = 3;
@@ -172,26 +170,17 @@ function normalizeDescriptionContent(value: ReactNode): ReactNode {
   return React.cloneElement(element, { style }, normalizedChildren);
 }
 
-export function formatDescriptionValue(value: unknown, format?: DescriptionFormat): ReactNode {
+export function formatDescriptionValue(value: unknown): ReactNode {
   if (isRenderableNode(value)) return value as ReactNode;
   if (value == null || value === "") return "-";
-
-  if (format === "date" || format === "dateTime" || format === "time") {
-    const date = new Date(value as string);
-    if (!Number.isNaN(date.getTime())) {
-      if (format === "time") return date.toLocaleTimeString();
-      if (format === "date") return date.toLocaleDateString();
-      return date.toLocaleString();
-    }
-  }
 
   return String(value);
 }
 
-export function resolveDescriptionAutoSpanValue(value: unknown, format?: DescriptionFormat): unknown {
+export function resolveDescriptionAutoSpanValue(value: unknown): unknown {
   if (isRenderableNode(value)) return value;
   if (typeof value === "object" && value !== null) return value;
-  return formatDescriptionValue(value, format);
+  return formatDescriptionValue(value);
 }
 
 function estimateTextWidth(value: string): number {
@@ -443,7 +432,7 @@ export function DescriptionsRuntimeView({
           fields: item.fields.map((field) => {
             const resolvedSpan =
               field.span ??
-              resolveAutoSpan(resolveDescriptionAutoSpanValue(field.value, field.format), columnWidth, groupColumns, columnGap);
+              resolveAutoSpan(resolveDescriptionAutoSpanValue(field.value), columnWidth, groupColumns, columnGap);
             return renderValue(field, resolvedSpan);
           }),
         };
@@ -451,7 +440,7 @@ export function DescriptionsRuntimeView({
 
       const resolvedSpan =
         item.span ??
-        resolveAutoSpan(resolveDescriptionAutoSpanValue(item.value, item.format), columnWidth, columns, columnGap);
+        resolveAutoSpan(resolveDescriptionAutoSpanValue(item.value), columnWidth, columns, columnGap);
       return renderValue(item, resolvedSpan);
     });
   }, [columnGap, columnWidth, columns, items, renderValue]);

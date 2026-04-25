@@ -1,9 +1,5 @@
-root = VLayout([tableCard])
-tableCard = Card([tableHeader, employeeTable])
-tableHeader = CardHeader("Employee Directory", "Sortable salary and formatted join dates")
-employeeTable = Table(columns, rows)
-columns = [nameCol, salaryCol, dateCol]
+root = VLayout([employeeTable])
+employeeTable = Table([nameCol, salaryCol, joinedCol], data.employees)
 nameCol = Col("Name", "name")
 salaryCol = Col("Salary", "salary", {sortable: true})
-dateCol = Col("Join Date", "joinedAt", {format: "date"})
-rows = data.employees
+joinedCol = Col("Joined", "joinedAt", {cell: @Render("v", Text(@FormatDate(v, "date"))), sortable: true})

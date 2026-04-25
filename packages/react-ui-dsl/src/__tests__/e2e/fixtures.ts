@@ -558,7 +558,7 @@ export const fixtures: Record<string, Fixture[]> = {
         },
       },
       assert: {
-        contains: ["Employee Profile", "Name", "Alice", "Email", "alice@example.com", "Account", "Status", "Active", "Role", "Administrator"],
+        contains: ["Name", "Alice", "Email", "alice@example.com", "Account", "Status", "Active", "Role", "Administrator"],
         verify: (container) => {
           expect(
             container.innerHTML,

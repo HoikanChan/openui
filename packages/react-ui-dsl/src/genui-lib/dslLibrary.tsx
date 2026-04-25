@@ -37,10 +37,16 @@ import { VLayout } from "./VLayout";
 const DEFAULT_PROMPT_ADDITIONAL_RULES = [
   'For Table column options.cell, `@Render("v", expr)` receives the cell value as `v`.',
   'If the render body needs other fields from the row, use `@Render("v", "row", expr)`. Do not reference `row` unless you declared it as the second binder.',
-  "Use `format` only for ISO date/time string fields, never for numeric fields like salary or revenue.",
+  "If a table cell label must combine the current value with another field from the same row, keep that logic inside a single `@Render(\"v\", \"row\", ...)` expression.",
+  "Use `@FormatDate`, `@FormatBytes`, `@FormatNumber`, `@FormatPercent`, and `@FormatDuration` for display formatting.",
+  "Never use the removed `format` prop on `Col` or `DescField`.",
   "Use Descriptions for single-record detail views instead of Table.",
   "Accessing a field on an array extracts that field from every element: `filteredRows.fieldName` returns an array of that field's values. Use this to build Series data from filtered row sets.",
   "Never hardcode data values from the data model. Always reference fields via data paths or derived variables.",
+  "If timeline rows already expose `title`, `description`, and `status`, pass them directly to `TimeLine(data.timeline.items, data.timeline.title)`.",
+  "Only use chart components when the data model already exposes chart-ready fields that match the component signature.",
+  "Do not invent labels, series, categories, or missing time points from raw rows, statistics, or time ranges just to make a chart render.",
+  "If the data model only contains raw row records, prefer Table or Descriptions instead of fabricating chart props.",
 ];
 
 const DEFAULT_PROMPT_EXAMPLES = [
@@ -48,11 +54,17 @@ const DEFAULT_PROMPT_EXAMPLES = [
 employeeTable = Table([nameCol, salaryCol, joinedCol, statusCol], data.employees)
 nameCol = Col("Name", "name", {cell: @Render("v", "row", Link("http://localhost:5173/" + row.name, v))})
 salaryCol = Col("Salary", "salary")
-joinedCol = Col("Joined", "joinedAt", {format: "date"})
+joinedCol = Col("Joined", "joinedAt", {cell: @Render("v", Text(@FormatDate(v, "date")))})
 statusCol = Col("Status", "active", {cell: @Render("v", @Switch(v, {"1": Text("Active"), "0": Text("Inactive")}, Text("Unknown")))})`,
+  `root = VLayout([ordersTable])
+ordersTable = Table([idCol, statusCol], data.orders)
+idCol = Col("Order ID", "id")
+statusCol = Col("Status", "status", {cell: @Render("v", "row", Text(row.id + ": " + @Switch(v, {"paid": "Paid", "pending": "Pending"}, "Unknown")))})`,
   `root = VLayout([detail])
 detail = Descriptions([DescField("Name", data.user.name), DescField("Email", data.user.email), account], "Profile")
-account = DescGroup("Account", [DescField("Status", Tag(data.user.status, "success")), DescField("Joined", data.user.joinedAt, 2, "dateTime")], 2)`,
+account = DescGroup("Account", [DescField("Status", Tag(data.user.status, "success")), DescField("Joined", @FormatDate(data.user.joinedAt, "dateTime"), 2)], 2)`,
+  `root = VLayout([timelineComponent])
+timelineComponent = TimeLine(data.timeline.items, data.timeline.title)`,
   `root = VLayout([header, trendChart])
 header = Text("Bandwidth Utilization Trend", "large")
 ne01Rows = Filter(data.rows, "portResId", "==", data.statistics[0].portResId)
@@ -61,6 +73,13 @@ ne01Series = Series(data.statistics[0].deviceName + " " + data.statistics[0].sho
 ne02Series = Series(data.statistics[1].deviceName + " " + data.statistics[1].showName, ne02Rows.PeakBandwidthUtilization)
 timeLabels = FormatDate(ne01Rows.time, "YYYY-MM-DD HH:mm")
 trendChart = LineChart(timeLabels, [ne01Series, ne02Series], "smooth", "Time", "Peak Bandwidth Utilization (%)")`,
+  `root = VLayout([rawRowsTitle, rawRowsTable])
+rawRowsTitle = Text("Bandwidth Utilization Records", "large")
+rawRowsTable = Table([deviceCol, interfaceCol, timeCol, utilizationCol], data.rows)
+deviceCol = Col("Device", "deviceName")
+interfaceCol = Col("Interface", "showName")
+timeCol = Col("Time", "time")
+utilizationCol = Col("Peak Utilization", "PeakBandwidthUtilization")`,
 ];
 
 function mergePromptOptions(options?: PromptOptions): PromptOptions {

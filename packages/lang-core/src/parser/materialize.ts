@@ -36,6 +36,74 @@ export interface MaterializeCtx {
   unreached?: Set<string>;
 }
 
+function resolveObjectSchema(schema: unknown): Record<string, unknown> | null {
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return null;
+
+  const direct = schema as {
+    type?: unknown;
+    properties?: unknown;
+    anyOf?: unknown[];
+    oneOf?: unknown[];
+    additionalProperties?: unknown;
+  };
+  if (
+    direct.type === "object" &&
+    direct.properties &&
+    typeof direct.properties === "object" &&
+    !Array.isArray(direct.properties)
+  ) {
+    return direct as Record<string, unknown>;
+  }
+
+  const variants = Array.isArray(direct.anyOf) ? direct.anyOf : Array.isArray(direct.oneOf) ? direct.oneOf : [];
+  for (const variant of variants) {
+    const resolved = resolveObjectSchema(variant);
+    if (resolved) return resolved;
+  }
+
+  return null;
+}
+
+function validateNestedObjectProps(
+  componentName: string,
+  paramName: string,
+  value: unknown,
+  schema: unknown,
+  ctx: MaterializeCtx,
+  pathPrefix = `/${paramName}`,
+): void {
+  const objectSchema = resolveObjectSchema(schema);
+  if (!objectSchema || value == null || typeof value !== "object" || Array.isArray(value)) return;
+
+  const properties =
+    objectSchema.properties && typeof objectSchema.properties === "object"
+      ? (objectSchema.properties as Record<string, unknown>)
+      : {};
+  const allowsAdditional = objectSchema.additionalProperties !== false;
+  const record = value as Record<string, unknown>;
+
+  for (const [key, nestedValue] of Object.entries(record)) {
+    const nestedSchema = properties[key];
+    if (!nestedSchema && !allowsAdditional) {
+      const isRemovedFormatProp = componentName === "Col" && pathPrefix === "/options" && key === "format";
+      ctx.errors.push({
+        code: "invalid-prop",
+        component: componentName,
+        path: `${pathPrefix}/${key}`,
+        message: isRemovedFormatProp
+          ? 'The `format` prop on Col options was removed. Use @FormatDate/@FormatBytes/@FormatNumber/@FormatPercent/@FormatDuration in an expression or @Render(...) instead.'
+          : `Unknown property "${key}" on ${componentName}${pathPrefix.replaceAll("/", ".")}`,
+        statementId: ctx.currentStatementId,
+      });
+      continue;
+    }
+
+    if (nestedSchema) {
+      validateNestedObjectProps(componentName, paramName, nestedValue, nestedSchema, ctx, `${pathPrefix}/${key}`);
+    }
+  }
+}
+
 /**
  * Resolve a Ref node: inline from symbol table, detect cycles, emit RuntimeRef
  * for Query/Mutation declarations. Shared by materializeValue and materializeExpr.
@@ -283,6 +351,13 @@ export function materializeValue(node: ASTNode, ctx: MaterializeCtx): unknown {
         // Catalog component: map positional args → named props
         for (let i = 0; i < def.params.length && i < args.length; i++) {
           props[def.params[i].name] = materializeValue(args[i], ctx);
+          validateNestedObjectProps(
+            name,
+            def.params[i].name,
+            props[def.params[i].name],
+            def.params[i].schema,
+            ctx,
+          );
         }
 
         // Report excess positional args (extra args are silently dropped)

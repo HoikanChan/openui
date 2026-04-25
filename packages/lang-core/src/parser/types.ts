@@ -21,6 +21,7 @@ export interface ParamDef {
   required: boolean;
   /** Default value from JSON Schema — used when the required field is missing/null. */
   defaultValue?: unknown;
+  schema?: unknown;
 }
 
 /** Internal parameter map for positional-arg to named-prop mapping. */
@@ -73,7 +74,8 @@ export type ValidationErrorCode =
   | "null-required"
   | "unknown-component"
   | "inline-reserved"
-  | "excess-args";
+  | "excess-args"
+  | "invalid-prop";
 
 /**
  * A prop validation error. Components with missing required props are

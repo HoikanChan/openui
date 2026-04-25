@@ -6,6 +6,7 @@
 import type { ASTNode } from "../parser/ast";
 import { isASTNode } from "../parser/ast";
 import { ACTION_NAMES, ACTION_STEPS, BUILTINS, LAZY_BUILTINS, toNumber } from "../parser/builtins";
+import type { BuiltinRuntimeContext } from "../parser/builtins";
 import type { ActionPlan, ActionStep, ElementNode } from "../parser/types";
 import { isElementNode } from "../parser/types";
 import { isReactiveSchema } from "../reactive";
@@ -24,6 +25,8 @@ export interface EvaluationContext {
   resolveRef(name: string): unknown;
   /** Extra scope for $value injection during reactive prop evaluation */
   extraScope?: Record<string, unknown>;
+  /** Renderer-supplied runtime defaults for builtin formatting helpers. */
+  builtinContext?: BuiltinRuntimeContext;
 }
 
 export interface ReactiveAssign {
@@ -82,7 +85,7 @@ export function evaluate(
       const builtin = BUILTINS[node.name];
       if (builtin) {
         const args = node.args.map((a) => evaluate(a, context));
-        return builtin.fn(...args);
+        return builtin.fn(context.builtinContext ?? {}, ...args);
       }
       // Action calls → evaluate to ActionPlan/ActionStep
       if (ACTION_NAMES.has(node.name)) {

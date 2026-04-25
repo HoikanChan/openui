@@ -55,6 +55,9 @@ export interface OpenUIContextValue {
   /** AST evaluation context used by runtime expression evaluation. */
   evaluationContext: EvaluationContext;
 
+  /** Renderer-supplied default locale for formatting builtins. */
+  locale?: string;
+
   /** Report a structured error (used internally by error boundary). */
   reportError?: (error: OpenUIError) => void;
 }

@@ -27,11 +27,10 @@ describe("react-ui-dsl view layer helpers", () => {
     });
   });
 
-  it("formats date and time cells consistently", () => {
-    expect(formatCell("not-a-date", "date")).toBe("not-a-date");
-    expect(formatCell(null, "date")).toBe("");
-    expect(formatCell("2026-01-02T03:04:05.000Z", "date")).toBeTruthy();
-    expect(formatCell("2026-01-02T03:04:05.000Z", "dateTime")).toContain("2026");
+  it("renders plain table cell values consistently", () => {
+    expect(formatCell("not-a-date")).toBe("not-a-date");
+    expect(formatCell(null)).toBe("");
+    expect(formatCell("2026-01-02T03:04:05.000Z")).toBe("2026-01-02T03:04:05.000Z");
   });
 
   it("builds chart options from title and dataset inputs", () => {
@@ -102,7 +101,7 @@ describe("react-ui-dsl view layer helpers", () => {
 
   it("keeps component values untouched during formatting", () => {
     const tagValue = <TagView text="Active" variant="success" />;
-    expect(formatDescriptionValue(tagValue, "date")).toBe(tagValue);
+    expect(formatDescriptionValue(tagValue)).toBe(tagValue);
   });
 
   it("renders descriptions cards with title and metric-card styling hooks", () => {

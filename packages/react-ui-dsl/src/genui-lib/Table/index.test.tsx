@@ -25,7 +25,7 @@ describe("react-ui-dsl Table schema redesign", () => {
 
   it("renders a table from declarative Col components and row data", () => {
     const parser = createParser(dslLibrary.toJSONSchema());
-    const result = parser.parse(`root = Table([Col("Name", "name"), Col("Joined", "joinDate", {format: "date"})], rows)
+    const result = parser.parse(`root = Table([Col("Name", "name"), Col("Joined", "joinDate", {cell: @Render("v", Text(@FormatDate(v, "date")))})], rows)
 rows = [{name: "Alice", joinDate: "2026-01-02T03:04:05.000Z"}]`);
 
     expect(result.meta.errors).toHaveLength(0);
@@ -110,6 +110,15 @@ rows = [{name: "Alice", status: "Active"}]`);
     expect(columns[0].dataIndex).toBe("name");
     expect(columns[1].title).toBe("Status");
     expect(columns[1].dataIndex).toBe("status");
+  });
+
+  it("rejects the removed format column option with a migration-oriented error", () => {
+    const parser = createParser(dslLibrary.toJSONSchema());
+    const result = parser.parse(`root = Table([Col("Joined", "joinDate", {format: "date"})], rows)
+rows = [{joinDate: "2026-01-02T03:04:05.000Z"}]`);
+
+    expect(result.meta.errors.length).toBeGreaterThan(0);
+    expect(JSON.stringify(result.meta.errors)).toContain("format");
   });
 
   it("rejects the legacy JSON-style table signature", () => {

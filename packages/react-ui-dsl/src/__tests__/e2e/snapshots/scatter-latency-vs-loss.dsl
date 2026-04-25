@@ -1,3 +1,2 @@
-root = VLayout([scatterChartContainer])
-scatterChartContainer = Card([scatterChart])
-scatterChart = ScatterChart([data.scatterSeries], data.xLabel, data.yLabel)
+root = VLayout([chart])
+chart = ScatterChart([data.scatterSeries], data.xLabel, data.yLabel)

@@ -44,7 +44,7 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(spec.components.DescField.signature).toContain("DescField(label: string");
     expect(spec.components.DescField.signature).toContain("value:");
     expect(spec.components.DescField.signature).toContain("span?:");
-    expect(spec.components.DescField.signature).toContain("format?:");
+    expect(spec.components.DescField.signature).not.toContain("format?:");
   });
 
   it("exports json schema without legacy properties wrappers or removed host-control fields", () => {
@@ -120,8 +120,8 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
       label: expect.anything(),
       value: expect.anything(),
       span: expect.anything(),
-      format: expect.anything(),
     });
+    expect(descField.properties).not.toHaveProperty("format");
   });
 
   it("includes Render in static-library prompts while omitting data-only builtins", () => {
@@ -131,7 +131,7 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).not.toContain("@Count(array)");
   });
 
-  it("includes table-specific render and formatting guidance in the default prompt", () => {
+  it("includes table-specific render and @Format guidance in the default prompt", () => {
     const prompt = dslLibrary.prompt({
       dataModel: {
         raw: {
@@ -142,14 +142,20 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
 
     expect(prompt).toContain('For Table column options.cell, `@Render("v", expr)` receives the cell value');
     expect(prompt).toContain('If the render body needs other fields from the row, use `@Render("v", "row", expr)`');
-    expect(prompt).toContain(
-      "Use `format` only for ISO date/time string fields, never for numeric fields like salary or revenue",
-    );
+    expect(prompt).toContain("If a table cell label must combine the current value with another field from the same row");
+    expect(prompt).toContain("Use `@FormatDate`, `@FormatBytes`, `@FormatNumber`, `@FormatPercent`, and `@FormatDuration`");
+    expect(prompt).toContain("Never use the removed `format` prop on `Col` or `DescField`");
     expect(prompt).toContain(
       'nameCol = Col("Name", "name", {cell: @Render("v", "row", Link("http://localhost:5173/" + row.name, v))})',
     );
     expect(prompt).toContain(
+      'joinedCol = Col("Joined", "joinedAt", {cell: @Render("v", Text(@FormatDate(v, "date")))})',
+    );
+    expect(prompt).toContain(
       'statusCol = Col("Status", "active", {cell: @Render("v", @Switch(v, {"1": Text("Active"), "0": Text("Inactive")}, Text("Unknown")))})',
+    );
+    expect(prompt).toContain(
+      'statusCol = Col("Status", "status", {cell: @Render("v", "row", Text(row.id + ": " + @Switch(v, {"paid": "Paid", "pending": "Pending"}, "Unknown")))})',
     );
   });
 
@@ -165,6 +171,31 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain("Use Descriptions for single-record detail views instead of Table");
     expect(prompt).toContain('detail = Descriptions([DescField("Name", data.user.name)');
     expect(prompt).toContain('DescField("Status", Tag(data.user.status, "success"))');
+    expect(prompt).toContain('DescField("Joined", @FormatDate(data.user.joinedAt, "dateTime"), 2)');
+  });
+
+  it("includes timeline guidance for direct host-data bindings", () => {
+    const prompt = dslLibrary.prompt({
+      dataModel: {
+        raw: {
+          timeline: {
+            title: "Deployment History",
+            items: [
+              {
+                title: "v2.1.0 deployed to production",
+                description: "Production deployment completed successfully.",
+                status: "success",
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    expect(prompt).toContain(
+      "If timeline rows already expose `title`, `description`, and `status`, pass them directly to `TimeLine(data.timeline.items, data.timeline.title)`",
+    );
+    expect(prompt).toContain("timelineComponent = TimeLine(data.timeline.items, data.timeline.title)");
   });
 
   it("includes chart guidance that forbids inventing derived series from raw rows", () => {
