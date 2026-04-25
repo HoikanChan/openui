@@ -421,10 +421,15 @@ export const BUILTINS: Record<string, BuiltinDef> = {
   },
   FormatDate: {
     name: "FormatDate",
-    signature: 'FormatDate(value, style?, locale?) -> string',
+    signature: 'FormatDate(value, style?, locale?) -> string | string[]',
     description:
-      'Format a date-like value for display. Styles: "date", "dateTime", "time", or "relative". Returns "" for nullish input and String(value) for invalid dates.',
-    fn: (runtime, value, style, locale) => formatDateBuiltin(value, style, locale, runtime),
+      'Format a date-like value for display. Styles: "date", "dateTime", "time", or "relative". Accepts an array and maps over each element. Returns "" for nullish input and String(value) for invalid dates.',
+    fn: (runtime, value, style, locale) => {
+      if (Array.isArray(value)) {
+        return value.map((item) => formatDateBuiltin(item, style, locale, runtime));
+      }
+      return formatDateBuiltin(value, style, locale, runtime);
+    },
   },
   FormatBytes: {
     name: "FormatBytes",
