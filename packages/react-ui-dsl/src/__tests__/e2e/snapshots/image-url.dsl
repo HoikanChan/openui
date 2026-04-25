@@ -1,2 +1,2 @@
-root = VLayout([logo])
-logo = Image(data.branding.logoUrl, "url")
+root = VLayout([logoImage])
+logoImage = Image(data.branding.logoUrl, "url")

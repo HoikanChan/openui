@@ -1,10 +1,12 @@
 root = VLayout([tabs])
 tabs = Tabs([overviewTab, settingsTab])
 overviewTab = {value: "overview", label: "Overview", content: [overviewContent]}
-overviewContent = VLayout([overviewTitle, overviewDesc])
-overviewTitle = Text("Welcome to the Dashboard", "large")
-overviewDesc = Text("This is the overview tab where you can see a summary of your data.")
+overviewContent = VLayout([welcomeText, infoCard], "m")
+welcomeText = Text("Welcome to the application dashboard", "large")
+infoCard = Card([cardHeader, cardBody], "card", "full")
+cardHeader = CardHeader("System Status", "All systems are operational")
+cardBody = Descriptions([DescField("Uptime", "72h 14m"), DescField("Active Users", 1284), DescField("Server Load", "34%"), DescField("Last Backup", "2025-03-21 02:00 UTC")], "System Metrics", null, 2, true)
 settingsTab = {value: "settings", label: "Settings", content: [settingsContent]}
-settingsContent = VLayout([settingsTitle, settingsDesc])
+settingsContent = VLayout([settingsTitle, settingsForm], "m")
 settingsTitle = Text("Application Settings", "large")
-settingsDesc = Text("Configure your preferences and options here.")
+settingsForm = Form([{label: "Site Name", name: "siteName", rules: [{required: true}], component: "text"}, {label: "Language", name: "language", component: "select"}, {label: "Notifications", name: "notifications", component: "switch"}, {label: "Auto Save", name: "autoSave", component: "switch"}], "vertical", "left", {siteName: "My Dashboard", language: "en", notifications: true, autoSave: false})

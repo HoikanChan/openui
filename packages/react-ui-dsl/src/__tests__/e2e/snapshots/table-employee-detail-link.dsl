@@ -1,6 +1,6 @@
 root = VLayout([employeeTable])
-employeeTable = Table([nameCol, salaryCol, joinedCol, statusCol], data.employees)
+employeeTable = Table([nameCol, salaryCol, joinedCol, activeCol], data.employees)
 nameCol = Col("Name", "name", {cell: @Render("v", "row", Link("http://localhost:5173/" + row.name, v))})
 salaryCol = Col("Salary", "salary")
 joinedCol = Col("Joined", "joinedAt", {cell: @Render("v", Text(@FormatDate(v, "date")))})
-statusCol = Col("Status", "active", {cell: @Render("v", @Switch(v, {"1": Text("Active"), "0": Text("Inactive")}, Text("Unknown")))})
+activeCol = Col("Active", "active", {cell: @Render("v", @Switch(v, {"1": Tag("Yes", "success"), "0": Tag("No", "danger")}, Tag("Unknown", "warning")))})

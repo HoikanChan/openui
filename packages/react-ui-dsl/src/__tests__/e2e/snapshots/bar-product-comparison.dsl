@@ -1,2 +1,3 @@
-root = VLayout([chart])
-chart = BarChart(data.labels, data.series, "grouped", "Quarter", "Revenue (USD)")
+root = VLayout([chartTitle, revenueChart])
+chartTitle = Text("Quarterly Revenue Comparison", "large")
+revenueChart = BarChart(data.labels, data.series, "grouped", "Quarter", "Revenue (USD)")

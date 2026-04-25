@@ -1,4 +1,4 @@
 root = VLayout([actionList])
-actionList = List([item1, item2], "Action Items", false)
-item1 = Text("Review Q1 financials")
-item2 = Text("Update product roadmap")
+actionList = List([reviewItem, roadmapItem], "Action Items", false)
+reviewItem = Text("Review Q1 financials")
+roadmapItem = Text("Update product roadmap")
