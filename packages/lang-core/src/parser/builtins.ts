@@ -168,8 +168,6 @@ function formatDateBuiltin(
 
 function formatBytesBuiltin(
   value: unknown,
-  systemArg: unknown,
-  decimalsArg: unknown,
   localeArg: unknown,
   runtime: BuiltinRuntimeContext,
 ): string {
@@ -178,17 +176,8 @@ function formatBytesBuiltin(
   const parsed = parseFiniteNumber(value);
   if (parsed == null) return String(value);
 
-  const system = systemArg === "iec" ? "iec" : systemArg === "si" || systemArg == null ? "si" : null;
-  if (!system) return String(value);
-
-  const decimals = decimalsArg == null ? null : parseFiniteNumber(decimalsArg);
-  if (decimalsArg != null && decimals == null) return String(value);
-
-  const base = system === "iec" ? 1024 : 1000;
-  const units =
-    system === "iec"
-      ? ["B", "KiB", "MiB", "GiB", "TiB", "PiB"]
-      : ["B", "KB", "MB", "GB", "TB", "PB"];
+  const base = 1000;
+  const units = ["B", "KB", "MB", "GB", "TB", "PB"];
 
   let unitIndex = 0;
   let nextValue = Math.abs(parsed);
@@ -201,7 +190,7 @@ function formatBytesBuiltin(
   const locale = resolveLocale(runtime, localeArg);
 
   try {
-    const digits = decimals == null ? (unitIndex === 0 ? 0 : 1) : Math.max(0, Math.floor(decimals));
+    const digits = unitIndex === 0 ? 0 : 1;
     const number = formatNumberValue(scaled, locale, {
       minimumFractionDigits: digits,
       maximumFractionDigits: digits,
@@ -432,22 +421,21 @@ export const BUILTINS: Record<string, BuiltinDef> = {
   },
   FormatDate: {
     name: "FormatDate",
-    signature: 'FormatDate(value, style?) -> string',
+    signature: 'FormatDate(value, style?, locale?) -> string',
     description:
       'Format a date-like value for display. Styles: "date", "dateTime", "time", or "relative". Returns "" for nullish input and String(value) for invalid dates.',
     fn: (runtime, value, style, locale) => formatDateBuiltin(value, style, locale, runtime),
   },
   FormatBytes: {
     name: "FormatBytes",
-    signature: 'FormatBytes(value, system?, decimals?) -> string',
+    signature: 'FormatBytes(value) -> string',
     description:
-      'Format a byte count into a compact string. Supports SI ("KB", "MB") and IEC ("KiB", "MiB") units, with optional decimal precision and locale override.',
-    fn: (runtime, value, system, decimals, locale) =>
-      formatBytesBuiltin(value, system, decimals, locale, runtime),
+      'Format a byte count into a compact SI string (KB, MB, GB). Returns "" for nullish input.',
+    fn: (runtime, value, locale) => formatBytesBuiltin(value, locale, runtime),
   },
   FormatNumber: {
     name: "FormatNumber",
-    signature: "FormatNumber(value, decimals?) -> string",
+    signature: "FormatNumber(value, decimals?, locale?) -> string",
     description:
       "Format a scalar number as a locale-aware display string. Uses the renderer locale by default and returns raw input for invalid values.",
     fn: (runtime, value, decimals, locale) =>
@@ -455,7 +443,7 @@ export const BUILTINS: Record<string, BuiltinDef> = {
   },
   FormatPercent: {
     name: "FormatPercent",
-    signature: "FormatPercent(value, decimals?) -> string",
+    signature: "FormatPercent(value, decimals?, locale?) -> string",
     description:
       "Format a ratio such as 0.125 as a locale-aware percentage display string, with optional decimal precision and locale override.",
     fn: (runtime, value, decimals, locale) =>
@@ -463,7 +451,7 @@ export const BUILTINS: Record<string, BuiltinDef> = {
   },
   FormatDuration: {
     name: "FormatDuration",
-    signature: 'FormatDuration(value, unit?) -> string',
+    signature: 'FormatDuration(value, unit?, locale?) -> string',
     description:
       'Format an elapsed duration into a compact display string. Input defaults to seconds and also supports explicit "ms" input.',
     fn: (runtime, value, unit, locale) => formatDurationBuiltin(value, unit, locale, runtime),

@@ -41,14 +41,14 @@ describe("format builtins", () => {
     expect(isBuiltin("FormatDuration")).toBe(true);
 
     expect(BUILTINS.FormatDate?.signature).toContain("FormatDate(value, style?, locale?)");
-    expect(BUILTINS.FormatBytes?.signature).toContain("FormatBytes(value, system?, decimals?, locale?)");
+    expect(BUILTINS.FormatBytes?.signature).toContain("FormatBytes(value)");
     expect(BUILTINS.FormatNumber?.signature).toContain("FormatNumber(value, decimals?, locale?)");
     expect(BUILTINS.FormatPercent?.signature).toContain("FormatPercent(value, decimals?, locale?)");
     expect(BUILTINS.FormatDuration?.signature).toContain("FormatDuration(value, unit?, locale?)");
 
     const prompt = generatePrompt({ ...basePromptSpec, bindings: true });
     expect(prompt).toContain("@FormatDate(value, style?, locale?)");
-    expect(prompt).toContain("@FormatBytes(value, system?, decimals?, locale?)");
+    expect(prompt).toContain("@FormatBytes(value)");
     expect(prompt).toContain("@FormatNumber(value, decimals?, locale?)");
     expect(prompt).toContain("@FormatPercent(value, decimals?, locale?)");
     expect(prompt).toContain("@FormatDuration(value, unit?, locale?)");
@@ -97,23 +97,10 @@ describe("format builtins", () => {
     );
   });
 
-  it("formats bytes with SI by default and supports IEC override", () => {
+  it("formats bytes with SI by default", () => {
     expect(
       evaluateBuiltin("FormatBytes", [{ k: "Num", v: 1536 }], createContext("en-US")),
     ).toBe("1.5 KB");
-
-    expect(
-      evaluateBuiltin(
-        "FormatBytes",
-        [
-          { k: "Num", v: 1536 },
-          { k: "Str", v: "iec" },
-          { k: "Num", v: 2 },
-          { k: "Str", v: "de-DE" },
-        ],
-        createContext("en-US"),
-      ),
-    ).toBe("1,50 KiB");
   });
 
   it("formats durations from seconds by default and supports millisecond input", () => {
