@@ -18,12 +18,13 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(spec.components.CardHeader.signature).toContain("CardHeader(title?:");
     expect(spec.components.CardHeader.signature).toContain("subtitle?:");
 
-    expect(spec.components.Card.signature).toContain("direction?:");
-    expect(spec.components.Card.signature).toContain("gap?:");
+    expect(spec.components.Card.signature).toContain("variant?:");
+    expect(spec.components.Card.signature).toContain("width?:");
+    expect(spec.components.Card.signature).not.toContain("direction");
+    expect(spec.components.Card.signature).not.toContain("gap?:");
     expect(spec.components.Card.signature).not.toContain("style");
     expect(spec.components.Card.signature).not.toContain("actions");
     expect(spec.components.Card.signature).not.toContain("header");
-    expect(spec.components.Card.signature).not.toContain("width");
 
     expect(spec.components.Table.signature).not.toContain("style");
     expect(spec.components.Tag.signature).toContain("Tag(text:");
@@ -85,13 +86,14 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
 
     expect(card.properties).not.toHaveProperty("style");
     expect(card.properties).not.toHaveProperty("header");
-    expect(card.properties).not.toHaveProperty("width");
+    expect(card.properties).not.toHaveProperty("direction");
+    expect(card.properties).not.toHaveProperty("gap");
+    expect(card.properties).not.toHaveProperty("align");
+    expect(card.properties).not.toHaveProperty("justify");
+    expect(card.properties).not.toHaveProperty("wrap");
     expect(card.properties).toMatchObject({
-      align: expect.anything(),
-      direction: expect.anything(),
-      gap: expect.anything(),
-      justify: expect.anything(),
-      wrap: expect.anything(),
+      variant: expect.anything(),
+      width: expect.anything(),
     });
     expect(JSON.stringify(card.properties)).not.toContain("\"actions\"");
 

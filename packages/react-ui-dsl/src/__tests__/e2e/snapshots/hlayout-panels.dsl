@@ -1,8 +1,9 @@
-```openui-lang
-root = VLayout([panels])
-panels = HLayout([leftPanel, rightPanel], "m", true, "stretch")
-leftPanel = Card([leftContent], "card", "column", "m")
-leftContent = Text("Left Panel Content")
-rightPanel = Card([rightContent], "card", "column", "m")
-rightContent = Text("Right Panel Content")
-```
+root = HLayout([leftPanel, rightPanel], "l", true, "stretch")
+leftPanel = Card([leftContent], "card", "full")
+leftContent = VLayout([leftTitle, leftDesc], "m", "start")
+leftTitle = Text("Left Panel", "large-heavy")
+leftDesc = Text("This is the content of the left panel. It can contain any components like text, buttons, or tables.", "default")
+rightPanel = Card([rightContent], "card", "full")
+rightContent = VLayout([rightTitle, rightDesc], "m", "start")
+rightTitle = Text("Right Panel", "large-heavy")
+rightDesc = Text("This is the content of the right panel. It sits side by side with the left panel.", "default")

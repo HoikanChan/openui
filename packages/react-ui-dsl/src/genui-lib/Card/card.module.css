@@ -38,3 +38,11 @@
   border-color: var(--card-border);
   background: var(--card-sunk-bg);
 }
+
+.widthStandard {
+  width: 80%;
+}
+
+.widthFull {
+  width: 100%;
+}
