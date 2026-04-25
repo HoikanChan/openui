@@ -71,7 +71,7 @@ ne01Rows = Filter(data.rows, "portResId", "==", data.statistics[0].portResId)
 ne02Rows = Filter(data.rows, "portResId", "==", data.statistics[1].portResId)
 ne01Series = Series(data.statistics[0].deviceName + " " + data.statistics[0].showName, ne01Rows.PeakBandwidthUtilization)
 ne02Series = Series(data.statistics[1].deviceName + " " + data.statistics[1].showName, ne02Rows.PeakBandwidthUtilization)
-timeLabels = FormatDate(ne01Rows.time, "YYYY-MM-DD HH:mm")
+timeLabels = @FormatDate(ne01Rows.time, "YYYY-MM-DD HH:mm")
 trendChart = LineChart(timeLabels, [ne01Series, ne02Series], "smooth", "Time", "Peak Bandwidth Utilization (%)")`,
   `root = VLayout([rawRowsTitle, rawRowsTable])
 rawRowsTitle = Text("Bandwidth Utilization Records", "large")

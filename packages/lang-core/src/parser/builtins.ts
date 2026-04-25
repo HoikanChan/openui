@@ -432,14 +432,14 @@ export const BUILTINS: Record<string, BuiltinDef> = {
   },
   FormatDate: {
     name: "FormatDate",
-    signature: 'FormatDate(value, style?, locale?) -> string',
+    signature: 'FormatDate(value, style?) -> string',
     description:
       'Format a date-like value for display. Styles: "date", "dateTime", "time", or "relative". Returns "" for nullish input and String(value) for invalid dates.',
     fn: (runtime, value, style, locale) => formatDateBuiltin(value, style, locale, runtime),
   },
   FormatBytes: {
     name: "FormatBytes",
-    signature: 'FormatBytes(value, system?, decimals?, locale?) -> string',
+    signature: 'FormatBytes(value, system?, decimals?) -> string',
     description:
       'Format a byte count into a compact string. Supports SI ("KB", "MB") and IEC ("KiB", "MiB") units, with optional decimal precision and locale override.',
     fn: (runtime, value, system, decimals, locale) =>
@@ -447,7 +447,7 @@ export const BUILTINS: Record<string, BuiltinDef> = {
   },
   FormatNumber: {
     name: "FormatNumber",
-    signature: "FormatNumber(value, decimals?, locale?) -> string",
+    signature: "FormatNumber(value, decimals?) -> string",
     description:
       "Format a scalar number as a locale-aware display string. Uses the renderer locale by default and returns raw input for invalid values.",
     fn: (runtime, value, decimals, locale) =>
@@ -455,7 +455,7 @@ export const BUILTINS: Record<string, BuiltinDef> = {
   },
   FormatPercent: {
     name: "FormatPercent",
-    signature: "FormatPercent(value, decimals?, locale?) -> string",
+    signature: "FormatPercent(value, decimals?) -> string",
     description:
       "Format a ratio such as 0.125 as a locale-aware percentage display string, with optional decimal precision and locale override.",
     fn: (runtime, value, decimals, locale) =>
@@ -463,7 +463,7 @@ export const BUILTINS: Record<string, BuiltinDef> = {
   },
   FormatDuration: {
     name: "FormatDuration",
-    signature: 'FormatDuration(value, unit?, locale?) -> string',
+    signature: 'FormatDuration(value, unit?) -> string',
     description:
       'Format an elapsed duration into a compact display string. Input defaults to seconds and also supports explicit "ms" input.',
     fn: (runtime, value, unit, locale) => formatDurationBuiltin(value, unit, locale, runtime),

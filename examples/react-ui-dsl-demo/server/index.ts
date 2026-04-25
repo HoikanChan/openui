@@ -49,6 +49,7 @@ app.post("/api/generate", async (req, res) => {
         { role: "system", content: resolveSystemPrompt(systemPrompt, dataModel) },
         { role: "user", content: prompt },
       ],
+      max_tokens: 65536,
       stream: true,
     });
 

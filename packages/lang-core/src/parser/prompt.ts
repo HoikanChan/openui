@@ -665,7 +665,7 @@ export function generatePrompt(spec: PromptSpec): string {
   parts.push("");
   parts.push(templateBuiltinFunctionsSection());
 
-  if (supportsExpressions) {
+  if (supportsExpressions || hasRawDataModel(spec.dataModel)) {
     parts.push("");
     parts.push(dataBuiltinFunctionsSection());
   }
