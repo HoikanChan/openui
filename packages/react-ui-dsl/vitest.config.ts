@@ -1,6 +1,18 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
+const FUZZ_TEST_PATH = "src/__tests__/e2e/dsl-fuzz.test.tsx";
+
+export function getTestExcludePatterns(env: NodeJS.ProcessEnv = process.env): string[] {
+  const exclude = ["dist/**", "node_modules/**"];
+
+  if (env.REACT_UI_DSL_E2E_SUITE !== "fuzz") {
+    exclude.push(FUZZ_TEST_PATH);
+  }
+
+  return exclude;
+}
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -10,7 +22,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    exclude: ["dist/**", "node_modules/**", "src/__tests__/e2e/dsl-fuzz.test.tsx"],
+    exclude: getTestExcludePatterns(),
     setupFiles: ["./src/__tests__/e2e/setup.ts"],
     testTimeout: 30000,
   },

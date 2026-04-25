@@ -25,6 +25,9 @@ pnpm test:e2e:report
 pnpm test:e2e:regen
 pnpm test:e2e:regen:fixture -- -t table-basic
 pnpm test:e2e:regen:fixture -- -t "table-basic|button-primary"
+pnpm test:fuzz
+pnpm test:fuzz:report
+pnpm test:fuzz:regen
 ```
 
 What each command does:
@@ -35,6 +38,9 @@ What each command does:
 - `pnpm test:e2e:regen:fixture -- -t <fixture-id>` regenerates snapshots only for fixtures whose test names match the Vitest pattern.
 - `pnpm test:e2e:regen:fixture -- -t "fixture-a|fixture-b"` regenerates multiple fixtures in one run by using a regex pattern.
 - `pnpm test:e2e:report -- --update-snapshot <fixture-id>` is the report-oriented flow: it regenerates one fixture, runs that fixture, and opens the HTML report.
+- `pnpm test:fuzz` runs only the fuzz suite and keeps fuzz out of the default `pnpm test:e2e` run.
+- `pnpm test:fuzz:report` runs only the fuzz suite and writes a timestamped HTML report to `src/__tests__/e2e/reports/<timestamp>/index.html`.
+- `pnpm test:fuzz:regen` regenerates the committed fuzz snapshots under `src/__tests__/e2e/fuzz-snapshots`.
 
 ## Snapshot Regeneration
 

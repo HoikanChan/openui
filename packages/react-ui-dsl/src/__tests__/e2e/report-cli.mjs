@@ -15,6 +15,7 @@ const REPORT_SERVER_DEFAULT_PORT = 4173;
 const REPORT_FLAG = "REACT_UI_DSL_E2E_REPORT";
 const REPORT_DIR_FLAG = "REACT_UI_DSL_E2E_REPORT_DIR";
 const REGEN_SNAPSHOTS_FLAG = "REGEN_SNAPSHOTS";
+const SUITE_FLAG = "REACT_UI_DSL_E2E_SUITE";
 const CONTENT_TYPES = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
@@ -32,9 +33,10 @@ export function parseReportCliArgs(argv) {
     };
   }
 
+  const suite = argv.includes("--fuzz") ? "fuzz" : "e2e";
   const updateSnapshotIndex = argv.indexOf("--update-snapshot");
   if (updateSnapshotIndex === -1) {
-    return { mode: "run" };
+    return { mode: "run", suite };
   }
 
   const updateSnapshotFixtureId = argv[updateSnapshotIndex + 1];
@@ -44,19 +46,24 @@ export function parseReportCliArgs(argv) {
 
   return {
     mode: "run",
+    suite,
     updateSnapshotFixtureId,
   };
 }
 
-export function buildVitestRunConfig({ reportDir, updateSnapshotFixtureId, baseEnv = process.env }) {
+export function buildVitestRunConfig({ reportDir, suite = "e2e", updateSnapshotFixtureId, baseEnv = process.env }) {
+  const targetFile = suite === "fuzz" ? "src/__tests__/e2e/dsl-fuzz.test.tsx" : "src/__tests__/e2e/dsl-e2e.test.tsx";
   const args = updateSnapshotFixtureId
-    ? ["exec", "vitest", "run", "src/__tests__/e2e/dsl-e2e.test.tsx", "-t", updateSnapshotFixtureId]
-    : ["exec", "vitest", "run", "src/__tests__/e2e"];
+    ? ["exec", "vitest", "run", targetFile, "-t", updateSnapshotFixtureId]
+    : suite === "fuzz"
+      ? ["exec", "vitest", "run", targetFile]
+      : ["exec", "vitest", "run", "src/__tests__/e2e"];
 
   const env = {
     ...baseEnv,
     [REPORT_FLAG]: "1",
     [REPORT_DIR_FLAG]: reportDir,
+    [SUITE_FLAG]: suite,
   };
 
   if (updateSnapshotFixtureId) {
@@ -79,6 +86,7 @@ async function main(argv = process.argv.slice(2)) {
 
   const vitestRunConfig = buildVitestRunConfig({
     reportDir,
+    suite: cliArgs.mode === "run" ? cliArgs.suite : undefined,
     updateSnapshotFixtureId: cliArgs.mode === "run" ? cliArgs.updateSnapshotFixtureId : undefined,
   });
 

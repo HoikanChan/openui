@@ -27,6 +27,7 @@ describe("report-cli", () => {
   it("parses a single-fixture snapshot update request", () => {
     expect(parseReportCliArgs(["--update-snapshot", "table-basic"])).toEqual({
       mode: "run",
+      suite: "e2e",
       updateSnapshotFixtureId: "table-basic",
     });
   });
@@ -49,6 +50,33 @@ describe("report-cli", () => {
     expect(config.env.REACT_UI_DSL_E2E_REPORT).toBe("1");
     expect(config.env.REACT_UI_DSL_E2E_REPORT_DIR).toBe("/tmp/react-ui-dsl-report");
     expect(config.env.REGEN_SNAPSHOTS).toBe("1");
+    expect(config.env.LLM_API_KEY).toBe("sk-test");
+  });
+
+  it("parses fuzz report mode", () => {
+    expect(parseReportCliArgs(["--fuzz"])).toEqual({
+      mode: "run",
+      suite: "fuzz",
+    });
+  });
+
+  it("builds a fuzz vitest run config without enabling snapshot regeneration", () => {
+    const config = buildVitestRunConfig({
+      baseEnv: { LLM_API_KEY: "sk-test" },
+      reportDir: "/tmp/react-ui-dsl-report",
+      suite: "fuzz",
+    });
+
+    expect(config.args).toEqual([
+      "exec",
+      "vitest",
+      "run",
+      "src/__tests__/e2e/dsl-fuzz.test.tsx",
+    ]);
+    expect(config.env.REACT_UI_DSL_E2E_REPORT).toBe("1");
+    expect(config.env.REACT_UI_DSL_E2E_REPORT_DIR).toBe("/tmp/react-ui-dsl-report");
+    expect(config.env.REACT_UI_DSL_E2E_SUITE).toBe("fuzz");
+    expect(config.env.REGEN_SNAPSHOTS).toBeUndefined();
     expect(config.env.LLM_API_KEY).toBe("sk-test");
   });
 

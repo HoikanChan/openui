@@ -4,13 +4,14 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cleanup, render } from "@testing-library/react";
 import React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import * as echarts from "echarts";
 import { createParser } from "@openuidev/lang-core";
 import { Renderer } from "@openuidev/react-lang";
 import { dslLibrary } from "../../genui-lib/dslLibrary";
 import { loadOrGenerate } from "./llm";
 import { inferFuzzPrompt } from "./fuzz-loader";
+import { finalizeE2EReport, resetE2EReportState, runE2EReportEntry, setE2EReportEntryDsl } from "./report";
 
 vi.mock("echarts", () => ({
   init: vi.fn(() => ({
@@ -55,17 +56,38 @@ function loadFuzzCases(): FuzzCase[] {
 
 const fuzzCases = loadFuzzCases();
 
+beforeAll(() => {
+  resetE2EReportState();
+});
+
+afterAll(() => {
+  finalizeE2EReport();
+});
+
 describe.skipIf(fuzzCases.length === 0)("DSL fuzz", () => {
   it.each(fuzzCases)("$id: parse and render without errors", async ({ id, prompt, dataModel }) => {
-    const dsl = await loadOrGenerate(id, prompt, dataModel, FUZZ_SNAPSHOTS_DIR);
+    await runE2EReportEntry(
+      "Fuzz",
+      {
+        id,
+        prompt,
+        expectedDescription: "Generated fuzz case should parse and render without errors",
+        dataModel,
+        assert: { contains: [] },
+      },
+      async (entry) => {
+        const dsl = await loadOrGenerate(id, prompt, dataModel, FUZZ_SNAPSHOTS_DIR);
+        setE2EReportEntryDsl(entry, dsl);
 
-    const parsed = parser.parse(dsl);
-    expect(parsed.meta.errors, `parse errors in ${id}:\n${dsl}`).toHaveLength(0);
+        const parsed = parser.parse(dsl);
+        expect(parsed.meta.errors, `parse errors in ${id}:\n${dsl}`).toHaveLength(0);
 
-    expect(() =>
-      render(
-        <Renderer library={dslLibrary} response={dsl} dataModel={dataModel} />,
-      ),
-    ).not.toThrow();
+        expect(() =>
+          render(
+            <Renderer library={dslLibrary} response={dsl} dataModel={dataModel} />,
+          ),
+        ).not.toThrow();
+      },
+    );
   });
 });
