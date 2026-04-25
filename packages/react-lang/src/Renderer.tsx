@@ -40,8 +40,10 @@ export interface RendererProps {
    * When provided, the parser enables `data` as an external ref so that
    * expressions like `data.user.name` resolve at runtime instead of being
    * flagged as unresolved symbols.
-   */
+  */
   dataModel?: Record<string, unknown>;
+  /** Default locale used by runtime formatting builtins unless explicitly overridden. */
+  locale?: string;
   /**
    * Tool provider for Query()/Mutation() calls.
    * - Function map: `{ tool_name: async (args) => result }` — simplest option
@@ -225,6 +227,7 @@ export function Renderer({
   initialState,
   onParseResult,
   dataModel,
+  locale,
   toolProvider,
   queryLoader,
   onError,
@@ -273,6 +276,7 @@ export function Renderer({
       onStateUpdate,
       initialState,
       dataModel,
+      locale,
       toolProvider: resolvedToolProvider,
       onError,
     },

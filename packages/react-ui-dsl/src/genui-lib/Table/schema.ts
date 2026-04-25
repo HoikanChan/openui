@@ -9,7 +9,6 @@ export interface ColOptions {
   filterable?: boolean;
   filterOptions?: string[];
   cell?: ColCellRenderer | ElementNode;
-  format?: "date" | "dateTime" | "time";
   tooltip?: boolean;
 }
 
@@ -25,18 +24,22 @@ export const ColOptionsSchema: z.ZodType<ColOptions | undefined> = z
     filterable: z.boolean().optional(),
     filterOptions: z.array(z.string()).optional(),
     cell: z.any().optional(),
-    format: z.enum(["date", "dateTime", "time"]).optional(),
     tooltip: z.boolean().optional(),
   })
+  .strict()
   .optional();
 
-export const ColSchema: z.ZodType<ColProps> = z.object({
-  title: z.string(),
-  field: z.string(),
-  options: ColOptionsSchema,
-});
+export const ColSchema: z.ZodType<ColProps> = z
+  .object({
+    title: z.string(),
+    field: z.string(),
+    options: ColOptionsSchema,
+  })
+  .strict();
 
-export const TableSchema = z.object({
-  columns: z.array(ColSchema),
-  rows: z.array(z.record(z.string(), z.any())),
-});
+export const TableSchema = z
+  .object({
+    columns: z.array(ColSchema),
+    rows: z.array(z.record(z.string(), z.any())),
+  })
+  .strict();

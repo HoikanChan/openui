@@ -8,7 +8,19 @@ const meta = {
     columns: [
       { field: "region", title: "Region" },
       { field: "revenue", options: { sortable: true }, title: "Revenue" },
-      { field: "updated", options: { format: "date", tooltip: true }, title: "Updated" },
+      {
+        field: "updated",
+        options: {
+          cell: (value: unknown) =>
+            value == null
+              ? ""
+              : new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
+                  new Date(String(value)),
+                ),
+          tooltip: true,
+        },
+        title: "Updated",
+      },
     ],
     rows: [
       { region: "North America", revenue: "$1.2M", updated: "2026-04-01T00:00:00.000Z" },

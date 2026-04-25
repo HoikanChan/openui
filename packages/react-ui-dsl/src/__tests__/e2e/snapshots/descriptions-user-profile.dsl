@@ -1,5 +1,5 @@
-root = VLayout([profileDetails])
-profileDetails = Descriptions([nameField, emailField, accountGroup], "Employee Profile", Tag("Live", "success"), 3)
+root = VLayout([profileDetail])
+profileDetail = Descriptions([nameField, emailField, accountGroup], "User Profile")
 nameField = DescField("Name", data.profile.name)
 emailField = DescField("Email", data.profile.email)
 accountGroup = DescGroup("Account", [statusField, roleField], 2)

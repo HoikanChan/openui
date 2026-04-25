@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { createParser } from "../../../../lang-core/src";
 import { Renderer } from "@openuidev/react-lang";
 import { dslLibrary } from "../dslLibrary";
-import { formatDescriptionValue, resolveAutoSpan, resolveDescriptionFieldValue } from "./index";
+import { resolveAutoSpan, resolveDescriptionFieldValue } from "./index";
 
 describe("react-ui-dsl Descriptions schema", () => {
   it("parses descriptions with the optional border toggle", () => {
@@ -37,13 +37,6 @@ statusField = DescField("Status", Tag("Active", "success"))`);
       typeName: "DescGroup",
       props: { title: "Account", columns: 2 },
     });
-  });
-
-  it("formats plain values while preserving component values", () => {
-    expect(formatDescriptionValue("2026-01-02T03:04:05.000Z", "dateTime")).toContain("2026");
-
-    const tagNode = <span data-chip="true">Active</span>;
-    expect(formatDescriptionValue(tagNode, "date")).toBe(tagNode);
   });
 
   it("auto-expands long text to wider spans when no explicit span is provided", () => {
@@ -82,5 +75,38 @@ roleField = DescField("Role", "Administrator")`;
     expect(container.innerHTML).toContain("Active");
     expect(container.innerHTML).toContain("Role");
     expect(container.innerHTML).toContain("Administrator");
+  });
+
+  it("renders formatted field values directly from @Format* expressions", () => {
+    const createdAt = "2026-01-02T03:04:05.000Z";
+    const dsl = `root = Descriptions([joinedField], "Profile")
+joinedField = DescField("Joined", @FormatDate(data.user.createdAt, "dateTime"))`;
+
+    const { container } = render(
+      <Renderer
+        library={dslLibrary}
+        response={dsl}
+        locale="en-US"
+        dataModel={{ user: { createdAt } }}
+      />,
+    );
+
+    expect(container.innerHTML).toContain(
+      new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(createdAt)),
+    );
+  });
+
+  it("rejects the removed DescField format argument", () => {
+    const parser = createParser(dslLibrary.toJSONSchema());
+    const result = parser.parse(
+      `root = Descriptions([joinedField], "Profile")
+joinedField = DescField("Joined", "2026-01-02T03:04:05.000Z", 2, "dateTime")`,
+    );
+
+    expect(result.meta.errors.length).toBeGreaterThan(0);
+    expect(JSON.stringify(result.meta.errors)).toContain("DescField takes 3 arg");
   });
 });

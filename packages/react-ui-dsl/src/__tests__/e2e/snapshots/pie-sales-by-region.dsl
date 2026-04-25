@@ -1,2 +1,2 @@
-root = VLayout([salesPieChart])
-salesPieChart = PieChart(data.labels, data.values)
+root = VLayout([chart])
+chart = PieChart(data.labels, data.values, "donut")

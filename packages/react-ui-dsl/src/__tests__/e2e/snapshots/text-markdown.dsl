@@ -1,4 +1,4 @@
 root = VLayout([summaryCard])
-summaryCard = Card([summaryHeader, summaryText])
+summaryCard = Card([summaryHeader, summaryBody], "card", "column", "m")
 summaryHeader = CardHeader(data.summary.heading)
-summaryText = Text("**Growth:** " + data.summary.growth, "markdown")
+summaryBody = Text("Growth: " + data.summary.growth, "large-heavy")

@@ -10,7 +10,7 @@ const overviewDsl = `root = Table(
   [
     Col("Region", "region"),
     Col("Revenue", "revenue"),
-    Col("Updated", "updated", { format: "date", tooltip: true })
+    Col("Updated", "updated", { cell: @Render("v", Text(@FormatDate(v, "date"))), tooltip: true })
   ],
   rows
 )

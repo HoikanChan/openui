@@ -6,17 +6,8 @@ import type { ColumnType } from "antd/es/table";
 import type { CSSProperties, ReactNode } from "react";
 import type { ColCellRenderer } from "../schema";
 
-export function formatCell(value: unknown, format?: "date" | "dateTime" | "time"): string {
+export function formatCell(value: unknown): string {
   if (value == null) return "";
-
-  if (format === "date" || format === "dateTime" || format === "time") {
-    const date = new Date(value as string);
-    if (Number.isNaN(date.getTime())) return String(value);
-    if (format === "time") return date.toLocaleTimeString();
-    if (format === "date") return date.toLocaleDateString();
-    return date.toLocaleString();
-  }
-
   return String(value);
 }
 
@@ -28,7 +19,6 @@ export type ColViewProps = {
     cell?: ColCellRenderer | ElementNode;
     filterOptions?: string[];
     filterable?: boolean;
-    format?: "date" | "dateTime" | "time";
     sortable?: boolean;
     tooltip?: boolean;
   };
@@ -90,7 +80,7 @@ export function mapColumnsToAntd(
           return renderNode ? renderNode(options.cell) : (options.cell as ReactNode);
         }
 
-        const text = formatCell(value, options.format);
+        const text = formatCell(value);
         if (options.tooltip) {
           return (
             <Tooltip title={text}>

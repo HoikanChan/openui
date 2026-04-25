@@ -17,9 +17,7 @@ import {
 } from "./schema";
 import {
   DescriptionsRuntimeView,
-  formatDescriptionValue,
   resolveAutoSpan,
-  type DescriptionFormat,
   type ResolvedDescriptionsField,
 } from "./view";
 
@@ -29,7 +27,7 @@ export * from "./view";
 export const DescField = defineComponent({
   name: "DescField",
   props: DescFieldSchema,
-  description: "Declarative descriptions field with label, value, optional span, and optional date/time format.",
+  description: "Declarative descriptions field with label, direct value expression, and optional span.",
   component: () => null,
 });
 
@@ -83,7 +81,7 @@ export function resolveDescriptionFieldValue(
   renderNode: DescriptionsRenderNode,
   resolvedSpan: number,
 ): ResolvedDescriptionsField {
-  const renderedValue = resolveDescriptionRenderedValue(field.value, field.format, renderNode);
+  const renderedValue = resolveDescriptionRenderedValue(field.value, renderNode);
 
   return {
     kind: "field",
@@ -95,11 +93,11 @@ export function resolveDescriptionFieldValue(
 
 export function resolveDescriptionRenderedValue(
   value: unknown,
-  format: DescriptionFormat | undefined,
   renderNode: DescriptionsRenderNode,
 ) {
   if (isElementNode(value)) return renderNode(value);
-  return formatDescriptionValue(value, format);
+  if (value == null || value === "") return "-";
+  return String(value);
 }
 
 export const Descriptions = defineComponent({

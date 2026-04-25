@@ -45,6 +45,7 @@ export interface UseOpenUIStateOptions {
   initialState?: Record<string, any>;
   /** Host data object accessible as `data.*` in openui-lang expressions. */
   dataModel?: Record<string, unknown>;
+  locale?: string;
   /** ToolProvider for Query data fetching — MCP, REST, GraphQL, or any backend. */
   toolProvider?: ToolProvider | null;
   /** Callback for structured, LLM-friendly errors. See OpenUIError type. */
@@ -77,6 +78,7 @@ export function useOpenUIState(
     onStateUpdate,
     initialState,
     dataModel,
+    locale,
     toolProvider,
     onError,
   }: UseOpenUIStateOptions,
@@ -167,8 +169,9 @@ export function useOpenUIState(
         if (mutResult) return mutResult;
         return queryManager.getResult(name);
       },
+      builtinContext: locale ? { locale } : undefined,
     }),
-    [store, queryManager, dataModel],
+    [store, queryManager, dataModel, locale],
   );
 
   // ─── Evaluate and submit queries ───
@@ -405,6 +408,7 @@ export function useOpenUIState(
       setFieldValue,
       store,
       evaluationContext,
+      locale,
       reportError,
     }),
     [
@@ -416,6 +420,7 @@ export function useOpenUIState(
       setFieldValue,
       store,
       evaluationContext,
+      locale,
       reportError,
     ],
   );

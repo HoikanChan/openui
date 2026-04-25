@@ -1,5 +1,3 @@
-root = VLayout([treemapCard])
-treemapCard = Card([treemapHeader, treemapChart])
-treemapHeader = CardHeader("Bandwidth Breakdown", "Traffic volume by subnet and interface")
-treemapChart = TreeMapChart(treeData)
-treeData = data.data
+root = VLayout([title, treemap])
+title = Text("Bandwidth Breakdown by Subnet and Interface", "large")
+treemap = TreeMapChart(data.data)
