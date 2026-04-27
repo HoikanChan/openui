@@ -35,7 +35,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(__dirname, "../../..");
 const workspaceRoot = resolve(packageRoot, "../..");
 const reportAppRoot = resolve(__dirname, "report-app");
-const snapshotsDir = resolve(__dirname, "snapshots");
+
+type EvalSuite = "e2e" | "fuzz";
+
+function snapshotsDirForSuite(suite: EvalSuite): string {
+  return resolve(__dirname, suite === "fuzz" ? "fuzz-snapshots" : "snapshots");
+}
 
 const CONTENT_TYPES: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
@@ -47,14 +52,18 @@ const CONTENT_TYPES: Record<string, string> = {
 
 // ── Vitest runner ──────────────────────────────────────────────────────────
 
-function runVitest(reportDir: string, regen: boolean): void {
-  const args = ["exec", "vitest", "run", "src/__tests__/e2e"];
+function runVitest(reportDir: string, regen: boolean, suite: EvalSuite = "e2e"): void {
+  const testPath =
+    suite === "fuzz"
+      ? "src/__tests__/e2e/dsl-fuzz.test.tsx"
+      : "src/__tests__/e2e";
+  const args = ["exec", "vitest", "run", testPath];
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     REACT_UI_DSL_E2E_REPORT: "1",
     REACT_UI_DSL_E2E_REPORT_DIR: reportDir,
     REGEN_SNAPSHOTS: regen ? "1" : "0",
-    REACT_UI_DSL_E2E_SUITE: "e2e",
+    REACT_UI_DSL_E2E_SUITE: suite,
   };
 
   const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", args, {
@@ -148,12 +157,12 @@ function writeReportData(reportDir: string, data: E2EReportData): void {
 
 // ── Eval core ─────────────────────────────────────────────────────────────
 
-async function runEval(runId: string, regen: boolean): Promise<E2EReportData> {
+async function runEval(runId: string, regen: boolean, suite: EvalSuite = "e2e"): Promise<E2EReportData> {
   const reportDir = resolve(dirname(getReportDataPath(runId)));
   mkdirSync(reportDir, { recursive: true });
 
-  console.log(`\n[eval] Running vitest e2e tests (regen=${regen})…`);
-  runVitest(reportDir, regen);
+  console.log(`\n[eval] Running vitest ${suite} tests (regen=${regen})…`);
+  runVitest(reportDir, regen, suite);
 
   if (!existsSync(resolve(reportDir, "report-data.json"))) {
     throw new Error("Vitest did not produce report-data.json — check for test failures.");
@@ -183,7 +192,7 @@ async function runEval(runId: string, regen: boolean): Promise<E2EReportData> {
     console.log(`[eval] Judging fixtures…`);
     const judgeInputs = results.map((r) => {
       const entry = reportData.entries.find((e) => e.id === r.fixtureId)!;
-      const snapshotPath = resolve(snapshotsDir, `${r.fixtureId}.dsl`);
+      const snapshotPath = resolve(snapshotsDirForSuite(suite), `${r.fixtureId}.dsl`);
       const dsl = existsSync(snapshotPath) ? readFileSync(snapshotPath, "utf-8") : entry.dsl ?? "";
       return {
         fixtureId: r.fixtureId,
@@ -228,12 +237,15 @@ async function runEval(runId: string, regen: boolean): Promise<E2EReportData> {
 
 async function cmdStart(argv: string[]): Promise<void> {
   const regen = argv.includes("--regen");
+  const suiteArg = argv.find((a) => a.startsWith("--suite="))?.split("=")[1]
+    ?? (argv.includes("--suite") ? argv[argv.indexOf("--suite") + 1] : undefined);
+  const suite: EvalSuite = suiteArg === "fuzz" ? "fuzz" : "e2e";
   const runId = generateRunId();
 
-  console.log(`\nStarting eval run ${runId}…`);
+  console.log(`\nStarting eval run ${runId} (suite=${suite})…`);
   createRunWorkspace(runId, regen);
 
-  const reportData = await runEval(runId, regen);
+  const reportData = await runEval(runId, regen, suite);
   const judgeScores = reportData.judge_scores ?? [];
   const failingPatterns = reportData.failing_patterns ?? [];
   const overallScore = computeOverallScore(judgeScores);
@@ -249,7 +261,7 @@ async function cmdStart(argv: string[]): Promise<void> {
   }
 
   console.log(`\n[eval] Generating task bundle…`);
-  writeTaskBundle({ runId, overallScore, judgeScores, failingPatterns, snapshotsDir, pendingPromptCorrections: toInclude });
+  writeTaskBundle({ runId, overallScore, judgeScores, failingPatterns, snapshotsDir: snapshotsDirForSuite(suite), pendingPromptCorrections: toInclude });
 
   updateRunState(runId, "waiting_for_agent", { degraded: reportData.degraded ?? false });
 

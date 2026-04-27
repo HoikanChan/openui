@@ -76,55 +76,85 @@ async function runLlmApi(input: RunnerInput, model: string): Promise<string> {
   return text;
 }
 
-// ── claude-code: spawn `claude --print` with minimal context ──────────────────
-//
-// --bare               skips hooks, plugins, CLAUDE.md, memory, skill sync
-// --disable-slash-commands  prevents any skill invocations in the output
-// --tools "Read"       restricts the tool surface to file reading only
-// --no-session-persistence  nothing written to disk
-// --system-prompt      injects rubric without loading project context
+// Wraps a string in single quotes and escapes any embedded single quotes.
+// Safe for use as a POSIX shell argument regardless of content.
+function sq(s: string): string {
+  return `'${s.replace(/'/g, "'\\''")}'`;
+}
 
-function runClaudeCode(input: RunnerInput, model: string): string {
-  const userText = input.screenshotPath
-    ? `${input.userText}\n\nThe screenshot of the rendered UI is saved at: ${input.screenshotPath}\nRead it to assess visual rendering quality.`
-    : input.userText;
-
-  const args = [
-    "--print",
-    "--bare",
-    "--disable-slash-commands",
-    "--no-session-persistence",
-    "--system-prompt", input.systemPrompt,
-    "--model", model,
-    "--tools", "Read",
-  ];
-
-  const result = spawnSync("claude", args, {
-    input: userText,
+// Runs cmd via `bash -c` so that shell-script wrappers (e.g. fnm shims) resolve
+// correctly. Stdin is piped from `input`; stdout is returned.
+function spawnViaBash(
+  cmd: string,
+  args: string[],
+  stdinText: string,
+  timeoutMs: number,
+  fixtureId: string,
+): string {
+  const shellCmd = [cmd, ...args.map(sq)].join(" ");
+  const result = spawnSync("bash", ["-c", shellCmd], {
+    input: stdinText,
     encoding: "utf-8",
-    timeout: 120_000,
+    timeout: timeoutMs,
     maxBuffer: 10 * 1024 * 1024,
   });
 
   if (result.error) {
     const err = result.error as NodeJS.ErrnoException;
     if (err.code === "ENOENT") {
-      throw new Error(
-        "claude not found in PATH — install Claude Code to use EVAL_JUDGE_RUNNER=claude-code",
-      );
+      throw new Error(`bash not found — cannot invoke ${cmd} subprocess`);
     }
     throw result.error;
   }
   if (result.status === null) {
-    throw new Error(`claude timed out for fixture ${input.fixtureId}`);
+    throw new Error(`${cmd} timed out for fixture ${fixtureId}`);
   }
   if (result.status !== 0) {
-    throw new Error(
-      `claude exited ${result.status} for ${input.fixtureId}: ${result.stderr?.slice(0, 300)}`,
-    );
+    const stderr = result.stderr?.trim() ?? "";
+    if (stderr.includes("command not found") || stderr.includes("not found")) {
+      throw new Error(
+        `${cmd} not found — install it to use EVAL_JUDGE_RUNNER=${cmd === "claude" ? "claude-code" : "codex"}`,
+      );
+    }
+    throw new Error(`${cmd} exited ${result.status} for ${fixtureId}: ${stderr.slice(0, 300)}`);
   }
 
   return result.stdout;
+}
+
+// ── claude-code: spawn `claude --print` with minimal context ──────────────────
+//
+// --disable-slash-commands  prevents any skill invocations inside the session
+// --tools "Read"            restricts the tool surface to file reading only
+// --no-session-persistence  nothing written to disk
+// --system-prompt           injects rubric (overrides the default system prompt)
+//
+// Note: --bare is NOT used because it requires ANTHROPIC_API_KEY and bypasses
+// OAuth/keychain auth that the developer already has configured.
+// Context control is still achieved via --tools, --disable-slash-commands, and
+// the explicit --system-prompt (which replaces the default project context).
+//
+// Invoked via `bash -c` so fnm/npm shell-script shims resolve correctly.
+
+function runClaudeCode(input: RunnerInput, model: string): string {
+  const userText = input.screenshotPath
+    ? `${input.userText}\n\nThe screenshot of the rendered UI is saved at: ${input.screenshotPath}\nRead it to assess visual rendering quality.`
+    : input.userText;
+
+  return spawnViaBash(
+    "claude",
+    [
+      "--print",
+      "--disable-slash-commands",
+      "--no-session-persistence",
+      "--system-prompt", input.systemPrompt,
+      "--model", model,
+      "--tools", "Read",
+    ],
+    userText,
+    120_000,
+    input.fixtureId,
+  );
 }
 
 // ── codex: spawn `codex exec` with native image attachment ────────────────────
@@ -147,31 +177,10 @@ function runCodex(input: RunnerInput, model: string): string {
       args.push("-i", input.screenshotPath);
     }
 
-    // codex exec reads from stdin when no prompt argument is provided
-    const result = spawnSync("codex", args, {
-      input: combinedPrompt,
-      encoding: "utf-8",
-      timeout: 120_000,
-      maxBuffer: 10 * 1024 * 1024,
-    });
-
-    if (result.error) {
-      const err = result.error as NodeJS.ErrnoException;
-      if (err.code === "ENOENT") {
-        throw new Error(
-          "codex not found in PATH — install Codex to use EVAL_JUDGE_RUNNER=codex",
-        );
-      }
-      throw result.error;
-    }
-    if (result.status === null) {
-      throw new Error(`codex timed out for fixture ${input.fixtureId}`);
-    }
-    if (result.status !== 0) {
-      throw new Error(
-        `codex exited ${result.status} for ${input.fixtureId}: ${result.stderr?.slice(0, 300)}`,
-      );
-    }
+    // codex exec reads from stdin when no prompt argument is provided;
+    // invoked via bash -c so shell-script shims resolve correctly
+    const output = spawnViaBash("codex", args, combinedPrompt, 120_000, input.fixtureId);
+    void output; // stdout is discarded; real answer is in outputFile
 
     return readFileSync(outputFile, "utf-8");
   } finally {
