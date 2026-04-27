@@ -1,0 +1,4 @@
+interface:
+  display_name: "React UI DSL GenUI Eval Loop"
+  short_description: "Measure and iteratively improve LLM-generated DSL rendering quality."
+  default_prompt: "Use $react-ui-dsl-genui-eval-loop to run a quality eval, review the task bundle, improve the failing fixtures, and verify the changes."
