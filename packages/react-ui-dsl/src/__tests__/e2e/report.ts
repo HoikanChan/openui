@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { Fixture } from "./fixtures";
+import type { DeltaSummary, FailingPattern, JudgeScore } from "./eval/types.ts";
 
 const REPORT_FLAG = "REACT_UI_DSL_E2E_REPORT";
 const REPORT_DIR_FLAG = "REACT_UI_DSL_E2E_REPORT_DIR";
@@ -17,16 +18,23 @@ export interface E2EReportEntry {
   dsl?: string;
   status?: E2EReportEntryStatus;
   failureReason?: string;
+  judgeScore?: JudgeScore;
 }
 
 export interface E2EReportData {
   generatedAt: string;
+  runId?: string;
+  degraded?: boolean;
   summary: {
     total: number;
     passed: number;
     failed: number;
+    overallScore?: number;
   };
   entries: E2EReportEntry[];
+  judge_scores?: JudgeScore[];
+  failing_patterns?: FailingPattern[];
+  delta?: DeltaSummary;
 }
 
 const entries: E2EReportEntry[] = [];
