@@ -52,12 +52,13 @@ const CONTENT_TYPES: Record<string, string> = {
 
 // ── Vitest runner ──────────────────────────────────────────────────────────
 
-function runVitest(reportDir: string, regen: boolean, suite: EvalSuite = "e2e"): void {
+function runVitest(reportDir: string, regen: boolean, suite: EvalSuite = "e2e", fixtureFilter?: string): void {
   const testPath =
     suite === "fuzz"
       ? "src/__tests__/e2e/dsl-fuzz.test.tsx"
       : "src/__tests__/e2e";
   const args = ["exec", "vitest", "run", testPath];
+  if (fixtureFilter) args.push("-t", fixtureFilter);
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     REACT_UI_DSL_E2E_REPORT: "1",
@@ -157,12 +158,13 @@ function writeReportData(reportDir: string, data: E2EReportData): void {
 
 // ── Eval core ─────────────────────────────────────────────────────────────
 
-async function runEval(runId: string, regen: boolean, suite: EvalSuite = "e2e"): Promise<E2EReportData> {
+async function runEval(runId: string, regen: boolean, suite: EvalSuite = "e2e", fixtureFilter?: string): Promise<E2EReportData> {
   const reportDir = resolve(dirname(getReportDataPath(runId)));
   mkdirSync(reportDir, { recursive: true });
 
-  console.log(`\n[eval] Running vitest ${suite} tests (regen=${regen})…`);
-  runVitest(reportDir, regen, suite);
+  const filterLabel = fixtureFilter ? ` (filter: ${fixtureFilter})` : "";
+  console.log(`\n[eval] Running vitest ${suite} tests (regen=${regen})${filterLabel}…`);
+  runVitest(reportDir, regen, suite, fixtureFilter);
 
   if (!existsSync(resolve(reportDir, "report-data.json"))) {
     throw new Error("Vitest did not produce report-data.json — check for test failures.");
@@ -240,12 +242,16 @@ async function cmdStart(argv: string[]): Promise<void> {
   const suiteArg = argv.find((a) => a.startsWith("--suite="))?.split("=")[1]
     ?? (argv.includes("--suite") ? argv[argv.indexOf("--suite") + 1] : undefined);
   const suite: EvalSuite = suiteArg === "fuzz" ? "fuzz" : "e2e";
+
+  const fixtureArg = argv.find((a) => a.startsWith("--fixture="))?.split("=")[1]
+    ?? (argv.includes("--fixture") ? argv[argv.indexOf("--fixture") + 1] : undefined);
+
   const runId = generateRunId();
 
   console.log(`\nStarting eval run ${runId} (suite=${suite})…`);
   createRunWorkspace(runId, regen);
 
-  const reportData = await runEval(runId, regen, suite);
+  const reportData = await runEval(runId, regen, suite, fixtureArg);
   const judgeScores = reportData.judge_scores ?? [];
   const failingPatterns = reportData.failing_patterns ?? [];
   const overallScore = computeOverallScore(judgeScores);
