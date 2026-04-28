@@ -8,7 +8,8 @@ import { MiniChartView } from "./view";
 export const MiniChart = defineComponent({
   name: "MiniChart",
   props: MiniChartSchema,
-  description: "Compact single-series trend primitive for KPI cards, tables, and dense summaries",
+  description:
+    "Compact single-series trend primitive for KPI cards, table cells, and dense summaries. Width always fills the container; height auto-scales unless height is provided.",
   component: ({ props }: ComponentRenderProps<z.infer<typeof MiniChartSchema>>) => (
     <MiniChartView {...props} />
   ),

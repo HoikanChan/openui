@@ -49,8 +49,9 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
 
     expect(spec.components.MiniChart.signature).toContain("MiniChart(type:");
     expect(spec.components.MiniChart.signature).toContain("data:");
-    expect(spec.components.MiniChart.signature).toContain("size?:");
+    expect(spec.components.MiniChart.signature).toContain("height?:");
     expect(spec.components.MiniChart.signature).toContain("color?:");
+    expect(spec.components.MiniChart.signature).not.toContain("size?:");
     expect(spec.components.MiniChart.signature).not.toContain("labels:");
     expect(spec.components.MiniChart.signature).not.toContain("series:");
   });
@@ -147,9 +148,10 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(miniChart.properties).toMatchObject({
       type: expect.anything(),
       data: expect.anything(),
-      size: expect.anything(),
+      height: expect.anything(),
       color: expect.anything(),
     });
+    expect(miniChart.properties).not.toHaveProperty("size");
     expect(miniChart.properties).not.toHaveProperty("labels");
     expect(miniChart.properties).not.toHaveProperty("series");
     expect(miniChart.properties).not.toHaveProperty("xLabel");
@@ -284,6 +286,7 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain("MiniChart");
     expect(prompt).toContain("compact single-series trend primitive");
     expect(prompt).toContain("MiniChart(\"line\", data.metrics.sparkline");
+    expect(prompt).toContain("Omit MiniChart height unless the layout needs a tighter or taller trend");
     expect(prompt).not.toContain("MiniChart(data.labels");
   });
 });

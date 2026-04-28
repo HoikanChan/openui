@@ -30,7 +30,7 @@ function getLastChartOption() {
 }
 
 describe("MiniChartView", () => {
-  it("dispatches line charts to a compact sparkline option", () => {
+  it("dispatches line charts to a compact sparkline option with full-width sizing", () => {
     const { container } = render(<MiniChartView type="line" data={[12, 18, 15, 21]} />);
 
     const option = getLastChartOption();
@@ -41,7 +41,8 @@ describe("MiniChartView", () => {
     });
     expect(option.xAxis).toMatchObject({ show: false, type: "category" });
     expect(option.yAxis).toMatchObject({ show: false, type: "value" });
-    expect(container.querySelector('div[style*="height: 64px"]')).not.toBeNull();
+    expect(container.querySelector('div[style*="width: 100%"]')).not.toBeNull();
+    expect(container.querySelector('div[style*="width: 96px"][style*="height: 24px"]')).not.toBeNull();
   });
 
   it("dispatches bar and area charts with type-specific defaults", () => {
@@ -60,5 +61,11 @@ describe("MiniChartView", () => {
 
     expect(barOption.series?.[0]).toMatchObject({ type: "bar", data: [3, 5, 4] });
     expect(areaOption.series?.[0]).toMatchObject({ type: "line", data: [7, 9, 8], areaStyle: expect.any(Object) });
+  });
+
+  it("uses explicit height while keeping width responsive", () => {
+    const { container } = render(<MiniChartView type="line" data={[12, 18, 15, 21]} height={28} />);
+
+    expect(container.querySelector('div[style*="width: 96px"][style*="height: 28px"]')).not.toBeNull();
   });
 });

@@ -3,7 +3,7 @@ import { MiniChartSchema } from "./schema";
 
 describe("MiniChart schema", () => {
   it("accepts number arrays and object arrays as compact single-series data", () => {
-    expect(MiniChartSchema.safeParse({ type: "line", data: [12, 18, 15] }).success).toBe(true);
+    expect(MiniChartSchema.safeParse({ type: "line", data: [12, 18, 15], height: 40 }).success).toBe(true);
     expect(
       MiniChartSchema.safeParse({
         type: "bar",
@@ -21,6 +21,16 @@ describe("MiniChart schema", () => {
       data: [4, 6, 5],
       labels: ["Mon", "Tue", "Wed"],
       series: [{ category: "Load", values: [4, 6, 5] }],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects the deprecated size prop from the DSL contract", () => {
+    const result = MiniChartSchema.safeParse({
+      type: "line",
+      data: [12, 18, 15],
+      size: 96,
     });
 
     expect(result.success).toBe(false);

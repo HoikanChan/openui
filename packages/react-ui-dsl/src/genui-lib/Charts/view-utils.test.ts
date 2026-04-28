@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildScatterSeries,
+  getAutoMiniChartHeight,
+  getAutoMiniChartWidth,
   getRecentMiniChartDataThatFits,
   normalizeMiniChartData,
   normalizeSeriesItems,
@@ -116,5 +118,19 @@ describe("chart view utils", () => {
         20,
       ),
     ).toEqual([{ value: 4, label: "D" }]);
+  });
+
+  it("derives compact mini chart heights from container width with sensible bounds", () => {
+    expect(getAutoMiniChartHeight(0)).toBe(36);
+    expect(getAutoMiniChartHeight(100)).toBe(24);
+    expect(getAutoMiniChartHeight(160)).toBe(35);
+    expect(getAutoMiniChartHeight(260)).toBe(44);
+  });
+
+  it("caps mini chart width by intrinsic density instead of always filling wide containers", () => {
+    expect(getAutoMiniChartWidth(4, 20, 0)).toBe(96);
+    expect(getAutoMiniChartWidth(4, 20, 400)).toBe(96);
+    expect(getAutoMiniChartWidth(12, 20, 400)).toBe(240);
+    expect(getAutoMiniChartWidth(12, 20, 160)).toBe(160);
   });
 });

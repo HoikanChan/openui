@@ -30,7 +30,6 @@ const meta = {
   args: {
     type: "line",
     data: [12, 18, 15, 21, 19, 24, 22],
-    size: 96,
     color: "#1677ff",
   },
 } satisfies Meta<typeof MiniChartView>;

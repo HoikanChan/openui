@@ -14,6 +14,12 @@ export type MiniChartDatum = number | { value: number; label?: string };
 export type MiniChartData = MiniChartDatum[];
 export type NormalizedMiniChartDatum = { value: number; label: string };
 
+const MINI_CHART_AUTO_HEIGHT_FALLBACK = 36;
+const MINI_CHART_AUTO_HEIGHT_MIN = 24;
+const MINI_CHART_AUTO_HEIGHT_MAX = 44;
+const MINI_CHART_AUTO_HEIGHT_RATIO = 0.22;
+const MINI_CHART_AUTO_WIDTH_MIN = 96;
+
 function unwrapElement<T extends Record<string, unknown>>(value: T | ElementLike): T {
   return (typeof value === "object" &&
   value !== null &&
@@ -98,4 +104,29 @@ export function getRecentMiniChartDataThatFits<T extends MiniChartData>(
   }
 
   return data.slice(-maxItems) as T;
+}
+
+export function getAutoMiniChartHeight(containerWidth: number): number {
+  if (containerWidth <= 0) {
+    return MINI_CHART_AUTO_HEIGHT_FALLBACK;
+  }
+
+  return Math.min(
+    MINI_CHART_AUTO_HEIGHT_MAX,
+    Math.max(MINI_CHART_AUTO_HEIGHT_MIN, Math.round(containerWidth * MINI_CHART_AUTO_HEIGHT_RATIO)),
+  );
+}
+
+export function getAutoMiniChartWidth(
+  dataLength: number,
+  elementSpacing: number,
+  containerWidth: number,
+): number {
+  const desiredWidth = Math.max(MINI_CHART_AUTO_WIDTH_MIN, dataLength * elementSpacing);
+
+  if (containerWidth <= 0) {
+    return desiredWidth;
+  }
+
+  return Math.min(containerWidth, desiredWidth);
 }

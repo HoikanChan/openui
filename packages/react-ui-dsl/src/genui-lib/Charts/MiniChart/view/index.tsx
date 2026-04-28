@@ -4,12 +4,13 @@ import React from "react";
 import type * as echarts from "echarts";
 import { BaseChart } from "../../../../components/chart/BaseChart";
 import {
+  getAutoMiniChartHeight,
+  getAutoMiniChartWidth,
   getRecentMiniChartDataThatFits,
   normalizeMiniChartData,
   type MiniChartData,
 } from "../../view-utils";
 
-const DEFAULT_SIZE = 64;
 const MINI_LINE_SPACING = 20;
 const MINI_BAR_SPACING = 14;
 
@@ -17,27 +18,47 @@ type MiniChartType = "line" | "bar" | "area";
 
 type MiniChartCommonProps = {
   data: MiniChartData;
-  size?: number | string;
+  height?: number | string;
   color?: string;
+  size?: number | string;
 };
 
 type MiniChartViewProps = MiniChartCommonProps & {
   type: MiniChartType;
 };
 
-function getChartStyle(size?: number | string): React.CSSProperties {
-  if (typeof size === "number") {
-    return { width: size, height: size };
+function getLegacyCompatibleHeight(
+  containerWidth: number,
+  height?: number | string,
+  legacySize?: number | string,
+): number | string {
+  if (height !== undefined) {
+    return height;
   }
 
-  if (typeof size === "string") {
-    if (size.trim().endsWith("%")) {
-      return { width: size, height: DEFAULT_SIZE };
-    }
-    return { width: size, height: size };
+  if (typeof legacySize === "number") {
+    return legacySize;
   }
 
-  return { width: "100%", height: DEFAULT_SIZE };
+  if (typeof legacySize === "string" && !legacySize.trim().endsWith("%")) {
+    return legacySize;
+  }
+
+  return getAutoMiniChartHeight(containerWidth);
+}
+
+function getChartStyle(
+  dataLength: number,
+  elementSpacing: number,
+  containerWidth: number,
+  height?: number | string,
+  legacySize?: number | string,
+): React.CSSProperties {
+  const resolvedWidth = getAutoMiniChartWidth(dataLength, elementSpacing, containerWidth);
+  return {
+    width: resolvedWidth,
+    height: getLegacyCompatibleHeight(resolvedWidth, height, legacySize),
+  };
 }
 
 function buildMiniChartOption(
@@ -100,13 +121,14 @@ function useMiniChartPoints(data: MiniChartData, elementSpacing: number) {
 
   const points = React.useMemo(() => normalizeMiniChartData(visibleData), [visibleData]);
 
-  return { containerRef, points };
+  return { containerRef, containerWidth, points };
 }
 
 function MiniChartShell({
   data,
-  size,
+  height,
   color,
+  size,
   elementSpacing,
   seriesBuilder,
 }: MiniChartCommonProps & {
@@ -116,15 +138,21 @@ function MiniChartShell({
     color?: string,
   ) => echarts.SeriesOption;
 }) {
-  const { containerRef, points } = useMiniChartPoints(data, elementSpacing);
+  const { containerRef, containerWidth, points } = useMiniChartPoints(data, elementSpacing);
   const option = React.useMemo(
     () => buildMiniChartOption(points, seriesBuilder(points, color), color),
     [color, points, seriesBuilder],
   );
+  const chartStyle = React.useMemo(
+    () => getChartStyle(data.length, elementSpacing, containerWidth, height, size),
+    [containerWidth, data.length, elementSpacing, height, size],
+  );
 
   return (
-    <div ref={containerRef} style={getChartStyle(size)}>
-      <BaseChart option={option} style={{ width: "100%", height: "100%" }} />
+    <div ref={containerRef} style={{ width: "100%" }}>
+      <div style={chartStyle}>
+        <BaseChart option={option} style={{ width: "100%", height: "100%" }} />
+      </div>
     </div>
   );
 }
