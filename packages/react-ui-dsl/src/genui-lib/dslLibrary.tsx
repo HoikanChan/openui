@@ -44,6 +44,7 @@ const DEFAULT_PROMPT_ADDITIONAL_RULES = [
   "Use Descriptions for single-record detail views instead of Table.",
   "Accessing a field on an array extracts that field from every element: `filteredRows.fieldName` returns an array of that field's values. Use this to build Series data from filtered row sets.",
   "Never hardcode data values from the data model. Always reference fields via data paths or derived variables.",
+  "For dynamic-key object maps such as `{ \"dev-001\": {...}, \"dev-002\": {...} }`, use `@ObjectEntries(...)` or `@ObjectKeys(...)` instead of hardcoding sample keys.",
   "If timeline rows already expose `title`, `description`, and `status`, pass them directly to `TimeLine(data.timeline.items, data.timeline.title)`.",
   "Only use chart components when the data model already exposes chart-ready fields that match the component signature.",
   "Do not invent labels, series, categories, or missing time points from raw rows, statistics, or time ranges just to make a chart render.",
@@ -81,6 +82,11 @@ deviceCol = Col("Device", "deviceName")
 interfaceCol = Col("Interface", "showName")
 timeCol = Col("Time", "time")
 utilizationCol = Col("Peak Utilization", "PeakBandwidthUtilization")`,
+  `root = VLayout([deviceTable])
+deviceRows = @ObjectEntries(data.devicesById)
+deviceTable = Table([deviceKeyCol, statusCol], deviceRows)
+deviceKeyCol = Col("Device", "key")
+statusCol = Col("Status", "value.status")`,
 ];
 
 function mergePromptOptions(options?: PromptOptions): PromptOptions {

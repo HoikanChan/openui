@@ -76,6 +76,22 @@ function parseDateLike(value: unknown): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function objectMapEntries(
+  value: unknown,
+): Array<{
+  key: string;
+  value: unknown;
+}> {
+  if (!isPlainRecord(value)) return [];
+  return Object.entries(value).map(([key, entryValue]) => ({ key, value: entryValue }));
+}
+
 function formatNumberValue(
   value: number,
   locale: string | undefined,
@@ -373,6 +389,20 @@ export const BUILTINS: Record<string, BuiltinDef> = {
         }
       });
     },
+  },
+  ObjectEntries: {
+    name: "ObjectEntries",
+    signature: "ObjectEntries(obj) -> {key: string, value: any}[]",
+    description:
+      "Convert a plain object map into ordered rows of {key, value}. Returns [] for null, arrays, and unsupported inputs.",
+    fn: (_runtime, obj) => objectMapEntries(obj),
+  },
+  ObjectKeys: {
+    name: "ObjectKeys",
+    signature: "ObjectKeys(obj) -> string[]",
+    description:
+      "Return the ordered keys of a plain object map. Returns [] for null, arrays, and unsupported inputs.",
+    fn: (_runtime, obj) => objectMapEntries(obj).map((entry) => entry.key),
   },
   Round: {
     name: "Round",

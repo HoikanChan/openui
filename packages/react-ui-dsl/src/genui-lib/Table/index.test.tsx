@@ -42,6 +42,29 @@ rows = [{name: "Alice", joinDate: "2026-01-02T03:04:05.000Z"}]`);
     });
   });
 
+  it("allows ObjectEntries rows to feed iterable table patterns", () => {
+    const parser = createParser(dslLibrary.toJSONSchema());
+    const result = parser.parse(`root = Table([Col("Device", "key"), Col("Status", "value.status")], @ObjectEntries(data.devicesById))`);
+
+    expect(result.meta.errors).toHaveLength(0);
+    expect(result.root?.typeName).toBe("Table");
+    expect(result.root?.props.columns).toHaveLength(2);
+    expect(result.root?.props.columns[0]).toMatchObject({
+      type: "element",
+      typeName: "Col",
+      props: { title: "Device", field: "key" },
+    });
+    expect(result.root?.props.columns[1]).toMatchObject({
+      type: "element",
+      typeName: "Col",
+      props: { title: "Status", field: "value.status" },
+    });
+    expect(result.root?.props.rows).toMatchObject({
+      k: "Comp",
+      name: "ObjectEntries",
+    });
+  });
+
   it("maps column options to antd table config", () => {
     const columns = mapColumnsToAntd(
       [

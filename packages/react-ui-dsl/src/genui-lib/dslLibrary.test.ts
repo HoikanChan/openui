@@ -158,6 +158,7 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain("If a table cell label must combine the current value with another field from the same row");
     expect(prompt).toContain("Use `@FormatDate`, `@FormatBytes`, `@FormatNumber`, `@FormatPercent`, and `@FormatDuration`");
     expect(prompt).toContain("Never use the removed `format` prop on `Col` or `DescField`");
+    expect(prompt).toContain("For dynamic-key object maps");
     expect(prompt).toContain(
       'nameCol = Col("Name", "name", {cell: @Render("v", "row", Link("http://localhost:5173/" + row.name, v))})',
     );
@@ -170,6 +171,10 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain(
       'statusCol = Col("Status", "status", {cell: @Render("v", "row", Text(row.id + ": " + @Switch(v, {"paid": "Paid", "pending": "Pending"}, "Unknown")))})',
     );
+    expect(prompt).toContain('deviceRows = @ObjectEntries(data.devicesById)');
+    expect(prompt).toContain('deviceTable = Table([deviceKeyCol, statusCol], deviceRows)');
+    expect(prompt).toContain('deviceKeyCol = Col("Device", "key")');
+    expect(prompt).toContain('statusCol = Col("Status", "value.status")');
   });
 
   it("includes descriptions-specific guidance in the default prompt", () => {
