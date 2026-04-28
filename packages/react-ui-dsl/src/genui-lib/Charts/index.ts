@@ -8,6 +8,7 @@ export { RadarChart } from "./RadarChart";
 export { HeatmapChart } from "./HeatmapChart";
 export { TreeMapChart } from "./TreeMapChart";
 export { ScatterChart } from "./ScatterChart";
+export { MiniChart } from "./MiniChart";
 export { Series } from "./Series";
 export { ScatterSeries } from "./ScatterSeries";
 export { Point } from "./Point";

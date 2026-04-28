@@ -10,6 +10,9 @@ type ElementLike = {
 
 type ChartDataset = { source: number[][] } | undefined;
 type ChartOptions = (Omit<echarts.EChartsOption, "title"> & { title?: string }) | undefined;
+export type MiniChartDatum = number | { value: number; label?: string };
+export type MiniChartData = MiniChartDatum[];
+export type NormalizedMiniChartDatum = { value: number; label: string };
 
 function unwrapElement<T extends Record<string, unknown>>(value: T | ElementLike): T {
   return (typeof value === "object" &&
@@ -71,4 +74,28 @@ export function buildScatterSeries(
       : {}),
     };
   });
+}
+
+export function normalizeMiniChartData(data: MiniChartData): NormalizedMiniChartDatum[] {
+  return (data ?? []).map((item, index) =>
+    typeof item === "number"
+      ? { value: item, label: `Item ${index + 1}` }
+      : { value: item.value, label: item.label ?? `Item ${index + 1}` });
+}
+
+export function getRecentMiniChartDataThatFits<T extends MiniChartData>(
+  data: T,
+  containerWidth: number,
+  elementSpacing: number,
+): T {
+  if (containerWidth <= 0 || data.length === 0) {
+    return data;
+  }
+
+  const maxItems = Math.max(1, Math.floor(containerWidth / elementSpacing));
+  if (maxItems >= data.length) {
+    return data;
+  }
+
+  return data.slice(-maxItems) as T;
 }
