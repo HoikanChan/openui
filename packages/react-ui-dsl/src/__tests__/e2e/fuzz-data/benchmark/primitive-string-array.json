@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "prompt": "显示当前活跃告警类型",
+    "taxonomy": ["bare-array", "primitive-strings", "string-enum", "none", "full", "raw-only"],
+    "evalHints": [
+      "data is a bare array of strings — must render each string as a tag or list item",
+      "duplicate values indicate frequency — should convey that repeated types are significant",
+      "must not render as a table with an index column",
+      "a tag cloud or frequency summary would be more informative than a plain list"
+    ]
+  },
+  "data": ["link-down", "high-cpu", "link-down", "memory-threshold", "link-down", "high-cpu", "interface-error", "link-down", "temperature-high", "high-cpu"]
+}

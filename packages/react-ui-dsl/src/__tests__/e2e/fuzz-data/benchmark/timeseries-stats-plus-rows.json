@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "prompt": "显示多端口流量时序趋势及汇总统计",
+    "taxonomy": ["multi-top-arrays", "homogeneous", "epoch-ms", "byte-values", "multi-entity-interleaved", "full", "stats-plus-rows"],
+    "evalHints": [
+      "samples and summary are two separate top-level arrays — must render both sections",
+      "samples contains multi-entity interleaved rows — must derive per-port series using portId field",
+      "bytesIn/bytesOut are raw byte values — must be formatted with MB/GB unit",
+      "timestamp is epoch milliseconds — must format on time axis",
+      "summary contains aggregated totals — should be displayed separately from the time series"
+    ]
+  },
+  "data": {
+    "samples": [
+      { "timestamp": 1717190400000, "portId": "p-001", "bytesIn": 1287654321, "bytesOut": 987543210 },
+      { "timestamp": 1717190400000, "portId": "p-002", "bytesIn": 3456789012, "bytesOut": 2345678901 },
+      { "timestamp": 1717194000000, "portId": "p-001", "bytesIn": 1456789012, "bytesOut": 1123456789 },
+      { "timestamp": 1717194000000, "portId": "p-002", "bytesIn": 3789012345, "bytesOut": 2567890123 },
+      { "timestamp": 1717197600000, "portId": "p-001", "bytesIn": 1123456789, "bytesOut": 876543210 },
+      { "timestamp": 1717197600000, "portId": "p-002", "bytesIn": 2987654321, "bytesOut": 2098765432 }
+    ],
+    "summary": [
+      { "portId": "p-001", "totalIn": 3867900122, "totalOut": 2987543209, "peakUtil": 67.4 },
+      { "portId": "p-002", "totalIn": 10233455678, "totalOut": 7012334456, "peakUtil": 94.1 }
+    ]
+  }
+}

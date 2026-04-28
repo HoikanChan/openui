@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "prompt": "显示磁盘 I/O 时序趋势",
+    "taxonomy": ["named-list", "homogeneous", "epoch-ms", "unordered", "full", "raw-only"],
+    "evalHints": [
+      "records are NOT in chronological order — must sort by timestamp before rendering the time axis",
+      "timestamp is epoch milliseconds — must be formatted as human-readable datetime on axis",
+      "readMBps and writeMBps are throughput values — axis should indicate MB/s",
+      "must render as a time-series chart with correct time ordering"
+    ]
+  },
+  "data": {
+    "disk": "sda",
+    "samples": [
+      { "timestamp": 1717201200000, "readMBps": 145.2, "writeMBps": 78.4 },
+      { "timestamp": 1717190400000, "readMBps": 98.7, "writeMBps": 45.1 },
+      { "timestamp": 1717208400000, "readMBps": 112.3, "writeMBps": 89.6 },
+      { "timestamp": 1717194000000, "readMBps": 167.8, "writeMBps": 102.3 },
+      { "timestamp": 1717204800000, "readMBps": 134.5, "writeMBps": 67.2 },
+      { "timestamp": 1717197600000, "readMBps": 89.1, "writeMBps": 54.7 }
+    ]
+  }
+}

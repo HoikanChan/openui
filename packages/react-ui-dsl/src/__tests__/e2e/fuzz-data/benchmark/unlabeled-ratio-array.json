@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "prompt": "显示资源分配占比",
+    "taxonomy": ["bare-array", "primitive-numbers", "ratio-values", "none", "full", "ratio-distribution"],
+    "evalHints": [
+      "data is a bare array of numbers that sum to 1.0 — must recognize as ratio/proportion data",
+      "values are fractions (0.0–1.0) — should be displayed as percentages",
+      "must render as a pie or distribution chart, not a list of raw decimals",
+      "without labels, the chart must still convey relative proportions clearly"
+    ]
+  },
+  "data": [0.35, 0.25, 0.20, 0.12, 0.08]
+}

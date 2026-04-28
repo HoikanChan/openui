@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "prompt": "显示设备基础信息及其最近告警",
+    "taxonomy": ["nested-object", "homogeneous", "epoch-ms", "string-enum", "none", "full", "raw-only"],
+    "evalHints": [
+      "device info and recentAlarms are at different nesting levels — must render both sections",
+      "alarmTime is epoch milliseconds — must be formatted as human-readable datetime",
+      "alarmLevel is a string enum — must be visually distinguished",
+      "must not ignore the nested recentAlarms array"
+    ]
+  },
+  "data": {
+    "device": {
+      "deviceId": "d-001",
+      "name": "GZ-Core-01",
+      "ip": "10.72.168.1",
+      "status": "active"
+    },
+    "recentAlarms": [
+      { "alarmId": "ALM-001", "alarmName": "Link Down", "alarmLevel": "critical", "alarmTime": 1717200000000 },
+      { "alarmId": "ALM-002", "alarmName": "High CPU", "alarmLevel": "major", "alarmTime": 1717196400000 },
+      { "alarmId": "ALM-003", "alarmName": "Temp Elevated", "alarmLevel": "warning", "alarmTime": 1717192800000 }
+    ]
+  }
+}

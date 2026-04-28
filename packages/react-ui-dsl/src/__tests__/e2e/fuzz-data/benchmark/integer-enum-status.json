@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "prompt": "显示设备运行状态列表",
+    "taxonomy": ["named-list", "homogeneous", "integer-enum", "epoch-ms", "none", "full", "raw-only"],
+    "evalHints": [
+      "adminStatus is an integer enum: 1=active, 2=inactive, 3=maintenance — must NOT display as raw numbers",
+      "operStatus is an integer enum: 1=up, 2=down, 3=testing — must NOT display as raw numbers",
+      "lastSeen is epoch milliseconds — must be formatted as human-readable datetime",
+      "enum values should be rendered as human-readable labels with visual distinction"
+    ]
+  },
+  "data": {
+    "devices": [
+      { "deviceId": "d-001", "name": "GZ-Core-01", "adminStatus": 1, "operStatus": 1, "lastSeen": 1717200000000 },
+      { "deviceId": "d-002", "name": "GZ-Core-02", "adminStatus": 1, "operStatus": 2, "lastSeen": 1717199000000 },
+      { "deviceId": "d-003", "name": "GZ-Access-01", "adminStatus": 2, "operStatus": 2, "lastSeen": 1717100000000 },
+      { "deviceId": "d-004", "name": "GZ-Access-02", "adminStatus": 3, "operStatus": 3, "lastSeen": 1717198000000 },
+      { "deviceId": "d-005", "name": "GZ-Access-03", "adminStatus": 1, "operStatus": 1, "lastSeen": 1717200100000 }
+    ]
+  }
+}

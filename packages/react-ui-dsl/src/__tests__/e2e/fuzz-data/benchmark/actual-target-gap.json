@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "prompt": "显示各服务 SLA 达成情况",
+    "taxonomy": ["named-list", "homogeneous", "delta-values", "percentage-decimal", "none", "full", "delta-comparison"],
+    "evalHints": [
+      "actual and target are both 0.0–1.0 decimal fractions representing percentages — must convert to % for display",
+      "gap = actual - target — should be shown with visual indicator (green if positive, red if negative)",
+      "must not display raw decimal values without % conversion",
+      "services that miss their target (gap < 0) should be visually distinguished"
+    ]
+  },
+  "data": {
+    "services": [
+      { "serviceId": "svc-001", "name": "API Gateway", "target": 0.999, "actual": 0.9987, "gap": -0.0003 },
+      { "serviceId": "svc-002", "name": "Auth Service", "target": 0.999, "actual": 0.9994, "gap": 0.0004 },
+      { "serviceId": "svc-003", "name": "Order Service", "target": 0.995, "actual": 0.9921, "gap": -0.0029 },
+      { "serviceId": "svc-004", "name": "Payment Service", "target": 0.9999, "actual": 0.9998, "gap": -0.0001 },
+      { "serviceId": "svc-005", "name": "Analytics", "target": 0.99, "actual": 0.9912, "gap": 0.0012 }
+    ]
+  }
+}

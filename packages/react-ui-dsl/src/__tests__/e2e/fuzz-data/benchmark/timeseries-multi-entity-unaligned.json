@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "prompt": "显示多设备温度监控时序（各设备采样点不对齐）",
+    "taxonomy": ["multi-top-arrays", "homogeneous", "epoch-ms", "multi-entity-unaligned", "sparse-nullable", "raw-only"],
+    "evalHints": [
+      "each device array contains timestamps that do not align with other devices — must handle missing data points gracefully",
+      "timestamp is epoch milliseconds — must format on time axis",
+      "temperatureC is the primary metric — should be labeled with °C unit",
+      "must render all device series even if they have different numbers of data points"
+    ]
+  },
+  "data": {
+    "device_gz_core_01": [
+      { "timestamp": 1717190400000, "temperatureC": 42.1 },
+      { "timestamp": 1717194000000, "temperatureC": 44.7 },
+      { "timestamp": 1717197600000, "temperatureC": 46.2 },
+      { "timestamp": 1717201200000, "temperatureC": 43.8 },
+      { "timestamp": 1717204800000, "temperatureC": 45.1 }
+    ],
+    "device_gz_core_02": [
+      { "timestamp": 1717192200000, "temperatureC": 38.5 },
+      { "timestamp": 1717199000000, "temperatureC": 40.2 },
+      { "timestamp": 1717205800000, "temperatureC": 39.7 }
+    ],
+    "device_gz_access_01": [
+      { "timestamp": 1717190400000, "temperatureC": 35.4 },
+      { "timestamp": 1717197600000, "temperatureC": 36.8 },
+      { "timestamp": 1717208400000, "temperatureC": 34.9 }
+    ]
+  }
+}

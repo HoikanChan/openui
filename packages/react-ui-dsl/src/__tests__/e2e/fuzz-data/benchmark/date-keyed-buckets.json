@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "prompt": "显示每日告警数量趋势",
+    "taxonomy": ["date-keyed-map", "homogeneous", "date-keyed", "full", "raw-only"],
+    "evalHints": [
+      "top-level keys are date strings — must use dates as the time axis",
+      "must render as a time-series or bar chart, not a key-value table",
+      "count is the primary metric — should be shown on the value axis",
+      "must preserve chronological order of keys"
+    ]
+  },
+  "data": {
+    "2024-06-01": { "count": 12, "critical": 3, "major": 5, "minor": 4 },
+    "2024-06-02": { "count": 8, "critical": 1, "major": 4, "minor": 3 },
+    "2024-06-03": { "count": 21, "critical": 7, "major": 8, "minor": 6 },
+    "2024-06-04": { "count": 5, "critical": 0, "major": 2, "minor": 3 },
+    "2024-06-05": { "count": 14, "critical": 4, "major": 6, "minor": 4 },
+    "2024-06-06": { "count": 9, "critical": 2, "major": 3, "minor": 4 },
+    "2024-06-07": { "count": 17, "critical": 5, "major": 7, "minor": 5 }
+  }
+}

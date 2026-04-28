@@ -24,6 +24,7 @@
     "README.md"
   ],
   "scripts": {
+    "postinstall": "playwright install chromium",
     "test": "cross-env REGEN_SNAPSHOTS=0 vitest run --config vitest.config.ts",
     "test:e2e": "cross-env REGEN_SNAPSHOTS=0 vitest run src/__tests__/e2e",
     "test:e2e:report": "node ./src/__tests__/e2e/report-cli.mjs",

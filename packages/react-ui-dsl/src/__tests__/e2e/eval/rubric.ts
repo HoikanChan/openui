@@ -40,8 +40,10 @@ Respond with ONLY valid JSON in exactly this shape, no markdown fences:
   "feedback": "<one concise sentence describing the main quality issue or strength>"
 }`;
 
-export function buildJudgeSystemPrompt(rubricOverride?: string): string {
-  return rubricOverride ?? DEFAULT_RUBRIC;
+export function buildJudgeSystemPrompt(rubricOverride?: string, evalHints?: string[]): string {
+  const base = rubricOverride ?? DEFAULT_RUBRIC;
+  if (!evalHints || evalHints.length === 0) return base;
+  return `${base}\n\n## Case-specific hints\n${evalHints.map((h) => `- ${h}`).join("\n")}`;
 }
 
 export function hashRubric(rubric: string): string {

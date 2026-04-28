@@ -19,6 +19,7 @@ export interface E2EReportEntry {
   status?: E2EReportEntryStatus;
   failureReason?: string;
   judgeScore?: JudgeScore;
+  evalHints?: string[];
 }
 
 export interface E2EReportData {

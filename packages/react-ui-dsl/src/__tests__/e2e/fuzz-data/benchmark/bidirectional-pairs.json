@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "prompt": "显示流量双向链路监控列表",
+    "taxonomy": ["named-list", "homogeneous", "string-enum", "none", "full", "raw-only"],
+    "evalHints": [
+      "each link has srcDevice and dstDevice — both directions of a logical link are present as separate records",
+      "must not deduplicate or collapse bidirectional pairs into a single row",
+      "inTrafficMbps and outTrafficMbps are directional — their meaning depends on perspective",
+      "must render all records including apparent reverse pairs"
+    ]
+  },
+  "data": {
+    "links": [
+      { "linkId": "lnk-001-fwd", "srcDevice": "GZ-Core-01", "dstDevice": "GZ-Core-02", "status": "up", "inTrafficMbps": 450.2, "outTrafficMbps": 380.7 },
+      { "linkId": "lnk-001-rev", "srcDevice": "GZ-Core-02", "dstDevice": "GZ-Core-01", "status": "up", "inTrafficMbps": 380.7, "outTrafficMbps": 450.2 },
+      { "linkId": "lnk-002-fwd", "srcDevice": "GZ-Core-01", "dstDevice": "GZ-Access-01", "status": "up", "inTrafficMbps": 120.4, "outTrafficMbps": 95.1 },
+      { "linkId": "lnk-002-rev", "srcDevice": "GZ-Access-01", "dstDevice": "GZ-Core-01", "status": "up", "inTrafficMbps": 95.1, "outTrafficMbps": 120.4 }
+    ]
+  }
+}

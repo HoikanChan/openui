@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "prompt": "显示服务依赖关系图",
+    "taxonomy": ["named-list", "adjacency-list", "none", "full", "raw-only"],
+    "evalHints": [
+      "neighbors field lists IDs of connected services — must represent the dependency relationships",
+      "must not ignore the neighbors field and render only name/type",
+      "should show which services depend on which other services",
+      "circular or bidirectional relationships may exist — must handle gracefully"
+    ]
+  },
+  "data": {
+    "services": [
+      { "id": "svc-api", "name": "API Gateway", "type": "gateway", "neighbors": ["svc-auth", "svc-user", "svc-order"] },
+      { "id": "svc-auth", "name": "Auth Service", "type": "backend", "neighbors": ["svc-db"] },
+      { "id": "svc-user", "name": "User Service", "type": "backend", "neighbors": ["svc-db", "svc-cache"] },
+      { "id": "svc-order", "name": "Order Service", "type": "backend", "neighbors": ["svc-db", "svc-payment"] },
+      { "id": "svc-payment", "name": "Payment Service", "type": "backend", "neighbors": ["svc-db"] },
+      { "id": "svc-db", "name": "PostgreSQL", "type": "database", "neighbors": [] },
+      { "id": "svc-cache", "name": "Redis Cache", "type": "cache", "neighbors": [] }
+    ]
+  }
+}

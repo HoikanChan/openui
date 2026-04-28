@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "prompt": "显示各链路流量统计",
+    "taxonomy": ["named-list", "homogeneous", "byte-values", "cross-magnitude", "none", "full", "raw-only"],
+    "evalHints": [
+      "inBytes and outBytes are raw byte counts — must be formatted with appropriate unit (KB/MB/GB/TB)",
+      "values differ by up to 6 orders of magnitude across records — must use consistent units or adaptive formatting",
+      "must not display raw byte integers without unit conversion",
+      "bandwidth is in bits per second — should be formatted as Mbps or Gbps"
+    ]
+  },
+  "data": {
+    "links": [
+      { "linkId": "lnk-001", "name": "Core to Internet", "inBytes": 9876543210987, "outBytes": 8765432109876, "bandwidth": 10000000000 },
+      { "linkId": "lnk-002", "name": "Core to Access-01", "inBytes": 1234567890, "outBytes": 987654321, "bandwidth": 1000000000 },
+      { "linkId": "lnk-003", "name": "Access to Server-01", "inBytes": 45678901, "outBytes": 34567890, "bandwidth": 100000000 },
+      { "linkId": "lnk-004", "name": "Mgmt Link", "inBytes": 123456, "outBytes": 98765, "bandwidth": 10000000 }
+    ]
+  }
+}

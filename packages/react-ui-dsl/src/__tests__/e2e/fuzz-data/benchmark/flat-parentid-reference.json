@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "prompt": "显示资源拓扑层级结构",
+    "taxonomy": ["bare-array", "parentid-flat", "none", "full", "raw-only"],
+    "evalHints": [
+      "parentId references another record's id in the same array — must reconstruct and render the hierarchy",
+      "root nodes have parentId null — must be shown as top-level",
+      "must not render as a simple flat list ignoring hierarchy",
+      "depth relationship between nodes should be visually clear"
+    ]
+  },
+  "data": [
+    { "id": "r-001", "name": "Total Network", "type": "root", "parentId": null },
+    { "id": "r-002", "name": "Guangzhou Region", "type": "region", "parentId": "r-001" },
+    { "id": "r-003", "name": "Shanghai Region", "type": "region", "parentId": "r-001" },
+    { "id": "r-004", "name": "GZ-DC-01", "type": "datacenter", "parentId": "r-002" },
+    { "id": "r-005", "name": "SH-DC-01", "type": "datacenter", "parentId": "r-003" },
+    { "id": "r-006", "name": "GZ-Core-01", "type": "device", "parentId": "r-004" },
+    { "id": "r-007", "name": "GZ-Core-02", "type": "device", "parentId": "r-004" },
+    { "id": "r-008", "name": "SH-Core-01", "type": "device", "parentId": "r-005" }
+  ]
+}

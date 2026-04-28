@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "prompt": "显示按告警级别分组的告警列表",
+    "taxonomy": ["grouped-map", "homogeneous", "integer-enum", "none", "full", "raw-only"],
+    "evalHints": [
+      "top-level keys (critical/major/minor/warning) are group labels — must render as grouped sections or tabs",
+      "alarmLevel inside each record is an integer enum — must not render as raw number",
+      "must display all groups, not just one",
+      "each group's item count should be visible to the user"
+    ]
+  },
+  "data": {
+    "critical": [
+      { "alarmId": "ALM-001", "neName": "GZ-Core-01", "alarmName": "Link Down", "alarmLevel": 1 },
+      { "alarmId": "ALM-002", "neName": "GZ-Core-02", "alarmName": "Power Supply Failure", "alarmLevel": 1 }
+    ],
+    "major": [
+      { "alarmId": "ALM-003", "neName": "GZ-Core-01", "alarmName": "High CPU Usage", "alarmLevel": 2 },
+      { "alarmId": "ALM-004", "neName": "GZ-Access-01", "alarmName": "Memory Threshold", "alarmLevel": 2 }
+    ],
+    "minor": [
+      { "alarmId": "ALM-005", "neName": "GZ-Access-02", "alarmName": "Interface Flap", "alarmLevel": 3 }
+    ],
+    "warning": [
+      { "alarmId": "ALM-006", "neName": "GZ-Access-01", "alarmName": "Disk Usage 75%", "alarmLevel": 4 },
+      { "alarmId": "ALM-007", "neName": "GZ-Core-02", "alarmName": "Temp Elevated", "alarmLevel": 4 }
+    ]
+  }
+}

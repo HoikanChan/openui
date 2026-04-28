@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "prompt": "显示设备性能监控列表（含大量空值）",
+    "taxonomy": ["named-list", "homogeneous", "epoch-ms", "string-enum", "none", "sparse-nullable", "raw-only"],
+    "evalHints": [
+      "many fields are null for most records — must handle null values gracefully without crashing",
+      "must not render null as empty cells that break the layout",
+      "null values should be shown as N/A, — , or omitted cleanly",
+      "lastSeen is epoch milliseconds — must format as datetime when present, handle null gracefully"
+    ]
+  },
+  "data": {
+    "devices": [
+      { "deviceId": "d-001", "name": "GZ-Core-01", "status": "active", "cpuUtil": 0.45, "memUtil": 0.62, "lastSeen": 1717200000000 },
+      { "deviceId": "d-002", "name": "GZ-Core-02", "status": "active", "cpuUtil": null, "memUtil": null, "lastSeen": null },
+      { "deviceId": "d-003", "name": "GZ-Access-01", "status": "inactive", "cpuUtil": null, "memUtil": null, "lastSeen": 1717100000000 },
+      { "deviceId": "d-004", "name": "GZ-Access-02", "status": "active", "cpuUtil": 0.23, "memUtil": null, "lastSeen": 1717200100000 },
+      { "deviceId": "d-005", "name": "GZ-Access-03", "status": null, "cpuUtil": null, "memUtil": null, "lastSeen": null }
+    ]
+  }
+}

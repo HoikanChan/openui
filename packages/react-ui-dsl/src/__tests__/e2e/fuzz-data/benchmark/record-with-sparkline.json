@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "prompt": "显示各端口流量趋势列表（含微型折线图）",
+    "taxonomy": ["named-list", "record-with-array-field", "none", "full", "raw-only"],
+    "evalHints": [
+      "each record has a trend array of numbers — must render it as an inline sparkline or mini-chart",
+      "must not ignore the trend field or render it as a raw array string",
+      "currentUtil is the current percentage value — should be shown alongside the sparkline",
+      "the list + sparkline pattern should be used, not a nested table"
+    ]
+  },
+  "data": {
+    "ports": [
+      { "portId": "p-001", "name": "GE0/0/1", "currentUtil": 45.2, "trend": [32.1, 38.7, 41.2, 44.8, 45.2] },
+      { "portId": "p-002", "name": "GE0/0/2", "currentUtil": 82.3, "trend": [45.6, 58.9, 71.4, 79.8, 82.3] },
+      { "portId": "p-003", "name": "10GE1/0/1", "currentUtil": 12.5, "trend": [18.9, 15.3, 13.7, 12.1, 12.5] },
+      { "portId": "p-004", "name": "10GE1/0/2", "currentUtil": 94.1, "trend": [67.8, 78.4, 85.9, 91.2, 94.1] }
+    ]
+  }
+}

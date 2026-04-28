@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "prompt": "显示设备告警详情",
+    "taxonomy": ["named-list", "homogeneous", "epoch-ms", "string-enum", "none", "singleton", "raw-only"],
+    "evalHints": [
+      "alarms contains exactly one record — a detail view may be more appropriate than a single-row table",
+      "alarmTime and clearTime are epoch milliseconds — must be formatted as human-readable datetime",
+      "alarmLevel is a string enum — must be visually distinguished",
+      "must render all fields of the single record, not just a subset"
+    ]
+  },
+  "data": {
+    "alarms": [
+      {
+        "alarmId": "ALM-20240601-0001",
+        "neName": "GZ-Core-01",
+        "alarmName": "Link Down on GE0/0/1",
+        "alarmLevel": "critical",
+        "alarmTime": 1717200000000,
+        "clearTime": null,
+        "acknowledged": false,
+        "description": "GigabitEthernet0/0/1 link state changed to down",
+        "location": "GD-GZ-DC-01"
+      }
+    ]
+  }
+}

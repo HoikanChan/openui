@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "prompt": "显示组织架构树",
+    "taxonomy": ["nested-object", "embedded-tree", "none", "full", "raw-only"],
+    "evalHints": [
+      "children is a recursive field — must render as a tree or hierarchical view, not a flat list",
+      "must show all levels of the hierarchy",
+      "must not flatten the tree into a single-level list",
+      "node count at each level should be visually clear"
+    ]
+  },
+  "data": {
+    "id": "org-root",
+    "name": "Total Network",
+    "type": "root",
+    "children": [
+      {
+        "id": "region-gz",
+        "name": "Guangzhou Region",
+        "type": "region",
+        "children": [
+          {
+            "id": "dc-gz-01",
+            "name": "GZ-DC-01",
+            "type": "datacenter",
+            "children": [
+              { "id": "d-001", "name": "GZ-Core-01", "type": "device", "children": [] },
+              { "id": "d-002", "name": "GZ-Core-02", "type": "device", "children": [] }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "region-sh",
+        "name": "Shanghai Region",
+        "type": "region",
+        "children": [
+          {
+            "id": "dc-sh-01",
+            "name": "SH-DC-01",
+            "type": "datacenter",
+            "children": [
+              { "id": "d-003", "name": "SH-Core-01", "type": "device", "children": [] }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

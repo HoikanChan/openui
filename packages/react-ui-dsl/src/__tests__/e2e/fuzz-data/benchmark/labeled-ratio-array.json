@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "prompt": "显示流量协议分布",
+    "taxonomy": ["named-list", "homogeneous", "ratio-values", "none", "full", "ratio-distribution"],
+    "evalHints": [
+      "percent values sum to 100 — must render as a pie or bar chart showing distribution",
+      "must not render as a plain table when distribution/proportion is the key insight",
+      "all protocol slices must be shown",
+      "labels (protocol names) must be visible in the output"
+    ]
+  },
+  "data": {
+    "distribution": [
+      { "protocol": "HTTP/HTTPS", "percent": 45.2 },
+      { "protocol": "DNS", "percent": 18.7 },
+      { "protocol": "SSH", "percent": 12.4 },
+      { "protocol": "SMTP", "percent": 8.9 },
+      { "protocol": "FTP", "percent": 6.3 },
+      { "protocol": "Other", "percent": 8.5 }
+    ]
+  }
+}

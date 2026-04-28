@@ -8,6 +8,7 @@ interface JudgeInput {
   dataModel: Record<string, unknown>;
   screenshotPath: string | null;
   rubricOverride?: string;
+  evalHints?: string[];
 }
 
 interface RawJudgeResponse {
@@ -72,7 +73,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 export async function judgeFixture(input: JudgeInput): Promise<JudgeScore> {
-  const systemPrompt = buildJudgeSystemPrompt(input.rubricOverride);
+  const systemPrompt = buildJudgeSystemPrompt(input.rubricOverride, input.evalHints);
   const userText = buildUserText(input);
   const runnerType = resolveRunnerType();
 

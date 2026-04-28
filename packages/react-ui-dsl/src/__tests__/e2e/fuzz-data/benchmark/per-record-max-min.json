@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "prompt": "显示各服务器 CPU 使用率统计（含最大值、最小值、平均值）",
+    "taxonomy": ["named-list", "record-with-max-min", "percentage-decimal", "none", "full", "aggregated-only"],
+    "evalHints": [
+      "each record has max/min/avg/current as decimal fractions (0.0–1.0) — must multiply by 100 and display with % suffix",
+      "must render max/min/avg/current for each server — all four values are meaningful",
+      "a range indicator (bar or gauge showing min–avg–max span) would be ideal",
+      "must not display raw decimal fractions without percentage conversion"
+    ]
+  },
+  "data": {
+    "servers": [
+      { "serverId": "srv-001", "name": "prod-app-01", "max": 0.923, "min": 0.124, "avg": 0.567, "current": 0.612 },
+      { "serverId": "srv-002", "name": "prod-app-02", "max": 0.871, "min": 0.203, "avg": 0.498, "current": 0.534 },
+      { "serverId": "srv-003", "name": "prod-db-01", "max": 0.456, "min": 0.089, "avg": 0.234, "current": 0.198 },
+      { "serverId": "srv-004", "name": "prod-db-02", "max": 0.789, "min": 0.145, "avg": 0.412, "current": 0.445 }
+    ]
+  }
+}

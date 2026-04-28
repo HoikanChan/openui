@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "prompt": "显示资源使用率概览",
+    "taxonomy": ["named-list", "homogeneous", "percentage-decimal", "none", "full", "raw-only"],
+    "evalHints": [
+      "cpuUtil, memUtil, diskUtil are stored as 0.0–1.0 decimal fractions — must multiply by 100 and display with % suffix",
+      "must not display raw decimal values like 0.457 without converting to percentage",
+      "high utilization values (>0.8) should be visually flagged",
+      "all resource types should be visible for each host"
+    ]
+  },
+  "data": {
+    "hosts": [
+      { "hostId": "h-001", "name": "prod-app-01", "cpuUtil": 0.457, "memUtil": 0.623, "diskUtil": 0.312 },
+      { "hostId": "h-002", "name": "prod-app-02", "cpuUtil": 0.891, "memUtil": 0.754, "diskUtil": 0.445 },
+      { "hostId": "h-003", "name": "prod-db-01", "cpuUtil": 0.234, "memUtil": 0.912, "diskUtil": 0.783 },
+      { "hostId": "h-004", "name": "prod-db-02", "cpuUtil": 0.178, "memUtil": 0.567, "diskUtil": 0.234 }
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "prompt": "显示设备列表及其流量统计摘要",
+    "taxonomy": ["multi-top-arrays", "homogeneous", "epoch-ms", "byte-values", "none", "full", "stats-plus-rows"],
+    "evalHints": [
+      "devices and statistics are two separate top-level arrays — must render both, not just one",
+      "lastSeen is epoch milliseconds — must be formatted as human-readable datetime",
+      "totalIn/totalOut in statistics are raw bytes — must be formatted with appropriate unit (MB/GB)",
+      "statistics is an aggregated summary — may be rendered separately from the device list"
+    ]
+  },
+  "data": {
+    "devices": [
+      { "deviceId": "d-001", "name": "GZ-Core-01", "ip": "10.72.168.1", "status": "active", "lastSeen": 1717200000000 },
+      { "deviceId": "d-002", "name": "GZ-Core-02", "ip": "10.72.168.2", "status": "active", "lastSeen": 1717199000000 },
+      { "deviceId": "d-003", "name": "GZ-Access-01", "ip": "10.72.168.10", "status": "inactive", "lastSeen": 1717100000000 }
+    ],
+    "statistics": [
+      { "metric": "totalIn", "value": 15234567890, "unit": "bytes" },
+      { "metric": "totalOut", "value": 12987654321, "unit": "bytes" },
+      { "metric": "activeDevices", "value": 2, "unit": "count" }
+    ]
+  }
+}

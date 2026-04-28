@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "prompt": "显示设备列表",
+    "taxonomy": ["nested-object", "homogeneous", "epoch-ms", "none", "full", "raw-only"],
+    "evalHints": [
+      "actual device records are at data.result.devices — must navigate the unnecessary wrapper to reach the list",
+      "must not render the envelope fields (requestId, timestamp, result) as data columns",
+      "lastSeen is epoch milliseconds — must be formatted as human-readable datetime",
+      "must extract and render the devices array from data.result.devices"
+    ]
+  },
+  "data": {
+    "requestId": "req-abc123",
+    "timestamp": 1717200000000,
+    "result": {
+      "devices": [
+        { "deviceId": "d-001", "name": "GZ-Core-01", "status": "active", "lastSeen": 1717200000000 },
+        { "deviceId": "d-002", "name": "GZ-Core-02", "status": "active", "lastSeen": 1717199000000 },
+        { "deviceId": "d-003", "name": "GZ-Access-01", "status": "inactive", "lastSeen": 1717100000000 }
+      ]
+    }
+  }
+}

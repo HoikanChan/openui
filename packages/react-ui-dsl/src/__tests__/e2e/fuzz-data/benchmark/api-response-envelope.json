@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "prompt": "显示用户列表",
+    "taxonomy": ["api-response-envelope", "homogeneous", "string-enum", "none", "full", "raw-only"],
+    "evalHints": [
+      "success, code, message are API envelope metadata — must not appear as data columns",
+      "data.users contains the actual records — must render the user list from data.users",
+      "role is a string enum (admin/editor/viewer) — should be visually distinguished",
+      "must not render the envelope wrapper fields alongside record fields"
+    ]
+  },
+  "data": {
+    "success": true,
+    "code": 200,
+    "message": "OK",
+    "data": {
+      "users": [
+        { "userId": "u-001", "username": "alice", "email": "alice@example.com", "role": "admin", "active": true },
+        { "userId": "u-002", "username": "bob", "email": "bob@example.com", "role": "editor", "active": true },
+        { "userId": "u-003", "username": "charlie", "email": "charlie@example.com", "role": "viewer", "active": false },
+        { "userId": "u-004", "username": "diana", "email": "diana@example.com", "role": "editor", "active": true }
+      ]
+    }
+  }
+}

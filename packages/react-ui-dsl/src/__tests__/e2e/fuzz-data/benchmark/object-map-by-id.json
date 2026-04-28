@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "prompt": "显示各设备当前状态",
+    "taxonomy": ["map-object", "homogeneous", "string-enum", "epoch-ms", "none", "full", "raw-only"],
+    "evalHints": [
+      "top-level keys are device IDs — must treat each key as a separate record, not render the raw map structure",
+      "status is a string enum (online/offline/degraded) — must be visually distinguished",
+      "lastHeartbeat is epoch milliseconds — must be formatted as human-readable datetime",
+      "must render all entries from the map, not just the first one"
+    ]
+  },
+  "data": {
+    "dev-001": { "name": "GZ-Core-01", "status": "online", "lastHeartbeat": 1717200000000, "cpuUsage": 45.2 },
+    "dev-002": { "name": "GZ-Core-02", "status": "degraded", "lastHeartbeat": 1717199500000, "cpuUsage": 87.6 },
+    "dev-003": { "name": "GZ-Access-01", "status": "offline", "lastHeartbeat": 1717100000000, "cpuUsage": 0 },
+    "dev-004": { "name": "GZ-Access-02", "status": "online", "lastHeartbeat": 1717200100000, "cpuUsage": 23.1 }
+  }
+}

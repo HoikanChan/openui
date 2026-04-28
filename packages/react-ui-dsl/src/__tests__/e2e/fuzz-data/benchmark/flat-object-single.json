@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "prompt": "显示该网络设备的详细信息",
+    "taxonomy": ["flat-object", "epoch-ms", "string-enum", "uuid-id", "none", "full", "raw-only"],
+    "evalHints": [
+      "单条实体，must use a detail/description view rather than a single-row table",
+      "createTime is epoch milliseconds — must be formatted as a human-readable date",
+      "adminState and commuState are string enum values — must be visually distinguished",
+      "many fields present — should group by category (identity, network, status, hardware)"
+    ]
+  },
+  "data": {
+    "neResId": "76cc6c2c-a801-40d5-8b52-3e8a86158a83",
+    "neName": "GZ-DC01-Core-SW-01",
+    "ipAddress": "10.72.168.1",
+    "manufacturer": "Huawei",
+    "detailDevTypeName": "CloudEngine S12700E-4",
+    "softVersion": "V200R002C50SPC800",
+    "hardVersion": "Ver.A",
+    "adminState": "active",
+    "commuState": "1",
+    "location": "GD-GZ-DC-01",
+    "createTime": 1575876504000,
+    "sn": "2102301393P0K5000235",
+    "mac": "f479-6009-4f52",
+    "lsrId": "10.39.9.231",
+    "subnetName": "/根子网/GD-GZ/核心层"
+  }
+}

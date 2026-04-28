@@ -36,10 +36,29 @@ const packageRoot = resolve(__dirname, "../../..");
 const workspaceRoot = resolve(packageRoot, "../..");
 const reportAppRoot = resolve(__dirname, "report-app");
 
-type EvalSuite = "e2e" | "fuzz";
+// Load .env from package root so EVAL_JUDGE_RUNNER, LLM_API_KEY, etc. are available
+// without requiring the caller to source the file manually.
+(function loadDotEnv() {
+  const envPath = resolve(packageRoot, ".env");
+  if (!existsSync(envPath)) return;
+  for (const rawLine of readFileSync(envPath, "utf-8").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const sep = line.indexOf("=");
+    if (sep <= 0) continue;
+    const key = line.slice(0, sep).trim();
+    if (!key || process.env[key] !== undefined) continue;
+    const val = line.slice(sep + 1).trim().replace(/^(['"])(.*)\1$/, "$2");
+    process.env[key] = val;
+  }
+}());
+
+type EvalSuite = "e2e" | "fuzz" | "benchmark";
 
 function snapshotsDirForSuite(suite: EvalSuite): string {
-  return resolve(__dirname, suite === "fuzz" ? "fuzz-snapshots" : "snapshots");
+  if (suite === "fuzz") return resolve(__dirname, "fuzz-snapshots");
+  if (suite === "benchmark") return resolve(__dirname, "benchmark-snapshots");
+  return resolve(__dirname, "snapshots");
 }
 
 const CONTENT_TYPES: Record<string, string> = {
@@ -56,7 +75,9 @@ function runVitest(reportDir: string, regen: boolean, suite: EvalSuite = "e2e", 
   const testPath =
     suite === "fuzz"
       ? "src/__tests__/e2e/dsl-fuzz.test.tsx"
-      : "src/__tests__/e2e";
+      : suite === "benchmark"
+        ? "src/__tests__/e2e/dsl-benchmark.test.tsx"
+        : "src/__tests__/e2e";
   const args = ["exec", "vitest", "run", testPath];
   if (fixtureFilter) args.push("-t", fixtureFilter);
   const env: NodeJS.ProcessEnv = {
@@ -201,6 +222,7 @@ async function runEval(runId: string, regen: boolean, suite: EvalSuite = "e2e", 
         dsl,
         dataModel: entry.dataModel,
         screenshotPath: r.screenshotPath,
+        evalHints: entry.evalHints,
       };
     });
 
@@ -241,7 +263,7 @@ async function cmdStart(argv: string[]): Promise<void> {
   const regen = argv.includes("--regen");
   const suiteArg = argv.find((a) => a.startsWith("--suite="))?.split("=")[1]
     ?? (argv.includes("--suite") ? argv[argv.indexOf("--suite") + 1] : undefined);
-  const suite: EvalSuite = suiteArg === "fuzz" ? "fuzz" : "e2e";
+  const suite: EvalSuite = suiteArg === "fuzz" ? "fuzz" : suiteArg === "benchmark" ? "benchmark" : "e2e";
 
   const fixtureArg = argv.find((a) => a.startsWith("--fixture="))?.split("=")[1]
     ?? (argv.includes("--fixture") ? argv[argv.indexOf("--fixture") + 1] : undefined);

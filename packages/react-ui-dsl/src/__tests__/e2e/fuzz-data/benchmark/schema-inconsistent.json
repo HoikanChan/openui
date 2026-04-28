@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "prompt": "显示混合类型资产列表",
+    "taxonomy": ["bare-array", "schema-inconsistent", "string-enum", "none", "sparse-nullable", "raw-only"],
+    "evalHints": [
+      "records have different fields depending on assetType — must handle missing fields gracefully",
+      "must not crash or show empty rows when a field is absent in some records",
+      "assetType is the discriminating field — should be visually prominent",
+      "fields that don't apply to a record type should be shown as N/A or omitted cleanly"
+    ]
+  },
+  "data": [
+    { "assetId": "a-001", "assetType": "server", "name": "prod-app-01", "ip": "10.72.168.1", "cpuCores": 16, "ramGB": 64 },
+    { "assetId": "a-002", "assetType": "switch", "name": "GZ-Core-01", "ip": "10.72.168.2", "portCount": 48, "model": "CE-6870" },
+    { "assetId": "a-003", "assetType": "server", "name": "prod-db-01", "ip": "10.72.168.3", "cpuCores": 32, "ramGB": 256 },
+    { "assetId": "a-004", "assetType": "storage", "name": "SAN-01", "ip": "10.72.168.4", "capacityTB": 100 },
+    { "assetId": "a-005", "assetType": "switch", "name": "GZ-Access-01", "ip": "10.72.168.5", "portCount": 24, "model": "S5731" }
+  ]
+}

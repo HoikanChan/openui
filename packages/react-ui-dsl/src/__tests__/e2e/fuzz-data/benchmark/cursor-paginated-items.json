@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "prompt": "显示日志事件列表（游标分页）",
+    "taxonomy": ["cursor-envelope", "homogeneous", "epoch-ms", "string-enum", "none", "full", "raw-only"],
+    "evalHints": [
+      "hasMore and cursor are pagination metadata — should not appear as data columns",
+      "timestamp is epoch milliseconds — must be formatted as human-readable datetime",
+      "level is a string enum (info/warn/error) — must be visually distinguished",
+      "all items share the same schema — must use a list or table"
+    ]
+  },
+  "data": {
+    "hasMore": true,
+    "cursor": "eyJsYXN0SWQiOiJldnQtMDA1In0=",
+    "items": [
+      { "eventId": "evt-001", "timestamp": 1717200000000, "level": "error", "source": "auth-service", "message": "Login failed: invalid credentials" },
+      { "eventId": "evt-002", "timestamp": 1717199700000, "level": "warn", "source": "api-gateway", "message": "Rate limit threshold reached for client 192.168.1.10" },
+      { "eventId": "evt-003", "timestamp": 1717199400000, "level": "info", "source": "scheduler", "message": "Job backup-daily completed successfully" },
+      { "eventId": "evt-004", "timestamp": 1717199100000, "level": "error", "source": "db-service", "message": "Connection pool exhausted" },
+      { "eventId": "evt-005", "timestamp": 1717198800000, "level": "info", "source": "auth-service", "message": "User admin logged in" }
+    ]
+  }
+}
