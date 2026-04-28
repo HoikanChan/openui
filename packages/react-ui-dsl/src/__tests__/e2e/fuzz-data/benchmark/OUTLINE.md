@@ -148,12 +148,14 @@
 | `percentage-as-decimal` | named-list | homogeneous | percentage-decimal | none | full | raw-only |
 | `cross-magnitude-values` | named-list | homogeneous | cross-magnitude, byte-values | none | full | raw-only |
 | **原始值数组** | | | | | | |
-| `primitive-number-array` | bare-array | primitive-numbers | — | none | full | raw-only |
-| `primitive-string-array` | bare-array | primitive-strings | string-enum | none | full | raw-only |
+| `primitive-number-array` | flat-object | record-with-array-field | — | none | full | raw-only |
+| `primitive-string-array` | flat-object | record-with-array-field | string-enum | none | full | raw-only |
 | `labeled-ratio-array` | named-list | homogeneous | ratio-values | none | full | ratio-distribution |
-| `unlabeled-ratio-array` | bare-array | primitive-numbers | ratio-values | none | full | ratio-distribution |
+| `unlabeled-ratio-array` | flat-object | record-with-array-field | ratio-values | none | full | ratio-distribution |
 | **Record 内部挑战** | | | | | | |
 | `record-with-sparkline` | named-list | record-with-array-field | — | none | full | raw-only |
+| `items-with-tag-arrays` | bare-array | record-with-array-field | string-enum | none | full | raw-only |
+| `items-with-number-arrays` | bare-array | record-with-array-field | — | none | full | raw-only |
 | `per-record-max-min` | named-list | record-with-max-min | percentage-decimal | none | full | aggregated-only |
 | `schema-inconsistent` | bare-array | schema-inconsistent | string-enum | none | sparse-nullable | raw-only |
 | `polymorphic-records` | bare-array | polymorphic | integer-enum | none | full | raw-only |
@@ -184,6 +186,6 @@
 
 ---
 
-## 已落盘文件（全部 47 个 case）
+## 已落盘文件（全部 49 个 case）
 
 所有矩阵中的 case 均已写入 `fuzz-data/benchmark/` 目录，文件名与矩阵一致，格式为 `{ meta, data }`。

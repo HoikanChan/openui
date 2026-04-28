@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "prompt": "显示各主机及其标签",
+    "taxonomy": ["bare-array", "record-with-array-field", "string-enum", "none", "full", "raw-only"],
+    "evalHints": [
+      "each item has a tags field which is a string array — must render tags as badges or chips, not raw text",
+      "tags vary in count per host — layout must handle variable-length arrays gracefully",
+      "must not render tags as a nested table or ignore the field",
+      "status field is an enum — use visual distinction (color/icon) for running vs stopped"
+    ]
+  },
+  "data": [
+    { "host": "server-01", "status": "running", "tags": ["web", "prod", "us-east"] },
+    { "host": "server-02", "status": "running", "tags": ["db", "prod", "us-west"] },
+    { "host": "server-03", "status": "stopped", "tags": ["web", "staging"] },
+    { "host": "server-04", "status": "running", "tags": ["cache", "prod", "us-east", "high-mem"] }
+  ]
+}
