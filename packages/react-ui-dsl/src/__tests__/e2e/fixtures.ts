@@ -255,6 +255,27 @@ export const fixtures: Record<string, Fixture[]> = {
       },
     },
   ],
+  MiniChart: [
+    {
+      id: "mini-chart-card-trend",
+      prompt: "Show a compact single-series latency sparkline in a KPI card using data.sparkline",
+      dataModel: {
+        sparkline: [12, 18, 15, 21, 19, 24, 22],
+      },
+      assert: {
+        contains: ["7-Day Latency Trend"],
+        verify: (_container, { echartsInit }) => {
+          expect(echartsInit, "mini-chart-card-trend: echarts.init was not called").toHaveBeenCalled();
+          const option = getFirstChartOption(echartsInit, "mini-chart-card-trend");
+          expect(option.series).toHaveLength(1);
+          expect(option.series?.[0]).toMatchObject({
+            type: "line",
+            data: [12, 18, 15, 21, 19, 24, 22],
+          });
+        },
+      },
+    },
+  ],
   BarChart: [
     {
       id: "bar-product-comparison",

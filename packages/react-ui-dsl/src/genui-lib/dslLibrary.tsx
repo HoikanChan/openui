@@ -9,6 +9,7 @@ import {
   HeatmapChart,
   HorizontalBarChart,
   LineChart,
+  MiniChart,
   PieChart,
   Point,
   RadarChart,
@@ -49,6 +50,7 @@ const DEFAULT_PROMPT_ADDITIONAL_RULES = [
   "Only use chart components when the data model already exposes chart-ready fields that match the component signature.",
   "Do not invent labels, series, categories, or missing time points from raw rows, statistics, or time ranges just to make a chart render.",
   "If the data model only contains raw row records, prefer Table or Descriptions instead of fabricating chart props.",
+  "MiniChart is a compact single-series trend primitive for KPI cards and dense summaries. Use it only with existing single-series sparkline-style data.",
 ];
 
 const DEFAULT_PROMPT_EXAMPLES = [
@@ -87,6 +89,10 @@ deviceRows = @ObjectEntries(data.devicesById)
 deviceTable = Table([deviceKeyCol, statusCol], deviceRows)
 deviceKeyCol = Col("Device", "key")
 statusCol = Col("Status", "value.status")`,
+  `root = VLayout([kpiCard])
+kpiCard = Card([cardTitle, cardTrend], "card", "standard")
+cardTitle = Text("7-Day Latency Trend", "large")
+cardTrend = MiniChart("line", data.metrics.sparkline, 96, "#1677ff")`,
 ];
 
 function mergePromptOptions(options?: PromptOptions): PromptOptions {
@@ -128,6 +134,7 @@ const baseDslLibrary = createLibrary({
     HeatmapChart,
     TreeMapChart,
     ScatterChart,
+    MiniChart,
     Series,
     ScatterSeries,
     Point,

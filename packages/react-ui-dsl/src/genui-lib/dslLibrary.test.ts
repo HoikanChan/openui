@@ -46,6 +46,13 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(spec.components.DescField.signature).toContain("value:");
     expect(spec.components.DescField.signature).toContain("span?:");
     expect(spec.components.DescField.signature).not.toContain("format?:");
+
+    expect(spec.components.MiniChart.signature).toContain("MiniChart(type:");
+    expect(spec.components.MiniChart.signature).toContain("data:");
+    expect(spec.components.MiniChart.signature).toContain("size?:");
+    expect(spec.components.MiniChart.signature).toContain("color?:");
+    expect(spec.components.MiniChart.signature).not.toContain("labels:");
+    expect(spec.components.MiniChart.signature).not.toContain("series:");
   });
 
   it("exports json schema without legacy properties wrappers or removed host-control fields", () => {
@@ -63,6 +70,7 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     const descField = defs.DescField;
     const tag = defs.Tag;
     const table = defs.Table;
+    const miniChart = defs.MiniChart;
 
     expect(button.properties).toMatchObject({
       status: expect.anything(),
@@ -135,6 +143,17 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
       span: expect.anything(),
     });
     expect(descField.properties).not.toHaveProperty("format");
+
+    expect(miniChart.properties).toMatchObject({
+      type: expect.anything(),
+      data: expect.anything(),
+      size: expect.anything(),
+      color: expect.anything(),
+    });
+    expect(miniChart.properties).not.toHaveProperty("labels");
+    expect(miniChart.properties).not.toHaveProperty("series");
+    expect(miniChart.properties).not.toHaveProperty("xLabel");
+    expect(miniChart.properties).not.toHaveProperty("yLabel");
   });
 
   it("includes Render in static-library prompts while omitting data-only builtins", () => {
@@ -249,5 +268,22 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain("Do not invent labels, series, categories, or missing time points from raw rows");
     expect(prompt).toContain("If the data model only contains raw row records, prefer Table or Descriptions");
     expect(prompt).toContain('rawRowsTable = Table([deviceCol, interfaceCol, timeCol, utilizationCol], data.rows)');
+  });
+
+  it("includes MiniChart guidance as a compact single-series trend primitive", () => {
+    const prompt = dslLibrary.prompt({
+      dataModel: {
+        raw: {
+          metrics: {
+            sparkline: [12, 18, 15, 21],
+          },
+        },
+      },
+    });
+
+    expect(prompt).toContain("MiniChart");
+    expect(prompt).toContain("compact single-series trend primitive");
+    expect(prompt).toContain("MiniChart(\"line\", data.metrics.sparkline");
+    expect(prompt).not.toContain("MiniChart(data.labels");
   });
 });
