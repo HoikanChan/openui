@@ -150,10 +150,15 @@ export function tokenize(src: string): Token[] {
       continue;
     }
 
-    // ── Question ──────────────────────────────────────────────────────
+    // ── Question / NullCoal ───────────────────────────────────────────
     if (c === "?") {
-      tokens.push({ t: T.Question });
-      i++;
+      if (i + 1 < n && src[i + 1] === "?") {
+        tokens.push({ t: T.NullCoal });
+        i += 2;
+      } else {
+        tokens.push({ t: T.Question });
+        i++;
+      }
       continue;
     }
 

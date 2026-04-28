@@ -44,6 +44,7 @@ export const enum T {
   Not = 33, // !
   Question = 34, // ?
   BuiltinCall = 35, // @identifier — builtin function call
+  NullCoal = 36, // ??
 }
 
 export type Token = {

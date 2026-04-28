@@ -152,6 +152,10 @@ export function evaluate(
         const left = evaluate(node.left, context);
         return left ? left : evaluate(node.right, context);
       }
+      if (node.op === "??") {
+        const left = evaluate(node.left, context);
+        return left !== null && left !== undefined ? left : evaluate(node.right, context);
+      }
 
       const left = evaluate(node.left, context);
       const right = evaluate(node.right, context);

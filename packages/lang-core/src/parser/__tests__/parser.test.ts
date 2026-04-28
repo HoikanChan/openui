@@ -349,3 +349,59 @@ describe("orphaned statements", () => {
     expect(result.meta.orphaned).toHaveLength(0);
   });
 });
+
+// ── ?? null-coalescing operator ───────────────────────────────────────────────
+
+import { parseExpression } from "../expressions";
+import { tokenize } from "../lexer";
+
+function parseExpr(src: string) {
+  return parseExpression(tokenize(src).filter((t) => t.t !== 0 /* Newline */));
+}
+
+describe("?? null-coalescing operator — parser", () => {
+  it("basic a ?? b produces BinOp ??", () => {
+    const ast = parseExpr("a ?? b");
+    expect(ast).toEqual({ k: "BinOp", op: "??", left: { k: "Ref", n: "a" }, right: { k: "Ref", n: "b" } });
+  });
+
+  it("left-associative: a ?? b ?? c", () => {
+    const ast = parseExpr("a ?? b ?? c");
+    expect(ast).toEqual({
+      k: "BinOp",
+      op: "??",
+      left: { k: "BinOp", op: "??", left: { k: "Ref", n: "a" }, right: { k: "Ref", n: "b" } },
+      right: { k: "Ref", n: "c" },
+    });
+  });
+
+  it("?? binds tighter than ternary: a ?? b ? c : d", () => {
+    const ast = parseExpr("a ?? b ? c : d");
+    expect(ast).toEqual({
+      k: "Ternary",
+      cond: { k: "BinOp", op: "??", left: { k: "Ref", n: "a" }, right: { k: "Ref", n: "b" } },
+      then: { k: "Ref", n: "c" },
+      else: { k: "Ref", n: "d" },
+    });
+  });
+
+  it("?? inside parenthesized sub-expression", () => {
+    const ast = parseExpr('(v ?? "—") + " 核"');
+    expect(ast).toEqual({
+      k: "BinOp",
+      op: "+",
+      left: { k: "BinOp", op: "??", left: { k: "Ref", n: "v" }, right: { k: "Str", v: "—" } },
+      right: { k: "Str", v: " 核" },
+    });
+  });
+
+  it("single ? still produces ternary, not NullCoal", () => {
+    const ast = parseExpr("a ? b : c");
+    expect(ast).toEqual({
+      k: "Ternary",
+      cond: { k: "Ref", n: "a" },
+      then: { k: "Ref", n: "b" },
+      else: { k: "Ref", n: "c" },
+    });
+  });
+});

@@ -39,6 +39,7 @@ export function parseExpression(tokens: Token[]): ASTNode {
     switch (tok.t) {
       case T.Question:
         return PREC_TERNARY;
+      case T.NullCoal:
       case T.Or:
         return PREC_OR;
       case T.And:
@@ -240,6 +241,12 @@ export function parseExpression(tokens: Token[]): ASTNode {
     if (tok.t === T.Or) {
       adv();
       return { k: "BinOp", op: "||", left, right: parseExpr(PREC_OR) };
+    }
+
+    // Null-coalescing: left ?? right (left-associative, same prec as ||)
+    if (tok.t === T.NullCoal) {
+      adv();
+      return { k: "BinOp", op: "??", left, right: parseExpr(PREC_OR) };
     }
 
     // Ternary: cond ? then : else (right-associative)
