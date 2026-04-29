@@ -1,267 +1,231 @@
 # GenUI Quality Issues Map
 
-Derived from benchmark run `20260428_102409_kd0s` — 47 fixtures, overall **7.7/10**.
+Derived from benchmark run `20260428_200424_uuxo` on `2026-04-28`.
+
+- Fixtures: `49`
+- Overall score: `7.71 / 10`
+- Prior reference run: `20260428_102409_kd0s` at `7.74 / 10`
+
+The headline score is effectively flat, but the distribution got slightly worse: perfect `10/10` fixtures dropped from `13` to `11`, and fixtures at `<= 6/10` rose from `12` to `13`.
 
 ---
 
-## Dimension Averages
+## Snapshot
 
-| Dimension | Score | / Max |
-|---|---|---|
-| component_fit | 2.70 | 3 |
-| data_completeness | 2.62 | 3 |
-| format_quality | 2.53 | 3 |
-| layout_coherence | 2.57 | 3 |
-| **overall** | **7.74** | **10** |
+| Dimension | Current | Prior | Delta |
+|---|---:|---:|---:|
+| component_fit | 2.69 | 2.70 | -0.01 |
+| data_completeness | 2.49 | 2.62 | -0.13 |
+| format_quality | 2.49 | 2.53 | -0.04 |
+| layout_coherence | 2.65 | 2.57 | +0.08 |
+| overall | 7.71 | 7.74 | -0.03 |
 
-Score distribution: 13× perfect 10, 7× score 9, 12× score 8 — but a long tail of 11 fixtures ≤ 6.
+Score distribution:
 
----
+- `11` fixtures scored `10/10`
+- `9` fixtures scored `9/10`
+- `12` fixtures scored `8/10`
+- `13` fixtures scored `<= 6/10`
 
-## Failure Taxonomy
+Benchmark gate failures in this run:
 
-### Layer 1 · Language / DSL Built-ins
+- `items-with-number-arrays` (`7/10`)
+- `items-with-tag-arrays` (`10/10`)
+- `polymorphic-records` (`8/10`)
+- `schema-inconsistent` (`10/10`)
+- `tree-embedded-children` (`8/10`)
 
-#### L1-A · No map/object iteration  `IMPACT: HIGH` - DONE
-Dynamic-key objects (`{ "dev-001": {...}, "dev-002": {...} }`) have no iteration primitive.
-LLM hardcodes each key as a separate variable.
-
-**Affected fixtures:** `object-map-by-id` (4/10), `grouped-object-of-arrays`, `date-keyed-buckets`, `timeseries-multi-entity-unaligned` (4/10)
-
-**Fix:** Add `@ObjectEntries(obj) → [{key, value}, ...]` and `@ObjectKeys(obj) → string[]`
-
-```
-# Current (LLM's workaround):
-card1 = Card([... data.dev-001.cpuUsage ...])
-card2 = Card([... data.dev-002.cpuUsage ...])   ← hardcoded per key
-
-# With @ObjectEntries:
-rows = @ObjectEntries(data)
-table = Table([nameCol, statusCol], rows)
-nameCol = Col("Device", "key")
-statusCol = Col("Status", "value.status", ...)
-```
+This means judge quality and parse/render correctness are not fully aligned. Two fixtures are judged `10/10` but still fail the benchmark gate, so quality work and runtime/test stability work should be tracked separately.
 
 ---
 
-#### L1-B · No tuple column extraction  `IMPACT: MEDIUM`
-Bare arrays of positional tuples `[[ts, val], [ts, val], ...]` can't project a column.
-Named columnar data (`{ timestamps: [...], values: [...] }`) scores 10/10.
-Tuple pairs score 5/10 because `@FormatDate(data, ...)` is applied to the whole array.
+## Active Failure Clusters
 
-**Affected fixtures:** `timeseries-tuple-pairs` (5/10, fq:0)
+### A. Primitive numeric arrays still have no good default rendering path `IMPACT: HIGH`
 
-**Fix:** `@Pluck(arr, index)` — extracts column `index` from each sub-array.
+The current prompt still falls back to a raw table for bare number arrays, even when the task clearly asks for a distribution-style view.
 
-```
-# With @Pluck:
-timeLabels = @FormatDate(@Pluck(data, 0), "dateTime")
-values     = @Pluck(data, 1)
-series     = Series("Latency (ms)", values)
-```
+Affected fixtures:
 
-Or a more general data-transform `@Map(arr, "item", expr)` (distinct from template `@Each`).
+- `primitive-number-array` (`1/10`, `cf=0`, `dc=0`)
+- `items-with-number-arrays` (`7/10`, benchmark gate failure)
 
----
+Evidence:
 
-#### L1-C · No null-coalescing operator  `IMPACT: HIGH (parse errors)`  - DONE
-String concatenation with nullable fields triggers `null-required` parse errors.
-Two fixtures fail to parse entirely.
+- `primitive-number-array`: "uses a table for raw samples and omits the endpoint, sample count, and p95"
+- `items-with-number-arrays`: latency arrays are not shown as per-row mini-distributions
 
-**Affected fixtures:** `schema-inconsistent` (parse error), `polymorphic-records` (parse error)
+Likely fix:
 
-**Fix:** Add `??` null-coalescing operator to the expression grammar.
-
-```
-# Fails today:
-row.cpuCores + "核 / " + row.ramGB + "GB 内存"   ← null-required if cpuCores is null
-
-# With ?? operator:
-(row.cpuCores ?? "—") + "核 / " + (row.ramGB ?? "—") + "GB 内存"
-```
+- Add a first-class histogram or mini-distribution rendering path for primitive number arrays
+- Add prompt guidance that bare numeric samples should surface summary stats first, then a chart, not a table of raw values
 
 ---
 
-#### L1-D · No flat→tree conversion  `IMPACT: MEDIUM`
-Flat arrays with `parentId` references require dynamic tree reconstruction.
-LLM hardcodes the hierarchy by reading the sample data — resulting in wrong nesting.
+### B. Dynamic-key and nested collection rendering is still fragile `IMPACT: HIGH`
 
-**Affected fixtures:** `flat-parentid-reference` (5/10, lc:1)
+The language is no longer blocked on dynamic-key data, but the generated DSL still fails to reliably materialize rows from maps and nested child collections.
 
-**Fix:** `@BuildTree(arr, "id", "parentId") → nested {…, children: [...]} tree`
+Affected fixtures:
 
-```
-tree = @BuildTree(data, "id", "parentId")
-# then pass to tree-rendering component
-```
+- `object-map-by-id` (`4/10`, `dc=1`, `fq=0`)
+- `array-with-nested-arrays` (`4/10`, nested rows disappear)
+- `timeseries-multi-entity-unaligned` (`5/10`, detail table renders no rows)
+- `flat-parentid-reference` (`7/10`, hierarchy flattened)
 
----
+What changed vs the previous map:
 
-### Layer 2 · Components
+- `@ObjectEntries` and `@ObjectKeys` removed the original "cannot iterate object maps" blocker
+- The remaining problem is adoption and rendering fidelity, not parser capability
 
-#### L2-A · No Sparkline component  `IMPACT: HIGH`  - DONE
-`LineChart` inside a table cell renders at full chart dimensions — axis, legend, padding.
-The LLM understands the sparkline intent but has no appropriate component.
+Likely fix:
 
-**Affected fixtures:** `record-with-sparkline` (5/10, lc:1)
-
-**Fix:** `Sparkline(values: number[], color?, width?, height?)` — compact inline chart, no axis/legend, designed for table cell contexts (20–60 px height).
-
-Design question: new component vs `LineChart` with a `compact` mode?
+- Add stronger prompt examples for `value.*` access after `@ObjectEntries`
+- Add one canonical nested-array example for "card per parent, table/list per child array"
+- Add a regression fixture or prompt rule that forbids empty nested tables when the child array is non-empty
 
 ---
 
-#### L2-B · No distribution / histogram chart  `IMPACT: HIGH (worst score)**`
-Bare number array `[12.4, 15.7, 11.2, ...]` has no appropriate visualization component.
-LLM falls back to `Table` with index column — `component_fit: 0`, overall: 2/10.
+### C. Fabrication still happens when labels or values are missing `IMPACT: HIGH`
 
-**Affected fixtures:** `primitive-number-array` (2/10)
+The model still invents labels or records instead of showing null/unknown states directly.
 
-**Fix option A:** `HistogramChart(values: number[], binCount?: number)` — full component
-**Fix option B:** `@Bucketize(values, binCount) → [{label, count}, ...]` built-in + existing `BarChart`
+Affected fixtures:
 
-Option B is lower cost and more composable.
+- `unlabeled-ratio-array` (`4/10`)
+- `nearly-all-null` (`5/10`)
 
----
+Evidence:
 
-#### L2-C · No band/range series for AreaChart  `IMPACT: MEDIUM`
-Min-max-value band time series requires expressing "area between two bounds."
-LLM uses three separate `Series` in `LineChart` — judge scores `component_fit: 1`.
+- `unlabeled-ratio-array`: donut chart choice is fine, but labels are fabricated and values are not shown as percentages
+- `nearly-all-null`: dashboard layout is clear, but it fabricates detection rows instead of showing unavailable metrics
 
-**Affected fixtures:** `timeseries-min-max-band` (5/10, cf:1)
+Likely fix:
 
-**Fix:** `BandSeries(upper: number[], lower: number[], label?)` as a new Series subtype.
-AreaChart renders this as a shaded band; the mean `Series` overlays as a line.
-
-```
-chart = AreaChart(timeLabels, [avgSeries, BandSeries(upperVals, lowerVals, "Range")])
-```
+- Strengthen the anti-fabrication prompt rule
+- Add an explicit unlabeled-ratio example: if labels do not exist, do not invent them
+- Prefer `null`, `unknown`, or omission over synthetic category names or fake detail rows
 
 ---
 
-#### L2-D · No graph/topology component  `IMPACT: LOW`
-Node/edge graph data can only be rendered as text lists or manual grid layout.
-Not viable to express connections visually.
+### D. Specialized visual patterns are still underpowered `IMPACT: MEDIUM-HIGH`
 
-**Affected fixtures:** `nodes-edges-graph` (5/10, cf:1)
+Several fixtures want a more specific visualization than the current general-purpose chart/list fallback.
 
-**Fix:** `TopologyGraph(nodes, edges, labelField?, typeField?)` using a force-directed layout.
-High implementation cost; low priority given that graph data is rare in dashboard contexts.
+Affected fixtures:
 
----
+- `timeseries-min-max-band` (`5/10`): still rendered as three lines instead of a range band
+- `nodes-edges-graph` (`5/10`): nodes are shown, but edges are reduced to text
+- `adjacency-list-graph` (`6/10`): dependency relationships are surfaced, but not as a real topology
+- `record-with-sparkline` (`6/10`): oversized charts instead of compact inline sparklines
 
-### Layer 3 · Prompt Engineering
+Likely fix:
 
-#### P3-A · Fabrication on null/missing data  `IMPACT: HIGH (correctness)`
-When most fields are null, the LLM invents plausible-looking data to fill its layout.
-Existing rule "Never hardcode data values" is interpreted as "don't copy from data" — 
-the LLM concludes it's fine to create its own values.
-
-**Affected fixtures:** `nearly-all-null` (5/10)
-
-**Fix:** Add explicit anti-fabrication rule:
-> "If a field in the data model is null, absent, or undefined, display it as `null`, `—`, or omit it. NEVER generate, invent, or fabricate values that are not present in the data model."
+- Complete the band/range chart path for min/max envelopes
+- Decide whether graph/topology is a real product goal or an acceptable fallback class
+- Tighten prompt rules for "compact inline trend" so sparkline-capable layouts are preferred inside record lists and tables
 
 ---
 
-#### P3-B · Nested array not surfaced  `IMPACT: MEDIUM`
-When a record has an array field (e.g. `device.interfaces: [...]`), the LLM renders
-the parent object but omits the nested array entirely.
-No example or rule guides how to expand nested arrays inside a parent component.
+### E. Formatting is still inconsistent on positional and mixed-shape data `IMPACT: MEDIUM`
 
-**Affected fixtures:** `array-with-nested-arrays` (4/10, dc:1)
+Formatting problems are no longer the dominant blocker, but they still suppress scores on otherwise-correct layouts.
 
-**Fix:** Add a prompt example showing the pattern:
-```
-deviceRows = Table([nameCol, interfacesCol], data.devices)
-interfacesCol = Col("Interfaces", "interfaces", {
-  cell: @Render("v", VLayout(@Each(v, "iface",
-    Text(iface.ifName + " — " + iface.status, "small")), "xs"))
-})
-```
+Affected fixtures:
 
----
+- `timeseries-tuple-pairs` (`6/10`, `fq=0`): timestamps stay raw
+- `object-map-by-id` (`4/10`, `fq=0`): broken status/CPU/heartbeat display
+- `cross-magnitude-values` (`6/10`): inconsistent byte units / broken top-card binding
+- `byte-large-values` (`7/10`)
+- `multi-top-arrays` (`8/10`): last online time rendered in the wrong form
 
-#### P3-C · Multi-entity top-level map not recognized  `IMPACT: MEDIUM`
-The existing prompt example only covers multi-entity **interleaved rows**
-(`Filter(data.rows, "portResId", "==", id)`).
-When entities are already separated as top-level keys (`data.device_gz_core_01: [...]`),
-the LLM doesn't know how to build per-entity series.
+Likely fix:
 
-**Affected fixtures:** `timeseries-multi-entity-unaligned` (4/10, dc:1, fq:0)
-
-**Fix:** Add a prompt example for the sub-array-per-entity pattern:
-```
-core01Series = Series("GZ-Core-01", data.device_gz_core_01.temperatureC)
-core02Series = Series("GZ-Core-02", data.device_gz_core_02.temperatureC)
-timeLabels   = @FormatDate(data.device_gz_core_01.timestamp, "dateTime")
-chart = LineChart(timeLabels, [core01Series, core02Series], "smooth")
-```
+- Make formatting rules more shape-aware:
+  - tuple timestamps must pass through `@FormatDate`
+  - large byte values must use unit-aware formatting consistently
+  - percent-like ratios should not appear as raw decimals
 
 ---
 
-## Priority Matrix
+## Resolved Or Downgraded Since The Previous Map
 
-```
-                      IMPACT (fixtures × score delta)
-                      Low                    High
-                ┌────────────────────────────────────┐
-          Low   │  TopologyGraph     @BuildTree       │
-  Impl          │  BandSeries                         │
-  Cost   ───────┼────────────────────────────────────┤
-          High  │  HistogramChart    ?? operator  ←fast win
-                │  Sparkline         @ObjectEntries   │
-                │                    @Pluck           │
-                │                    anti-fabrication │
-                │                    prompt examples  │
-                └────────────────────────────────────┘
-```
+### R1. Null-coalescing is no longer a primary parse blocker
 
-### Quick wins (low cost, high impact)
-1. `??` null-coalescing — 1 parser change, fixes 2 parse errors immediately
-2. Anti-fabrication prompt rule — text change only
-3. `@ObjectEntries` built-in — unlocks entire map/dict fixture class
-4. `@Pluck` built-in — unlocks tuple array fixture class
-5. Nested array + multi-entity prompt examples
+Previous concern:
 
-### Medium term
-6. `Sparkline` component
-7. `@BuildTree` built-in
-8. `@Bucketize` + HistogramChart
+- `L1-C` tracked missing null-coalescing as a high-severity parse failure source
 
-### Long term
-9. `BandSeries` for AreaChart
-10. `TopologyGraph` component
+Current evidence:
+
+- `schema-inconsistent` is now `10/10`
+- `polymorphic-records` is now `8/10`
+
+The remaining issue in `polymorphic-records` is presentation quality, not parser failure.
 
 ---
 
-## Structural Asymmetry: Named vs Positional Data
+### R2. Tuple data is no longer blocked at component selection time
 
-The benchmark exposes a fundamental DSL bias:
+Previous concern:
 
-```
-Named columnar (10/10):       Positional tuple (5/10):
-{ timestamps: [...],          [[ts, val],
-  values: [...] }              [ts, val], ...]
+- `L1-B` tracked tuple arrays as fundamentally unrenderable
 
-data.timestamps  ← works      data[n][0]  ← no built-in to project
-```
+Current evidence:
 
-Named fields are first-class citizens; positional array indices are not.
-`@Pluck` closes this gap. The deeper question: should data reshaping happen
-in the DSL or upstream before the data reaches the component?
+- `timeseries-tuple-pairs` now chooses the right chart type
+- Remaining issue is timestamp formatting, not inability to project the tuple columns
+
+---
+
+### R3. Tree and hierarchy support improved, but fidelity is still incomplete
+
+Previous concern:
+
+- `L1-D` framed flat-to-tree conversion as a core blocker
+
+Current evidence:
+
+- `flat-parentid-reference` improved to `7/10`
+- `tree-embedded-children` is judged `8/10` even though it still fails the benchmark gate
+
+The remaining issue is that hierarchy metadata is incomplete or flattened, not that tree-like rendering is impossible.
+
+---
+
+### R4. Object-map builtins landed, but the user-facing quality win is not fully realized
+
+Previous concern:
+
+- `L1-A` tracked "no object iteration primitive"
+
+Current evidence:
+
+- The parser/runtime gap is addressed
+- `object-map-by-id` is still only `4/10`, so prompt usage and rendering robustness are now the bottleneck
+
+This issue should stay on the roadmap, but it has moved from "missing language feature" to "insufficient prompt/runtime follow-through".
+
+---
+
+## Priority Order
+
+1. Fix primitive numeric array handling. This is the worst current failure and likely needs both prompt and component support.
+2. Tighten anti-fabrication rules for null-heavy and unlabeled data.
+3. Stabilize nested-array and object-map rendering so non-empty structures cannot silently render as empty.
+4. Decide whether band charts, sparklines, and topology are first-class features or explicitly unsupported fallback cases.
+5. Clean up formatting on tuple timestamps, large byte values, and ratio-like fields.
+6. Investigate benchmark gate mismatch separately from judge quality scoring.
 
 ---
 
 ## Open Questions
 
-- Should `@ObjectEntries` be `@ToRows(obj, "key", "value")` for clearer semantics?
-- `??` only, or `?.` optional chaining too? (`row.nested?.field` is common)
-- `Sparkline` as a new component or `LineChart` with `compact` mode?
-- Is `@BuildTree` too opinionated? (assumes `id`/`parentId` convention)
-- Should the LLM receive a "data shape classification" step before DSL generation?
-  (Classify → route to appropriate component pattern → then generate)
+- Should primitive number arrays map to a dedicated `HistogramChart`, a summary-plus-sparkline layout, or a more generic distribution component?
+- For unlabeled ratio arrays, should the DSL prefer a chart without labels, synthetic ordinal labels (`Bucket 1`, `Bucket 2`, ...), or a non-chart representation?
+- Is graph/topology rendering a real scope item, or should benchmark expectations be lowered to a structured fallback layout?
+- Why do `items-with-tag-arrays` and `schema-inconsistent` still fail the benchmark gate while the judge scores them `10/10`?
 
 ---
 
-*Generated: 2026-04-28 | Benchmark: 20260428_102409_kd0s | Suite: benchmark*
+*Generated: 2026-04-28 | Benchmark: 20260428_200424_uuxo | Suite: benchmark*
