@@ -1,7 +1,7 @@
 "use client";
 import { BaseChart } from "../../../../components/chart/BaseChart";
 import type * as echarts from "echarts";
-import { normalizeSeriesItems } from "../../view-utils";
+import { buildChartOption, normalizeSeriesItems } from "../../view-utils";
 
 type SeriesItem = { category: string; values: number[] };
 
@@ -28,5 +28,5 @@ export function LineChartView({ labels, series, variant, xLabel, yLabel }: LineC
     legend: {},
     tooltip: { trigger: "axis" },
   };
-  return <BaseChart option={option} />;
+  return <BaseChart option={buildChartOption(option)} />;
 }

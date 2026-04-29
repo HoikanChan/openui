@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildChartOption,
   buildScatterSeries,
   getAutoMiniChartHeight,
   getAutoMiniChartWidth,
@@ -132,5 +133,22 @@ describe("chart view utils", () => {
     expect(getAutoMiniChartWidth(4, 20, 400)).toBe(96);
     expect(getAutoMiniChartWidth(12, 20, 400)).toBe(240);
     expect(getAutoMiniChartWidth(12, 20, 160)).toBe(160);
+  });
+
+  it("normalizes chart legends to bottom center", () => {
+    expect(
+      buildChartOption({
+        legend: {
+          orient: "vertical",
+          left: "left",
+        },
+      }),
+    ).toMatchObject({
+      legend: {
+        orient: "horizontal",
+        left: "center",
+        bottom: 0,
+      },
+    });
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 import { BaseChart } from "../../../../components/chart/BaseChart";
 import type * as echarts from "echarts";
+import { buildChartOption } from "../../view-utils";
 
 type PieChartViewProps = {
   labels: string[];
@@ -19,5 +20,5 @@ export function PieChartView({ labels, values, variant }: PieChartViewProps) {
     legend: { orient: "vertical", left: "left" },
     tooltip: { trigger: "item" },
   };
-  return <BaseChart option={option} />;
+  return <BaseChart option={buildChartOption(option)} />;
 }

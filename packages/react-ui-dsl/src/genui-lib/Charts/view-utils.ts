@@ -9,7 +9,10 @@ type ElementLike = {
 };
 
 type ChartDataset = { source: number[][] } | undefined;
-type ChartOptions = (Omit<echarts.EChartsOption, "title"> & { title?: string }) | undefined;
+type ChartOptions =
+  | echarts.EChartsOption
+  | (Omit<echarts.EChartsOption, "title"> & { title?: string })
+  | undefined;
 export type MiniChartDatum = number | { value: number; label?: string };
 export type MiniChartData = MiniChartDatum[];
 export type NormalizedMiniChartDatum = { value: number; label: string };
@@ -19,6 +22,11 @@ const MINI_CHART_AUTO_HEIGHT_MIN = 24;
 const MINI_CHART_AUTO_HEIGHT_MAX = 44;
 const MINI_CHART_AUTO_HEIGHT_RATIO = 0.22;
 const MINI_CHART_AUTO_WIDTH_MIN = 96;
+const DEFAULT_CHART_LEGEND: echarts.LegendComponentOption = {
+  orient: "horizontal",
+  left: "center",
+  bottom: 0,
+};
 
 function unwrapElement<T extends Record<string, unknown>>(value: T | ElementLike): T {
   return (typeof value === "object" &&
@@ -34,11 +42,12 @@ export function buildChartOption(
   options?: ChartOptions,
   data?: ChartDataset,
 ): echarts.EChartsOption {
-  const { title, ...rest } = options ?? {};
+  const { title, legend, ...rest } = options ?? {};
 
   return {
     ...rest,
-    ...(title ? { title: { text: title } } : {}),
+    ...(legend ? { legend: { ...legend, ...DEFAULT_CHART_LEGEND } } : {}),
+    ...(typeof title === "string" ? { title: { text: title } } : title ? { title } : {}),
     ...(data ? { dataset: { source: data.source } } : {}),
   };
 }

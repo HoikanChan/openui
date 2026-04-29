@@ -1,7 +1,7 @@
 "use client";
 import { BaseChart } from "../../../../components/chart/BaseChart";
 import type * as echarts from "echarts";
-import { normalizeSeriesItems } from "../../view-utils";
+import { buildChartOption, normalizeSeriesItems } from "../../view-utils";
 
 type SeriesItem = { category: string; values: number[] };
 
@@ -27,5 +27,5 @@ export function RadarChartView({ labels, series }: RadarChartViewProps) {
     legend: {},
     tooltip: {},
   };
-  return <BaseChart option={option} />;
+  return <BaseChart option={buildChartOption(option)} />;
 }
