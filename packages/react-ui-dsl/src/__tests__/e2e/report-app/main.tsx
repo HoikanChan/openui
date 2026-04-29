@@ -12,6 +12,7 @@ type JudgeScore = {
   layout_coherence: number;
   overall: number;
   feedback: string;
+  visual_issues?: string[];
   screenshotPath: string | null;
   degraded: boolean;
 };
@@ -102,10 +103,19 @@ function ScoreBar({ label, value, max }: { label: string; value: number; max: nu
 }
 
 function JudgeScorePanel({ score }: { score: JudgeScore }) {
+  const visualIssues = score.visual_issues ?? [];
+
   return (
     <details className="entry-details judge-scores">
-      <summary>Judge Scores (overall: {score.overall}/10{score.degraded ? " ⚠ degraded" : ""})</summary>
+      <summary>Judge Scores (overall: {score.overall}/10{score.degraded ? " [degraded]" : ""})</summary>
       <p className="judge-feedback">{score.feedback}</p>
+      {visualIssues.length > 0 ? (
+        <div className="issue-list">
+          {visualIssues.map((issue) => (
+            <span key={issue} className="issue-chip">{issue}</span>
+          ))}
+        </div>
+      ) : null}
       <ScoreBar label="Component fit" value={score.component_fit} max={3} />
       <ScoreBar label="Data completeness" value={score.data_completeness} max={3} />
       <ScoreBar label="Format quality" value={score.format_quality} max={3} />
@@ -171,7 +181,7 @@ function App() {
           <p className="eyebrow">react-ui-dsl e2e report</p>
           <h1>Fixture previews</h1>
           <p className="generated-at">Generated at {new Date(report.generatedAt).toLocaleString()}</p>
-          {report.runId && <p className="run-id">Run: {report.runId}{report.degraded ? " ⚠ degraded" : ""}</p>}
+          {report.runId && <p className="run-id">Run: {report.runId}{report.degraded ? " [degraded]" : ""}</p>}
         </div>
 
         <div className="summary-grid">
@@ -210,7 +220,7 @@ function App() {
           {report.failing_patterns.map((p) => (
             <details key={p.pattern} className="pattern-entry">
               <summary>
-                {p.pattern} — {p.affected_fixtures.length} fixture(s), avg impact −{p.avg_score_impact}
+                {p.pattern} - {p.affected_fixtures.length} fixture(s), avg impact -{p.avg_score_impact}
               </summary>
               <p><strong>Likely cause:</strong> {p.likely_cause}</p>
               <p><strong>Agent hint:</strong> {p.agent_hint}</p>

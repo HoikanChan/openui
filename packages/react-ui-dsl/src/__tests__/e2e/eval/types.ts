@@ -1,3 +1,14 @@
+export const VISUAL_ISSUE_TAGS = [
+  "overlap",
+  "wrong-direction",
+  "crowded",
+  "whitespace-imbalance",
+  "clipped",
+  "weak-hierarchy",
+] as const;
+
+export type VisualIssueTag = typeof VISUAL_ISSUE_TAGS[number];
+
 export interface JudgeScore {
   fixtureId: string;
   component_fit: number;
@@ -6,12 +17,14 @@ export interface JudgeScore {
   layout_coherence: number;
   overall: number;
   feedback: string;
+  visual_issues: VisualIssueTag[];
   screenshotPath: string | null;
   degraded: boolean;
 }
 
 export interface FailingPattern {
   pattern: string;
+  issue_tag?: VisualIssueTag;
   affected_fixtures: string[];
   avg_score_impact: number;
   likely_cause: string;
