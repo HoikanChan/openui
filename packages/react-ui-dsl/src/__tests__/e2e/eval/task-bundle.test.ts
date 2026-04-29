@@ -22,6 +22,7 @@ function fakeScore(fixtureId: string): JudgeScore {
     layout_coherence: 2,
     overall: 7,
     feedback: "looks ok",
+    visual_issues: [],
     screenshotPath: null,
     degraded: false,
   };
@@ -72,6 +73,27 @@ describe("writeTaskBundle", () => {
     );
     expect(targets).toHaveLength(2);
     expect(targets.map((t: { fixtureId: string }) => t.fixtureId)).toEqual(["a", "b"]);
+  });
+
+  it("preserves per-fixture visual issue tags in targets.json", () => {
+    writeTaskBundle({
+      runId,
+      overallScore: 5,
+      judgeScores: [fakeScore("overlap-case"), { ...fakeScore("clipped-case"), visual_issues: ["clipped"] }],
+      failingPatterns: [],
+      snapshotsDir: resolve(__dirname, "../snapshots"),
+    });
+
+    const targets = JSON.parse(
+      readFileSync(resolve(getTaskBundlePath(runId), "targets.json"), "utf-8"),
+    );
+
+    expect(targets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fixtureId: "overlap-case", visual_issues: [] }),
+        expect.objectContaining({ fixtureId: "clipped-case", visual_issues: ["clipped"] }),
+      ]),
+    );
   });
 });
 

@@ -1,6 +1,6 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { FailingPattern, JudgeScore } from "./types.ts";
+import type { FailingPattern, JudgeScore, VisualIssueTag } from "./types.ts";
 import { getTaskBundlePath } from "./run-manifest.ts";
 
 export interface TaskBundleInput {
@@ -20,6 +20,7 @@ interface TargetFixture {
   format_quality: number;
   layout_coherence: number;
   feedback: string;
+  visual_issues: VisualIssueTag[];
   screenshotPath: string | null;
   snapshotPath: string | null;
 }
@@ -51,6 +52,7 @@ export function writeTaskBundle(input: TaskBundleInput): void {
       format_quality: score.format_quality,
       layout_coherence: score.layout_coherence,
       feedback: score.feedback,
+      visual_issues: score.visual_issues ?? [],
       screenshotPath: score.screenshotPath ? `screenshots/${score.fixtureId}.png` : null,
       snapshotPath: existsSync(snapshotPath) ? `fixtures/${score.fixtureId}.dsl` : null,
     };
@@ -79,7 +81,12 @@ function buildSummary(input: TaskBundleInput): string {
   const worstFixtures = [...input.judgeScores]
     .sort((a, b) => a.overall - b.overall)
     .slice(0, 5)
-    .map((s) => `- **${s.fixtureId}** overall=${s.overall}/10: ${s.feedback}`)
+    .map((s) => {
+      const issues = (s.visual_issues ?? []).length > 0
+        ? ` [issues: ${(s.visual_issues ?? []).join(", ")}]`
+        : "";
+      return `- **${s.fixtureId}** overall=${s.overall}/10${issues}: ${s.feedback}`;
+    })
     .join("\n");
 
   const patterns = input.failingPatterns

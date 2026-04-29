@@ -11,6 +11,7 @@ function makeScore(fixtureId: string, overall: number): JudgeScore {
     layout_coherence: 3,
     overall,
     feedback: "",
+    visual_issues: [],
     screenshotPath: null,
     degraded: false,
   };

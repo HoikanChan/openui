@@ -135,6 +135,25 @@ body {
   margin-top: 16px;
 }
 
+.issue-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.issue-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff1f3;
+  border: 1px solid #fecdd3;
+  color: #9f1239;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .entry-details summary {
   cursor: pointer;
   font-weight: 600;

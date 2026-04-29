@@ -1,4 +1,4 @@
-import type { FailingPattern, JudgeScore } from "./types.ts";
+import type { FailingPattern, JudgeScore, VisualIssueTag } from "./types.ts";
 
 type Dimension = "component_fit" | "data_completeness" | "format_quality" | "layout_coherence";
 
@@ -29,6 +29,42 @@ const DIMENSION_META: Record<
     likely_cause: "The model produces layouts that do not organize information logically, possibly missing grouping or hierarchy cues.",
     agent_hint:
       "Consider adding layout guidance to the prompt. Use VLayout, HLayout, or Tabs to group related fields.",
+  },
+};
+
+const VISUAL_ISSUE_META: Record<
+  VisualIssueTag,
+  { pattern: string; likely_cause: string; agent_hint: string }
+> = {
+  overlap: {
+    pattern: "Visual overlap",
+    likely_cause: "Rendered content layers or labels are colliding, which makes the UI hard to read.",
+    agent_hint: "Adjust component composition, chart label behavior, or layout spacing so labels and values no longer overlap.",
+  },
+  "wrong-direction": {
+    pattern: "Direction mismatch",
+    likely_cause: "The layout direction fights the natural reading order for the rendered content.",
+    agent_hint: "Review whether summary cards or grouped sections should stack vertically or horizontally for easier scanning.",
+  },
+  crowded: {
+    pattern: "Visual crowding",
+    likely_cause: "Too many labels, values, or controls are packed into the same visual area.",
+    agent_hint: "Reduce label density, split content into clearer groups, or switch to components that fit the information density better.",
+  },
+  "whitespace-imbalance": {
+    pattern: "Whitespace imbalance",
+    likely_cause: "The layout has too much empty space in some regions and too little in others, weakening scanability.",
+    agent_hint: "Rebalance card sizing, spacing, and grouping so the page density feels intentional instead of sparse or stretched.",
+  },
+  clipped: {
+    pattern: "Clipped content",
+    likely_cause: "Rendered content is cut off by container sizing or chart layout constraints.",
+    agent_hint: "Fix container sizing, overflow handling, or chart margins so all essential content remains visible.",
+  },
+  "weak-hierarchy": {
+    pattern: "Weak visual hierarchy",
+    likely_cause: "The layout does not clearly emphasize which information is primary versus secondary.",
+    agent_hint: "Strengthen grouping, heading structure, or emphasis so users can quickly find the most important information.",
   },
 };
 
@@ -63,6 +99,23 @@ export function aggregateFailingPatterns(scores: JudgeScore[]): FailingPattern[]
       avg_score_impact: Math.round(avgImpact * 10) / 10,
       likely_cause: DIMENSION_META[dim].likely_cause,
       agent_hint: DIMENSION_META[dim].agent_hint,
+    });
+  }
+
+  for (const [tag, meta] of Object.entries(VISUAL_ISSUE_META) as Array<[VisualIssueTag, (typeof VISUAL_ISSUE_META)[VisualIssueTag]]>) {
+    const affected = scores.filter((s) => (s.visual_issues ?? []).includes(tag));
+    if (affected.length === 0) continue;
+
+    const avgImpact =
+      affected.reduce((sum, score) => sum + Math.max(0, 3 - score.layout_coherence), 0) / affected.length;
+
+    patterns.push({
+      pattern: meta.pattern,
+      issue_tag: tag,
+      affected_fixtures: affected.map((s) => s.fixtureId),
+      avg_score_impact: Math.round(avgImpact * 10) / 10,
+      likely_cause: meta.likely_cause,
+      agent_hint: meta.agent_hint,
     });
   }
 

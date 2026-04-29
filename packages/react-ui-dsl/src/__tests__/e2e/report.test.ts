@@ -116,4 +116,54 @@ describe("e2e report helpers", () => {
 
     rmSync(reportDir, { recursive: true, force: true });
   });
+
+  it("preserves judge visual issue tags in report data and tolerates older scores without them", () => {
+    const report = buildE2EReportData([
+      {
+        component: "Gauge",
+        id: "percentage-as-decimal",
+        prompt: "prompt",
+        expectedDescription: "description",
+        dataModel: {},
+        status: "passed",
+        judgeScore: {
+          fixtureId: "percentage-as-decimal",
+          component_fit: 3,
+          data_completeness: 3,
+          format_quality: 3,
+          layout_coherence: 1,
+          overall: 4,
+          feedback: "Center labels overlap.",
+          visual_issues: ["overlap", "crowded"],
+          screenshotPath: null,
+          degraded: false,
+        },
+      },
+      {
+        component: "Card",
+        id: "legacy-run",
+        prompt: "prompt",
+        expectedDescription: "description",
+        dataModel: {},
+        status: "failed",
+        judgeScore: {
+          fixtureId: "legacy-run",
+          component_fit: 2,
+          data_completeness: 2,
+          format_quality: 2,
+          layout_coherence: 2,
+          overall: 6,
+          feedback: "Old report entry.",
+          screenshotPath: null,
+          degraded: false,
+        } as never,
+      },
+    ]);
+
+    expect(report.entries[0]?.judgeScore?.visual_issues).toEqual(["overlap", "crowded"]);
+    expect(report.entries[1]?.judgeScore).toMatchObject({
+      fixtureId: "legacy-run",
+      feedback: "Old report entry.",
+    });
+  });
 });
