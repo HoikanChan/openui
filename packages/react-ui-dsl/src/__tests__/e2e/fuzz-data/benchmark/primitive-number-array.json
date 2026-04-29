@@ -1,13 +1,18 @@
 {
   "meta": {
-    "prompt": "显示请求延迟采样分布",
-    "taxonomy": ["bare-array", "primitive-numbers", "none", "full", "raw-only"],
+    "prompt": "显示该接口的请求延迟采样分布",
+    "taxonomy": ["flat-object", "record-with-array-field", "none", "full", "raw-only"],
     "evalHints": [
-      "data is a bare array of numbers — must render as a distribution or bar chart, not a list of index-value pairs",
-      "values represent response time in milliseconds — axis should indicate ms unit",
-      "should convey the distribution shape (skew, outliers) visually",
-      "must not label each value with its array index as a key"
+      "latencies is a number array field — must render as a bar chart or distribution visualization, not a table of index-value pairs",
+      "values represent response time in milliseconds — axis label should indicate ms unit",
+      "should convey distribution shape (skew, outliers) visually",
+      "scalar fields (endpoint, sampleCount, p95) should be shown alongside the distribution chart"
     ]
   },
-  "data": [12.4, 15.7, 11.2, 18.9, 22.3, 14.1, 13.8, 19.5, 16.2, 10.9, 45.7, 11.1, 13.3, 17.6, 14.9, 12.8, 16.4, 20.1, 15.3, 11.7]
+  "data": {
+    "endpoint": "/api/orders",
+    "sampleCount": 20,
+    "p95": 22.3,
+    "latencies": [12.4, 15.7, 11.2, 18.9, 22.3, 14.1, 13.8, 19.5, 16.2, 10.9, 45.7, 11.1, 13.3, 17.6, 14.9, 12.8, 16.4, 20.1, 15.3, 11.7]
+  }
 }

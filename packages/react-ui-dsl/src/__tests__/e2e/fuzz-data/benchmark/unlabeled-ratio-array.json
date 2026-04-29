@@ -1,13 +1,18 @@
 {
   "meta": {
-    "prompt": "显示资源分配占比",
-    "taxonomy": ["bare-array", "primitive-numbers", "ratio-values", "none", "full", "ratio-distribution"],
+    "prompt": "显示负载均衡器各节点的流量权重分布",
+    "taxonomy": ["flat-object", "record-with-array-field", "ratio-values", "none", "full", "ratio-distribution"],
     "evalHints": [
-      "data is a bare array of numbers that sum to 1.0 — must recognize as ratio/proportion data",
+      "weights is a number array field summing to 1.0 — must recognize as ratio/proportion data",
       "values are fractions (0.0–1.0) — should be displayed as percentages",
-      "must render as a pie or distribution chart, not a list of raw decimals",
-      "without labels, the chart must still convey relative proportions clearly"
+      "must render as a pie or bar chart showing proportions, not a list of raw decimals",
+      "nodes have no names — chart must still convey relative proportions, using positional labels (e.g. Node 1–5) if needed"
     ]
   },
-  "data": [0.35, 0.25, 0.20, 0.12, 0.08]
+  "data": {
+    "loadBalancer": "lb-prod-01",
+    "strategy": "weighted",
+    "nodeCount": 5,
+    "weights": [0.35, 0.25, 0.20, 0.12, 0.08]
+  }
 }

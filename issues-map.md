@@ -22,7 +22,7 @@ Score distribution: 13× perfect 10, 7× score 9, 12× score 8 — but a long ta
 
 ### Layer 1 · Language / DSL Built-ins
 
-#### L1-A · No map/object iteration  `IMPACT: HIGH`
+#### L1-A · No map/object iteration  `IMPACT: HIGH` - DONE
 Dynamic-key objects (`{ "dev-001": {...}, "dev-002": {...} }`) have no iteration primitive.
 LLM hardcodes each key as a separate variable.
 
@@ -64,7 +64,7 @@ Or a more general data-transform `@Map(arr, "item", expr)` (distinct from templa
 
 ---
 
-#### L1-C · No null-coalescing operator  `IMPACT: HIGH (parse errors)`
+#### L1-C · No null-coalescing operator  `IMPACT: HIGH (parse errors)`  - DONE
 String concatenation with nullable fields triggers `null-required` parse errors.
 Two fixtures fail to parse entirely.
 
@@ -99,7 +99,7 @@ tree = @BuildTree(data, "id", "parentId")
 
 ### Layer 2 · Components
 
-#### L2-A · No Sparkline component  `IMPACT: HIGH`
+#### L2-A · No Sparkline component  `IMPACT: HIGH`  - DONE
 `LineChart` inside a table cell renders at full chart dimensions — axis, legend, padding.
 The LLM understands the sparkline intent but has no appropriate component.
 

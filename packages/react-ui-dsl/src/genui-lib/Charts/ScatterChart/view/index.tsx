@@ -1,7 +1,7 @@
 "use client";
 import { BaseChart } from "../../../../components/chart/BaseChart";
 import type * as echarts from "echarts";
-import { buildScatterSeries } from "../../view-utils";
+import { buildChartOption, buildScatterSeries } from "../../view-utils";
 
 type ScatterChartViewProps = {
   datasets: { name: string; points: { x: number; y: number; z?: number }[] }[];
@@ -17,5 +17,5 @@ export function ScatterChartView({ datasets, xLabel, yLabel }: ScatterChartViewP
     legend: {},
     tooltip: { trigger: "item" },
   };
-  return <BaseChart option={option} />;
+  return <BaseChart option={buildChartOption(option)} />;
 }

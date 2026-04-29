@@ -17,4 +17,11 @@ describe("Card stylesheet", () => {
     expect(stylesheet).toContain("var(--openui-text-neutral-primary");
     expect(stylesheet).toContain("var(--openui-border-default");
   });
+
+  test("does not force a fixed width for standard cards", () => {
+    const stylesheet = fs.readFileSync(path.resolve(__dirname, "card.module.css"), "utf8");
+    const widthStandardBlock = stylesheet.match(/\.widthStandard\s*\{([^}]*)\}/s)?.[1] ?? "";
+
+    expect(widthStandardBlock).not.toMatch(/\bwidth\s*:/);
+  });
 });

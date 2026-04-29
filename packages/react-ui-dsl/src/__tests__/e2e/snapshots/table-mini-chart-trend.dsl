@@ -1,0 +1,5 @@
+root = VLayout([portTable])
+portTable = Table([nameCol, statusCol, trendCol], data.ports)
+nameCol = Col("端口名称", "name")
+statusCol = Col("状态", "status")
+trendCol = Col("速率趋势", "trend", {cell: @Render("v", MiniChart("line", v))})

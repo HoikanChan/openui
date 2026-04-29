@@ -112,6 +112,30 @@ export const fixtures: Record<string, Fixture[]> = {
         },
       },
     },
+    {
+      id: "table-mini-chart-trend",
+      prompt: "显示端口列表，包含端口名称、状态和速率趋势，趋势列使用微型折线图",
+      dataModel: {
+        ports: [
+          {
+            name: "GigabitEthernet0/0",
+            status: "Up",
+            trend: [92, 78, 70, 68, 76, 80, 57, 47, 45, 49, 58, 69],
+          },
+        ],
+      },
+      assert: {
+        contains: ["GigabitEthernet0/0", "Up", "端口名称", "状态", "速率趋势"],
+        verify: (_container, { echartsInit }) => {
+          expect(echartsInit, "table-mini-chart-trend: echarts.init was not called").toHaveBeenCalled();
+          const option = getFirstChartOption(echartsInit, "table-mini-chart-trend");
+          expect(option.series?.[0]).toMatchObject({
+            type: "line",
+            data: [92, 78, 70, 68, 76, 80, 57, 47, 45, 49, 58, 69],
+          });
+        },
+      },
+    },
   ],
   PieChart: [
     {
@@ -250,6 +274,27 @@ export const fixtures: Record<string, Fixture[]> = {
             type: "line",
             name: "NE-02-Access-Router Ethernet1/1",
             data: [18.2, 22.5],
+          });
+        },
+      },
+    },
+  ],
+  MiniChart: [
+    {
+      id: "mini-chart-card-trend",
+      prompt: "Show a compact single-series latency sparkline in a KPI card using data.sparkline",
+      dataModel: {
+        sparkline: [12, 18, 15, 21, 19, 24, 22],
+      },
+      assert: {
+        contains: ["7-Day Latency Trend"],
+        verify: (_container, { echartsInit }) => {
+          expect(echartsInit, "mini-chart-card-trend: echarts.init was not called").toHaveBeenCalled();
+          const option = getFirstChartOption(echartsInit, "mini-chart-card-trend");
+          expect(option.series).toHaveLength(1);
+          expect(option.series?.[0]).toMatchObject({
+            type: "line",
+            data: [12, 18, 15, 21, 19, 24, 22],
           });
         },
       },
