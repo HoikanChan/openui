@@ -1,4 +1,5 @@
-import type { JudgeScore } from "./types.ts";
+import type { JudgeScore, VisualIssueTag } from "./types.ts";
+import { VISUAL_ISSUE_TAGS } from "./types.ts";
 import { buildJudgeSystemPrompt } from "./rubric.ts";
 import { invokeRunner, resolveRunnerType } from "./judge-runner.ts";
 
@@ -18,6 +19,7 @@ interface RawJudgeResponse {
   layout_coherence: number;
   overall: number;
   feedback: string;
+  visual_issues?: unknown;
 }
 
 function buildUserText(input: JudgeInput): string {
@@ -72,6 +74,24 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.round(value)));
 }
 
+function normalizeVisualIssues(value: unknown): VisualIssueTag[] {
+  if (!Array.isArray(value)) return [];
+
+  const allowed = new Set<string>(VISUAL_ISSUE_TAGS);
+  const normalized: VisualIssueTag[] = [];
+  const seen = new Set<VisualIssueTag>();
+
+  for (const item of value) {
+    if (typeof item !== "string") continue;
+    const tag = item.trim().toLowerCase();
+    if (!allowed.has(tag) || seen.has(tag as VisualIssueTag)) continue;
+    normalized.push(tag as VisualIssueTag);
+    seen.add(tag as VisualIssueTag);
+  }
+
+  return normalized;
+}
+
 export async function judgeFixture(input: JudgeInput): Promise<JudgeScore> {
   const systemPrompt = buildJudgeSystemPrompt(input.rubricOverride, input.evalHints);
   const userText = buildUserText(input);
@@ -94,6 +114,7 @@ export async function judgeFixture(input: JudgeInput): Promise<JudgeScore> {
     layout_coherence: clamp(raw.layout_coherence, 0, 3),
     overall: clamp(raw.overall, 0, 10),
     feedback: raw.feedback ?? "",
+    visual_issues: normalizeVisualIssues(raw.visual_issues),
     screenshotPath: input.screenshotPath,
     degraded: input.screenshotPath === null,
   };

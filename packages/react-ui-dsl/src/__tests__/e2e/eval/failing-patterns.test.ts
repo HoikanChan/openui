@@ -11,6 +11,7 @@ function makeScore(fixtureId: string, overrides: Partial<JudgeScore> = {}): Judg
     layout_coherence: 3,
     overall: 10,
     feedback: "great",
+    visual_issues: [],
     screenshotPath: null,
     degraded: false,
     ...overrides,
@@ -62,6 +63,21 @@ describe("aggregateFailingPatterns", () => {
     const scores = [makeScore("layout", { layout_coherence: 0, overall: 4 })];
     const patterns = aggregateFailingPatterns(scores);
     expect(patterns.some((p) => p.pattern === "Incoherent layout")).toBe(true);
+  });
+
+  it("creates issue-specific patterns from repeated visual issue tags", () => {
+    const scores = [
+      makeScore("a", { layout_coherence: 1, overall: 5, visual_issues: ["overlap"] }),
+      makeScore("b", { layout_coherence: 2, overall: 6, visual_issues: ["overlap", "crowded"] }),
+      makeScore("c", { visual_issues: ["crowded"] }),
+    ];
+
+    const patterns = aggregateFailingPatterns(scores);
+    const overlap = patterns.find((p) => p.pattern === "Visual overlap");
+    const crowded = patterns.find((p) => p.pattern === "Visual crowding");
+
+    expect(overlap?.affected_fixtures).toEqual(["a", "b"]);
+    expect(crowded?.affected_fixtures).toEqual(["b", "c"]);
   });
 
   it("sorts patterns by avg_score_impact descending", () => {
