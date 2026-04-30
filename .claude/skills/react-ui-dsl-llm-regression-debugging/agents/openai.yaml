@@ -1,0 +1,4 @@
+interface:
+  display_name: "React UI DSL LLM Debugging"
+  short_description: "Debug flaky react-ui-dsl LLM e2e regressions."
+  default_prompt: "Use $react-ui-dsl-llm-regression-debugging to investigate a broken react-ui-dsl e2e fixture and stabilize the prompt output."

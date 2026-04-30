@@ -25,15 +25,12 @@
 .cursor/agents
 
 # Claude
-Claude.md
-.claude/
 !packages/lang-core/.claude/
 !packages/lang-core/.claude/**
 CLAUDE.local.md
 .workspace/
 
 # Codex
-.codex/
 
 # Dependencies
 node_modules
