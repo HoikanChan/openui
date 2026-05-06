@@ -64,6 +64,8 @@ Required environment:
 - `LINEAR_API_KEY`
 - `SYMPHONY_WORKSPACE_ROOT`
 
+For screenshot upload, `LINEAR_API_KEY` must be present in the current shell environment. In normal setups this key is usually exported as a global zsh environment variable and inherited by the shell that launches Codex. If the key is missing, stop and record that screenshot upload could not proceed because the key was unavailable.
+
 ## Completion Contract
 
 You may finish only in one of these states:

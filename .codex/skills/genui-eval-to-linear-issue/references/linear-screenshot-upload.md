@@ -2,6 +2,13 @@
 
 Use Linear's official presigned upload flow for eval screenshots. Do not upload screenshots through MCP base64 attachments for capability issues.
 
+## Preconditions
+
+- Codex or the plugin must already have the local screenshot file path.
+- `LINEAR_API_KEY` must be available in the current shell environment.
+- If `LINEAR_API_KEY` is missing, stop and report the missing key instead of silently skipping the screenshot or falling back to MCP base64.
+- In normal setups the key is usually exported as a global zsh environment variable and inherited by the shell that launches Codex.
+
 ## Flow
 
 1. Read the local screenshot file and determine `contentType`, `filename`, and byte `size`.
@@ -20,8 +27,9 @@ mutation FileUpload($contentType: String!, $filename: String!, $size: Int!) {
 }
 ```
 
-3. `PUT` the raw screenshot bytes to `uploadUrl` with all returned headers.
-4. Embed the returned `assetUrl` in the issue body:
+3. Read `uploadUrl`, `assetUrl`, and `headers` from the response.
+4. From the plugin service side or Node side, `PUT` the raw screenshot bytes directly to `uploadUrl` with all returned headers.
+5. Embed the returned `assetUrl` in the issue body:
 
 ```md
 ![<fixture-id>](<assetUrl>)
