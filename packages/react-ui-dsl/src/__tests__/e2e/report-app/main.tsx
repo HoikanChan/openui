@@ -39,6 +39,7 @@ type ReportEntry = {
 
 type ReportData = {
   generatedAt: string;
+  model: string;
   runId?: string;
   degraded?: boolean;
   summary: {
@@ -181,6 +182,7 @@ function App() {
           <p className="eyebrow">react-ui-dsl e2e report</p>
           <h1>Fixture previews</h1>
           <p className="generated-at">Generated at {new Date(report.generatedAt).toLocaleString()}</p>
+          <p className="generated-at">Model: {report.model}</p>
           {report.runId && <p className="run-id">Run: {report.runId}{report.degraded ? " [degraded]" : ""}</p>}
         </div>
 

@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { Fixture } from "./fixtures";
 import type { DeltaSummary, FailingPattern, JudgeScore } from "./eval/types.ts";
+import { getConfiguredLlmModel } from "./llm";
 
 const REPORT_FLAG = "REACT_UI_DSL_E2E_REPORT";
 const REPORT_DIR_FLAG = "REACT_UI_DSL_E2E_REPORT_DIR";
@@ -24,6 +25,7 @@ export interface E2EReportEntry {
 
 export interface E2EReportData {
   generatedAt: string;
+  model: string;
   runId?: string;
   degraded?: boolean;
   summary: {
@@ -149,6 +151,7 @@ export function buildE2EReportData(reportEntries: E2EReportEntry[]): E2EReportDa
 
   return {
     generatedAt: new Date().toISOString(),
+    model: getConfiguredLlmModel(),
     summary,
     entries: reportEntries,
   };

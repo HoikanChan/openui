@@ -9,7 +9,7 @@ vi.mock("../../genui-lib/dslLibrary", () => ({
 }));
 
 import { dslLibrary } from "../../genui-lib/dslLibrary";
-import { loadOrGenerate } from "./llm";
+import { getConfiguredLlmModel, loadOrGenerate } from "./llm";
 
 describe("loadOrGenerate", () => {
   beforeEach(() => {
@@ -82,5 +82,15 @@ describe("loadOrGenerate", () => {
     expect(readFileSync).not.toHaveBeenCalled();
     expect(mockCreate).toHaveBeenCalledOnce();
     expect(writeFileSync).toHaveBeenCalledOnce();
+  });
+
+  it("returns the default model when LLM_MODEL is unset", () => {
+    expect(getConfiguredLlmModel()).toBe("deepseek-chat");
+  });
+
+  it("returns the configured model when LLM_MODEL is set", () => {
+    process.env.LLM_MODEL = "gpt-4.1-mini";
+
+    expect(getConfiguredLlmModel()).toBe("gpt-4.1-mini");
   });
 });

@@ -36,6 +36,7 @@ describe("e2e report helpers", () => {
     const reportDir = mkdtempSync(join(tmpdir(), "react-ui-dsl-report-"));
     vi.stubEnv(REPORT_FLAG, "1");
     vi.stubEnv(REPORT_DIR_FLAG, reportDir);
+    vi.stubEnv("LLM_MODEL", "gpt-4.1-mini");
 
     const entry = beginE2EReportEntry("Button", {
       id: "button-primary",
@@ -51,6 +52,7 @@ describe("e2e report helpers", () => {
     const reportPath = finalizeE2EReport();
     const report = JSON.parse(readFileSync(reportPath!, "utf-8")) as ReturnType<typeof buildE2EReportData>;
 
+    expect(report.model).toBe("gpt-4.1-mini");
     expect(report.summary).toEqual({ total: 1, passed: 1, failed: 0 });
     expect(report.entries[0]).toMatchObject({
       component: "Button",
@@ -165,5 +167,11 @@ describe("e2e report helpers", () => {
       fixtureId: "legacy-run",
       feedback: "Old report entry.",
     });
+  });
+
+  it("uses the default configured model name when LLM_MODEL is unset", () => {
+    const report = buildE2EReportData([]);
+
+    expect(report.model).toBe("deepseek-chat");
   });
 });

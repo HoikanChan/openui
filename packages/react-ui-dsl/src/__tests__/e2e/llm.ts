@@ -7,9 +7,14 @@ import { dslLibrary } from "../../genui-lib/dslLibrary";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT_DIR = resolve(__dirname, "snapshots");
+export const DEFAULT_LLM_MODEL = "deepseek-chat";
 
 function isSnapshotRegenEnabled(): boolean {
   return process.env["REGEN_SNAPSHOTS"] === "1";
+}
+
+export function getConfiguredLlmModel(): string {
+  return process.env["LLM_MODEL"] ?? DEFAULT_LLM_MODEL;
 }
 
 export async function loadOrGenerate(
@@ -58,7 +63,7 @@ async function callLLM(
   const systemPrompt = dslLibrary.prompt({ dataModel: { raw: dataModel } });
 
   const response = await client.chat.completions.create({
-    model: process.env["LLM_MODEL"] ?? "deepseek-chat",
+    model: getConfiguredLlmModel(),
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: prompt },
