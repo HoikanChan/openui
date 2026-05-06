@@ -4,28 +4,28 @@ Open opencode in this repo and start from a prompt like this:
 
 ---
 
-Use `eval-loop-issue-handoff` to report eval-loop findings as durable tracker issues.
+Use `eval-loop-issue-handoff` to report GenUI eval-loop findings as Linear-ready capability fix issues.
 
 Rules:
 
-- File issues by mechanism, not one issue per fixture.
+- File issues by reusable capability class, not one issue per fixture.
 - Prioritize issues that improve benchmark score distribution or eval-loop trustworthiness.
 - Each issue must carry concrete evidence:
   - run id
   - suite
   - fixture ids
-  - status
   - score breakdown
   - failure reason
   - judge feedback
-  - full `dataModel`
-  - minimal DSL excerpt
-  - screenshot path
+  - full `dataModel` or justified excerpt
+  - generated DSL or failure-preserving excerpt
+  - screenshot source path and Linear screenshot asset URL
   - snapshot path
   - `report-data.json` path
-- Use the repository template in `references/issue-template.md`.
-- Keep issue scope narrow and acceptance criteria measurable against a future eval run.
-- If the tracker does not support uploads, keep file paths in the issue body.
+- Upload screenshots through Linear `fileUpload` presigned URLs and embed Markdown images.
+- Use the capability issue template in `references/issue-template.md`.
+- Include Required Fix Shape and Generalization Gate.
+- Keep issue scope narrow and forbid fixture-specific implementation.
 - If the tracker tool is unavailable, return markdown ready for manual submission.
 
 Read first:
@@ -34,3 +34,4 @@ Read first:
 - `references/issue-template.md`
 - `references/evidence-checklist.md`
 - `references/triage-rules.md`
+- `references/linear-screenshot-upload.md`

@@ -4,42 +4,33 @@ Run Claude Code from the repo root with a prompt like this:
 
 ---
 
-Use `eval-loop-issue-handoff` to turn eval findings into tracker issues.
+Use `eval-loop-issue-handoff` to turn GenUI eval findings into Linear-ready capability fix issues.
 
 Requirements:
 
-- Group findings by failure mechanism, not by fixture.
-- Only raise issues that are high leverage for overall eval quality or eval reliability.
-- Every issue must include:
-  - eval run id
-  - suite name
-  - representative fixture ids
-  - status and score breakdown
+- Group findings by reusable capability class, not by fixture or judge dimension alone.
+- Title each issue as a capability, such as "Generalize semantic value formatting for date/number/byte/percent fields".
+- Include 2-5 representative evidence fixtures when available.
+- Every evidence fixture must include:
+  - eval run id and suite
+  - fixture id
+  - score breakdown
   - failure reason when present
   - judge feedback
-  - full `dataModel`
-  - minimal DSL excerpt
-  - screenshot path
-  - snapshot path
-  - `report-data.json` path
-- Use a GitHub-style structure:
-  - `Summary`
-  - `Why This Matters`
-  - `Reproduction`
-  - `Current Behavior`
-  - `Expected Behavior`
-  - `Evidence`
-  - `Proposed Scope`
-  - `Acceptance Criteria`
-  - `References`
-- If localized labels make DSL snippets hard to read, replace labels with short ASCII placeholders while preserving the buggy structure.
-- Do not file broad issues like "improve prompt" or "fix benchmark".
+  - full `dataModel` or justified excerpt
+  - generated DSL or failure-preserving excerpt
+  - screenshot as `![fixture-id](assetUrl)` when Linear upload is available
+  - screenshot source path, snapshot path, and `report-data.json` path
+- Use Linear `fileUpload` presigned URL upload for screenshots. Do not use MCP base64 attachments for eval screenshots.
+- Include Required Fix Shape and Generalization Gate sections.
+- Do not file broad issues like "improve prompt" or fixture-targeted issues like "fix object-map-by-id".
 
-Before submitting, read:
+Read first:
 
 - `SKILL.md`
 - `references/issue-template.md`
 - `references/evidence-checklist.md`
 - `references/triage-rules.md`
+- `references/linear-screenshot-upload.md`
 
 If a tracker integration is unavailable, output ready-to-paste markdown using the same structure.

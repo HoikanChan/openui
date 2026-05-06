@@ -17,10 +17,13 @@ Collect these fields before filing the issue.
 - `failureReason` when present
 - `judgeScore.feedback`
 - full fixture `dataModel`
-- minimal DSL excerpt
+- generated DSL from the eval run, or the minimal DSL excerpt preserving the failure
 - screenshot path
+- Linear screenshot `assetUrl` when creating a Linear issue
 - snapshot path
 - report path
+- observed issue
+- expected general behavior
 
 ## Strongly Recommended
 
@@ -61,7 +64,9 @@ Do not submit if any of these are missing without explanation:
 
 - run id
 - fixture id
-- screenshot path
+- screenshot path or Linear screenshot asset URL
 - snapshot path
 - `dataModel`
-- acceptance criteria
+- generated DSL or failure-preserving DSL excerpt
+- capability goal
+- Generalization Gate

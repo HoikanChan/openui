@@ -1,78 +1,104 @@
-# Eval-Loop Issue Template
+# GenUI Capability Fix Issue Template
 
-Use this template for Linear, GitHub, Jira, or markdown handoff.
+Use this template for Linear issues created from GenUI eval runs. The issue title should name the reusable capability, not the affected fixtures.
 
-If one issue covers multiple fixtures, include 1-3 representative fixture evidence blocks inline and list the remaining affected fixtures in the summary or scope section.
+Good title:
 
-```md
-## Summary
-<1-2 paragraphs. State the failure mechanism, not just the symptom.>
+```text
+Generalize semantic value formatting for date/number/byte/percent fields
+```
 
-## Why This Matters
-- <Why fixing this improves overall eval quality or eval reliability>
-- <Why this is broader than one snapshot>
+Bad title:
 
-## Reproduction
-1. Run:
-   - `pnpm eval start --suite <suite>`
-2. Inspect run:
-   - `<run-id>`
-3. Focus fixtures:
-   - `<fixture-a>`
-   - `<fixture-b>`
+```text
+Poor value formatting affects aggregated-only and object-map-by-id
+```
 
-## Current Behavior
-<Short description of what currently happens.>
+````md
+## Source Eval Run
+<run-id>
+Suite: <e2e|fuzz|benchmark>
+Overall: <score>/10
 
-## Expected Behavior
-<Short description of what should happen instead.>
+## Capability Goal
+<One sentence describing the reusable behavior to build or strengthen.>
 
-## Evidence
+## Problem Class
+<Describe the data shape, field semantics, or rendering behavior that fails.>
 
-### Fixture: `<fixture-id>`
-- Status: `<passed|failed>`
-- Score: `<overall>/10`
-- Breakdown: `cf=<n> dc=<n> fq=<n> lc=<n>`
-- Failure reason:
-  - `<failureReason or "none">`
-- Judge feedback:
-  - `<judge feedback>`
-- Screenshot path:
-  - `<path-to-task-bundle-screenshot>`
-- Snapshot path:
-  - `<path-to-suite-snapshot>`
-- Report path:
-  - `<path-to-report-data.json>`
-- Prompt:
-  - `<prompt>`
-- Eval hints:
-  - `<evalHints if useful>`
+## Evidence Fixtures
 
-#### dataModel
+### <fixture-id>
+
+Score:
+- overall: <score>/10
+- component_fit: <score>
+- data_completeness: <score>
+- format_quality: <score>
+- layout_coherence: <score>
+
+Failure reason:
+- <failureReason or "none">
+
+Judge feedback:
+- <judge feedback>
+
+Prompt:
+- <prompt>
+
+Eval hints:
+- <evalHints or "none">
+
+Paths:
+- Screenshot source: `<local screenshot path>`
+- Snapshot source: `<suite snapshot path>`
+- Report data: `<report-data.json path>`
+
+Data Model:
 ```json
-<full dataModel>
+<full dataModel, or relevant excerpt with full source path if too large>
 ```
 
-#### DSL Excerpt
-```openui-lang
-<minimal DSL snippet showing the bug>
+Generated DSL:
+```openui
+<generated DSL from the eval run, or the smallest excerpt preserving the failure>
 ```
 
-### Fixture: `<fixture-id-2>`
+Screenshot:
+![<fixture-id>](<Linear assetUrl>)
+
+Observed Issue:
+- <specific visible or judged failure>
+
+Expected General Behavior:
+- <behavior expressed as a general rule, not a fixture-specific expectation>
+
+### <fixture-id-2>
 <repeat as needed>
 
-## Proposed Scope
-- <Concrete work item 1>
-- <Concrete work item 2>
-- <Concrete work item 3>
+## Required Fix Shape
 
-## Acceptance Criteria
-- [ ] <Measurable benchmark improvement or correctness condition>
-- [ ] <Affected fixture no longer fails in the current way>
-- [ ] <Regression coverage added where appropriate>
+Fix the reusable capability, not the listed fixtures.
 
-## References
-- Eval run: `<run-id>`
-- Suite: `<suite>`
-- Local analysis: `<issues-map.md or other notes>`
-```
+Allowed fix layers:
+- DSL generation prompt rule
+- Prompt example
+- Runtime helper behavior
+- Component fallback behavior
+- Schema or component guidance
+
+Forbidden:
+- Editing snapshots
+- Hardcoding fixture ids
+- Hardcoding sample values
+- Adding branches that only match listed fixtures or their business-specific names
+
+## Generalization Gate
+
+Completion must report:
+- Reusable rule changed
+- Changed layer: prompt rule, prompt example, runtime helper, component fallback, schema guidance, or mixed
+- Why the rule applies beyond the listed fixtures
+- Anti-overfit checklist result
+- Residual cases not covered
+````

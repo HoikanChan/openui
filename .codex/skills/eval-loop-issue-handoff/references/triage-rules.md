@@ -1,6 +1,6 @@
 # Triage Rules
 
-Use these rules to decide what becomes a tracker issue.
+Use these rules to decide what becomes a Linear capability fix issue.
 
 ## Raise The Issue If
 
@@ -12,6 +12,7 @@ Use these rules to decide what becomes a tracker issue.
   - render failure
 - benchmark status and judge score contradict each other
 - the likely fix improves overall score distribution or eval trustworthiness
+- the evidence points to a reusable data-shape or rendering capability gap
 
 ## Usually Do Not Raise If
 
@@ -22,6 +23,7 @@ Use these rules to decide what becomes a tracker issue.
   - "improve prompt"
   - "fix benchmark"
   - "make charts better"
+- the only plausible fix is hardcoding a fixture-specific exception
 
 ## Good Grouping Patterns
 
@@ -30,13 +32,18 @@ Use these rules to decide what becomes a tracker issue.
 - null-heavy or unlabeled data causes fabrication
 - tuple timestamps / bytes / ratios are formatted incorrectly
 - benchmark failures and judge scores disagree
+- compact trend fields are rendered as oversized charts
+- chart-ready fields are ignored or raw rows are fabricated into chart props
 
 ## Bad Grouping Patterns
 
 - one issue per fixture when the mechanism is the same
 - one giant issue covering every low-scoring fixture
 - grouping by component family when the root causes differ
+- using judge dimensions such as "Poor value formatting" as the final title without naming the capability
 
 ## Reporting Principle
 
 Prefer a narrow issue with strong evidence over a broad issue with weak evidence.
+
+Name the capability in the title. List fixtures only inside the evidence section.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "GenUI Capability Fix Handoff"
+  short_description: "Resolve GenUI capability issues without fixture overfitting."
+  default_prompt: "Use $genui-capability-fix-handoff to resolve this GenUI capability issue and report generalization evidence."
