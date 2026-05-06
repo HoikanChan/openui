@@ -1,0 +1,4 @@
+interface:
+  display_name: "GenUI Eval To Linear Issue"
+  short_description: "Create new Linear capability issues from GenUI eval evidence."
+  default_prompt: "Use $genui-eval-to-linear-issue to turn this GenUI eval run into new Linear capability issues with required dataModel, DSL, and screenshot evidence."

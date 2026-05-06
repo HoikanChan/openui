@@ -4,7 +4,7 @@ Run Claude Code from the repo root with a prompt like this:
 
 ---
 
-Use `eval-loop-issue-handoff` to turn GenUI eval findings into Linear-ready capability fix issues.
+Use `genui-eval-to-linear-issue` to turn GenUI eval findings into new Linear capability issues.
 
 Requirements:
 

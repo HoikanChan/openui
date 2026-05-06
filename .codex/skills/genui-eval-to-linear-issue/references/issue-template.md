@@ -14,6 +14,8 @@ Bad title:
 Poor value formatting affects aggregated-only and object-map-by-id
 ```
 
+Every created issue must include all three artifact types for each primary evidence fixture: `dataModel`, generated DSL, and screenshot.
+
 ````md
 ## Source Eval Run
 <run-id>

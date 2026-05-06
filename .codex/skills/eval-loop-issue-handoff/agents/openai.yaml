@@ -1,4 +1,0 @@
-interface:
-  display_name: "Eval-Loop Issue Handoff"
-  short_description: "Turn GenUI eval findings into capability fix issues with fixture evidence and screenshots."
-  default_prompt: "Use $eval-loop-issue-handoff to turn this GenUI eval run into high-leverage Linear capability fix issues."

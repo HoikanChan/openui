@@ -4,7 +4,7 @@ Open opencode in this repo and start from a prompt like this:
 
 ---
 
-Use `eval-loop-issue-handoff` to report GenUI eval-loop findings as Linear-ready capability fix issues.
+Use `genui-eval-to-linear-issue` to report GenUI eval findings as new Linear capability issues.
 
 Rules:
 

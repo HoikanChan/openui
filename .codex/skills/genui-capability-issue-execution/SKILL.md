@@ -1,18 +1,28 @@
+name: genui-capability-issue-execution
+description: Use when implementing, validating, or closing out an existing GenUI Linear capability issue.
 ---
-name: genui-capability-fix-handoff
-description: Use when resolving GenUI Linear capability fix issues from eval runs, especially issues that require reusable fixes, anti-overfit evidence, Linear workpad updates, or Generalization Evidence.
----
 
-# GenUI Capability Fix Handoff
+# GenUI Capability Issue Execution
 
-Use this skill when implementing a GenUI capability fix issue. The goal is not to make the listed fixtures pass by any means; the goal is to strengthen a reusable data-shape, prompt, helper, or component capability and report evidence that the change is not fixture-specific.
+Use this skill when implementing an existing GenUI capability issue. The goal is not to make the listed fixtures pass by any means; the goal is to strengthen a reusable data-shape, prompt, helper, or component capability and report evidence that the change is not fixture-specific.
 
-Combine this with `$linear-issue-handoff` when updating Linear state, comments, or workpads.
+This skill is the single owner for the execution lifecycle of an existing GenUI capability issue.
+
+It must cover:
+
+- issue reading
+- implementation
+- validation
+- workpad updates
+- validation evidence closeout
+- screenshot upload through `linear-evidence-upload` when local screenshot evidence exists
+
+Do not rely on a separate Linear workflow skill to finish the issue. This skill owns the closeout.
 
 ## Workflow
 
 1. Read the Linear issue and identify the capability goal, problem class, primary evidence fixtures, required fix shape, and Generalization Gate.
-2. Create or update the single `## Codex Workpad` comment if using Linear.
+2. Resolve the issue state, project context, and the single active `## Codex Workpad` comment.
 3. Before editing, write a Generalization Plan in the workpad:
    - shared data/field/component shape
    - non-goals and boundaries
@@ -21,7 +31,62 @@ Combine this with `$linear-issue-handoff` when updating Linear state, comments, 
 4. Inspect the issue-provided `dataModel`, generated DSL, screenshots, and local source.
 5. Implement the smallest reusable fix that addresses the capability class.
 6. Run the normal validation for the touched area and eval verification when practical.
-7. Update Linear with Generalization Evidence using [references/completion-template.md](references/completion-template.md).
+7. If local validation screenshots exist, call `linear-evidence-upload` and embed the result, or record the upload failure precisely.
+8. Update Linear with Generalization Evidence using [references/completion-template.md](references/completion-template.md).
+
+## Workpad Shape
+
+Use exactly one active comment starting with:
+
+```markdown
+## Codex Workpad
+```
+
+Keep these sections current:
+
+- `Plan`
+- `Acceptance Criteria`
+- `Validation`
+- `Notes`
+
+## State Rules
+
+- `Backlog`: do not modify unless explicitly instructed
+- `Todo`: move to `In Progress` before active implementation
+- `In Progress`: keep the workpad current
+- `Human Review`: do not make implementation changes until review context is read
+- terminal states: do nothing unless explicitly instructed
+
+Default Symphony Linear project slug: `genui-3513f1483173`.
+
+Required environment:
+
+- `LINEAR_API_KEY`
+- `SYMPHONY_WORKSPACE_ROOT`
+
+## Completion Contract
+
+You may finish only in one of these states:
+
+- `Completed`
+- `Blocked`
+- `Needs Human Decision`
+
+`Completed` requires:
+
+- validation commands recorded
+- current `## Codex Workpad`
+- validation screenshots uploaded when they exist, or upload failure explicitly recorded
+- PR linked when applicable
+- state advanced only after the completion bar is satisfied
+
+If upload fails, record:
+
+- local path
+- retry result
+- failure summary
+
+Do not leave the workpad looking screenshot-complete when upload failed.
 
 ## Hard Rules
 
@@ -46,7 +111,7 @@ If the issue says "prompt fix" but evidence shows a component/runtime defect, fo
 
 ## Anti-Overfit Review
 
-Before handoff, check the source diff for these red flags:
+Before closeout, check the source diff for these red flags:
 
 - fixture ids
 - evidence fixture business names used as condition keys

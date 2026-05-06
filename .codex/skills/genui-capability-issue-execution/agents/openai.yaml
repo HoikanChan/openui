@@ -1,0 +1,4 @@
+interface:
+  display_name: "GenUI Capability Issue Execution"
+  short_description: "Execute and close out an existing GenUI capability issue."
+  default_prompt: "Use $genui-capability-issue-execution to implement this GenUI capability issue, run validation, update the workpad, and close out the Linear evidence."

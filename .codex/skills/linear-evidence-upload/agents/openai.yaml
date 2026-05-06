@@ -1,0 +1,4 @@
+interface:
+  display_name: "Linear Evidence Upload"
+  short_description: "Upload a required local image to Linear and return embeddable Markdown."
+  default_prompt: "Use $linear-evidence-upload to upload this local screenshot to Linear and return the assetUrl plus Markdown image snippet."

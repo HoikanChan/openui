@@ -1,11 +1,10 @@
----
-name: eval-loop-issue-handoff
-description: Use when turning GenUI eval-loop, benchmark, e2e, or fuzz findings into Linear-ready capability fix issues with fixture dataModel, generated DSL, screenshots, and anti-overfit acceptance criteria.
+name: genui-eval-to-linear-issue
+description: Use when turning GenUI eval, benchmark, e2e, or fuzz findings into new Linear capability issues with required dataModel, generated DSL, and screenshot evidence.
 ---
 
-# Eval-Loop Issue Handoff
+# GenUI Eval To Linear Issue
 
-Use this skill to convert GenUI eval findings into durable Linear capability fix issues. The issue must target a reusable data-shape or rendering capability, not a list of failing fixtures.
+Use this skill to convert GenUI eval findings into durable Linear capability issues. The issue must target a reusable data-shape or rendering capability, not a list of failing fixtures.
 
 Fixtures are evidence. The fix target is the capability class.
 
@@ -23,8 +22,6 @@ Fixtures are evidence. The fix target is the capability class.
 - broad "improve the prompt" issues without a concrete failure mechanism
 - implementation progress updates on an existing issue
 
-Use a tracker-specific handoff skill when you are updating an existing issue rather than creating new ones.
-
 ## Goal
 
 Create issues that are:
@@ -34,6 +31,16 @@ Create issues that are:
 - high leverage on overall eval quality or eval reliability
 - readable by humans without local repo context
 - resistant to fixture-specific implementation
+
+## Issue Creation Hard Gate
+
+Do not create a GenUI capability issue unless each primary evidence fixture includes all three artifact types below:
+
+- `dataModel`
+- generated DSL
+- screenshot evidence
+
+If any of these are missing, stop and record which artifact is missing. Do not create an issue that appears complete while omitting one of the required evidence artifacts.
 
 ## Triage Rules
 
@@ -90,11 +97,11 @@ Read [references/evidence-checklist.md](references/evidence-checklist.md) before
 
 ## Snapshot And Screenshot Rules
 
-These are mandatory unless the source artifact truly does not exist.
+These are mandatory unless the source artifact truly does not exist, and they are part of the issue creation hard gate.
 
 - Always include the screenshot from the current eval run when present.
 - Always include the snapshot path for each representative fixture.
-- For Linear, upload screenshots through the official `fileUpload` presigned URL flow and embed `![fixture-id](assetUrl)` in the issue body.
+- For Linear, upload screenshots through `linear-evidence-upload` using the official `fileUpload` presigned URL flow and embed `![fixture-id](assetUrl)` in the issue body.
 - Do not use MCP base64 attachments for eval screenshots.
 - Be explicit about suite-specific snapshot location:
   - `src/__tests__/e2e/snapshots/<fixture>.dsl`
@@ -105,7 +112,7 @@ Read [references/linear-screenshot-upload.md](references/linear-screenshot-uploa
 
 ## dataModel Rules
 
-The issue body must include the fixture `dataModel`.
+The issue body must include the fixture `dataModel` for every primary evidence fixture.
 
 - Default: include the full `dataModel` in a fenced `json` block.
 - If the model is extremely large, include the most relevant excerpt inline and the full source path in the same issue.
@@ -126,6 +133,7 @@ Do not paste the entire generated DSL unless the entire file is necessary.
 2. Group fixtures by reusable capability class, data shape, or rendering behavior, not by visual theme or judge dimension alone.
 3. Decide whether the issue is worth raising using the triage rules above.
 4. Collect required evidence for 2-5 representative fixtures.
+5. Verify that each primary evidence fixture has `dataModel`, generated DSL, and screenshot evidence before issue creation.
 5. Load [references/issue-template.md](references/issue-template.md) and fill it in.
 6. Make sure the title states the capability being generalized, not the affected fixtures.
 7. Make sure the issue explains why fixing it should improve overall eval quality or eval reliability.
