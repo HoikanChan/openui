@@ -136,4 +136,136 @@ describe("Render builtin", () => {
     expect(prompt).toContain("Ternary:");
     expect(prompt).not.toContain("@Count(array)");
   });
+
+  it("@Render with named-statement template preserves loop variable ref", () => {
+    const ctx = createMaterializeCtx();
+    // Named statement that references the binder "v"
+    ctx.syms.set("innerStmt", {
+      k: "Comp",
+      name: "Switch",
+      args: [
+        { k: "Ref", n: "v" },
+        { k: "Obj", entries: [["active", { k: "Str", v: "Active" }]] },
+      ],
+    });
+
+    const node: ASTNode = {
+      k: "Comp",
+      name: "Render",
+      args: [
+        { k: "Str", v: "v" },
+        { k: "Ref", n: "innerStmt" },
+      ],
+    };
+
+    const result = materializeValue(node, ctx) as ASTNode;
+    expect(ctx.unres).not.toContain("v");
+    expect(ctx.errors).toEqual([]);
+    const body = result.args[1] as ASTNode & { k: "Comp" };
+    expect(body.args[0]).toEqual({ k: "Ref", n: "v" });
+  });
+});
+
+describe("@Each loop variable scoping", () => {
+  function createCtx(): MaterializeCtx {
+    return { syms: new Map(), cat: undefined, errors: [], unres: [], visited: new Set(), partial: false };
+  }
+
+  it("@Each with named-statement template resolves loop variable inside the template", () => {
+    const ctx = createCtx();
+    // Named statement that accesses a member on the loop variable "item"
+    ctx.syms.set("itemCard", {
+      k: "Comp",
+      name: "Switch",
+      args: [
+        { k: "Member", obj: { k: "Ref", n: "item" }, field: "status" },
+        { k: "Obj", entries: [] },
+      ],
+    });
+
+    const node: ASTNode = {
+      k: "Comp",
+      name: "Each",
+      args: [
+        { k: "Arr", els: [] },
+        { k: "Str", v: "item" },
+        { k: "Ref", n: "itemCard" },
+      ],
+    };
+
+    const result = materializeValue(node, ctx) as ASTNode;
+    expect(ctx.unres).not.toContain("item");
+    expect(ctx.errors).toEqual([]);
+    const templateArg = result.args[2] as ASTNode & { k: "Comp" };
+    expect(templateArg.args[0]).toEqual({
+      k: "Member",
+      obj: { k: "Ref", n: "item" },
+      field: "status",
+    });
+  });
+
+  it("@Each with named-statement two levels deep propagates loop variable", () => {
+    const ctx = createCtx();
+    // Two levels: Each → outerCard (named) → innerTable (named) which uses the loop var
+    ctx.syms.set("innerTable", {
+      k: "Comp",
+      name: "Switch",
+      args: [
+        { k: "Member", obj: { k: "Ref", n: "device" }, field: "interfaces" },
+        { k: "Obj", entries: [] },
+      ],
+    });
+    ctx.syms.set("outerCard", {
+      k: "Comp",
+      name: "Switch",
+      args: [
+        { k: "Ref", n: "innerTable" },
+        { k: "Obj", entries: [] },
+      ],
+    });
+
+    const node: ASTNode = {
+      k: "Comp",
+      name: "Each",
+      args: [
+        { k: "Arr", els: [] },
+        { k: "Str", v: "device" },
+        { k: "Ref", n: "outerCard" },
+      ],
+    };
+
+    const result = materializeValue(node, ctx) as ASTNode;
+    expect(ctx.unres).not.toContain("device");
+    expect(ctx.errors).toEqual([]);
+  });
+
+  it("@Each inline template still resolves loop variable (regression guard)", () => {
+    const ctx = createCtx();
+    const node: ASTNode = {
+      k: "Comp",
+      name: "Each",
+      args: [
+        { k: "Arr", els: [] },
+        { k: "Str", v: "row" },
+        {
+          k: "Comp",
+          name: "Switch",
+          args: [
+            { k: "Member", obj: { k: "Ref", n: "row" }, field: "status" },
+            { k: "Obj", entries: [] },
+          ],
+        },
+      ],
+    };
+
+    const result = materializeValue(node, ctx) as ASTNode;
+    expect(ctx.unres).not.toContain("row");
+    expect(ctx.errors).toEqual([]);
+    const body = result.args[2] as ASTNode & { k: "Comp" };
+    expect(body.args[0]).toEqual({
+      k: "Member",
+      obj: { k: "Ref", n: "row" },
+      field: "status",
+    });
+  });
 });

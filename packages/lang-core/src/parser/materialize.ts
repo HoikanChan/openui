@@ -108,7 +108,12 @@ function validateNestedObjectProps(
  * Resolve a Ref node: inline from symbol table, detect cycles, emit RuntimeRef
  * for Query/Mutation declarations. Shared by materializeValue and materializeExpr.
  */
-function resolveRef(name: string, ctx: MaterializeCtx, mode: "value" | "expr"): unknown | ASTNode {
+function resolveRef(
+  name: string,
+  ctx: MaterializeCtx,
+  mode: "value" | "expr",
+  scopedRefs: ReadonlySet<string> = new Set(),
+): unknown | ASTNode {
   if (ctx.visited.has(name)) {
     ctx.unres.push(name);
     return mode === "expr" ? { k: "Ph", n: name } : null;
@@ -132,7 +137,10 @@ function resolveRef(name: string, ctx: MaterializeCtx, mode: "value" | "expr"): 
   const prevStatementId = ctx.currentStatementId;
   ctx.currentStatementId = name;
   try {
-    const result = mode === "value" ? materializeValue(target, ctx) : materializeExpr(target, ctx);
+    // In expr mode, propagate scopedRefs so loop variables from @Each/@Render remain
+    // visible inside named-statement templates (resolving via new Set() would drop them).
+    const result =
+      mode === "value" ? materializeValue(target, ctx) : materializeExprInternal(target, ctx, scopedRefs);
     // Tag ElementNode with its source statement name
     if (mode === "value" && isElementNode(result)) {
       result.statementId = name;
@@ -189,7 +197,7 @@ function materializeExprInternal(
 ): ASTNode {
   switch (node.k) {
     case "Ref":
-      return scopedRefs.has(node.n) ? node : (resolveRef(node.n, ctx, "expr") as ASTNode);
+      return scopedRefs.has(node.n) ? node : (resolveRef(node.n, ctx, "expr", scopedRefs) as ASTNode);
 
     case "Ph":
       return node;
