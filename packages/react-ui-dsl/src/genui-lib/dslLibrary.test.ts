@@ -198,6 +198,40 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain('statusCol = Col("Status", "value.status")');
   });
 
+  it("includes shape-aware formatting guidance for API-shaped tuple, byte, and ratio data", () => {
+    const prompt = dslLibrary.prompt({
+      dataModel: {
+        raw: {
+          samples: [
+            [1717190400000, 12.4],
+            [1717191300000, 15.7],
+          ],
+          volumes: [
+            { name: "OS Disk", totalBytes: 107374182400, usedBytes: 45678901234 },
+            { name: "Archive", totalBytes: 1125899906842624, usedBytes: 456789012345678 },
+          ],
+        },
+      },
+    });
+
+    expect(prompt).toContain("For positional tuple arrays");
+    expect(prompt).toContain("project the needed tuple index before formatting");
+    expect(prompt).toContain('timestampLabels = @Each(data.samples, "item", @FormatDate(item[0], "dateTime"))');
+    expect(prompt).toContain("Byte-count fields");
+    expect(prompt).toContain("`*Bytes`");
+    expect(prompt).toContain("@FormatBytes");
+    expect(prompt).toContain("Rate fields such as `bandwidth`, `bps`, `bitrate`, or `bitsPerSecond`");
+    expect(prompt).toContain('Text(v >= 1000000000 ? @FormatNumber(v / 1000000000, 1) + " Gbps"');
+    expect(prompt).toContain("Do not compute utilization percentages by dividing cumulative byte totals by bandwidth or bitrate fields");
+    expect(prompt).toContain("Ratios derived from fields such as `used / total`");
+    expect(prompt).toContain('@Render("v", "row", Text(@FormatPercent(row.usedBytes / row.totalBytes, 1)))');
+    expect(prompt).toContain("Do not declare pseudo-reusable component templates");
+    expect(prompt).toContain("prefer one clear Table with formatted columns");
+    expect(prompt).toContain("Do not add a chart that repeats the same homogeneous records");
+    expect(prompt).not.toContain("timeseries-tuple-pairs");
+    expect(prompt).not.toContain("cross-magnitude-values");
+  });
+
   it("includes descriptions-specific guidance in the default prompt", () => {
     const prompt = dslLibrary.prompt({
       dataModel: {
@@ -272,6 +306,31 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain('rawRowsTable = Table([deviceCol, interfaceCol, timeCol, utilizationCol], data.rows)');
   });
 
+  it("includes neutral null-dominant anti-fabrication guidance", () => {
+    const prompt = dslLibrary.prompt({
+      dataModel: {
+        raw: {
+          record: {
+            id: "r-001",
+            name: "Record One",
+            file: null,
+            status: null,
+            metric: null,
+            note: null,
+          },
+        },
+      },
+    });
+
+    expect(prompt).toContain("null-dominant");
+    expect(prompt).toContain('data.record.file ?? "No data"');
+    expect(prompt).toContain('DescField("ID", data.record.id ?? "No data")');
+    expect(prompt).toContain("Never synthesize rows, metrics, statuses, timestamps, percentages, details");
+    expect(prompt).not.toContain("For unlabeled ratio arrays");
+    expect(prompt).not.toContain("data.deviceId");
+    expect(prompt).not.toContain("CPU Utilization");
+  });
+
   it("includes MiniChart guidance as a compact single-series trend primitive", () => {
     const prompt = dslLibrary.prompt({
       dataModel: {
@@ -285,7 +344,16 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
 
     expect(prompt).toContain("MiniChart");
     expect(prompt).toContain("compact single-series trend primitive");
+    expect(prompt).toContain("Treat primitive numeric arrays (`number[]`) as compact quantitative series");
+    expect(prompt).toContain("When a `number[]` appears as a field inside records shown in a Table");
+    expect(prompt).toContain('Col(..., {cell: @Render("v", MiniChart(..., v))})');
+    expect(prompt).toContain("MiniChart accepts `number[]` directly and derives compact point labels automatically");
+    expect(prompt).toContain("For standalone numeric arrays rendered with MiniChart, keep the chart compact");
+    expect(prompt).toContain("Include scalar identifier and context fields such as id, name, title, endpoint, label, unit, count, current, min, max, avg, p95");
+    expect(prompt).toContain("Never set MiniChart height above 96 for a primitive numeric array");
     expect(prompt).toContain("MiniChart(\"line\", data.metrics.sparkline");
+    expect(prompt).toContain('valuesCol = Col("Values", "values", {cell: @Render("v", MiniChart("line", v))})');
+    expect(prompt).toContain('measurementsChart = MiniChart("bar", data.summary.measurements');
     expect(prompt).toContain("Omit MiniChart height unless the layout needs a tighter or taller trend");
     expect(prompt).not.toContain("MiniChart(data.labels");
   });
