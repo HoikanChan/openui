@@ -1,0 +1,4 @@
+interface:
+  display_name: "Linear Issue Progress"
+  short_description: "Post Linear progress with screenshots."
+  default_prompt: "Post a concise progress update to a Linear issue and attach local screenshot/report images using Linear file upload."
