@@ -198,6 +198,45 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain('statusCol = Col("Status", "value.status")');
   });
 
+  it("guides generation away from JavaScript conversion helpers", () => {
+    const prompt = dslLibrary.prompt({
+      dataModel: {
+        raw: {
+          total: 347,
+          pageSize: 20,
+          pageIndex: 1,
+        },
+      },
+    });
+
+    expect(prompt).toContain("Never use JavaScript conversion constructors");
+    expect(prompt).toContain("String(...), Number(...), Boolean(...), Date(...), or Math.*");
+    expect(prompt).toContain("openui-lang concatenation");
+    expect(prompt).toContain("@Ceil");
+  });
+
+  it("includes paginated envelope guidance without static pagination controls", () => {
+    const prompt = dslLibrary.prompt({
+      dataModel: {
+        raw: {
+          total: 347,
+          pageSize: 20,
+          pageIndex: 1,
+          list: [{ id: "row-1", status: "open" }],
+        },
+      },
+    });
+
+    expect(prompt).toContain("For paginated envelopes");
+    expect(prompt).toContain("total/pageSize/pageIndex");
+    expect(prompt).toContain("metadata with Descriptions");
+    expect(prompt).toContain("Table");
+    expect(prompt).toContain(
+      'pageField = DescField("Page", data.pageIndex + " / " + @Ceil(data.total / data.pageSize))',
+    );
+    expect(prompt).toContain("Do not add previous/next Button controls");
+  });
+
   it("includes shape-aware formatting guidance for API-shaped tuple, byte, and ratio data", () => {
     const prompt = dslLibrary.prompt({
       dataModel: {

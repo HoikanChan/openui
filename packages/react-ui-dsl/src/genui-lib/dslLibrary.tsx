@@ -41,10 +41,12 @@ const DEFAULT_PROMPT_ADDITIONAL_RULES = [
   'If the render body needs other fields from the row, use `@Render("v", "row", expr)`. Do not reference `row` unless you declared it as the second binder.',
   "If a table cell label must combine the current value with another field from the same row, keep that logic inside a single `@Render(\"v\", \"row\", ...)` expression.",
   "Use `@FormatDate`, `@FormatBytes`, `@FormatNumber`, `@FormatPercent`, and `@FormatDuration` for display formatting.",
+  "Never use JavaScript conversion constructors or APIs such as String(...), Number(...), Boolean(...), Date(...), or Math.*. Use openui-lang concatenation for text display and @ builtins such as @FormatNumber, @FormatDate, @Round, @Floor, or @Ceil for conversions and math.",
   "Never use the removed `format` prop on `Col` or `DescField`.",
   "Use Descriptions for single-record detail views instead of Table.",
   "Accessing a field on an array extracts that field from every element: `filteredRows.fieldName` returns an array of that field's values. Use this to build Series data from filtered row sets.",
   "Never hardcode data values from the data model. Always reference fields via data paths or derived variables.",
+  "For paginated envelopes with total/pageSize/pageIndex plus a list/items/rows array, show the pagination metadata with Descriptions and render the array with Table. Do not add previous/next Button controls unless the data source includes an explicit Query, binding, or Action that can change pages.",
   "For positional tuple arrays such as `[timestamp, value]`, project the needed tuple index before formatting; for example use `@Each(data.samples, \"item\", @FormatDate(item[0], \"dateTime\"))` for labels and `@Each(data.samples, \"item\", item[1])` for values.",
   "Byte-count fields such as `bytes`, `*Bytes`, `inBytes`, `outBytes`, `totalBytes`, `usedBytes`, or rows with `unit: \"bytes\"` should display through `@FormatBytes` instead of raw integers.",
   "Rate fields such as `bandwidth`, `bps`, `bitrate`, or `bitsPerSecond` are throughput/capacity rates, not byte counts. Do not use `@FormatBytes` for them; format bits-per-second values as Mbps or Gbps with `@FormatNumber` and a unit suffix.",
@@ -87,6 +89,14 @@ statusCol = Col("Status", "active", {cell: @Render("v", @Switch(v, {"1": Text("A
 ordersTable = Table([idCol, statusCol], data.orders)
 idCol = Col("Order ID", "id")
 statusCol = Col("Status", "status", {cell: @Render("v", "row", Text(row.id + ": " + @Switch(v, {"paid": "Paid", "pending": "Pending"}, "Unknown")))})`,
+  `root = VLayout([paginationSummary, rowsTable])
+paginationSummary = Descriptions([totalField, pageField, pageSizeField], "Pagination")
+totalField = DescField("Total", data.total)
+pageField = DescField("Page", data.pageIndex + " / " + @Ceil(data.total / data.pageSize))
+pageSizeField = DescField("Page Size", data.pageSize)
+rowsTable = Table([nameCol, statusCol], data.list)
+nameCol = Col("Name", "name")
+statusCol = Col("Status", "status")`,
   `root = VLayout([latencyChart])
 timestampLabels = @Each(data.samples, "item", @FormatDate(item[0], "dateTime"))
 latencyValues = @Each(data.samples, "item", item[1])
