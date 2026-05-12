@@ -107,8 +107,12 @@ function JudgeScorePanel({ score }: { score: JudgeScore }) {
   const visualIssues = score.visual_issues ?? [];
 
   return (
-    <details className="entry-details judge-scores">
-      <summary>Judge Scores (overall: {score.overall}/10{score.degraded ? " [degraded]" : ""})</summary>
+    <div className="judge-scores-panel">
+      {score.degraded && (
+        <div className="judge-degraded-banner">
+          ⚠ Screenshot unavailable — score based on DSL only
+        </div>
+      )}
       <p className="judge-feedback">{score.feedback}</p>
       {visualIssues.length > 0 ? (
         <div className="issue-list">
@@ -117,17 +121,21 @@ function JudgeScorePanel({ score }: { score: JudgeScore }) {
           ))}
         </div>
       ) : null}
-      <ScoreBar label="Component fit" value={score.component_fit} max={3} />
-      <ScoreBar label="Data completeness" value={score.data_completeness} max={3} />
-      <ScoreBar label="Format quality" value={score.format_quality} max={3} />
-      <ScoreBar label="Layout coherence" value={score.layout_coherence} max={3} />
-    </details>
+      <div className="score-bars">
+        <ScoreBar label="Component fit" value={score.component_fit} max={3} />
+        <ScoreBar label="Data completeness" value={score.data_completeness} max={3} />
+        <ScoreBar label="Format quality" value={score.format_quality} max={3} />
+        <ScoreBar label="Layout coherence" value={score.layout_coherence} max={3} />
+      </div>
+    </div>
   );
 }
 
 function PreviewCard({ entry, delta }: { entry: ReportEntry; delta?: number }) {
   const deltaLabel =
     delta !== undefined ? (delta >= 0 ? ` (+${delta.toFixed(1)})` : ` (${delta.toFixed(1)})`) : "";
+
+  const overallScore = entry.judgeScore?.overall;
 
   return (
     <article className="entry-card" data-fixture-id={entry.id}>
@@ -139,7 +147,12 @@ function PreviewCard({ entry, delta }: { entry: ReportEntry; delta?: number }) {
             {deltaLabel && <span className={`delta ${(delta ?? 0) >= 0 ? "delta-up" : "delta-down"}`}>{deltaLabel}</span>}
           </h2>
         </div>
-        <span className={`status status-${entry.status ?? "failed"}`}>{entry.status ?? "failed"}</span>
+        <div className="entry-header-right">
+          {overallScore !== undefined && (
+            <span className="overall-score">{overallScore}/10</span>
+          )}
+          <span className={`status status-${entry.status ?? "failed"}`}>{entry.status ?? "failed"}</span>
+        </div>
       </header>
 
       <p className="prompt">{entry.prompt}</p>

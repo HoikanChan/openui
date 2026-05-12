@@ -36,6 +36,8 @@ Override the judge model at any time with `LLM_JUDGE_MODEL=<model>`.
 
 **Judge concurrency.** Judging runs in a bounded worker pool, default 6 fixtures in parallel. Override with `EVAL_JUDGE_CONCURRENCY=<n>` — lower it (e.g. 3) when an upstream API rate-limits, raise it for local CLIs that can fan out. A 44-fixture benchmark judge step finishes in ~`(44 / concurrency) × per-fixture-latency`, so concurrency=6 keeps the full pipeline (regen + screenshot + judge) under the 10-min Bash ceiling for typical hosted judge models.
 
+**Regen concurrency.** DSL regeneration also runs concurrent LLM calls, default 6. Override with `EVAL_REGEN_CONCURRENCY=<n>` to adjust.
+
 ## Typical Iteration Cycle
 
 ```
@@ -107,13 +109,56 @@ pnpm eval status <run-id>     # scores, state, history, next step
 pnpm eval verify <run-id>
 ```
 
-Runs the full fixture suite (regression gate), re-judges every fixture, computes deltas, prints:
+Runs the full fixture suite (regression gate), re-judges **only fixtures listed in `claimed-affected-fixtures.json`** (incremental judging), reuses baseline scores for unaffected fixtures, computes deltas, prints:
 
 ```
 Verification complete for run 20260425_181234_ab12
   Score: 6.4 → 7.8 (+1.4)
   Outcome: SUCCESS
+  Reused baseline scores: 39 fixture(s)
+  Re-judged: 5 fixture(s)
 ```
+
+If `claimed-affected-fixtures.json` is missing or empty, verify falls back to full re-judge and prints a warning.
+
+### Phased commands
+
+The eval pipeline is split into independent phases that can be run separately for recovery:
+
+```bash
+pnpm eval regen [<run-id>] [--suite=<suite>]   # Generate DSL snapshots (phase 1)
+pnpm eval render <run-id>                       # Run vitest render (phase 2)
+pnpm eval judge <run-id>                        # Judge fixtures (phase 4)
+pnpm eval cache:clear                           # Clear judge cache and report-app cache
+```
+
+Each phase writes its status to `run.json` under `phases: { regen, render, screenshot, judge }`. Running a phase command skips phases that are already `done`.
+
+### Fault recovery
+
+If the eval loop is interrupted (timeout, crash, Ctrl+C), resume from the last completed phase:
+
+**Interrupted during regen:**
+```bash
+pnpm eval regen <run-id>    # Continues generating missing DSL snapshots
+```
+
+**Interrupted during render:**
+```bash
+pnpm eval render <run-id>   # Re-runs vitest (skipped if already done)
+```
+
+**Interrupted during screenshot:**
+```bash
+pnpm eval judge <run-id>    # Re-captures missing screenshots, then judges
+```
+
+**Interrupted during judge:**
+```bash
+pnpm eval judge <run-id>    # Only judges fixtures missing scores; skips completed ones
+```
+
+Judge progress is persisted incrementally — each fixture score is written immediately after completion. If judge is interrupted, restarting only judges the remaining fixtures. Use `EVAL_FORCE_REJUDGE=1` to force full re-judge.
 
 ### Re-run judge on an existing run
 

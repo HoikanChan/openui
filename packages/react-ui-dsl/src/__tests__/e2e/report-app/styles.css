@@ -95,6 +95,18 @@ body {
   align-items: flex-start;
 }
 
+.entry-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.overall-score {
+  font-size: 18px;
+  font-weight: 700;
+  color: #18202a;
+}
+
 .status {
   padding: 6px 10px;
   border-radius: 999px;
@@ -152,6 +164,38 @@ body {
   color: #9f1239;
   font-size: 12px;
   font-weight: 600;
+}
+
+/* Judge scores panel - always visible, no collapse */
+.judge-scores-panel {
+  margin-top: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e4e9f2;
+  border-radius: 12px;
+}
+
+.judge-degraded-banner {
+  padding: 8px 12px;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  color: #856404;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.judge-feedback {
+  margin: 0 0 12px;
+  line-height: 1.5;
+  color: #374151;
+}
+
+.score-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .entry-details summary {

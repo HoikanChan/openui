@@ -108,6 +108,8 @@ LLM_JUDGE_MODEL=gpt-4o
 
 **Judge concurrency.** The judge step runs fixtures through a bounded worker pool — default 6 in parallel. Override with `EVAL_JUDGE_CONCURRENCY=<n>` if the upstream API rate-limits or you want to push harder. With 6 in parallel, a 44-fixture benchmark judge step finishes in roughly `(44 / 6) × per-fixture-latency` instead of `44 × per-fixture-latency`.
 
+**Regen concurrency.** The regen phase also runs concurrent LLM calls with a worker pool — default 6. Override with `EVAL_REGEN_CONCURRENCY=<n>` to adjust.
+
 ### Typical iteration cycle
 
 ```
@@ -183,18 +185,61 @@ Reuses existing screenshots when present, otherwise re-captures them. Useful whe
 pnpm eval verify <run-id>
 ```
 
-Runs the full fixture suite (regression gate), re-judges every fixture, computes deltas, and prints:
+Runs the full fixture suite (regression gate), re-judges **only fixtures listed in `claimed-affected-fixtures.json`** (incremental judging), reuses baseline scores for unaffected fixtures, computes deltas, and prints:
 
 ```
 Verification complete for run 20260425_181234_ab12
   Score: 6.4 → 7.8 (+1.4)
   Outcome: SUCCESS
+  Reused baseline scores: 39 fixture(s)
+  Re-judged: 5 fixture(s)
 
   Quality improved: 6.4 → 7.8 (+1.4). Review and commit:
     git add -p && git commit -m "improve: DSL quality +1.4 overall score"
 ```
 
+If `claimed-affected-fixtures.json` is missing or empty, verify falls back to full re-judge and prints a warning.
+
 The eval loop never commits automatically. You decide when to commit.
+
+### Phased commands
+
+The eval pipeline is split into independent phases that can be run separately for recovery:
+
+```bash
+pnpm eval regen [<run-id>] [--suite=<suite>]   # Generate DSL snapshots (phase 1)
+pnpm eval render <run-id>                       # Run vitest render (phase 2)
+pnpm eval judge <run-id>                        # Judge fixtures (phase 4)
+pnpm eval cache:clear                           # Clear judge cache and report-app cache
+```
+
+Each phase writes its status to `run.json` under `phases: { regen, render, screenshot, judge }`. Running a phase command skips phases that are already `done`.
+
+### Fault recovery
+
+If the eval loop is interrupted (timeout, crash, Ctrl+C), you can resume from the last completed phase:
+
+**Interrupted during regen:**
+```bash
+pnpm eval regen <run-id>    # Continues generating missing DSL snapshots
+```
+
+**Interrupted during render:**
+```bash
+pnpm eval render <run-id>   # Re-runs vitest (skipped if already done)
+```
+
+**Interrupted during screenshot:**
+```bash
+pnpm eval judge <run-id>    # Re-captures missing screenshots, then judges
+```
+
+**Interrupted during judge:**
+```bash
+pnpm eval judge <run-id>    # Only judges fixtures missing scores; skips completed ones
+```
+
+Judge progress is persisted incrementally — each fixture score is written immediately after completion. If judge is interrupted, restarting only judges the remaining fixtures. Use `EVAL_FORCE_REJUDGE=1` to force full re-judge.
 
 ### Human corrections (optional)
 
