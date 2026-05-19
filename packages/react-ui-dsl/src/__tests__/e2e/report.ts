@@ -38,6 +38,10 @@ export interface E2EReportData {
   judge_scores?: JudgeScore[];
   failing_patterns?: FailingPattern[];
   delta?: DeltaSummary;
+  /** Run-relative path to the canonical system prompt artifact (e.g. "system-prompt.txt"). */
+  systemPromptPath?: string;
+  /** SHA-256 hex hash of the canonical system prompt content. */
+  systemPromptHash?: string;
 }
 
 const entries: E2EReportEntry[] = [];

@@ -226,7 +226,7 @@ async function runRegenPhase(ctx: PhaseContext): Promise<void> {
     return;
   }
 
-  const dataDir = resolve(packageRoot, "data", ctx.suite === "benchmark" ? "benchmark" : "e2e");
+  const dataDir = resolve(__dirname, ctx.suite === "benchmark" ? "fuzz-data/benchmark" : "fuzz-data");
   const fixtures = loadBenchmarkCases(dataDir);
   const relevantFixtures = ctx.fixtureIds.length > 0
     ? fixtures.filter((f) => ctx.fixtureIds.includes(f.id))
@@ -314,6 +314,7 @@ async function runJudgePhase(
   screenshotResults: { fixtureId: string; screenshotPath: string | null }[],
   degraded: boolean,
 ): Promise<E2EReportData> {
+  const { systemPromptPath, systemPromptHash } = readRunManifest(ctx.runId);
   const forceRejudge = process.env["EVAL_FORCE_REJUDGE"] === "1";
   const existingScores = reportData.judge_scores ?? [];
   const judgedFixtureIds = new Set(existingScores.map((s) => s.fixtureId));
@@ -366,6 +367,8 @@ async function runJudgePhase(
           entries: reportData.entries.map((e) => ({ ...e, judgeScore: judgeMap.get(e.id) })),
           judge_scores: [...accumulatedScores, ...failedScores],
           failing_patterns: failingPatterns,
+          systemPromptPath,
+          systemPromptHash,
         };
         // Atomic write: .tmp + rename
         const dataPath = resolve(ctx.reportDir, "report-data.json");
@@ -395,6 +398,8 @@ async function runJudgePhase(
     entries: reportData.entries.map((e) => ({ ...e, judgeScore: judgeMap.get(e.id) })),
     judge_scores: allScores,
     failing_patterns: failingPatterns,
+    systemPromptPath,
+    systemPromptHash,
   };
   const dataPath = resolve(ctx.reportDir, "report-data.json");
   const tmpPath = `${dataPath}.tmp`;
@@ -415,16 +420,24 @@ async function cmdStart(argv: string[]): Promise<void> {
   const fixtureArg = argv.find((a) => a.startsWith("--fixture="))?.split("=")[1]
     ?? (argv.includes("--fixture") ? argv[argv.indexOf("--fixture") + 1] : undefined);
 
+  const strictnessArg = argv.find((a) => a.startsWith("--strictness="))?.split("=")[1]
+    ?? (argv.includes("--strictness") ? argv[argv.indexOf("--strictness") + 1] : undefined);
+  if (strictnessArg !== undefined && strictnessArg !== "standard" && strictnessArg !== "strict") {
+    console.error(`Invalid --strictness value: "${strictnessArg}". Must be "standard" or "strict".`);
+    process.exit(1);
+  }
+  const strictness: Strictness = strictnessArg === "strict" ? "strict" : "standard";
+
   const runId = generateRunId();
 
-  console.log(`\nStarting eval run ${runId} (suite=${suite})…`);
+  console.log(`\nStarting eval run ${runId} (suite=${suite}, strictness=${strictness})…`);
   createRunWorkspace(runId, regen, suite);
 
   const reportDir = getRunDir(runId);
   const ctx: PhaseContext = {
     runId,
     suite,
-    strictness: "standard",
+    strictness,
     reportDir,
     fixtureIds: [],
     snapshotsDir: snapshotsDirForSuite(suite),
@@ -497,6 +510,11 @@ async function cmdStatus(argv: string[]): Promise<void> {
   console.log(`  Updated:  ${manifest.updatedAt}`);
   console.log(`  Regen:    ${manifest.regen}`);
   console.log(`  Degraded: ${manifest.degraded ? "yes" : "no"}`);
+  if (manifest.systemPromptPath) {
+    const absPromptPath = resolve(getRunDir(runId), manifest.systemPromptPath);
+    console.log(`  Prompt:   ${absPromptPath}`);
+    console.log(`  P.hash:   ${manifest.systemPromptHash}`);
+  }
 
   if (manifest.phases) {
     const phases: Array<keyof PhaseProgress> = ["regen", "render", "screenshot", "judge"];
@@ -760,6 +778,8 @@ async function cmdJudge(argv: string[]): Promise<void> {
           entries: reportData.entries.map((e) => ({ ...e, judgeScore: new Map(allSoFar.map((s) => [s.fixtureId, s])).get(e.id) })),
           judge_scores: allSoFar,
           failing_patterns: aggregateFailingPatterns(allSoFar),
+          systemPromptPath: manifest.systemPromptPath,
+          systemPromptHash: manifest.systemPromptHash,
         };
         const tmpPath = `${resolve(reportDir, "report-data.json")}.tmp`;
         writeFileSync(tmpPath, JSON.stringify(snapshot, null, 2), "utf-8");
@@ -788,6 +808,8 @@ async function cmdJudge(argv: string[]): Promise<void> {
     entries: reportData.entries.map((e) => ({ ...e, judgeScore: judgeMap.get(e.id) })),
     judge_scores: judgeScores,
     failing_patterns: failingPatterns,
+    systemPromptPath: manifest.systemPromptPath,
+    systemPromptHash: manifest.systemPromptHash,
   };
 
   const finalTmp = `${resolve(reportDir, "report-data.json")}.tmp`;

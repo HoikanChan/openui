@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import type { RunManifest, RunState, VerificationSummaryData, PhaseProgress, PhaseStatus } from "./types.ts";
+import { writePromptArtifact } from "./prompt-artifact.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const RUNS_DIR = resolve(__dirname, "runs");
@@ -55,6 +56,8 @@ export function createRunWorkspace(
   mkdirSync(resolve(runDir, "task-bundle", "adapters"), { recursive: true });
   mkdirSync(resolve(runDir, "result-bundle"), { recursive: true });
 
+  const { runRelativePath, hash } = writePromptArtifact(runDir, strictness);
+
   const now = new Date().toISOString();
   const manifest: RunManifest = {
     runId,
@@ -69,6 +72,8 @@ export function createRunWorkspace(
     resultBundlePath: getResultBundlePath(runId),
     historyPath: getHistoryPath(runId),
     degraded: false,
+    systemPromptPath: runRelativePath,
+    systemPromptHash: hash,
   };
 
   writeRunManifest(manifest);

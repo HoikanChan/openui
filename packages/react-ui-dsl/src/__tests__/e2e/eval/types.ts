@@ -88,6 +88,10 @@ export interface RunManifest {
   /** Phase completion status for pipeline recovery. */
   phases?: PhaseProgress;
   verificationSummary?: VerificationSummaryData;
+  /** Run-relative path to the canonical system prompt artifact (e.g. "system-prompt.txt"). */
+  systemPromptPath?: string;
+  /** SHA-256 hex hash of the canonical system prompt content. */
+  systemPromptHash?: string;
 }
 
 export interface IterationRecord {
