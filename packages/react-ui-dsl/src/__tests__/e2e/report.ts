@@ -39,9 +39,9 @@ export interface E2EReportData {
   failing_patterns?: FailingPattern[];
   delta?: DeltaSummary;
   /** Run-relative path to the canonical system prompt artifact (e.g. "system-prompt.txt"). */
-  systemPromptPath?: string;
+  canonicalPromptPath?: string;
   /** SHA-256 hex hash of the canonical system prompt content. */
-  systemPromptHash?: string;
+  canonicalPromptHash?: string;
 }
 
 const entries: E2EReportEntry[] = [];

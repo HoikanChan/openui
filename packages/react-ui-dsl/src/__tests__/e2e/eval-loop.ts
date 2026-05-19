@@ -314,7 +314,7 @@ async function runJudgePhase(
   screenshotResults: { fixtureId: string; screenshotPath: string | null }[],
   degraded: boolean,
 ): Promise<E2EReportData> {
-  const { systemPromptPath, systemPromptHash } = readRunManifest(ctx.runId);
+  const { canonicalPromptPath, canonicalPromptHash } = readRunManifest(ctx.runId);
   const forceRejudge = process.env["EVAL_FORCE_REJUDGE"] === "1";
   const existingScores = reportData.judge_scores ?? [];
   const judgedFixtureIds = new Set(existingScores.map((s) => s.fixtureId));
@@ -367,8 +367,8 @@ async function runJudgePhase(
           entries: reportData.entries.map((e) => ({ ...e, judgeScore: judgeMap.get(e.id) })),
           judge_scores: [...accumulatedScores, ...failedScores],
           failing_patterns: failingPatterns,
-          systemPromptPath,
-          systemPromptHash,
+          canonicalPromptPath,
+          canonicalPromptHash,
         };
         // Atomic write: .tmp + rename
         const dataPath = resolve(ctx.reportDir, "report-data.json");
@@ -398,8 +398,8 @@ async function runJudgePhase(
     entries: reportData.entries.map((e) => ({ ...e, judgeScore: judgeMap.get(e.id) })),
     judge_scores: allScores,
     failing_patterns: failingPatterns,
-    systemPromptPath,
-    systemPromptHash,
+    canonicalPromptPath,
+    canonicalPromptHash,
   };
   const dataPath = resolve(ctx.reportDir, "report-data.json");
   const tmpPath = `${dataPath}.tmp`;
@@ -431,7 +431,7 @@ async function cmdStart(argv: string[]): Promise<void> {
   const runId = generateRunId();
 
   console.log(`\nStarting eval run ${runId} (suite=${suite}, strictness=${strictness})…`);
-  createRunWorkspace(runId, regen, suite);
+  createRunWorkspace(runId, regen, suite, strictness);
 
   const reportDir = getRunDir(runId);
   const ctx: PhaseContext = {
@@ -510,10 +510,10 @@ async function cmdStatus(argv: string[]): Promise<void> {
   console.log(`  Updated:  ${manifest.updatedAt}`);
   console.log(`  Regen:    ${manifest.regen}`);
   console.log(`  Degraded: ${manifest.degraded ? "yes" : "no"}`);
-  if (manifest.systemPromptPath) {
-    const absPromptPath = resolve(getRunDir(runId), manifest.systemPromptPath);
-    console.log(`  Prompt:   ${absPromptPath}`);
-    console.log(`  P.hash:   ${manifest.systemPromptHash}`);
+  if (manifest.canonicalPromptPath) {
+    const absPromptPath = resolve(getRunDir(runId), manifest.canonicalPromptPath);
+    console.log(`  Canonical prompt: ${absPromptPath}`);
+    console.log(`  Prompt hash:      ${manifest.canonicalPromptHash}`);
   }
 
   if (manifest.phases) {
@@ -778,8 +778,8 @@ async function cmdJudge(argv: string[]): Promise<void> {
           entries: reportData.entries.map((e) => ({ ...e, judgeScore: new Map(allSoFar.map((s) => [s.fixtureId, s])).get(e.id) })),
           judge_scores: allSoFar,
           failing_patterns: aggregateFailingPatterns(allSoFar),
-          systemPromptPath: manifest.systemPromptPath,
-          systemPromptHash: manifest.systemPromptHash,
+          canonicalPromptPath: manifest.canonicalPromptPath,
+          canonicalPromptHash: manifest.canonicalPromptHash,
         };
         const tmpPath = `${resolve(reportDir, "report-data.json")}.tmp`;
         writeFileSync(tmpPath, JSON.stringify(snapshot, null, 2), "utf-8");
@@ -808,8 +808,8 @@ async function cmdJudge(argv: string[]): Promise<void> {
     entries: reportData.entries.map((e) => ({ ...e, judgeScore: judgeMap.get(e.id) })),
     judge_scores: judgeScores,
     failing_patterns: failingPatterns,
-    systemPromptPath: manifest.systemPromptPath,
-    systemPromptHash: manifest.systemPromptHash,
+    canonicalPromptPath: manifest.canonicalPromptPath,
+    canonicalPromptHash: manifest.canonicalPromptHash,
   };
 
   const finalTmp = `${resolve(reportDir, "report-data.json")}.tmp`;
@@ -906,6 +906,13 @@ async function cmdRegen(argv: string[]): Promise<void> {
   const suite: EvalSuite = suiteArg === "fuzz" ? "fuzz" : suiteArg === "benchmark" ? "benchmark" : "e2e";
   const suiteValueIdx = argv.includes("--suite") ? argv.indexOf("--suite") + 1 : -1;
   const runIdArg = argv.find((a, i) => !a.startsWith("--") && i !== suiteValueIdx);
+  const strictnessArg = argv.find((a) => a.startsWith("--strictness="))?.split("=")[1]
+    ?? (argv.includes("--strictness") ? argv[argv.indexOf("--strictness") + 1] : undefined);
+  if (strictnessArg !== undefined && strictnessArg !== "standard" && strictnessArg !== "strict") {
+    console.error(`Invalid --strictness value: "${strictnessArg}". Must be "standard" or "strict".`);
+    process.exit(1);
+  }
+  const regenStrictness: Strictness = strictnessArg === "strict" ? "strict" : "standard";
 
   let runId: string;
   if (runIdArg) {
@@ -913,7 +920,7 @@ async function cmdRegen(argv: string[]): Promise<void> {
     readRunManifest(runId); // validate exists
   } else {
     runId = generateRunId();
-    createRunWorkspace(runId, true, suite);
+    createRunWorkspace(runId, true, suite, regenStrictness);
     console.log(`\nStarted new run: ${runId}`);
   }
 

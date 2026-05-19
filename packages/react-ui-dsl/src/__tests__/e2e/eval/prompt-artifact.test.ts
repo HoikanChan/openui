@@ -71,4 +71,24 @@ describe("prompt artifact helper", () => {
       rmSync(tmpDir, { recursive: true });
     }
   });
+
+  it("strict canonical prompt contains STRICT-specific rules absent from standard", () => {
+    const standard = generateCanonicalPrompt("standard");
+    const strict = generateCanonicalPrompt("strict");
+    // Strict rules are tagged with "STRICT:" in dslLibrary — the artifact must reflect strictness
+    expect(strict).toContain("STRICT:");
+    expect(standard).not.toContain("STRICT:");
+  });
+
+  it("strict artifact hash matches hash computed from written file content", () => {
+    const tmpDir = mkdtempSync(resolve(tmpdir(), "prompt-artifact-test-"));
+    try {
+      const result = writePromptArtifact(tmpDir, "strict");
+      const written = readFileSync(resolve(tmpDir, "system-prompt.txt"), "utf-8");
+      expect(computePromptHash(written)).toBe(result.hash);
+      expect(written).toContain("STRICT:");
+    } finally {
+      rmSync(tmpDir, { recursive: true });
+    }
+  });
 });

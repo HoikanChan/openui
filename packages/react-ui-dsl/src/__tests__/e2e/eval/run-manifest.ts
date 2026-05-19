@@ -72,8 +72,8 @@ export function createRunWorkspace(
     resultBundlePath: getResultBundlePath(runId),
     historyPath: getHistoryPath(runId),
     degraded: false,
-    systemPromptPath: runRelativePath,
-    systemPromptHash: hash,
+    canonicalPromptPath: runRelativePath,
+    canonicalPromptHash: hash,
   };
 
   writeRunManifest(manifest);

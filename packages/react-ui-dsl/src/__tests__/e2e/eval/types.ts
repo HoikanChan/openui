@@ -89,9 +89,9 @@ export interface RunManifest {
   phases?: PhaseProgress;
   verificationSummary?: VerificationSummaryData;
   /** Run-relative path to the canonical system prompt artifact (e.g. "system-prompt.txt"). */
-  systemPromptPath?: string;
+  canonicalPromptPath?: string;
   /** SHA-256 hex hash of the canonical system prompt content. */
-  systemPromptHash?: string;
+  canonicalPromptHash?: string;
 }
 
 export interface IterationRecord {
