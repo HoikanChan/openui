@@ -2,9 +2,10 @@
 
 import type { CSSProperties, ReactNode } from "react";
 
-export type HLayoutViewProps = {
+export type StackViewProps = {
   children?: ReactNode;
   gap?: number;
   style?: CSSProperties;
+  vertical?: boolean;
   wrap?: boolean;
 };

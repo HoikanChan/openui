@@ -1,4 +1,4 @@
-root = VLayout([employeeTable])
+root = Stack([employeeTable])
 employeeTable = Table([nameCol, salaryCol, joinedCol, statusCol], data.employees)
 nameCol = Col("Name", "name", {tooltip: true, cell: @Render("v", "row", Link("http://localhost:5173/" + row.name, v))})
 salaryCol = Col("Salary", "salary", {cell: @Render("v", Text("$" + @FormatNumber(v, 0)))})

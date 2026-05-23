@@ -1,4 +1,4 @@
-root = VLayout([employeeTable])
+root = Stack([employeeTable])
 employeeTable = Table([nameCol, salaryCol, joinedCol], data.employees)
 nameCol = Col("Name", "name", {tooltip: true})
 salaryCol = Col("Salary", "salary", {sortable: true})

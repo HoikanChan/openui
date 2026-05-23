@@ -1,5 +1,5 @@
-root = VLayout([panels])
-panels = HLayout([leftPanel, rightPanel], "l")
+root = Stack([panels])
+panels = Stack([leftPanel, rightPanel], "row", "l")
 leftPanel = Card([welcomeTitle, welcomeText], "card", "full")
 welcomeTitle = Text("Welcome", "large")
 welcomeText = Text("This is the left panel with some introductory content.")

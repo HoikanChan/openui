@@ -1,4 +1,4 @@
-root = VLayout([title, breakdownTable])
+root = Stack([title, breakdownTable])
 title = Text("Regional Sales Breakdown", "large")
 breakdownTable = Table([regionCol, revenueCol, updatedCol], data.report.breakdown)
 regionCol = Col("Region", "region", {tooltip: true})

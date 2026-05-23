@@ -1,4 +1,4 @@
-root = VLayout([portTitle, portsTable])
+root = Stack([portTitle, portsTable])
 portTitle = Text("端口列表", "large")
 portsTable = Table([nameCol, statusCol, trendCol], data.ports)
 nameCol = Col("端口名称", "name", {tooltip: true})

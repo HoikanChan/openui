@@ -23,7 +23,6 @@ import { Card } from "./Card";
 import { CardHeader } from "./CardHeader";
 import { DescField, DescGroup, Descriptions } from "./Descriptions";
 import { Form } from "./Form";
-import { HLayout } from "./HLayout";
 import { Image } from "./Image";
 import { Link } from "./Link";
 import { List } from "./List";
@@ -34,7 +33,7 @@ import { Col, Table } from "./Table";
 import { Text } from "./Text";
 import { TimeLine } from "./TimeLine";
 import { Tabs } from "./Tabs";
-import { VLayout } from "./VLayout";
+import { Stack } from "./Stack";
 
 const DEFAULT_PROMPT_ADDITIONAL_RULES = [
   'For Table column options.cell, `@Render("v", expr)` receives the cell value as `v`.',
@@ -85,17 +84,17 @@ const DEFAULT_PROMPT_ADDITIONAL_RULES = [
 ];
 
 const DEFAULT_PROMPT_EXAMPLES = [
-  `root = VLayout([employeeTable])
+  `root = Stack([employeeTable])
 employeeTable = Table([nameCol, salaryCol, joinedCol, statusCol], data.employees)
 nameCol = Col("Name", "name", {cell: @Render("v", "row", Link("http://localhost:5173/" + row.name, v))})
 salaryCol = Col("Salary", "salary")
 joinedCol = Col("Joined", "joinedAt", {cell: @Render("v", Text(@FormatDate(v, "date")))})
 statusCol = Col("Status", "active", {cell: @Render("v", @Switch(v, {"1": Text("Active"), "0": Text("Inactive")}, Text("Unknown")))})`,
-  `root = VLayout([ordersTable])
+  `root = Stack([ordersTable])
 ordersTable = Table([idCol, statusCol], data.orders)
 idCol = Col("Order ID", "id")
 statusCol = Col("Status", "status", {cell: @Render("v", "row", Text(row.id + ": " + @Switch(v, {"paid": "Paid", "pending": "Pending"}, "Unknown")))})`,
-  `root = VLayout([paginationSummary, rowsTable])
+  `root = Stack([paginationSummary, rowsTable])
 paginationSummary = Descriptions([totalField, pageField, pageSizeField], "Pagination")
 totalField = DescField("Total", data.total)
 pageField = DescField("Page", data.pageIndex + " / " + @Ceil(data.total / data.pageSize))
@@ -103,28 +102,28 @@ pageSizeField = DescField("Page Size", data.pageSize)
 rowsTable = Table([nameCol, statusCol], data.list)
 nameCol = Col("Name", "name")
 statusCol = Col("Status", "status")`,
-  `root = VLayout([latencyChart])
+  `root = Stack([latencyChart])
 timestampLabels = @Each(data.samples, "item", @FormatDate(item[0], "dateTime"))
 latencyValues = @Each(data.samples, "item", item[1])
 latencySeries = Series("Latency (ms)", latencyValues)
 latencyChart = LineChart(timestampLabels, [latencySeries], "smooth", "Time", "Latency (ms)")`,
-  `root = VLayout([volumeTable])
+  `root = Stack([volumeTable])
 volumeTable = Table([nameCol, totalCol, usedCol, usageCol], data.volumes)
 nameCol = Col("Volume", "name")
 totalCol = Col("Total", "totalBytes", {cell: @Render("v", Text(@FormatBytes(v)))})
 usedCol = Col("Used", "usedBytes", {cell: @Render("v", Text(@FormatBytes(v)))})
 usageCol = Col("Usage", "usedBytes", {cell: @Render("v", "row", Text(@FormatPercent(row.usedBytes / row.totalBytes, 1)))})`,
-  `root = VLayout([linkTable])
+  `root = Stack([linkTable])
 linkTable = Table([nameCol, trafficCol, bandwidthCol], data.links)
 nameCol = Col("Link", "name")
 trafficCol = Col("Traffic", "inBytes", {cell: @Render("v", "row", Text(@FormatBytes(row.inBytes + row.outBytes)))})
 bandwidthCol = Col("Bandwidth", "bandwidth", {cell: @Render("v", Text(v >= 1000000000 ? @FormatNumber(v / 1000000000, 1) + " Gbps" : @FormatNumber(v / 1000000, 1) + " Mbps"))})`,
-  `root = VLayout([detail])
+  `root = Stack([detail])
 detail = Descriptions([DescField("Name", data.user.name), DescField("Email", data.user.email), account], "Profile")
 account = DescGroup("Account", [DescField("Status", Tag(data.user.status, "success")), DescField("Joined", @FormatDate(data.user.joinedAt, "dateTime"), 2)], 2)`,
-  `root = VLayout([timelineComponent])
+  `root = Stack([timelineComponent])
 timelineComponent = TimeLine(data.timeline.items, data.timeline.title)`,
-  `root = VLayout([header, trendChart])
+  `root = Stack([header, trendChart])
 header = Text("Bandwidth Utilization Trend", "large")
 ne01Rows = Filter(data.rows, "portResId", "==", data.statistics[0].portResId)
 ne02Rows = Filter(data.rows, "portResId", "==", data.statistics[1].portResId)
@@ -132,41 +131,41 @@ ne01Series = Series(data.statistics[0].deviceName + " " + data.statistics[0].sho
 ne02Series = Series(data.statistics[1].deviceName + " " + data.statistics[1].showName, ne02Rows.PeakBandwidthUtilization)
 timeLabels = @FormatDate(ne01Rows.time, "YYYY-MM-DD HH:mm")
 trendChart = LineChart(timeLabels, [ne01Series, ne02Series], "smooth", "Time", "Peak Bandwidth Utilization (%)")`,
-  `root = VLayout([trendChart])
+  `root = Stack([trendChart])
 groupASlice = @Filter(data.records, "groupKey", "==", "group-a")
 groupBSlice = @Filter(data.records, "groupKey", "==", "group-b")
 trendLabels = @FormatDate(groupASlice.timestamp, "dateTime")
 groupASeries = Series("Group A", groupASlice.value)
 groupBSeries = Series("Group B", groupBSlice.value)
 trendChart = LineChart(trendLabels, [groupASeries, groupBSeries], "smooth", "Time", "Value")`,
-  `root = VLayout([rawRowsTitle, rawRowsTable])
+  `root = Stack([rawRowsTitle, rawRowsTable])
 rawRowsTitle = Text("Bandwidth Utilization Records", "large")
 rawRowsTable = Table([deviceCol, interfaceCol, timeCol, utilizationCol], data.rows)
 deviceCol = Col("Device", "deviceName")
 interfaceCol = Col("Interface", "showName")
 timeCol = Col("Time", "time")
 utilizationCol = Col("Peak Utilization", "PeakBandwidthUtilization")`,
-  `root = VLayout([deviceTable])
+  `root = Stack([deviceTable])
 deviceRows = @ObjectEntries(data.devicesById)
 deviceTable = Table([deviceKeyCol, statusCol], deviceRows)
 deviceKeyCol = Col("Device", "key")
 statusCol = Col("Status", "value.status")`,
-  `root = VLayout([kpiCard])
+  `root = Stack([kpiCard])
 kpiCard = Card([cardTitle, cardTrend], "card", "standard")
 cardTitle = Text("7-Day Latency Trend", "large")
 cardTrend = MiniChart("line", data.metrics.sparkline)`,
-  `root = VLayout([itemsTable])
+  `root = Stack([itemsTable])
 itemsTable = Table([nameCol, currentCol, valuesCol], data.items)
 nameCol = Col("Name", "name")
 currentCol = Col("Current", "current", {cell: @Render("v", Text(@FormatNumber(v, 1)))})
 valuesCol = Col("Values", "values", {cell: @Render("v", MiniChart("line", v))})`,
-  `root = VLayout([summary, measurementsTitle, measurementsChart])
+  `root = Stack([summary, measurementsTitle, measurementsChart])
 summary = Descriptions([DescField("Name", data.summary.name), DescField("Count", data.summary.count), DescField("Average", @FormatNumber(data.summary.avg, 1))], "Summary")
 measurementsTitle = Text("Measurements", "large")
 measurementsChart = MiniChart("bar", data.summary.measurements, 96)`,
-  `root = VLayout([recordDetail])
+  `root = Stack([recordDetail])
 recordDetail = Descriptions([DescField("ID", data.record.id ?? "No data"), DescField("Name", data.record.name ?? "No data"), DescField("File", data.record.file ?? "No data"), DescField("Status", data.record.status ?? "No data"), DescField("Metric", data.record.metric ?? "No data")], "Record")`,
-  `root = VLayout([linkDetail])
+  `root = Stack([linkDetail])
 linkDetail = Descriptions([aEndDeviceField, zEndDeviceField, aEndPortField, zEndPortField, aEndIPv4Field, zEndIPv4Field, bandwidthField, linkNameField], "Link Details", null, 2)
 aEndDeviceField = DescField("A-End Device", data.refAEndNEName)
 zEndDeviceField = DescField("Z-End Device", data.refZEndNEName)
@@ -176,7 +175,7 @@ aEndIPv4Field = DescField("A-End IPv4", data.aEndPortIPv4Address)
 zEndIPv4Field = DescField("Z-End IPv4", data.zEndPortIPv4Address)
 bandwidthField = DescField("Bandwidth", @FormatNumber(data.bandwidth / 1000000, 1) + " Mbps")
 linkNameField = DescField("Link Name", data.linkName)`,
-  `root = VLayout([header, linkTable])
+  `root = Stack([header, linkTable])
 header = Text("Physical Links", "large")
 linkTable = Table([resIdCol, nameCol], data.physicsLinks)
 resIdCol = Col("Resource ID", "linkResId")
@@ -192,10 +191,9 @@ function mergePromptOptions(options?: PromptOptions): PromptOptions {
 }
 
 const baseDslLibrary = createLibrary({
-  root: "VLayout",
+  root: "Stack",
   components: [
-    VLayout,
-    HLayout,
+    Stack,
     Text,
     Button,
     Select,

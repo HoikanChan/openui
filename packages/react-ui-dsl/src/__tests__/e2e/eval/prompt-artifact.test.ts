@@ -34,7 +34,7 @@ describe("prompt artifact helper", () => {
 
   it("canonical prompt contains component signatures, builtins, and standard rules", () => {
     const prompt = generateCanonicalPrompt("standard");
-    expect(prompt).toContain("VLayout");
+    expect(prompt).toContain("Stack");
     expect(prompt).toContain("Table");
     expect(prompt).toContain("Col");
     expect(prompt).toContain("Text");

@@ -1,2 +1,2 @@
-root = VLayout([submitButton])
+root = Stack([submitButton])
 submitButton = Button("Submit Report", "primary")

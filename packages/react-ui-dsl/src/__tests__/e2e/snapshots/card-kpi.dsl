@@ -1,4 +1,4 @@
-root = VLayout([performanceCard])
+root = Stack([performanceCard])
 performanceCard = Card([cardHeader, cardBody], "card", "standard")
 cardHeader = CardHeader("Q1 Performance")
 cardBody = Descriptions([revenueField, profitField, growthField], null, null, 2)

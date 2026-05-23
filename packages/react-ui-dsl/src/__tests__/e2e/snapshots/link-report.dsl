@@ -1,2 +1,2 @@
-root = VLayout([reportLink])
+root = Stack([reportLink])
 reportLink = Link(data.report.url, data.report.label, "_blank")

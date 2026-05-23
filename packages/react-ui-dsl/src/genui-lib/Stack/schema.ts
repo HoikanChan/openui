@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { FlexPropsSchema } from "../flexPropsSchema";
 
-export const HLayoutSchema = z.object({
+export const StackSchema = z.object({
   children: z.array(z.any()).optional(),
+  direction: FlexPropsSchema.shape.direction,
   gap: FlexPropsSchema.shape.gap,
-  wrap: FlexPropsSchema.shape.wrap,
   align: FlexPropsSchema.shape.align,
   justify: FlexPropsSchema.shape.justify,
+  wrap: FlexPropsSchema.shape.wrap,
 });

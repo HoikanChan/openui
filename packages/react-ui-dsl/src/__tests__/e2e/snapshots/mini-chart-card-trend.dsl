@@ -1,4 +1,4 @@
-root = VLayout([latencyCard])
+root = Stack([latencyCard])
 latencyCard = Card([cardTitle, sparkline, lastValue], "card", "standard")
 cardTitle = Text("Latency Trend", "large")
 sparkline = MiniChart("line", data.sparkline)

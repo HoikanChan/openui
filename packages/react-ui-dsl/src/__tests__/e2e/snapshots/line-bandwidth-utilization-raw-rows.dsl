@@ -1,4 +1,4 @@
-root = VLayout([title, trendChart])
+root = Stack([title, trendChart])
 title = Text("Bandwidth Utilization Trend per Interface", "large")
 ne01Rows = @Filter(data.rows, "portResId", "==", data.statistics[0].portResId)
 ne02Rows = @Filter(data.rows, "portResId", "==", data.statistics[1].portResId)

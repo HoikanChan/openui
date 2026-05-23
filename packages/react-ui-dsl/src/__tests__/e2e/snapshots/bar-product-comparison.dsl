@@ -1,4 +1,4 @@
-root = VLayout([header, chart])
+root = Stack([header, chart])
 header = Text("Quarterly Revenue Comparison", "large")
 seriesA = Series(data.series[0].category, data.series[0].values)
 seriesB = Series(data.series[1].category, data.series[1].values)
