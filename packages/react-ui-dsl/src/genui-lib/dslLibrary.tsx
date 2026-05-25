@@ -29,6 +29,7 @@ import { List } from "./List";
 import { Separator } from "./Separator";
 import { Select } from "./Select";
 import { Tag } from "./Tag";
+import { TagBlock } from "./TagBlock";
 import { Col, Table } from "./Table";
 import { Text } from "./Text";
 import { TimeLine } from "./TimeLine";
@@ -199,6 +200,7 @@ const baseDslLibrary = createLibrary({
     Select,
     Separator,
     Tag,
+    TagBlock,
     Image,
     Link,
     Card,
