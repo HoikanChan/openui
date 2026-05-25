@@ -40,3 +40,17 @@ export const justifyMap: Record<string, string> = {
 export function resolveGapPixels(gap?: FlexGapToken): number {
   return gap ? gapPixelMap[gap] : gapPixelMap["m"];
 }
+
+export const gapRemMap = {
+  none: "0",
+  xs: "0.375rem",
+  s: "0.5rem",
+  m: "0.75rem",
+  l: "1.125rem",
+  xl: "1.5rem",
+  "2xl": "2.25rem",
+} as const;
+
+export function resolveGapRem(gap?: FlexGapToken): string {
+  return gap ? gapRemMap[gap] : gapRemMap["m"];
+}
