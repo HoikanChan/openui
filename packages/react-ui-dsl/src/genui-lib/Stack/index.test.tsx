@@ -1,9 +1,7 @@
 import React from "react";
 import { describe, expect, it } from "vitest";
 import { dslLibrary } from "../dslLibrary";
-import { Stack } from ".";
-import { StackSchema } from "./schema";
-import { StackView } from "./view";
+import { Stack, StackSchema } from "./index";
 
 describe("Stack schema", () => {
   it("accepts valid props", () => {
@@ -43,9 +41,9 @@ describe("Stack renderer", () => {
       props: { children: ["A"], gap: "m" },
       renderNode: (v) => v as React.ReactNode,
     });
-    expect(rendered.type).toBe(StackView);
-    expect(rendered.props.vertical).toBe(true);
-    expect(rendered.props.gap).toBe("0.75rem");
+    expect(rendered.type).toBe("div");
+    expect(rendered.props.style.flexDirection).toBe("column");
+    expect(rendered.props.style.gap).toBe("0.75rem");
   });
 
   it("renders row direction when direction is row", () => {
@@ -53,9 +51,9 @@ describe("Stack renderer", () => {
       props: { children: ["A"], direction: "row", gap: "l" },
       renderNode: (v) => v as React.ReactNode,
     });
-    expect(rendered.type).toBe(StackView);
-    expect(rendered.props.vertical).toBe(false);
-    expect(rendered.props.gap).toBe("1.125rem");
+    expect(rendered.type).toBe("div");
+    expect(rendered.props.style.flexDirection).toBe("row");
+    expect(rendered.props.style.gap).toBe("1.125rem");
   });
 
   it("maps gap token l to 1.125rem", () => {
@@ -63,7 +61,7 @@ describe("Stack renderer", () => {
       props: { gap: "l" },
       renderNode: (v) => v as React.ReactNode,
     });
-    expect(rendered.props.gap).toBe("1.125rem");
+    expect(rendered.props.style.gap).toBe("1.125rem");
   });
 
   it("defaults gap to 0.75rem when not specified", () => {
@@ -71,15 +69,15 @@ describe("Stack renderer", () => {
       props: {},
       renderNode: (v) => v as React.ReactNode,
     });
-    expect(rendered.props.gap).toBe("0.75rem");
+    expect(rendered.props.style.gap).toBe("0.75rem");
   });
 
-  it("passes wrap prop through", () => {
+  it("sets flexWrap when wrap is true", () => {
     const rendered = Stack.component({
       props: { wrap: true },
       renderNode: (v) => v as React.ReactNode,
     });
-    expect(rendered.props.wrap).toBe(true);
+    expect(rendered.props.style.flexWrap).toBe("wrap");
   });
 
   it("falls back justifyContent to flex-start when wrap=true and justify=between", () => {

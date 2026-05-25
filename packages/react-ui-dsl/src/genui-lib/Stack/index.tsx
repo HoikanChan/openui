@@ -3,9 +3,56 @@
 import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
 import type { CSSProperties } from "react";
 import { z } from "zod";
-import { alignMap, justifyMap, resolveGapRem } from "../flexPropsSchema";
-import { StackSchema } from "./schema";
-import { StackView } from "./view";
+
+// ── Schema ────────────────────────────────────────────────────────────────────
+
+export const StackSchema = z.object({
+  children: z.array(z.any()).optional(),
+  direction: z.enum(["row", "column"]).optional(),
+  gap: z.enum(["none", "xs", "s", "m", "l", "xl", "2xl"]).optional(),
+  align: z.enum(["start", "center", "end", "stretch", "baseline"]).optional(),
+  justify: z.enum(["start", "center", "end", "between", "around", "evenly"]).optional(),
+  wrap: z.boolean().optional(),
+});
+
+// ── Gap token → rem ───────────────────────────────────────────────────────────
+
+const gapRemMap = {
+  none: "0",
+  xs: "0.375rem",
+  s: "0.5rem",
+  m: "0.75rem",
+  l: "1.125rem",
+  xl: "1.5rem",
+  "2xl": "2.25rem",
+} as const;
+
+type GapToken = keyof typeof gapRemMap;
+
+function resolveGapRem(gap?: GapToken): string {
+  return gap ? gapRemMap[gap] : gapRemMap["m"];
+}
+
+// ── Flex value maps ───────────────────────────────────────────────────────────
+
+const alignMap: Record<string, string> = {
+  start: "flex-start",
+  center: "center",
+  end: "flex-end",
+  stretch: "stretch",
+  baseline: "baseline",
+};
+
+const justifyMap: Record<string, string> = {
+  start: "flex-start",
+  center: "center",
+  end: "flex-end",
+  between: "space-between",
+  around: "space-around",
+  evenly: "space-evenly",
+};
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export const Stack = defineComponent({
   name: "Stack",
@@ -16,14 +63,14 @@ export const Stack = defineComponent({
     const effectiveJustify =
       props.wrap && props.justify === "between" ? "start" : props.justify;
     const style: CSSProperties = {
+      display: "flex",
+      flexDirection: direction === "column" ? "column" : "row",
+      gap: resolveGapRem(props.gap),
+      flexWrap: props.wrap ? "wrap" : undefined,
       alignItems: props.align ? alignMap[props.align] : undefined,
       justifyContent: effectiveJustify ? justifyMap[effectiveJustify] : undefined,
     };
 
-    return (
-      <StackView gap={resolveGapRem(props.gap)} style={style} vertical={direction === "column"} wrap={props.wrap}>
-        {renderNode(props.children)}
-      </StackView>
-    );
+    return <div style={style}>{renderNode(props.children)}</div>;
   },
 });
