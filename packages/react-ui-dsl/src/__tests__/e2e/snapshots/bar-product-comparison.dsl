@@ -1,5 +1,9 @@
-root = Stack([header, chart])
-header = Text("Quarterly Revenue Comparison", "large")
-seriesA = Series(data.series[0].category, data.series[0].values)
-seriesB = Series(data.series[1].category, data.series[1].values)
-chart = BarChart(data.labels, [seriesA, seriesB], "grouped", "Quarter", "Revenue (USD)")
+root = Stack([chartTitle, revenueChart])
+chartTitle = TextContent("Quarterly Revenue by Product Line", "large")
+labels = data.labels
+series = data.series
+productAValues = @Each(series, "s", s.category == "Product A" ? s.values : null)
+productBValues = @Each(series, "s", s.category == "Product B" ? s.values : null)
+productASeries = Series("Product A", productAValues)
+productBSeries = Series("Product B", productBValues)
+revenueChart = BarChart(labels, [productASeries, productBSeries], "grouped", "Quarter", "Revenue ($)")

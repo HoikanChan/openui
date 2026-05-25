@@ -1,5 +1,5 @@
 root = Stack([employeeTable])
 employeeTable = Table([nameCol, salaryCol, joinedCol], data.employees)
-nameCol = Col("Name", "name", {tooltip: true})
-salaryCol = Col("Salary", "salary", {sortable: true})
-joinedCol = Col("Joined", "joinedAt", {cell: @Render("v", "row", Text(@FormatDate(row.joinedAt, "date")))})
+nameCol = Col("Name", "name")
+salaryCol = Col("Salary", "salary", {sortable: true, cell: @Render("v", TextContent(@FormatNumber(v, 0, "en-US") + " USD"))})
+joinedCol = Col("Joined", "joinedAt", {sortable: true, cell: @Render("v", TextContent(@FormatDate(v, "date")))})

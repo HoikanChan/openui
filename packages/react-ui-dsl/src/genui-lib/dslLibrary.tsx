@@ -30,7 +30,8 @@ import { Separator } from "./Separator";
 import { Select } from "./Select";
 import { Tag } from "./Tag";
 import { Col, Table } from "./Table";
-import { Text } from "./Text";
+import { TextContent } from "./TextContent";
+import { MarkDownRenderer } from "./MarkDownRenderer";
 import { TimeLine } from "./TimeLine";
 import { Tabs } from "./Tabs";
 import { Stack } from "./Stack";
@@ -59,7 +60,7 @@ const DEFAULT_PROMPT_ADDITIONAL_RULES = [
   "When host data is provided, never invent, backfill, or synthesize labels, rows, metrics, statuses, timestamps, percentages, details, categories, or records that are absent from the data model.",
   "For null-dominant records where most fields are null, missing, or unavailable, preserve real non-null fields and show missing fields with `No data`, `Unknown`, `Not available`, `?`, or omit them.",
   "For null-dominant records, prefer `Descriptions` for a single object and direct `Table` columns for arrays of records. Never synthesize rows, metrics, statuses, timestamps, percentages, details, or KPI cards to make the UI look complete.",
-  "Use nullish coalescing for missing-value display fallbacks, for example `data.file ?? \"No data\"` or `@Render(\"v\", Text(v ?? \"No data\"))`.",
+  "Use nullish coalescing for missing-value display fallbacks, for example `data.file ?? \"No data\"` or `@Render(\"v\", TextContent(v ?? \"No data\"))`.",
   "For dynamic-key object maps such as `{ \"dev-001\": {...}, \"dev-002\": {...} }`, use `@ObjectEntries(...)` or `@ObjectKeys(...)` instead of hardcoding sample keys.",
   "If timeline rows already expose `title`, `description`, and `status`, pass them directly to `TimeLine(data.timeline.items, data.timeline.title)`.",
   "Only use chart components when the data model already exposes chart-ready fields that match the component signature.",
@@ -88,12 +89,12 @@ const DEFAULT_PROMPT_EXAMPLES = [
 employeeTable = Table([nameCol, salaryCol, joinedCol, statusCol], data.employees)
 nameCol = Col("Name", "name", {cell: @Render("v", "row", Link("http://localhost:5173/" + row.name, v))})
 salaryCol = Col("Salary", "salary")
-joinedCol = Col("Joined", "joinedAt", {cell: @Render("v", Text(@FormatDate(v, "date")))})
-statusCol = Col("Status", "active", {cell: @Render("v", @Switch(v, {"1": Text("Active"), "0": Text("Inactive")}, Text("Unknown")))})`,
+joinedCol = Col("Joined", "joinedAt", {cell: @Render("v", TextContent(@FormatDate(v, "date")))})
+statusCol = Col("Status", "active", {cell: @Render("v", @Switch(v, {"1": TextContent("Active"), "0": TextContent("Inactive")}, TextContent("Unknown")))})`,
   `root = Stack([ordersTable])
 ordersTable = Table([idCol, statusCol], data.orders)
 idCol = Col("Order ID", "id")
-statusCol = Col("Status", "status", {cell: @Render("v", "row", Text(row.id + ": " + @Switch(v, {"paid": "Paid", "pending": "Pending"}, "Unknown")))})`,
+statusCol = Col("Status", "status", {cell: @Render("v", "row", TextContent(row.id + ": " + @Switch(v, {"paid": "Paid", "pending": "Pending"}, "Unknown")))})`,
   `root = Stack([paginationSummary, rowsTable])
 paginationSummary = Descriptions([totalField, pageField, pageSizeField], "Pagination")
 totalField = DescField("Total", data.total)
@@ -110,21 +111,21 @@ latencyChart = LineChart(timestampLabels, [latencySeries], "smooth", "Time", "La
   `root = Stack([volumeTable])
 volumeTable = Table([nameCol, totalCol, usedCol, usageCol], data.volumes)
 nameCol = Col("Volume", "name")
-totalCol = Col("Total", "totalBytes", {cell: @Render("v", Text(@FormatBytes(v)))})
-usedCol = Col("Used", "usedBytes", {cell: @Render("v", Text(@FormatBytes(v)))})
-usageCol = Col("Usage", "usedBytes", {cell: @Render("v", "row", Text(@FormatPercent(row.usedBytes / row.totalBytes, 1)))})`,
+totalCol = Col("Total", "totalBytes", {cell: @Render("v", TextContent(@FormatBytes(v)))})
+usedCol = Col("Used", "usedBytes", {cell: @Render("v", TextContent(@FormatBytes(v)))})
+usageCol = Col("Usage", "usedBytes", {cell: @Render("v", "row", TextContent(@FormatPercent(row.usedBytes / row.totalBytes, 1)))})`,
   `root = Stack([linkTable])
 linkTable = Table([nameCol, trafficCol, bandwidthCol], data.links)
 nameCol = Col("Link", "name")
-trafficCol = Col("Traffic", "inBytes", {cell: @Render("v", "row", Text(@FormatBytes(row.inBytes + row.outBytes)))})
-bandwidthCol = Col("Bandwidth", "bandwidth", {cell: @Render("v", Text(v >= 1000000000 ? @FormatNumber(v / 1000000000, 1) + " Gbps" : @FormatNumber(v / 1000000, 1) + " Mbps"))})`,
+trafficCol = Col("Traffic", "inBytes", {cell: @Render("v", "row", TextContent(@FormatBytes(row.inBytes + row.outBytes)))})
+bandwidthCol = Col("Bandwidth", "bandwidth", {cell: @Render("v", TextContent(v >= 1000000000 ? @FormatNumber(v / 1000000000, 1) + " Gbps" : @FormatNumber(v / 1000000, 1) + " Mbps"))})`,
   `root = Stack([detail])
 detail = Descriptions([DescField("Name", data.user.name), DescField("Email", data.user.email), account], "Profile")
 account = DescGroup("Account", [DescField("Status", Tag(data.user.status, "success")), DescField("Joined", @FormatDate(data.user.joinedAt, "dateTime"), 2)], 2)`,
   `root = Stack([timelineComponent])
 timelineComponent = TimeLine(data.timeline.items, data.timeline.title)`,
   `root = Stack([header, trendChart])
-header = Text("Bandwidth Utilization Trend", "large")
+header = TextContent("Bandwidth Utilization Trend", "large")
 ne01Rows = Filter(data.rows, "portResId", "==", data.statistics[0].portResId)
 ne02Rows = Filter(data.rows, "portResId", "==", data.statistics[1].portResId)
 ne01Series = Series(data.statistics[0].deviceName + " " + data.statistics[0].showName, ne01Rows.PeakBandwidthUtilization)
@@ -139,7 +140,7 @@ groupASeries = Series("Group A", groupASlice.value)
 groupBSeries = Series("Group B", groupBSlice.value)
 trendChart = LineChart(trendLabels, [groupASeries, groupBSeries], "smooth", "Time", "Value")`,
   `root = Stack([rawRowsTitle, rawRowsTable])
-rawRowsTitle = Text("Bandwidth Utilization Records", "large")
+rawRowsTitle = TextContent("Bandwidth Utilization Records", "large")
 rawRowsTable = Table([deviceCol, interfaceCol, timeCol, utilizationCol], data.rows)
 deviceCol = Col("Device", "deviceName")
 interfaceCol = Col("Interface", "showName")
@@ -152,16 +153,16 @@ deviceKeyCol = Col("Device", "key")
 statusCol = Col("Status", "value.status")`,
   `root = Stack([kpiCard])
 kpiCard = Card([cardTitle, cardTrend], "card", "standard")
-cardTitle = Text("7-Day Latency Trend", "large")
+cardTitle = TextContent("7-Day Latency Trend", "large")
 cardTrend = MiniChart("line", data.metrics.sparkline)`,
   `root = Stack([itemsTable])
 itemsTable = Table([nameCol, currentCol, valuesCol], data.items)
 nameCol = Col("Name", "name")
-currentCol = Col("Current", "current", {cell: @Render("v", Text(@FormatNumber(v, 1)))})
+currentCol = Col("Current", "current", {cell: @Render("v", TextContent(@FormatNumber(v, 1)))})
 valuesCol = Col("Values", "values", {cell: @Render("v", MiniChart("line", v))})`,
   `root = Stack([summary, measurementsTitle, measurementsChart])
 summary = Descriptions([DescField("Name", data.summary.name), DescField("Count", data.summary.count), DescField("Average", @FormatNumber(data.summary.avg, 1))], "Summary")
-measurementsTitle = Text("Measurements", "large")
+measurementsTitle = TextContent("Measurements", "large")
 measurementsChart = MiniChart("bar", data.summary.measurements, 96)`,
   `root = Stack([recordDetail])
 recordDetail = Descriptions([DescField("ID", data.record.id ?? "No data"), DescField("Name", data.record.name ?? "No data"), DescField("File", data.record.file ?? "No data"), DescField("Status", data.record.status ?? "No data"), DescField("Metric", data.record.metric ?? "No data")], "Record")`,
@@ -176,7 +177,7 @@ zEndIPv4Field = DescField("Z-End IPv4", data.zEndPortIPv4Address)
 bandwidthField = DescField("Bandwidth", @FormatNumber(data.bandwidth / 1000000, 1) + " Mbps")
 linkNameField = DescField("Link Name", data.linkName)`,
   `root = Stack([header, linkTable])
-header = Text("Physical Links", "large")
+header = TextContent("Physical Links", "large")
 linkTable = Table([resIdCol, nameCol], data.physicsLinks)
 resIdCol = Col("Resource ID", "linkResId")
 nameCol = Col("Link Name", "linkName", {tooltip: true})`,
@@ -194,7 +195,8 @@ const baseDslLibrary = createLibrary({
   root: "Stack",
   components: [
     Stack,
-    Text,
+    TextContent,
+    MarkDownRenderer,
     Button,
     Select,
     Separator,

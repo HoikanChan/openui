@@ -10,10 +10,13 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(spec.components.Button.signature).not.toContain("style");
     expect(spec.components.Button.signature).not.toContain("actions");
 
-    expect(spec.components.Text.signature).toContain("Text(text: string");
-    expect(spec.components.Text.signature).toContain("size?:");
-    expect(spec.components.Text.signature).not.toContain("properties");
-    expect(spec.components.Text.signature).not.toContain("style");
+    expect(spec.components.TextContent.signature).toContain("TextContent(text: string");
+    expect(spec.components.TextContent.signature).toContain("size?:");
+    expect(spec.components.TextContent.signature).not.toContain("properties");
+    expect(spec.components.TextContent.signature).not.toContain("style");
+
+    expect(spec.components.MarkDownRenderer.signature).toContain("MarkDownRenderer(textMarkdown: string");
+    expect(spec.components.MarkDownRenderer.signature).toContain("variant?:");
 
     expect(spec.components.CardHeader.signature).toContain("CardHeader(title?:");
     expect(spec.components.CardHeader.signature).toContain("subtitle?:");
@@ -63,7 +66,8 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
 
     const button = defs.Button;
     const separator = defs.Separator;
-    const text = defs.Text;
+    const textContent = defs.TextContent;
+    const markDownRenderer = defs.MarkDownRenderer;
     const card = defs.Card;
     const cardHeader = defs.CardHeader;
     const descriptions = defs.Descriptions;
@@ -92,12 +96,17 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
       decorative: expect.anything(),
     });
 
-    expect(text.properties).toMatchObject({
+    expect(textContent.properties).toMatchObject({
       size: expect.anything(),
       text: expect.anything(),
     });
-    expect(text.properties).not.toHaveProperty("properties");
-    expect(text.properties).not.toHaveProperty("style");
+    expect(textContent.properties).not.toHaveProperty("properties");
+    expect(textContent.properties).not.toHaveProperty("style");
+
+    expect(markDownRenderer.properties).toMatchObject({
+      textMarkdown: expect.anything(),
+      variant: expect.anything(),
+    });
 
     expect(cardHeader.properties).toMatchObject({
       subtitle: expect.anything(),
@@ -184,13 +193,13 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
       'nameCol = Col("Name", "name", {cell: @Render("v", "row", Link("http://localhost:5173/" + row.name, v))})',
     );
     expect(prompt).toContain(
-      'joinedCol = Col("Joined", "joinedAt", {cell: @Render("v", Text(@FormatDate(v, "date")))})',
+      'joinedCol = Col("Joined", "joinedAt", {cell: @Render("v", TextContent(@FormatDate(v, "date")))})',
     );
     expect(prompt).toContain(
-      'statusCol = Col("Status", "active", {cell: @Render("v", @Switch(v, {"1": Text("Active"), "0": Text("Inactive")}, Text("Unknown")))})',
+      'statusCol = Col("Status", "active", {cell: @Render("v", @Switch(v, {"1": TextContent("Active"), "0": TextContent("Inactive")}, TextContent("Unknown")))})',
     );
     expect(prompt).toContain(
-      'statusCol = Col("Status", "status", {cell: @Render("v", "row", Text(row.id + ": " + @Switch(v, {"paid": "Paid", "pending": "Pending"}, "Unknown")))})',
+      'statusCol = Col("Status", "status", {cell: @Render("v", "row", TextContent(row.id + ": " + @Switch(v, {"paid": "Paid", "pending": "Pending"}, "Unknown")))})',
     );
     expect(prompt).toContain('deviceRows = @ObjectEntries(data.devicesById)');
     expect(prompt).toContain('deviceTable = Table([deviceKeyCol, statusCol], deviceRows)');
@@ -260,10 +269,10 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain("`*Bytes`");
     expect(prompt).toContain("@FormatBytes");
     expect(prompt).toContain("Rate fields such as `bandwidth`, `bps`, `bitrate`, or `bitsPerSecond`");
-    expect(prompt).toContain('Text(v >= 1000000000 ? @FormatNumber(v / 1000000000, 1) + " Gbps"');
+    expect(prompt).toContain('TextContent(v >= 1000000000 ? @FormatNumber(v / 1000000000, 1) + " Gbps"');
     expect(prompt).toContain("Do not compute utilization percentages by dividing cumulative byte totals by bandwidth or bitrate fields");
     expect(prompt).toContain("Ratios derived from fields such as `used / total`");
-    expect(prompt).toContain('@Render("v", "row", Text(@FormatPercent(row.usedBytes / row.totalBytes, 1)))');
+    expect(prompt).toContain('@Render("v", "row", TextContent(@FormatPercent(row.usedBytes / row.totalBytes, 1)))');
     expect(prompt).toContain("Do not declare pseudo-reusable component templates");
     expect(prompt).toContain("prefer one clear Table with formatted columns");
     expect(prompt).toContain("Do not add a chart that repeats the same homogeneous records");

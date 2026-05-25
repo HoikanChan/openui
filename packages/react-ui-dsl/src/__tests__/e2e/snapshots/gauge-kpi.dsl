@@ -1,3 +1,4 @@
-root = Stack([title, gaugeChart])
-title = Text("System Health Score", "large")
-gaugeChart = GaugeChart(data.readings, 0, 100)
+root = Stack([kpiCard])
+kpiCard = Card([cardTitle, cardGauge], "card", "standard")
+cardTitle = TextContent("System Health Score", "large")
+cardGauge = GaugeChart(data.readings, 0, 100)

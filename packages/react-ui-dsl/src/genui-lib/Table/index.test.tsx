@@ -26,7 +26,7 @@ describe("react-ui-dsl Table schema redesign", () => {
 
   it("renders a table from declarative Col components and row data", () => {
     const parser = createParser(dslLibrary.toJSONSchema());
-    const result = parser.parse(`root = Table([Col("Name", "name"), Col("Joined", "joinDate", {cell: @Render("v", Text(@FormatDate(v, "date")))})], rows)
+    const result = parser.parse(`root = Table([Col("Name", "name"), Col("Joined", "joinDate", {cell: @Render("v", TextContent(@FormatDate(v, "date")))})], rows)
 rows = [{name: "Alice", joinDate: "2026-01-02T03:04:05.000Z"}]`);
 
     expect(result.meta.errors).toHaveLength(0);

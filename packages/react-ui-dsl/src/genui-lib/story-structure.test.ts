@@ -15,7 +15,6 @@ const componentDirs = [
   "Tag",
   "Table",
   "Tabs",
-  "Text",
   "TimeLine",
   "Charts/BarChart",
   "Charts/GaugeChart",

@@ -1,2 +1,2 @@
 root = Stack([regionSelector])
-regionSelector = Select(data.options, data.defaultValue)
+regionSelector = Select(data.options, data.defaultValue, true)

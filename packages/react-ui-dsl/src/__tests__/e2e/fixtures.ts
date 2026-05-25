@@ -588,10 +588,10 @@ export const fixtures: Record<string, Fixture[]> = {
       },
     },
   ],
-  Text: [
+  TextContent: [
     {
       id: "text-markdown",
-      prompt: "Show a markdown summary of Q1 results with a heading and bold growth figure",
+      prompt: "Show a markdown summary of Q1 results with a heading and bold growth figure using TextContent",
       dataModel: {
         summary: {
           heading: "Q1 Results",

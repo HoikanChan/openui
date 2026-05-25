@@ -1,3 +1,5 @@
-root = Stack([header, radarChart])
-header = Text("Device Health Metrics Comparison", "large")
-radarChart = RadarChart(data.labels, data.series)
+root = Stack([chartTitle, radarChartContainer])
+chartTitle = TextContent("Device Health Metrics Comparison", "large")
+radarLabels = data.labels
+radarSeries = @Each(data.series, "router", Series(router.category, router.values))
+radarChartContainer = RadarChart(radarLabels, radarSeries)

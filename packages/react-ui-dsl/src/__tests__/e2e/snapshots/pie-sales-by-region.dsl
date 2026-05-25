@@ -1,3 +1,3 @@
-root = Stack([title, chart])
-title = Text("Sales Distribution by Region", "large")
-chart = PieChart(data.labels, data.values, "donut")
+root = Stack([chartTitle, pieChart])
+chartTitle = TextContent("Sales Distribution by Region", "large")
+pieChart = PieChart(data.labels, data.values, "pie")

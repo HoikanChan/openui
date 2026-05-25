@@ -1,18 +1,8 @@
-root = Stack([mainTabs])
-mainTabs = Tabs([overviewTab, settingsTab])
-overviewTab = {value: "overview", label: "Overview", content: [overviewContent]}
-settingsTab = {value: "settings", label: "Settings", content: [settingsContent]}
-overviewContent = Stack([statusCard, metricsDescriptions])
-statusCard = Card([CardHeader("System Status"), statusTag, uptimeText])
-statusTag = Tag("Operational", "success")
-uptimeText = Text("Uptime: 45 days 12 hours 34 minutes", "small")
-metricsDescriptions = Descriptions([cpuField, memField, diskField], "Current Metrics")
-cpuField = DescField("CPU Usage", "23.4%")
-memField = DescField("Memory Usage", "67.8%")
-diskField = DescField("Disk Usage", "42.1%")
-settingsContent = Stack([settingsForm, saveButton])
-settingsForm = Form([hostnameField, portField, autoRefreshField], "vertical", "left")
-hostnameField = {label: "Hostname", name: "hostname", rules: [{required: true}], component: Text("")}
-portField = {label: "Port", name: "port", rules: [], component: Text("8080")}
-autoRefreshField = {label: "Auto Refresh", name: "autoRefresh", rules: [], component: Select([{label: "Disabled", value: 0}, {label: "30s", value: 30}, {label: "60s", value: 60}, {label: "120s", value: 120}], 30)}
-saveButton = Button("Save", "primary")
+root = Stack([tabs])
+tabs = Tabs([
+  {value: "overview", label: "Overview", content: [overviewContent]},
+  {value: "settings", label: "Settings", content: [settingsContent]}
+], {style: {height: "100%"}}
+)
+overviewContent = Stack([TextContent("Welcome to the Overview tab. This is where you can view system status and key metrics.", "default")], "column", "m", "start", "start")
+settingsContent = Stack([TextContent("This is the Settings tab. Configure your preferences and system options here.", "default")], "column", "m", "start", "start")
