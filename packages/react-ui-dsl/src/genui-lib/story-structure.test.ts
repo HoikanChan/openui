@@ -7,6 +7,7 @@ const componentDirs = [
   "Card",
   "Form",
   "Image",
+  "Input",
   "Link",
   "List",
   "Descriptions",

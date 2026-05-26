@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { Input, InputNumber } from "antd";
+import { InputView } from "../../Input/view";
 import { FormView, type FormViewProps } from "../view";
 
 type FormStoryProps = Omit<FormViewProps, "fields">;
@@ -52,3 +53,30 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const WithDSLInputs: Story = {
+  render: (args) => (
+    <FormView
+      {...args}
+      fields={[
+        {
+          component: <InputView placeholder="Full name" />,
+          label: "Name",
+          name: "name",
+          required: true,
+        },
+        {
+          component: <InputView placeholder="name@example.com" type="email" />,
+          label: "Email",
+          name: "email",
+        },
+      ]}
+    />
+  ),
+  args: {
+    initialValues: {
+      email: "alice@example.com",
+      name: "Alice",
+    },
+  },
+};

@@ -24,6 +24,7 @@ import { CardHeader } from "./CardHeader";
 import { DescField, DescGroup, Descriptions } from "./Descriptions";
 import { Form } from "./Form";
 import { Image } from "./Image";
+import { Input } from "./Input";
 import { Link } from "./Link";
 import { List } from "./List";
 import { Separator } from "./Separator";
@@ -199,6 +200,7 @@ const baseDslLibrary = createLibrary({
     TextContent,
     MarkDownRenderer,
     Button,
+    Input,
     Select,
     Separator,
     Tag,
