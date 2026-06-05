@@ -120,7 +120,11 @@ final class Json {
   private static void writeNumber(StringBuilder out, Number number) {
     if (number instanceof Double || number instanceof Float) {
       double d = number.doubleValue();
-      if (Double.isFinite(d) && d == Math.rint(d) && Math.abs(d) < 1e15) {
+      if (!Double.isFinite(d)) {
+        out.append("null");
+        return;
+      }
+      if (d == Math.rint(d) && Math.abs(d) < 1e15) {
         out.append(Long.toString((long) d));
         return;
       }

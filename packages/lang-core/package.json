@@ -72,6 +72,7 @@
   "author": "engineering@thesys.dev",
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
+    "tsx": "^4.20.3",
     "vitest": "^4.0.18"
   }
 }

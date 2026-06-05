@@ -34,7 +34,7 @@ Template/render functions are prefixed with `@` to distinguish them from compone
 
 @Switch(value, cases, default?) -> result — Map an enum value to a display result via a cases object. Numeric values are coerced to strings for key lookup. Returns default (null if omitted) when no case matches.
 @Each(array, varName, template) — Evaluate template for each element. varName is the loop variable - use it ONLY inside the template expression (inline). Do NOT create a separate statement for the template.
-@Render("v", expr) / Render("v", "row", expr) — Create a deferred render template for prop values. Binder names are string literals and are only in scope inside the template body.
+@Render("v", expr) / @Render("v", "row", expr) — Create a deferred render template for prop values. Binder names are string literals and are only in scope inside the template body.
 
 Builtins compose — output of one is input to the next:
 `@Each(data.rows, "item", Comp(@Switch(item.status, {"open": "Open"}, "Unknown")))` for per-item rendering and enum display.

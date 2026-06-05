@@ -132,6 +132,23 @@ class GenerationSdkTest {
   }
 
   @Test
+  void dataModelRawIsDefensivelyCopiedAndImmutable() {
+    GenerationSdk sdk = GenerationSdk.builder().baseContract(testBaseContract()).build();
+    LinkedHashMap<String, Object> raw = new LinkedHashMap<>();
+    raw.put("status", "initial");
+    DataModelSpec dataModel = new DataModelSpec("Mutable source", raw);
+
+    raw.put("status", "mutated");
+
+    GenUIPromptAssemblyResult result =
+        sdk.assemblePrompt(new GenUIPromptRequest("ctxA", dataModel, List.of(), List.of(), null, null, null, null));
+
+    assertTrue(result.prompt().contains("\"status\": \"initial\""));
+    assertFalse(result.prompt().contains("mutated"));
+    assertThrows(UnsupportedOperationException.class, () -> dataModel.raw().put("status", "later"));
+  }
+
+  @Test
   void requestSchemaDoesNotExposeExtraPrompt() {
     for (var component : GenUIPromptRequest.class.getRecordComponents()) {
       assertFalse(component.getName().equals("extraPrompt"));

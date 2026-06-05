@@ -297,10 +297,17 @@ final class PromptAssembler {
     ArrayList<String> lines = new ArrayList<>();
     for (BuiltinSpec builtin : builtins) {
       if (builtin.templateBuiltin() == templateBuiltin) {
-        lines.add("@" + builtin.signature() + " — " + builtin.description());
+        lines.add(formatBuiltinSignature(builtin.signature()) + " — " + builtin.description());
       }
     }
     return String.join("\n", lines);
+  }
+
+  private static String formatBuiltinSignature(String signature) {
+    String[] variants = signature.split(" / ");
+    ArrayList<String> prefixed = new ArrayList<>();
+    for (String variant : variants) prefixed.add("@" + variant);
+    return String.join(" / ", prefixed);
   }
 
   // ─── Action ────────────────────────────────────────────────────────────────

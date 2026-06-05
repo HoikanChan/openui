@@ -1,5 +1,5 @@
 {
-  "contractVersion": "react-ui-dsl@0.1.0",
+  "contractVersion": "@openuidev/react-ui-dsl@0.1.0",
   "root": "Stack",
   "components": {
     "Stack": {

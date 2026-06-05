@@ -1,6 +1,8 @@
 import { getBuiltinsManifest } from "@openuidev/react-lang";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DSL_BASE_CONTRACT_VERSION, dslComponentGroups, dslLibrary } from "./dslLibrary";
+import { PACKAGE_NAME, PACKAGE_VERSION } from "./packageMetadata";
 
 describe("DSLEngine base contract", () => {
   it("exports model-visible component contract data", () => {
@@ -38,5 +40,15 @@ describe("DSLEngine base contract", () => {
     expect(
       baseContract.builtins.some((entry) => !entry.templateBuiltin && entry.signature.startsWith("Count(")),
     ).toBe(true);
+  });
+
+  it("derives the base contract version from package metadata", () => {
+    const packageJson = JSON.parse(
+      readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+    ) as { name: string; version: string };
+
+    expect(PACKAGE_NAME).toBe(packageJson.name);
+    expect(PACKAGE_VERSION).toBe(packageJson.version);
+    expect(DSL_BASE_CONTRACT_VERSION).toBe(`${packageJson.name}@${packageJson.version}`);
   });
 });

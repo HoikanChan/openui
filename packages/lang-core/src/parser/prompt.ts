@@ -149,10 +149,10 @@ function syntaxRules(
 function templateBuiltinFunctionsSection(): string {
   const builtinLines = Object.values(BUILTINS)
     .filter((b) => b.templateBuiltin)
-    .map((b) => `@${b.signature} — ${b.description}`);
+    .map((b) => `${formatBuiltinSignature(b.signature)} — ${b.description}`);
   const lazyLines = Object.values(LAZY_BUILTIN_DEFS)
     .filter((b) => b.templateBuiltin)
-    .map((b) => `@${b.signature} — ${b.description}`);
+    .map((b) => `${formatBuiltinSignature(b.signature)} — ${b.description}`);
 
   return `## Template Built-ins
 
@@ -173,10 +173,10 @@ IMPORTANT @Render rule: Use \`@Render("v", expr)\` or \`@Render("v", "row", expr
 function dataBuiltinFunctionsSection(): string {
   const builtinLines = Object.values(BUILTINS)
     .filter((b) => !b.templateBuiltin)
-    .map((b) => `@${b.signature} — ${b.description}`);
+    .map((b) => `${formatBuiltinSignature(b.signature)} — ${b.description}`);
   const lazyLines = Object.values(LAZY_BUILTIN_DEFS)
     .filter((b) => !b.templateBuiltin)
-    .map((b) => `@${b.signature} — ${b.description}`);
+    .map((b) => `${formatBuiltinSignature(b.signature)} — ${b.description}`);
 
   return `## Data Built-ins
 
@@ -188,6 +188,13 @@ ${[...builtinLines, ...lazyLines].join("\n")}
 Builtins compose — output of one is input to the next:
 \`@Count(@Filter(data.rows, "field", "==", "val"))\` for KPIs/chart values, \`@Round(@Avg(data.rows.score), 1)\`.
 Array pluck: \`data.rows.field\` extracts a field from every row → use with @Sum, @Avg, charts, tables.`;
+}
+
+function formatBuiltinSignature(signature: string): string {
+  return signature
+    .split(" / ")
+    .map((variant) => `@${variant}`)
+    .join(" / ");
 }
 
 function querySection(): string {

@@ -12,7 +12,7 @@
   ],
   "examples": [
     "root = Stack([card])\ncard = Card(\"Hello\")",
-    "root = Card(\"Solo\")"
+    "root = Stack([card])\ncard = Card(\"Solo\")"
   ],
   "additionalRules": ["Keep layouts shallow.", "Avoid more than 3 nesting levels."]
 }

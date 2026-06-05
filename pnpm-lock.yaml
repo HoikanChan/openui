@@ -142,6 +142,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.27.1
         version: 1.29.0(zod@4.3.6)
+      tsx:
+        specifier: ^4.20.3
+        version: 4.20.3
       vitest:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@22.15.32)(jsdom@29.1.1)(lightningcss@1.32.0)(tsx@4.20.3)

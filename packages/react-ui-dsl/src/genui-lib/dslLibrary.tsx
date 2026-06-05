@@ -37,6 +37,7 @@ import { MarkDownRenderer } from "./MarkDownRenderer";
 import { TimeLine } from "./TimeLine";
 import { Tabs } from "./Tabs";
 import { Stack } from "./Stack";
+import { PACKAGE_NAME, PACKAGE_VERSION } from "./packageMetadata";
 
 // ── Component Groups ──
 //
@@ -174,7 +175,7 @@ export const DEFAULT_PROMPT_ADDITIONAL_RULES = [
   "Include scalar identifier and context fields such as id, name, title, endpoint, label, unit, count, current, min, max, avg, p95 when pairing MiniChart with related values.",
 ];
 
-export const DSL_BASE_CONTRACT_VERSION = "react-ui-dsl@0.1.0";
+export const DSL_BASE_CONTRACT_VERSION = `${PACKAGE_NAME}@${PACKAGE_VERSION}`;
 
 // ── Examples (8 core patterns) ──
 
