@@ -1,4 +1,4 @@
-package dev.openui.genui;
+package com.huawei.clodsop.genui.core;
 
 /**
  * Runtime-free prompt documentation for a single openui-lang builtin.

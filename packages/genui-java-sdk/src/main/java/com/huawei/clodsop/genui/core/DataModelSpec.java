@@ -1,4 +1,4 @@
-package dev.openui.genui;
+package com.huawei.clodsop.genui.core;
 
 import java.util.Map;
 
