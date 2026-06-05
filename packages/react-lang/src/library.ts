@@ -12,7 +12,9 @@ import { z } from "zod";
 // Re-export framework-agnostic types unchanged
 export type {
   ComponentGroup,
+  GenerationContract,
   LibraryJSONSchema,
+  LibraryExtensionDefinition,
   PromptOptions,
   SubComponentOf,
   ToolDescriptor,

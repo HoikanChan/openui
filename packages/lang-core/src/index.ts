@@ -4,8 +4,10 @@ export type {
   ComponentGroup,
   ComponentRenderProps,
   DefinedComponent,
+  GenerationContract,
   Library,
   LibraryDefinition,
+  LibraryExtensionDefinition,
   LibraryJSONSchema,
   PromptOptions,
   SubComponentOf,
@@ -23,10 +25,15 @@ export {
   BUILTINS,
   BUILTIN_NAMES,
   LAZY_BUILTINS,
+  getBuiltinsManifest,
   isBuiltin,
   toNumber,
 } from "./parser/builtins";
-export type { BuiltinDef, BuiltinRuntimeContext } from "./parser/builtins";
+export type {
+  BuiltinDef,
+  BuiltinManifestEntry,
+  BuiltinRuntimeContext,
+} from "./parser/builtins";
 export { enrichErrors } from "./parser/enrich-errors";
 export { mergeStatements } from "./parser/merge";
 export { generatePrompt } from "./parser/prompt";

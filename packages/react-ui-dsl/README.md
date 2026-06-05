@@ -13,6 +13,27 @@ pnpm typecheck
 pnpm ci
 ```
 
+## Base Generation Contract
+
+`dslLibrary.toSpec()` is the model-visible DSLEngine base contract used by the
+Java Generation SDK. It includes component prompt specs, component groups,
+examples, additional rules, and `contractVersion`, but not React renderer
+implementations.
+
+Generate the JSON artifact with:
+
+```bash
+pnpm run generate:base-contract
+```
+
+The command writes the same contract to:
+
+- `packages/react-ui-dsl/generated/base-contract.json`
+- `packages/genui-java-sdk/src/main/resources/openui/base-contract.json`
+
+`pnpm build` runs this generator before bundling so the Java SDK can package the
+latest base contract as its default resource.
+
 ## E2E Workflow
 
 The package keeps committed `.dsl` snapshots under `src/__tests__/e2e/snapshots` and validates them against fixture-based e2e tests in `src/__tests__/e2e`.

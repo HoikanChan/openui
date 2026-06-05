@@ -1,0 +1,5 @@
+# Maven / build output
+target/
+
+# Locally downloaded test tooling (junit-platform-console-standalone), fetched on demand
+.tools/

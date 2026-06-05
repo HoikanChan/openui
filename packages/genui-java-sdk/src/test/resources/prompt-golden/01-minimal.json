@@ -1,0 +1,12 @@
+{
+  "root": "Stack",
+  "components": {
+    "Stack": {
+      "signature": "Stack(children?: Component[], direction?: string)",
+      "description": "Vertical or horizontal layout container"
+    },
+    "TextContent": {
+      "signature": "TextContent(text: string)"
+    }
+  }
+}

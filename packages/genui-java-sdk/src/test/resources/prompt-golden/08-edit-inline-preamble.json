@@ -1,0 +1,10 @@
+{
+  "preamble": "CUSTOM PREAMBLE: respond only in openui-lang.",
+  "root": "Stack",
+  "editMode": true,
+  "inlineMode": true,
+  "components": {
+    "Stack": { "signature": "Stack(children?: Component[])", "description": "Layout" }
+  },
+  "additionalRules": ["Patch minimally."]
+}

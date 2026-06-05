@@ -99,6 +99,24 @@ export interface PromptOptions {
   dataModel?: DataModelSpec;
 }
 
+export interface GenerationContract extends PromptSpec {
+  contractVersion: string;
+  components: Record<string, ComponentPromptSpec>;
+  componentGroups?: ComponentGroup[];
+  tools?: ToolDescriptor[];
+  examples?: string[];
+  additionalRules?: string[];
+}
+
+export interface LibraryExtensionDefinition<C = unknown> {
+  components?: DefinedComponent<any, C>[];
+  componentGroups?: ComponentGroup[];
+  tools?: ToolDescriptor[];
+  examples?: string[];
+  additionalRules?: string[];
+  contractVersion?: string;
+}
+
 // ─── Zod introspection ──────────────────────────────────────────────────────
 
 function getZodDef(schema: unknown): any {
@@ -293,57 +311,159 @@ export interface Library<C = unknown> {
   readonly components: Record<string, DefinedComponent<any, C>>;
   readonly componentGroups: ComponentGroup[] | undefined;
   readonly root: string | undefined;
+  readonly contractVersion: string;
 
   prompt(options?: PromptOptions): string;
-  toSpec(): PromptSpec;
+  toSpec(): GenerationContract;
   toJSONSchema(): LibraryJSONSchema;
+  extend(extension: LibraryExtensionDefinition<C>): Library<C>;
 }
 
-export interface LibraryDefinition<C = unknown> {
+export interface LibraryDefinition<C = unknown> extends LibraryExtensionDefinition<C> {
   components: DefinedComponent<any, C>[];
-  componentGroups?: ComponentGroup[];
   root?: string;
+}
+
+const DEFAULT_GENERATION_CONTRACT_VERSION = "1.0.0";
+
+function cloneComponents<C>(components: DefinedComponent<any, C>[]): DefinedComponent<any, C>[] {
+  return [...components];
+}
+
+function cloneGroups(groups: ComponentGroup[] | undefined): ComponentGroup[] | undefined {
+  return groups?.map((group) => ({
+    ...group,
+    components: [...group.components],
+    notes: group.notes ? [...group.notes] : undefined,
+  }));
+}
+
+function cloneTools(tools: ToolDescriptor[] | undefined): ToolDescriptor[] | undefined {
+  return tools ? [...tools] : undefined;
+}
+
+function cloneStrings(values: string[] | undefined): string[] | undefined {
+  return values ? [...values] : undefined;
+}
+
+function assertUniqueComponentNames<C>(components: DefinedComponent<any, C>[], scope: string): void {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const component of components) {
+    if (seen.has(component.name)) duplicates.add(component.name);
+    seen.add(component.name);
+  }
+  if (duplicates.size > 0) {
+    throw new Error(
+      `[${scope}] Component name collision: ${Array.from(duplicates).sort().join(", ")}`,
+    );
+  }
+}
+
+function buildComponentsRecord<C>(
+  components: DefinedComponent<any, C>[],
+): Record<string, DefinedComponent<any, C>> {
+  const componentsRecord: Record<string, DefinedComponent<any, C>> = {};
+  for (const comp of components) {
+    if (!z.globalRegistry.has(comp.props)) {
+      comp.props.register(z.globalRegistry, { id: comp.name });
+    }
+    componentsRecord[comp.name] = comp;
+  }
+  return componentsRecord;
+}
+
+function validateRoot<C>(
+  root: string | undefined,
+  componentsRecord: Record<string, DefinedComponent<any, C>>,
+): void {
+  if (!root || componentsRecord[root]) return;
+  const available = Object.keys(componentsRecord).join(", ");
+  throw new Error(
+    `[createLibrary] Root component "${root}" was not found in components. Available components: ${available}`,
+  );
+}
+
+function validateComponentGroups<C>(
+  groups: ComponentGroup[] | undefined,
+  componentsRecord: Record<string, DefinedComponent<any, C>>,
+  scope: string,
+): void {
+  if (!groups?.length) return;
+
+  const missing = new Set<string>();
+  for (const group of groups) {
+    for (const componentName of group.components) {
+      if (!componentsRecord[componentName]) missing.add(componentName);
+    }
+  }
+
+  if (missing.size > 0) {
+    throw new Error(
+      `[${scope}] Component group references missing component(s): ${Array.from(missing)
+        .sort()
+        .join(", ")}`,
+    );
+  }
+}
+
+function mergeGroups(
+  baseGroups: ComponentGroup[] | undefined,
+  extensionGroups: ComponentGroup[] | undefined,
+): ComponentGroup[] | undefined {
+  const merged = [...(cloneGroups(baseGroups) ?? []), ...(cloneGroups(extensionGroups) ?? [])];
+  return merged.length ? merged : undefined;
 }
 
 /**
  * Create a component library from an array of defined components.
  */
 export function createLibrary<C = unknown>(input: LibraryDefinition<C>): Library<C> {
-  const componentsRecord: Record<string, DefinedComponent<any, C>> = {};
-  for (const comp of input.components) {
-    if (!z.globalRegistry.has(comp.props)) {
-      comp.props.register(z.globalRegistry, { id: comp.name });
-    }
-    componentsRecord[comp.name] = comp;
-  }
+  const components = cloneComponents(input.components);
+  const componentGroups = cloneGroups(input.componentGroups);
+  const tools = cloneTools(input.tools) ?? [];
+  const examples = cloneStrings(input.examples) ?? [];
+  const additionalRules = cloneStrings(input.additionalRules) ?? [];
+  const contractVersion = input.contractVersion ?? DEFAULT_GENERATION_CONTRACT_VERSION;
 
-  if (input.root && !componentsRecord[input.root]) {
-    const available = Object.keys(componentsRecord).join(", ");
-    throw new Error(
-      `[createLibrary] Root component "${input.root}" was not found in components. Available components: ${available}`,
-    );
-  }
+  assertUniqueComponentNames(components, "createLibrary");
+  const componentsRecord = buildComponentsRecord(components);
+  validateRoot(input.root, componentsRecord);
+  validateComponentGroups(componentGroups, componentsRecord, "createLibrary");
 
   const library: Library<C> = {
     components: componentsRecord,
-    componentGroups: input.componentGroups,
+    componentGroups,
     root: input.root,
+    contractVersion,
 
     prompt(options?: PromptOptions): string {
+      const mergedTools = [...tools, ...(options?.tools ?? [])];
+      const mergedExamples = [...examples, ...(options?.examples ?? [])];
+      const mergedAdditionalRules = [...additionalRules, ...(options?.additionalRules ?? [])];
       const spec: PromptSpec = {
         root: input.root,
         components: buildComponentSpecs(componentsRecord),
-        componentGroups: input.componentGroups,
+        componentGroups,
         ...options,
+        tools: mergedTools.length ? mergedTools : options?.tools,
+        examples: mergedExamples.length ? mergedExamples : options?.examples,
+        additionalRules: mergedAdditionalRules.length
+          ? mergedAdditionalRules
+          : options?.additionalRules,
       };
       return generatePrompt(spec);
     },
 
-    toSpec(): PromptSpec {
+    toSpec(): GenerationContract {
       return {
+        contractVersion,
         root: input.root,
         components: buildComponentSpecs(componentsRecord),
-        componentGroups: input.componentGroups,
+        componentGroups: cloneGroups(componentGroups),
+        tools: cloneTools(tools) ?? [],
+        examples: cloneStrings(examples) ?? [],
+        additionalRules: cloneStrings(additionalRules) ?? [],
       };
     },
 
@@ -352,6 +472,33 @@ export function createLibrary<C = unknown>(input: LibraryDefinition<C>): Library
         Object.fromEntries(Object.entries(componentsRecord).map(([k, v]) => [k, v.props])) as any,
       );
       return z.toJSONSchema(combinedSchema);
+    },
+
+    extend(extension: LibraryExtensionDefinition<C>): Library<C> {
+      const extensionComponents = cloneComponents(extension.components ?? []);
+      assertUniqueComponentNames(extensionComponents, "Library.extend");
+
+      const baseNames = new Set(Object.keys(componentsRecord));
+      const collisions = extensionComponents
+        .map((component) => component.name)
+        .filter((name) => baseNames.has(name));
+      if (collisions.length > 0) {
+        throw new Error(
+          `[Library.extend] Component name collision: ${Array.from(new Set(collisions))
+            .sort()
+            .join(", ")}`,
+        );
+      }
+
+      return createLibrary<C>({
+        components: [...components, ...extensionComponents],
+        componentGroups: mergeGroups(componentGroups, extension.componentGroups),
+        root: input.root,
+        contractVersion: extension.contractVersion ?? contractVersion,
+        tools: [...tools, ...(extension.tools ?? [])],
+        examples: [...examples, ...(extension.examples ?? [])],
+        additionalRules: [...additionalRules, ...(extension.additionalRules ?? [])],
+      });
     },
   };
 
