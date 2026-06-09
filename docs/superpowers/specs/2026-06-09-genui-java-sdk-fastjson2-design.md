@@ -12,8 +12,8 @@ byte-for-byte unchanged and the full Maven test suite passes.
 
 - Add `com.alibaba.fastjson2:fastjson2:2.0.61` as a Maven runtime dependency.
 - Keep the package-private `Json` class as a small SDK adapter.
-- Remove the custom parser, compact serializer, string escaping, and number
-  formatting implementations from `Json.java`.
+- Remove the custom parser, compact serializer, string escaping, and scalar
+  number formatting implementations from `Json.java`.
 - Remove the Maven-free `run-tests.sh` runner.
 - Update the Java SDK README to document Maven test commands.
 - Do not change prompt assembly rules, golden fixtures, public SDK APIs, or
@@ -30,8 +30,11 @@ byte-for-byte unchanged and the full Maven test suite passes.
 - Parsed integral numbers are normalized to `Long`; decimal and exponent
   numbers are normalized to `Double`, matching the current parser.
 - `stringify(Object)` delegates compact serialization to Fastjson2.
-- `stringifyPretty(Object)` uses Fastjson2's two-space pretty-print feature so
-  its output continues to match JavaScript `JSON.stringify(value, null, 2)`.
+- `stringifyPretty(Object)` uses a small structure-only formatter because
+  Fastjson2's two-space feature omits the space after `:`. Maps and lists are
+  indented by the adapter, while every scalar value and object key is serialized
+  by Fastjson2. This preserves JavaScript `JSON.stringify(value, null, 2)`
+  whitespace without retaining custom escaping or number serialization.
 - Non-finite `Float` and `Double` values serialize as JSON `null`.
 - `asObject` and `asList` remain SDK-owned validation helpers and retain their
   existing `GenerationSdkException` messages.
