@@ -33,13 +33,12 @@ pnpm --dir packages/react-ui-dsl run generate:base-contract
 pnpm --dir packages/lang-core run generate:prompt-golden
 ```
 
-## Running the tests (without Maven)
+## Running the tests
 
-Maven is the canonical build, but this repo's CI environment has no `mvn`, so a
-self-contained runner is provided. It compiles with `javac` (Java 21) and runs JUnit 5
-via the console launcher (downloaded on first run):
+Run the Java SDK tests with Maven:
 
 ```bash
-bash packages/genui-java-sdk/run-tests.sh                 # all tests
-bash packages/genui-java-sdk/run-tests.sh --select PromptGoldenTest
+cd packages/genui-java-sdk
+mvn test
+mvn -Dtest=PromptGoldenTest test
 ```
