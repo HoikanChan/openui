@@ -1,4 +1,4 @@
-package com.huawei.clodsop.genui.core;
+package com.huawei.cloudsop.genui.core;
 
 import java.io.IOException;
 import java.io.InputStream;

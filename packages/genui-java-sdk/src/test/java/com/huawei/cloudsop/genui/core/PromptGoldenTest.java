@@ -1,4 +1,4 @@
-package com.huawei.clodsop.genui.core;
+package com.huawei.cloudsop.genui.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

@@ -1,4 +1,4 @@
-package com.huawei.clodsop.genui.core;
+package com.huawei.cloudsop.genui.core;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;

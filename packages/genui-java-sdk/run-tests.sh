@@ -28,7 +28,7 @@ cp -r src/test/resources/* target/test-classes/ 2>/dev/null || true
 
 if [ "${1:-}" = "--select" ]; then
   java -jar "$JAR" execute -cp "target/classes${CLASSPATH_SEP}target/test-classes" \
-    --select-class "com.huawei.clodsop.genui.core.$2" --details=tree --disable-banner
+    --select-class "com.huawei.cloudsop.genui.core.$2" --details=tree --disable-banner
 else
   java -jar "$JAR" execute -cp "target/classes${CLASSPATH_SEP}target/test-classes" \
     --scan-classpath --details=summary --disable-banner
