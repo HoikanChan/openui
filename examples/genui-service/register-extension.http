@@ -6,7 +6,7 @@
 # 注意:注册不持久化——服务重启后此注册丢失,调用方应在自身启动时重注册
 #      (PUT 替换语义保证幂等)。
 
-### 1. 查看当前已注册的 Generation Context(应含两套预制种子)
+### 1. 查看当前已注册的 Generation Context(应含三套预制种子)
 GET http://localhost:3001/v1/contexts
 
 ### 2. 注册一个下游业务扩展:自定义组件 + 工具

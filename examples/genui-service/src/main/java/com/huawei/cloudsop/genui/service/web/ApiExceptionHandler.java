@@ -5,7 +5,6 @@ import com.huawei.cloudsop.genui.service.api.model.ErrorResponse;
 import com.huawei.cloudsop.genui.service.application.UnknownContextException;
 import com.huawei.cloudsop.genui.service.llm.LlmUpstreamException;
 import com.huawei.cloudsop.genui.service.tools.UnknownToolException;
-import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,14 +14,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class ApiExceptionHandler {
 
   /**
-   * SDK 只抛一种异常类型;名称碰撞类消息固定含 "collision"(见 GenerationSdk),
-   * 据此映射 409,其余视为非法输入 400。
+   * SDK 只抛一种异常类型;名称碰撞类消息以固定前缀开头(见 GenerationSdk)。
+   * 必须锚定前缀而非子串匹配:其余消息会拼接用户提供的名称,
+   * 名称本身含 "collision" 时子串匹配会把 400 误判成 409。
    */
   @ExceptionHandler(GenerationSdkException.class)
   public ResponseEntity<ErrorResponse> handleSdk(GenerationSdkException ex) {
     String message = ex.getMessage() == null ? "invalid request" : ex.getMessage();
     HttpStatus status =
-        message.toLowerCase(Locale.ROOT).contains("collision")
+        message.startsWith("Component name collision") || message.startsWith("Tool name collision")
             ? HttpStatus.CONFLICT
             : HttpStatus.BAD_REQUEST;
     return ResponseEntity.status(status).body(new ErrorResponse().error(message));
