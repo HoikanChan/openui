@@ -1,11 +1,19 @@
 import { useCallback, useState } from "react";
+import { GENERATE_URL } from "./genuiService";
+
+export interface GenerateOptions {
+  /** 选用的 Generation Context;缺省时仅用 base contract */
+  contextId?: string;
+  /** Prompt Override(debug):整段替换服务端拼装产物,仅在用户编辑过 prompt tab 时携带 */
+  promptOverride?: string;
+}
 
 export interface UseGenerateResult {
   response: string;
   isStreaming: boolean;
   error: string | null;
   lastGenerateTime: number | null;
-  generate: (prompt: string, dataModel?: Record<string, unknown>, systemPrompt?: string) => Promise<void>;
+  generate: (prompt: string, dataModel?: Record<string, unknown>, options?: GenerateOptions) => Promise<void>;
   reset: () => void;
 }
 
@@ -22,17 +30,22 @@ export function useGenerate(): UseGenerateResult {
     setLastGenerateTime(null);
   }, []);
 
-  const generate = useCallback(async (prompt: string, dataModel?: Record<string, unknown>, systemPrompt?: string) => {
+  const generate = useCallback(async (prompt: string, dataModel?: Record<string, unknown>, options?: GenerateOptions) => {
     setResponse("");
     setError(null);
     setIsStreaming(true);
     const startTime = performance.now();
 
     try {
-      const res = await fetch("http://localhost:3001/api/generate", {
+      const res = await fetch(GENERATE_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, dataModel, systemPrompt }),
+        body: JSON.stringify({
+          prompt,
+          dataModel,
+          contextId: options?.contextId || undefined,
+          promptOverride: options?.promptOverride || undefined,
+        }),
       });
 
       if (!res.ok || !res.body) {

@@ -23,7 +23,7 @@ describe("useGenerate", () => {
     vi.restoreAllMocks();
   });
 
-  it("sends systemPrompt in the generate request body", async () => {
+  it("sends contextId and promptOverride to the GenUI Service generate endpoint", async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       body: createStream("root = View([])"),
@@ -33,7 +33,10 @@ describe("useGenerate", () => {
     const { result } = renderHook(() => useGenerate());
 
     await act(async () => {
-      await result.current.generate("user prompt", { region: "APAC" }, "custom system prompt");
+      await result.current.generate("user prompt", { region: "APAC" }, {
+        contextId: "noe-alarm-tools",
+        promptOverride: "custom system prompt",
+      });
     });
 
     await waitFor(() => {
@@ -41,14 +44,36 @@ describe("useGenerate", () => {
     });
 
     expect(fetch).toHaveBeenCalledWith(
-      "http://localhost:3001/api/generate",
+      "http://localhost:3001/v1/generate",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
           prompt: "user prompt",
           dataModel: { region: "APAC" },
-          systemPrompt: "custom system prompt",
+          contextId: "noe-alarm-tools",
+          promptOverride: "custom system prompt",
         }),
+      }),
+    );
+  });
+
+  it("omits contextId and promptOverride when not provided", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      body: createStream("root = View([])"),
+      text: vi.fn(),
+    } as unknown as Response);
+
+    const { result } = renderHook(() => useGenerate());
+
+    await act(async () => {
+      await result.current.generate("user prompt");
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "http://localhost:3001/v1/generate",
+      expect.objectContaining({
+        body: JSON.stringify({ prompt: "user prompt" }),
       }),
     );
   });

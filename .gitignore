@@ -51,6 +51,7 @@ dist
 .svelte-kit
 *.tsbuildinfo
 typings
+target/
 
 # Logs
 *storybook.log

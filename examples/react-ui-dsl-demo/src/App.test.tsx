@@ -3,10 +3,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
-const { mockPrompt, mockParse, mockSchema, mockCreateParser } = vi.hoisted(() => {
+const { mockParse, mockSchema, mockCreateParser } = vi.hoisted(() => {
   const parse = vi.fn(() => ({ root: "ok" }));
   return {
-    mockPrompt: vi.fn(),
     mockParse: parse,
     mockSchema: { $defs: { Stack: { properties: {}, required: [] } } },
     mockCreateParser: vi.fn(() => ({ parse })),
@@ -20,7 +19,6 @@ vi.mock("@openuidev/react-lang", () => ({
 
 vi.mock("@openuidev/react-ui-dsl", () => ({
   dslLibrary: {
-    prompt: (...args: unknown[]) => mockPrompt(...args),
     toJSONSchema: () => mockSchema,
   },
 }));
@@ -35,28 +33,57 @@ vi.mock("./useGenerate", () => ({
   }),
 }));
 
+/** 模拟 GenUI Service:GET /contexts 返回种子,POST /prompts/assemble 回显 dataModel。 */
+function stubGenuiServiceFetch() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const href = String(url);
+      if (href.endsWith("/v1/contexts")) {
+        return {
+          ok: true,
+          json: async () => [{ contextId: "noe-alarm-tools", version: "1.0.0" }],
+        } as unknown as Response;
+      }
+      if (href.endsWith("/v1/prompts/assemble")) {
+        const body = JSON.parse(String(init?.body ?? "{}")) as {
+          contextId?: string;
+          dataModel?: { raw: Record<string, unknown> };
+        };
+        const prefix = body.contextId ? `system[${body.contextId}]:` : "system:";
+        return {
+          ok: true,
+          json: async () => ({ prompt: `${prefix}${JSON.stringify(body.dataModel?.raw ?? {})}` }),
+        } as unknown as Response;
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    }),
+  );
+}
+
 describe("App system prompt tab", () => {
   beforeEach(() => {
     localStorage.clear();
-    mockPrompt.mockReset();
     mockParse.mockClear();
     mockCreateParser.mockClear();
-    mockPrompt.mockImplementation((options?: { dataModel?: { raw: Record<string, unknown> } }) =>
-      options?.dataModel ? `system:${JSON.stringify(options.dataModel.raw)}` : "system:{}",
-    );
+    stubGenuiServiceFetch();
   });
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
   });
 
-  it("shows generated system prompt in the prompt tab and updates from data model before edits", async () => {
+  it("shows service-assembled prompt in the prompt tab and updates from data model before edits", async () => {
     render(<App />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Expand source panel" }));
     fireEvent.click(screen.getByRole("button", { name: "prompt" }));
 
     const promptEditor = await screen.findByRole("textbox", { name: "System Prompt" });
-    expect((promptEditor as HTMLTextAreaElement).value).toBe("system:{}");
+    await waitFor(() => {
+      expect((promptEditor as HTMLTextAreaElement).value).toBe("system:{}");
+    });
 
     fireEvent.change(screen.getByLabelText("Data Model"), {
       target: { value: '{"region":"APAC"}' },
@@ -67,9 +94,28 @@ describe("App system prompt tab", () => {
     });
   });
 
+  it("re-assembles the prompt when a Generation Context is selected", async () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand source panel" }));
+    fireEvent.click(screen.getByRole("button", { name: "prompt" }));
+    const promptEditor = await screen.findByRole("textbox", { name: "System Prompt" });
+
+    const contextSelect = await screen.findByLabelText("Context");
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: /noe-alarm-tools/ })).toBeDefined();
+    });
+    fireEvent.change(contextSelect, { target: { value: "noe-alarm-tools" } });
+
+    await waitFor(() => {
+      expect((promptEditor as HTMLTextAreaElement).value).toBe("system[noe-alarm-tools]:{}");
+    });
+  });
+
   it("keeps a manual system prompt edit when data model changes afterward", async () => {
     render(<App />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Expand source panel" }));
     fireEvent.click(screen.getByRole("button", { name: "prompt" }));
 
     const promptEditor = await screen.findByRole("textbox", { name: "System Prompt" });
@@ -87,6 +133,7 @@ describe("App system prompt tab", () => {
   it("allows entering open lang before generating", async () => {
     render(<App />);
 
+    fireEvent.click(screen.getByRole("button", { name: "Expand source panel" }));
     const langEditor = screen.getByRole("textbox", { name: "Open Lang" });
     fireEvent.change(langEditor, { target: { value: "root = Stack([])" } });
 
