@@ -57,6 +57,17 @@ GenUI Service SHALL 在启动时从打包资源中种子注册多套预制扩展
 - **WHEN** 以默认配置启动服务
 - **THEN** `GET /v1/contexts` 至少返回两套预制扩展
 
+### Requirement: Tool execution endpoint
+GenUI Service SHALL 通过 `POST /v1/tools/{toolName}/execute` 执行工具并返回结果 JSON,作为生成 DSL 中 Query/Mutation 节点的服务端运行时;参考实现 SHALL 内置种子工具的 mock 执行器;未注册执行器的工具 SHALL 返回 404。
+
+#### Scenario: 种子工具按入参执行
+- **WHEN** 调用 `POST /v1/tools/queryAlarms/execute` 且入参含 severity
+- **THEN** 返回按 severity 过滤的告警列表与 total
+
+#### Scenario: 未知工具被拒绝
+- **WHEN** 调用未注册执行器的工具名
+- **THEN** 返回 404 与错误说明
+
 #### Scenario: 重启后种子恢复
 - **WHEN** 服务重启
 - **THEN** 预制扩展重新可用，而运行期通过 REST 注册的扩展不再存在

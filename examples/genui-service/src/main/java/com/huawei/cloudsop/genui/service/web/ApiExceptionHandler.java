@@ -4,6 +4,7 @@ import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.service.api.model.ErrorResponse;
 import com.huawei.cloudsop.genui.service.application.UnknownContextException;
 import com.huawei.cloudsop.genui.service.llm.LlmUpstreamException;
+import com.huawei.cloudsop.genui.service.tools.UnknownToolException;
 import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,11 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(UnknownContextException.class)
   public ResponseEntity<ErrorResponse> handleUnknownContext(UnknownContextException ex) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse().error(ex.getMessage()));
+  }
+
+  @ExceptionHandler(UnknownToolException.class)
+  public ResponseEntity<ErrorResponse> handleUnknownTool(UnknownToolException ex) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse().error(ex.getMessage()));
   }
 

@@ -49,6 +49,7 @@ The first `mvn` run downloads dependencies and generates the API interfaces from
 - **Client** (`src/App.tsx`): imports `dslLibrary` from `@openuidev/react-ui-dsl` and passes it to the `<Renderer>` from `@openuidev/react-lang`. Vite resolves the package to TypeScript source via the alias in `vite.config.ts`.
 - **GenUI Service** (`examples/genui-service`): wraps the Java Generation SDK. The prompt tab shows the prompt assembled by `POST /v1/prompts/assemble` (byte-aligned with the TypeScript `dslLibrary.prompt()`); `POST /v1/generate` assembles the prompt, calls the LLM, and streams `openui-lang` back as plain text.
 - **Context selector**: the sidebar dropdown lists Generation Contexts from `GET /v1/contexts`. The service seeds two presets at startup (`noe-alarm-tools`, `noe-ops-rules`); selecting one adds its tools/rules to the assembled prompt. Registrations are in-memory — restart restores only the seeds.
+- **Tool execution**: `Query`/`Mutation` nodes in generated DSL are executed through `POST /v1/tools/{toolName}/execute` (the client wires `Renderer`'s `toolProvider` to it). The reference service ships mock executors for the seed tools; replace `SeedToolExecutors` with your real tool channel when adapting it in-house.
 - **Prompt Override (debug)**: editing the prompt tab marks it dirty; generation then sends your edited text as `promptOverride`, bypassing server-side assembly entirely. Production callers should not use this field.
 
 ## Registering your own extension

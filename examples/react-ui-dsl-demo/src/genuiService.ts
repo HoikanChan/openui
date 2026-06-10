@@ -39,3 +39,25 @@ export async function assemblePrompt(
   const json = (await res.json()) as { prompt: string };
   return json.prompt;
 }
+
+/**
+ * Renderer 的 toolProvider:把生成 DSL 中 Query/Mutation 节点的工具调用
+ * 转发到 GenUI Service 的工具执行端点。
+ *
+ * 采用 MCP 客户端形态(callTool({name, arguments})),Renderer 会用
+ * extractToolResult 解包 —— structuredContent 原样透出为 Query 的值。
+ */
+export const serviceToolProvider = {
+  async callTool({ name, arguments: args }: { name: string; arguments?: Record<string, unknown> }) {
+    const res = await fetch(`${API_BASE}/tools/${encodeURIComponent(name)}/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(args ?? {}),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+    return { content: [], structuredContent: (await res.json()) as unknown };
+  },
+};

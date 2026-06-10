@@ -17,7 +17,19 @@
       "outputSchema": {
         "type": "object",
         "properties": {
-          "alarms": { "type": "array", "items": { "type": "object" } },
+          "alarms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "description": "告警 ID" },
+                "severity": { "type": "string", "enum": ["critical", "major", "minor"] },
+                "device": { "type": "string", "description": "设备名称" },
+                "title": { "type": "string", "description": "告警标题" },
+                "time": { "type": "number", "description": "发生时间(毫秒时间戳)" }
+              }
+            }
+          },
           "total": { "type": "number" }
         }
       },

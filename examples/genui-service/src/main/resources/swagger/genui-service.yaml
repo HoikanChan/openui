@@ -21,6 +21,8 @@ tags:
     description: Prompt 拼装(Request Overlay 支持)
   - name: generation
     description: openui-lang 生成(LLM 流式)
+  - name: tools
+    description: 工具执行通道(Query/Mutation 的服务端运行时)
 
 paths:
   /contexts:
@@ -145,6 +147,41 @@ paths:
             $ref: "#/definitions/ErrorResponse"
         502:
           description: LLM 调用在产生首个 token 前失败
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /tools/{toolName}/execute:
+    post:
+      tags:
+        - tools
+      operationId: executeTool
+      summary: 执行一个工具,返回结果 JSON
+      description: |
+        生成的 openui-lang 中的 Query/Mutation 节点由前端 Renderer 的 toolProvider
+        转发到此端点执行。参考实现内置种子工具(queryAlarms/acknowledgeAlarm)的
+        mock 执行器;公司内部落地时在此接入真实工具通道。
+      consumes:
+        - application/json
+      parameters:
+        - name: toolName
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          description: 工具入参(对应 ToolSpec.inputSchema)
+          schema:
+            type: object
+            additionalProperties: true
+      responses:
+        200:
+          description: 工具执行结果
+          schema:
+            type: object
+            additionalProperties: true
+        404:
+          description: 工具未注册执行器
           schema:
             $ref: "#/definitions/ErrorResponse"
 

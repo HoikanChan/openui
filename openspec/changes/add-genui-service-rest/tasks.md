@@ -29,3 +29,9 @@
 
 - [x] 5.1 更新 demo README：JDK ≥ 21 + Maven 前置条件、启动顺序（先 GenUI Service 后 pnpm dev）、register-extension.http 用法
 - [x] 5.2 端到端验收：起 Java 服务 + 前端，跑通「选预制扩展 → prompt tab 见扩展 → 生成渲染」与「编辑 prompt → Override 生效」两条链路
+
+## 6. 工具执行通道（浏览器验证轮发现的语义空档后补）
+
+- [x] 6.1 Swagger 增加 `POST /v1/tools/{toolName}/execute` + codegen；SeedToolExecutors mock 执行器（queryAlarms 按 severity 过滤、acknowledgeAlarm）；未知工具 404；ToolsApiTest 4 例
+- [x] 6.2 demo Renderer 接 toolProvider（MCP 形态，转发到工具执行端点）
+- [x] 6.3 浏览器 e2e 复测：Query 节点渲染出工具返回的真实告警行

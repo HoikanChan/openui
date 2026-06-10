@@ -2,7 +2,7 @@ import { Renderer, createParser } from "@openuidev/react-lang";
 import { dslLibrary } from "@openuidev/react-ui-dsl";
 import type { KeyboardEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { assemblePrompt, listContexts, type ContextSummary } from "./genuiService";
+import { assemblePrompt, listContexts, serviceToolProvider, type ContextSummary } from "./genuiService";
 import { presets } from "./presets";
 import { useGenerate } from "./useGenerate";
 import { useLocalStorage } from "./useLocalStorage";
@@ -542,6 +542,7 @@ export function App() {
                     library={dslLibrary}
                     isStreaming={isStreaming}
                     dataModel={dataModel}
+                    toolProvider={serviceToolProvider}
                   />
                 </div>
               ) : (

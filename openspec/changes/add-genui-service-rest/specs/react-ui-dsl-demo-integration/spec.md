@@ -27,6 +27,13 @@ demo SHALL 提供 Context ID 选择控件，选项来自 `GET /v1/contexts`（�
 - **THEN** prompt tab 的拼装产物立即包含该扩展的组件/工具描述
 - **AND** 后续生成请求携带该 contextId
 
+### Requirement: Demo executes tools through GenUI Service
+demo 的 Renderer SHALL 配置 toolProvider,把生成 DSL 中 Query/Mutation 节点的工具调用转发到 GenUI Service 的工具执行端点,使工具型扩展的生成结果渲染出执行器返回的真实数据而非空示例数据。
+
+#### Scenario: Query 节点渲染工具数据
+- **WHEN** 生成的 DSL 含 `Query("queryAlarms", ...)` 且服务在运行
+- **THEN** 预览表格渲染工具执行器返回的告警行
+
 ## MODIFIED Requirements
 
 ### Requirement: Demo setup documents real-library prerequisites
