@@ -1,0 +1,3 @@
+# Golden prompt fixtures + outputs must stay LF so cross-language byte comparison is stable.
+*.json text eol=lf
+*.txt text eol=lf

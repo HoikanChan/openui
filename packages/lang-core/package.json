@@ -26,6 +26,7 @@
   },
   "scripts": {
     "test": "vitest run",
+    "generate:prompt-golden": "tsx scripts/generate-prompt-golden.mts",
     "build": "tsdown",
     "watch": "tsdown --watch",
     "typecheck": "tsc --noEmit",
@@ -71,6 +72,7 @@
   "author": "engineering@thesys.dev",
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
+    "tsx": "^4.20.3",
     "vitest": "^4.0.18"
   }
 }

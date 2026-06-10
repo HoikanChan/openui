@@ -514,6 +514,34 @@ export const LAZY_BUILTIN_DEFS: Record<string, LazyBuiltinDef> = {
   },
 };
 
+// ─── Builtins manifest (runtime-free prompt docs export) ─────────────────────
+
+export interface BuiltinManifestEntry {
+  /** Prompt signature without the leading `@`, e.g. "Count(array) -> number". */
+  signature: string;
+  /** One-line description for prompt docs. */
+  description: string;
+  /** True → rendered under "## Template Built-ins"; false → "## Data Built-ins". */
+  templateBuiltin: boolean;
+}
+
+/**
+ * Ordered, JSON-serializable manifest of every builtin's prompt documentation.
+ *
+ * Order = `[...Object.values(BUILTINS), ...Object.values(LAZY_BUILTIN_DEFS)]`,
+ * matching the iteration order `prompt.ts` uses to render the Template/Data
+ * Built-ins sections. The runtime `fn` is intentionally dropped so non-JS prompt
+ * assemblers (e.g. the Java SDK) can consume the manifest and reproduce those two
+ * sections byte-for-byte by filtering on `templateBuiltin`.
+ */
+export function getBuiltinsManifest(): BuiltinManifestEntry[] {
+  return [...Object.values(BUILTINS), ...Object.values(LAZY_BUILTIN_DEFS)].map((b) => ({
+    signature: b.signature,
+    description: b.description,
+    templateBuiltin: b.templateBuiltin === true,
+  }));
+}
+
 /** Maps parser-level action step names -> runtime step type values. Single source of truth. */
 export const ACTION_STEPS = {
   Run: "run",

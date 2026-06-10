@@ -1,0 +1,19 @@
+{
+  "root": "Stack",
+  "components": {
+    "Stack": { "signature": "Stack(children?: Component[])", "description": "Layout" }
+  },
+  "dataModel": {
+    "description": "Host-provided sales data.",
+    "raw": {
+      "sales": [
+        { "month": "Jan", "revenue": 1200 },
+        { "month": "Feb", "revenue": 1500 }
+      ],
+      "currency": "USD",
+      "active": true,
+      "totals": { "year": 2026, "count": 2 },
+      "tags": []
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "root": "Stack",
+  "toolCalls": true,
+  "bindings": false,
+  "components": {
+    "Stack": { "signature": "Stack(children?: Component[])", "description": "Layout" }
+  },
+  "tools": [
+    {
+      "name": "load_data",
+      "description": "Load data",
+      "inputSchema": {
+        "type": "object",
+        "properties": { "id": { "type": "number" } }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": { "rows": { "type": "array", "items": { "type": "object" } } }
+      }
+    }
+  ]
+}

@@ -5,8 +5,10 @@ export type {
   ComponentRenderProps,
   ComponentRenderer,
   DefinedComponent,
+  GenerationContract,
   Library,
   LibraryDefinition,
+  LibraryExtensionDefinition,
   PromptOptions,
   SubComponentOf,
   ToolDescriptor,
@@ -31,8 +33,9 @@ export type {
 export { createParser, createStreamingParser } from "@openuidev/lang-core";
 
 // Standalone prompt generation (no Zod deps — usable on backend)
-export { generatePrompt } from "@openuidev/lang-core";
+export { generatePrompt, getBuiltinsManifest } from "@openuidev/lang-core";
 export type {
+  BuiltinManifestEntry,
   ComponentPromptSpec,
   DataModelSpec,
   PromptSpec,

@@ -1,0 +1,449 @@
+{
+  "contractVersion": "@openuidev/react-ui-dsl@0.1.0",
+  "root": "Stack",
+  "components": {
+    "Stack": {
+      "signature": "Stack(children?: any[], direction?: \"row\" | \"column\", gap?: \"none\" | \"xs\" | \"s\" | \"m\" | \"l\" | \"xl\" | \"2xl\", align?: \"start\" | \"center\" | \"end\" | \"stretch\" | \"baseline\", justify?: \"start\" | \"center\" | \"end\" | \"between\" | \"around\" | \"evenly\", wrap?: boolean)",
+      "description": "Flex container. direction: \"row\"|\"column\" (default \"column\"). gap: \"none\"|\"xs\"|\"s\"|\"m\"|\"l\"|\"xl\"|\"2xl\" (default \"m\"). align: \"start\"|\"center\"|\"end\"|\"stretch\"|\"baseline\". justify: \"start\"|\"center\"|\"end\"|\"between\"|\"around\"|\"evenly\"."
+    },
+    "TextContent": {
+      "signature": "TextContent(text: string, size?: \"small\" | \"default\" | \"large\" | \"small-heavy\" | \"large-heavy\")",
+      "description": "Text block. Supports markdown. Optional size: \"small\" | \"default\" | \"large\" | \"small-heavy\" | \"large-heavy\"."
+    },
+    "MarkDownRenderer": {
+      "signature": "MarkDownRenderer(textMarkdown: string, variant?: \"clear\" | \"card\" | \"sunk\")",
+      "description": "Renders markdown text with optional container variant (\"clear\" | \"card\" | \"sunk\"). Use for long-form documents, README content, or markdown with code blocks. For short UI text and labels, use TextContent."
+    },
+    "Button": {
+      "signature": "Button(text?: string, status?: \"default\" | \"primary\" | \"risk\", disabled?: boolean, type?: \"default\" | \"text\")",
+      "description": "Clickable button"
+    },
+    "Input": {
+      "signature": "Input(placeholder?: string, defaultValue?: string | number, disabled?: boolean, readOnly?: boolean, size?: \"small\" | \"medium\" | \"large\", hasError?: boolean, maxLength?: number)",
+      "description": "Single-line text input control"
+    },
+    "Select": {
+      "signature": "Select(options: {label: string, value: number | string}[], defaultValue?: number | string, allowClear?: boolean)",
+      "description": "Dropdown select"
+    },
+    "Separator": {
+      "signature": "Separator(orientation?: \"horizontal\" | \"vertical\", decorative?: boolean)",
+      "description": "Visual divider between content sections"
+    },
+    "Tag": {
+      "signature": "Tag(text: string, variant?: \"neutral\" | \"info\" | \"success\" | \"warning\" | \"danger\", icon?: string, size?: \"sm\" | \"md\" | \"lg\")",
+      "description": "Compact semantic tag or badge with optional icon token"
+    },
+    "TagBlock": {
+      "signature": "TagBlock(tags: string[])",
+      "description": "tags is an array of strings"
+    },
+    "Image": {
+      "signature": "Image(content: string, type: \"url\" | \"base64\" | \"svg\")",
+      "description": "Image that supports url, base64, or inline SVG"
+    },
+    "Link": {
+      "signature": "Link(href: string, text?: string, target?: \"_self\" | \"_blank\", disabled?: boolean, download?: string)",
+      "description": "Anchor link"
+    },
+    "Card": {
+      "signature": "Card(children?: any[], variant?: \"card\" | \"clear\" | \"sunk\", width?: \"standard\" | \"full\")",
+      "description": "Styled container. variant: \"card\" (default, elevated) | \"sunk\" (recessed) | \"clear\" (transparent). width: \"standard\" (default) | \"full\". Accepts any DSL component as children. For internal layout (spacing, direction), wrap children in VLayout or HLayout."
+    },
+    "CardHeader": {
+      "signature": "CardHeader(title?: string, subtitle?: string)",
+      "description": "Header with optional title and subtitle"
+    },
+    "Descriptions": {
+      "signature": "Descriptions(items: (DescField | DescGroup)[], title?: string, extra?: any, columns?: number, border?: boolean)",
+      "description": "Descriptions-style detail view for a single record with optional bordered and plain visual modes."
+    },
+    "DescGroup": {
+      "signature": "DescGroup(title: string, fields: DescField[], columns?: number)",
+      "description": "Declarative descriptions group with a title, field list, and optional column override."
+    },
+    "DescField": {
+      "signature": "DescField(label: string, value: any, span?: number)",
+      "description": "Declarative descriptions field with label, direct value expression, and optional span."
+    },
+    "List": {
+      "signature": "List(children?: any[], header?: string, isOrder?: boolean)",
+      "description": "Ordered or unordered list"
+    },
+    "Form": {
+      "signature": "Form(fields: {label: string, name: string, rules?: {required: boolean}[], component: any}[], layout?: \"vertical\" | \"inline\" | \"horizontal\", labelAlign?: \"left\" | \"right\", initialValues?: Record<string, any>)",
+      "description": "Form with inline field definitions"
+    },
+    "Col": {
+      "signature": "Col(title: string, field: string, options?: {sortable?: boolean, filterable?: boolean, filterOptions?: string[], cell?: any, tooltip?: boolean})",
+      "description": "Declarative table column. Use Col(title, field, options?) instead of writing a raw columns JSON object."
+    },
+    "Table": {
+      "signature": "Table(columns: Col[], rows: Record<string, any>[], expandRow?: any)",
+      "description": "Data table: Table(columns, rows, expandRow?). Col(title, field, options?) defines each column. For nested array fields, pass @Render(\"item\", Table([childCols], item.nestedField)) as 3rd arg — rows auto-expand when ≤3 parents."
+    },
+    "PieChart": {
+      "signature": "PieChart(labels: string[], values: number[], variant?: \"pie\" | \"donut\")",
+      "description": "Circular slices; use for protocol distribution or traffic breakdown by source"
+    },
+    "LineChart": {
+      "signature": "LineChart(labels: string[], series: Series[], variant?: \"linear\" | \"smooth\" | \"step\", xLabel?: string, yLabel?: string)",
+      "description": "Lines over time; use for latency, throughput, or any time-series metric"
+    },
+    "BarChart": {
+      "signature": "BarChart(labels: string[], series: Series[], variant?: \"grouped\" | \"stacked\", xLabel?: string, yLabel?: string)",
+      "description": "Vertical bars; use for comparing values across categories or devices"
+    },
+    "GaugeChart": {
+      "signature": "GaugeChart(readings: {name: string, value: number}[], min?: number, max?: number)",
+      "description": "Gauge dials; use for KPI status, utilization %, or health score — supports multiple needles"
+    },
+    "HorizontalBarChart": {
+      "signature": "HorizontalBarChart(labels: string[], series: Series[], variant?: \"grouped\" | \"stacked\", xLabel?: string, yLabel?: string)",
+      "description": "Horizontal bars; use for long category labels, ranked lists, or interface throughput comparison"
+    },
+    "AreaChart": {
+      "signature": "AreaChart(labels: string[], series: Series[], variant?: \"linear\" | \"smooth\" | \"step\", xLabel?: string, yLabel?: string, stacked?: boolean)",
+      "description": "Filled area under lines; use for bandwidth utilization, cumulative traffic, or capacity trends"
+    },
+    "RadarChart": {
+      "signature": "RadarChart(labels: string[], series: Series[])",
+      "description": "Radar/spider chart; use for comparing multiple metrics across devices or interfaces"
+    },
+    "HeatmapChart": {
+      "signature": "HeatmapChart(xLabels: string[], yLabels: string[], values: number[][])",
+      "description": "Color-coded grid; use for traffic patterns by hour/day or alert frequency heatmaps"
+    },
+    "TreeMapChart": {
+      "signature": "TreeMapChart(data: {name: string, value: number, group?: string}[])",
+      "description": "Proportional rectangles; use for bandwidth or resource breakdown by subnet or device group"
+    },
+    "ScatterChart": {
+      "signature": "ScatterChart(datasets: ScatterSeries[], xLabel?: string, yLabel?: string, xType?: \"time\" | \"value\")",
+      "description": "Scatter points; use for correlations like latency vs packet loss or throughput vs error rate. Pass xType='time' when X values are epoch millisecond timestamps to enable automatic date axis formatting."
+    },
+    "MiniChart": {
+      "signature": "MiniChart(type: \"line\" | \"bar\" | \"area\", data: (number | {value: number, label?: string})[], height?: number | string, color?: string)",
+      "description": "Compact single-series trend primitive for KPI cards, table cells, and dense summaries. Width always fills the container; height auto-scales unless height is provided."
+    },
+    "Series": {
+      "signature": "Series(category: string, values: number[])",
+      "description": "A named data series for multi-series charts"
+    },
+    "ScatterSeries": {
+      "signature": "ScatterSeries(name: string, points: Point[])",
+      "description": "A named scatter series with data points for ScatterChart"
+    },
+    "Point": {
+      "signature": "Point(x: number, y: number, z?: number)",
+      "description": "A data point with optional z dimension for bubble charts"
+    },
+    "TimeLine": {
+      "signature": "TimeLine(data: ({content: {title: string, children: any[]}, iconType: \"success\" | \"error\" | \"default\"} | {title: string, description?: any, status?: \"success\" | \"error\" | \"default\"})[], title?: string, id?: string)",
+      "description": "Timeline that accepts either typed DSL items or raw rows with title/description/status"
+    },
+    "Tabs": {
+      "signature": "Tabs(items: {value: string, label: string, content: any[]}[], style?: Record<string, any>)",
+      "description": "Tabbed container with streaming-aware skeleton and auto tab-switching"
+    }
+  },
+  "componentGroups": [
+    {
+      "name": "Layout",
+      "components": [
+        "Stack",
+        "Separator",
+        "Tabs"
+      ],
+      "notes": [
+        "- For grid-like layouts, use Stack with direction \"row\" and wrap=true. Avoid justify=\"between\" unless you specifically want large gutters.",
+        "- Use nested Stacks when you need explicit rows/sections.",
+        "- Use Tabs for alternative views (chart types, data sections) instead of inventing ternary show/hide patterns."
+      ]
+    },
+    {
+      "name": "Content",
+      "components": [
+        "Card",
+        "CardHeader",
+        "TextContent",
+        "MarkDownRenderer",
+        "Image",
+        "Link"
+      ],
+      "notes": [
+        "- Use MarkDownRenderer for long-form text with code blocks; use TextContent for short UI labels.",
+        "- Use Cards to group related KPIs or sections. Stack with direction \"row\" for side-by-side layouts.",
+        "- Wrap charts in a Card with CardHeader for titled sections."
+      ]
+    },
+    {
+      "name": "Tables",
+      "components": [
+        "Table",
+        "Col"
+      ],
+      "notes": [
+        "- Cell renderer: `Col(title, field, {cell: @Render(\"v\", expr)})` — `v` is the cell value.",
+        "- When the renderer needs other row fields, declare the second binder: `@Render(\"v\", \"row\", expr)`. Keep all logic that combines `v` and `row` inside that single template — do not reference `row` unless you declared it.",
+        "- For long string columns (names, identifiers, paths, addresses), add `tooltip: true` to avoid awkward wrapping.",
+        "- Prefer one clear Table with formatted columns over duplicating the same record set as both summary cards and a full table.",
+        "- Do not add a chart that simply re-pairs record names with one numeric field from a Table. Use charts when the data is chart-ready or a trend/distribution is the user's request.",
+        "- The `format` prop on `Col` was removed. Use `cell: @Render(\"v\", ...)` with `@FormatX` helpers instead."
+      ]
+    },
+    {
+      "name": "Descriptions",
+      "components": [
+        "Descriptions",
+        "DescGroup",
+        "DescField"
+      ],
+      "notes": [
+        "- Prefer Descriptions for single-record detail views; reserve Table for arrays of records.",
+        "- When Descriptions will contain 6+ fields, set `columns=2` to avoid crowding (long device names, ports, IPs need horizontal space).",
+        "- For paginated envelopes (total/pageSize/pageIndex plus list/items/rows), show pagination metadata with Descriptions and render the array with Table. Do not add Prev/Next Buttons unless a Query/Action can actually change pages.",
+        "- The `format` prop on `DescField` was removed. Wrap values with `@FormatX(...)` directly."
+      ]
+    },
+    {
+      "name": "Charts (2D)",
+      "components": [
+        "LineChart",
+        "BarChart",
+        "AreaChart",
+        "RadarChart",
+        "HorizontalBarChart",
+        "HeatmapChart",
+        "TreeMapChart",
+        "Series"
+      ],
+      "notes": [
+        "- Only use chart components when the data model exposes chart-ready fields matching the signature. For raw row records, prefer Table or Descriptions.",
+        "- For positional tuple arrays like `[timestamp, value]`, project the index first: `@Each(data.samples, \"item\", @FormatDate(item[0], \"dateTime\"))` for labels, `@Each(data.samples, \"item\", item[1])` for values.",
+        "- When a multi-series LineChart is built by partitioning a flat array (e.g. `@Filter` over an entity field), derive the labels axis from one of the partitioned slices, NOT the unpartitioned source — the unpartitioned array has length N × entityCount while each filtered series has only N values, which leaves the right side blank.",
+        "- If per-entity timestamps do not align across slices, use ScatterChart with Point pairs (or one LineChart per entity) so each series carries its own X axis.",
+        "- Do not invent labels, series, categories, or missing time points just to make a chart render."
+      ]
+    },
+    {
+      "name": "Charts (1D)",
+      "components": [
+        "PieChart",
+        "GaugeChart"
+      ],
+      "notes": [
+        "- PieChart takes parallel labels[] and values[] arrays of NUMBERS (not objects): PieChart([\"Low\", \"Med\", \"High\"], [12, 28, 7], \"donut\").",
+        "- GaugeChart auto-scales 0-1 decimal values to 0-100% display. Pass `min=0, max=1` for ratio fields (availabilityRate, avgCpuUtil); pass `min=0, max=100` for values already in percentage form."
+      ]
+    },
+    {
+      "name": "Charts (Compact)",
+      "components": [
+        "MiniChart"
+      ],
+      "notes": [
+        "- MiniChart is a single-series numeric trend primitive for KPI cards, table cells, and dense summaries. Accepts `number[]` directly and derives compact point labels automatically.",
+        "- Treat primitive `number[]` as chart-ready — never render as JSON, comma-separated text, or index-value tables.",
+        "- Inside a Table, render row-local arrays with `Col(..., {cell: @Render(\"v\", MiniChart(\"line\", v))})`. Never combine arrays from multiple rows into one chart unless the data explicitly models one shared series.",
+        "- Choose `type` from semantics: `line` for ordered/time-like sequences (trend, sparkline, history, usage, readings); `bar` for samples, measurements, durations, latencies, scores, counts, buckets. When unclear, default `line` for ordered data and `bar` for sample-like data.",
+        "- Keep MiniChart compact: never set `height` above 96 for a primitive numeric array; default to omitting `height`. Width always fills.",
+        "- When a single object has scalar summary fields plus one or more `number[]` fields, show scalars with Descriptions and render each array as a nearby MiniChart.",
+        "- Pair MiniChart with available scalar context (id, name, unit, count, current, min, max, avg, p95, p99, total, sampleCount) — do not drop identifiers and stats when present."
+      ]
+    },
+    {
+      "name": "Charts (Scatter)",
+      "components": [
+        "ScatterChart",
+        "ScatterSeries",
+        "Point"
+      ],
+      "notes": [
+        "- When X values are epoch millisecond timestamps, pass `xType='time'` (4th arg) so the X axis is formatted as dates instead of raw numbers."
+      ]
+    },
+    {
+      "name": "Forms",
+      "components": [
+        "Form",
+        "Input",
+        "Select"
+      ]
+    },
+    {
+      "name": "Data Display",
+      "components": [
+        "Tag",
+        "TagBlock",
+        "List",
+        "TimeLine",
+        "Button"
+      ],
+      "notes": [
+        "- For boolean fields (active, enabled, status), use a ternary: `v ? Tag(\"Active\", \"success\") : Tag(\"Inactive\", \"danger\")`. `@Switch` matches string keys so `{true: ...}` won't match boolean values.",
+        "- Color-mapped Tag (variant is the 2nd arg in dsl): Tag(v, v == \"high\" ? \"danger\" : v == \"medium\" ? \"warning\" : \"neutral\").",
+        "- If timeline rows already expose `title`, `description`, and `status`, pass them directly: `TimeLine(data.timeline.items, data.timeline.title)`."
+      ]
+    }
+  ],
+  "tools": [],
+  "examples": [
+    "root = Stack([employeeTable])\nemployeeTable = Table([nameCol, salaryCol, joinedCol, statusCol], data.employees)\nnameCol = Col(\"Name\", \"name\", {cell: @Render(\"v\", \"row\", Link(\"http://localhost:5173/\" + row.name, v))})\nsalaryCol = Col(\"Salary\", \"salary\")\njoinedCol = Col(\"Joined\", \"joinedAt\", {cell: @Render(\"v\", TextContent(@FormatDate(v, \"date\")))})\nstatusCol = Col(\"Status\", \"active\", {cell: @Render(\"v\", @Switch(v, {\"1\": TextContent(\"Active\"), \"0\": TextContent(\"Inactive\")}, TextContent(\"Unknown\")))})",
+    "root = Stack([ordersTable])\nordersTable = Table([idCol, statusCol], data.orders)\nidCol = Col(\"Order ID\", \"id\")\nstatusCol = Col(\"Status\", \"status\", {cell: @Render(\"v\", \"row\", TextContent(row.id + \": \" + @Switch(v, {\"paid\": \"Paid\", \"pending\": \"Pending\"}, \"Unknown\")))})",
+    "root = Stack([paginationSummary, rowsTable])\npaginationSummary = Descriptions([totalField, pageField, pageSizeField], \"Pagination\")\ntotalField = DescField(\"Total\", data.total)\npageField = DescField(\"Page\", data.pageIndex + \" / \" + @Ceil(data.total / data.pageSize))\npageSizeField = DescField(\"Page Size\", data.pageSize)\nrowsTable = Table([nameCol, statusCol], data.list)\nnameCol = Col(\"Name\", \"name\")\nstatusCol = Col(\"Status\", \"status\")",
+    "root = Stack([deviceTable])\ndeviceRows = @ObjectEntries(data.devicesById)\ndeviceTable = Table([deviceKeyCol, statusCol], deviceRows)\ndeviceKeyCol = Col(\"Device\", \"key\")\nstatusCol = Col(\"Status\", \"value.status\")",
+    "root = Stack([samplesChart])\ntimestampLabels = @Each(data.samples, \"item\", @FormatDate(item[0], \"dateTime\"))\nsampleValues = @Each(data.samples, \"item\", item[1])\nsamplesSeries = Series(\"Samples\", sampleValues)\nsamplesChart = LineChart(timestampLabels, [samplesSeries], \"smooth\", \"Time\", \"Value\")",
+    "root = Stack([volumeTable])\nvolumeTable = Table([nameCol, totalCol, usedCol, usageCol], data.volumes)\nnameCol = Col(\"Volume\", \"name\")\ntotalCol = Col(\"Total\", \"totalBytes\", {cell: @Render(\"v\", TextContent(@FormatBytes(v)))})\nusedCol = Col(\"Used\", \"usedBytes\", {cell: @Render(\"v\", TextContent(@FormatBytes(v)))})\nusageCol = Col(\"Usage\", \"usedBytes\", {cell: @Render(\"v\", \"row\", TextContent(@FormatPercent(row.usedBytes / row.totalBytes, 1)))})",
+    "root = Stack([rateTable])\nrateTable = Table([nameCol, rateCol], data.links)\nnameCol = Col(\"Name\", \"name\")\nrateCol = Col(\"Bandwidth\", \"bandwidth\", {cell: @Render(\"v\", TextContent(v >= 1000000000 ? @FormatNumber(v / 1000000000, 1) + \" Gbps\" : @FormatNumber(v / 1000000, 1) + \" Mbps\"))})",
+    "root = Stack([trendChart])\ngroupASlice = @Filter(data.records, \"groupKey\", \"==\", \"group-a\")\ngroupBSlice = @Filter(data.records, \"groupKey\", \"==\", \"group-b\")\ntrendLabels = @FormatDate(groupASlice.timestamp, \"dateTime\")\ngroupASeries = Series(\"Group A\", groupASlice.value)\ngroupBSeries = Series(\"Group B\", groupBSlice.value)\ntrendChart = LineChart(trendLabels, [groupASeries, groupBSeries], \"smooth\", \"Time\", \"Value\")",
+    "root = Stack([header, trendChart])\nheader = TextContent(\"Bandwidth Utilization Trend\", \"large\")\nne01Rows = @Filter(data.rows, \"portResId\", \"==\", data.statistics[0].portResId)\nne02Rows = @Filter(data.rows, \"portResId\", \"==\", data.statistics[1].portResId)\nne01Series = Series(data.statistics[0].deviceName + \" \" + data.statistics[0].showName, ne01Rows.PeakBandwidthUtilization)\nne02Series = Series(data.statistics[1].deviceName + \" \" + data.statistics[1].showName, ne02Rows.PeakBandwidthUtilization)\ntimeLabels = @FormatDate(ne01Rows.time, \"YYYY-MM-DD HH:mm\")\ntrendChart = LineChart(timeLabels, [ne01Series, ne02Series], \"smooth\", \"Time\", \"Peak Bandwidth Utilization (%)\")",
+    "root = Stack([rawRowsTable])\nrawRowsTable = Table([deviceCol, interfaceCol, timeCol, utilizationCol], data.rows)\ndeviceCol = Col(\"Device\", \"deviceName\")\ninterfaceCol = Col(\"Interface\", \"showName\")\ntimeCol = Col(\"Time\", \"time\", {cell: @Render(\"v\", TextContent(@FormatDate(v, \"dateTime\")))})\nutilizationCol = Col(\"Peak Utilization\", \"PeakBandwidthUtilization\", {cell: @Render(\"v\", TextContent(@FormatPercent(v / 100, 1)))})",
+    "root = Stack([detail])\ndetail = Descriptions([DescField(\"Name\", data.user.name), DescField(\"Email\", data.user.email), account], \"Profile\")\naccount = DescGroup(\"Account\", [DescField(\"Status\", Tag(data.user.status, \"success\")), DescField(\"Joined\", @FormatDate(data.user.joinedAt, \"dateTime\"), 2)], 2)",
+    "root = Stack([timelineComponent])\ntimelineComponent = TimeLine(data.timeline.items, data.timeline.title)",
+    "root = Stack([kpiCard])\nkpiCard = Card([cardTitle, cardTrend], \"card\", \"standard\")\ncardTitle = TextContent(\"7-Day Latency Trend\", \"large\")\ncardTrend = MiniChart(\"line\", data.metrics.sparkline)",
+    "root = Stack([measurementsChart])\nmeasurementsChart = MiniChart(\"bar\", data.summary.measurements)",
+    "root = Stack([itemsTable])\nitemsTable = Table([nameCol, currentCol, valuesCol], data.items)\nnameCol = Col(\"Name\", \"name\")\ncurrentCol = Col(\"Current\", \"current\", {cell: @Render(\"v\", TextContent(@FormatNumber(v, 1)))})\nvaluesCol = Col(\"Values\", \"values\", {cell: @Render(\"v\", MiniChart(\"line\", v))})",
+    "root = Stack([recordDetail])\nrecordDetail = Descriptions([DescField(\"ID\", data.record.id ?? \"No data\"), DescField(\"Name\", data.record.name ?? \"No data\"), DescField(\"File\", data.record.file ?? \"No data\"), DescField(\"Status\", data.record.status ?? \"No data\"), DescField(\"Metric\", data.record.metric ?? \"No data\")], \"Record\")"
+  ],
+  "additionalRules": [
+    "Never use JavaScript conversion constructors or APIs such as String(...), Number(...), Boolean(...), Date(...), or Math.*. Use string concatenation and openui-lang builtins (@FormatNumber, @FormatDate, @Round, @Floor, @Ceil) instead.",
+    "Use openui-lang concatenation with `+` for display strings; do not use JavaScript conversion helpers.",
+    "For Table column options.cell, `@Render(\"v\", expr)` receives the cell value. If the render body needs other fields from the row, use `@Render(\"v\", \"row\", expr)`. If a table cell label must combine the current value with another field from the same row, do all row-dependent logic inside that one @Render expression.",
+    "Use @FormatDate, @FormatBytes, @FormatNumber, @FormatPercent, @FormatDuration for display formatting. Byte-count fields (`bytes`, `*Bytes`, `inBytes`, `outBytes`, `totalBytes`, `usedBytes`, or rows with `unit: \"bytes\"`) → @FormatBytes. Rate fields (`bandwidth`, `bps`, `bitrate`, `bitsPerSecond`) are bits-per-second, NOT bytes — format as Mbps/Gbps with @FormatNumber plus a unit suffix. Ratios like `used/total`, `usedBytes/totalBytes`, `active/total` → @FormatPercent. Do not divide cumulative byte totals by bandwidth/bitrate to fake utilization unless the data provides a matching time window.",
+    "Use `@FormatDate`, `@FormatBytes`, `@FormatNumber`, `@FormatPercent`, and `@FormatDuration` for display formatting. Never use the removed `format` prop on `Col` or `DescField`.",
+    "For positional tuple arrays, project the needed tuple index before formatting. For example, derive timestampLabels with @Each before passing labels to charts.",
+    "Rate fields such as `bandwidth`, `bps`, `bitrate`, or `bitsPerSecond` are rates, not byte totals. Do not compute utilization percentages by dividing cumulative byte totals by bandwidth or bitrate fields. Ratios derived from fields such as `used / total` should use @FormatPercent.",
+    "Never hardcode data values from the data model — always reference fields via data paths or derived variables. Accessing a field on an array extracts that field from every element: `filteredRows.fieldName` returns an array of values, useful for building Series.",
+    "When host data is provided, never invent, backfill, or synthesize labels, rows, metrics, statuses, timestamps, percentages, or records that are absent. For null-dominant records, preserve real non-null fields and show missing ones with `?? \"No data\"` (or `\"Unknown\"`, `\"?\"`, or omit). Use Descriptions for the single object and Table for arrays — never synthesize rows or KPI cards to make the UI look complete.",
+    "Never synthesize rows, metrics, statuses, timestamps, percentages, details, labels, series, categories, or missing time points from absent host data.",
+    "For dynamic-key object maps such as `{ \"dev-001\": {...}, \"dev-002\": {...} }`, use `@ObjectEntries(...)` or `@ObjectKeys(...)` instead of hardcoding sample keys.",
+    "For paginated envelopes with total/pageSize/pageIndex plus list/items/rows, show pagination metadata with Descriptions and render the array with Table. Do not add previous/next Button controls unless a Query or Action can actually change pages.",
+    "Use Descriptions for single-record detail views instead of Table.",
+    "If timeline rows already expose `title`, `description`, and `status`, pass them directly to `TimeLine(data.timeline.items, data.timeline.title)`.",
+    "Only use chart components when the data model already exposes chart-ready fields. If the data model only contains raw row records, prefer Table or Descriptions. Do not invent labels, series, categories, or missing time points from raw rows.",
+    "Do not declare pseudo-reusable component templates that reference undeclared variables. Repeated displays should use existing components directly, valid `@Each` templates, table cells, or descriptions.",
+    "Do not add a chart that repeats the same homogeneous records shown in a Table; prefer one clear Table with formatted columns.",
+    "MiniChart is a compact single-series trend primitive for KPI cards, table cells, dense summaries, and standalone primitive numeric arrays.",
+    "Treat primitive numeric arrays (`number[]`) as compact quantitative series. When a `number[]` appears as a field inside records shown in a Table, render it with `Col(..., {cell: @Render(\"v\", MiniChart(..., v))})`.",
+    "MiniChart accepts `number[]` directly and derives compact point labels automatically. For standalone numeric arrays rendered with MiniChart, keep the chart compact. Omit MiniChart height unless the layout needs a tighter or taller trend. Never set MiniChart height above 96 for a primitive numeric array.",
+    "Include scalar identifier and context fields such as id, name, title, endpoint, label, unit, count, current, min, max, avg, p95 when pairing MiniChart with related values."
+  ],
+  "builtins": [
+    {
+      "signature": "Count(array) -> number",
+      "description": "Returns array length",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "First(array) -> element",
+      "description": "Returns first element of array",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Last(array) -> element",
+      "description": "Returns last element of array",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Sum(numbers[]) -> number",
+      "description": "Sum of numeric array",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Avg(numbers[]) -> number",
+      "description": "Average of numeric array",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Min(numbers[]) -> number",
+      "description": "Minimum value in array",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Max(numbers[]) -> number",
+      "description": "Maximum value in array",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Sort(array, field, direction?) -> sorted array",
+      "description": "Sort array by field. Direction: \"asc\" (default) or \"desc\"",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Filter(array, field, operator: \"==\" | \"!=\" | \">\" | \"<\" | \">=\" | \"<=\" | \"contains\", value) -> filtered array",
+      "description": "Filter array by field value",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "ObjectEntries(obj) -> {key: string, value: any}[]",
+      "description": "Convert a plain object map into ordered rows of {key, value}. Returns [] for null, arrays, and unsupported inputs.",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "ObjectKeys(obj) -> string[]",
+      "description": "Return the ordered keys of a plain object map. Returns [] for null, arrays, and unsupported inputs.",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Round(number, decimals?) -> number",
+      "description": "Round to N decimal places (default 0)",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Abs(number) -> number",
+      "description": "Absolute value",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Floor(number) -> number",
+      "description": "Round down to nearest integer",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Ceil(number) -> number",
+      "description": "Round up to nearest integer",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Switch(value, cases, default?) -> result",
+      "description": "Map an enum value to a display result via a cases object. Numeric values are coerced to strings for key lookup. Returns default (null if omitted) when no case matches.",
+      "templateBuiltin": true
+    },
+    {
+      "signature": "FormatDate(value, style?, locale?) -> string | string[]",
+      "description": "Format a date-like value for display. Styles: \"date\", \"dateTime\", \"time\", or \"relative\". Accepts an array and maps over each element. Returns \"\" for nullish input and String(value) for invalid dates.",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "FormatBytes(value) -> string",
+      "description": "Format a byte count into a compact SI string (KB, MB, GB). Returns \"\" for nullish input.",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "FormatNumber(value, decimals?, locale?) -> string",
+      "description": "Format a scalar number as a locale-aware display string. Uses the renderer locale by default and returns raw input for invalid values.",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "FormatPercent(value, decimals?, locale?) -> string",
+      "description": "Format a ratio such as 0.125 as a locale-aware percentage display string, with optional decimal precision and locale override.",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "FormatDuration(value, unit?, locale?) -> string",
+      "description": "Format an elapsed duration into a compact display string. Input defaults to seconds and also supports explicit \"ms\" input.",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Each(array, varName, template)",
+      "description": "Evaluate template for each element. varName is the loop variable - use it ONLY inside the template expression (inline). Do NOT create a separate statement for the template.",
+      "templateBuiltin": true
+    },
+    {
+      "signature": "Render(\"v\", expr) / Render(\"v\", \"row\", expr)",
+      "description": "Create a deferred render template for prop values. Binder names are string literals and are only in scope inside the template body.",
+      "templateBuiltin": true
+    }
+  ]
+}

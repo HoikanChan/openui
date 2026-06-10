@@ -1,0 +1,22 @@
+{
+  "root": "Page",
+  "components": {
+    "Page": { "signature": "Page(children?: Component[])", "description": "Page root" },
+    "Button": { "signature": "Button(label: string, onClick?: ActionExpression)", "description": "Clickable button" }
+  },
+  "tools": [
+    {
+      "name": "do_thing",
+      "description": "Does a thing",
+      "inputSchema": {
+        "type": "object",
+        "properties": { "id": { "type": "string" } },
+        "required": ["id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": { "ok": { "type": "boolean" } }
+      }
+    }
+  ]
+}

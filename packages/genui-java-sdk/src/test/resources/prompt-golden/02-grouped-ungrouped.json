@@ -1,0 +1,18 @@
+{
+  "root": "Stack",
+  "components": {
+    "Stack": { "signature": "Stack(children?: Component[])", "description": "Layout container" },
+    "Card": { "signature": "Card(title: string, children?: Component[])", "description": "Bordered card" },
+    "Toggle": { "signature": "Toggle(label: string, value: $binding<boolean>)", "description": "On/off switch" },
+    "Divider": { "signature": "Divider()" }
+  },
+  "componentGroups": [
+    { "name": "Layout", "components": ["Stack", "Card"], "notes": ["Prefer Stack for top-level layout."] },
+    { "name": "Inputs", "components": ["Toggle"] }
+  ],
+  "examples": [
+    "root = Stack([card])\ncard = Card(\"Hello\")",
+    "root = Stack([card])\ncard = Card(\"Solo\")"
+  ],
+  "additionalRules": ["Keep layouts shallow.", "Avoid more than 3 nesting levels."]
+}

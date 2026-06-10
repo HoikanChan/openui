@@ -46,4 +46,11 @@ describe("generatePrompt dataModel support", () => {
     expect(prompt).toContain("Business data.");
     expect(prompt).toContain("## Data Model");
   });
+
+  it("prefixes each Render builtin signature variant", () => {
+    const prompt = generatePrompt(baseSpec);
+
+    expect(prompt).toContain('@Render("v", expr) / @Render("v", "row", expr)');
+    expect(prompt).not.toContain('/ Render("v", "row", expr)');
+  });
 });

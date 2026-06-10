@@ -1,0 +1,59 @@
+{
+  "root": "Dashboard",
+  "components": {
+    "Dashboard": { "signature": "Dashboard(children?: Component[])", "description": "Root dashboard" },
+    "Table": { "signature": "Table(columns: Column[], rows: any[])", "description": "Data table" }
+  },
+  "componentGroups": [
+    { "name": "Layout", "components": ["Dashboard"] },
+    { "name": "Data Display", "components": ["Table"] }
+  ],
+  "tools": [
+    {
+      "name": "search_tickets",
+      "description": "Search support tickets",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string" },
+          "status": { "type": "string", "enum": ["open", "closed", "pending"] },
+          "limit": { "type": "number" },
+          "tags": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["query"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "tickets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": { "id": { "type": "number" }, "title": { "type": "string" } },
+              "required": ["id"]
+            }
+          },
+          "total": { "type": "number" }
+        }
+      }
+    },
+    {
+      "name": "create_ticket",
+      "description": "Create a ticket",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "priority": { "type": "string", "enum": ["low", "high"] }
+        },
+        "required": ["title"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": { "id": { "type": "number" } }
+      }
+    }
+  ],
+  "examples": ["root = Dashboard([table])"],
+  "toolExamples": ["data = Query(\"search_tickets\", {query: \"open\"}, {tickets: [], total: 0})"]
+}

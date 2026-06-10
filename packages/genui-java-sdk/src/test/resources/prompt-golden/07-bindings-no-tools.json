@@ -1,0 +1,8 @@
+{
+  "root": "Form",
+  "bindings": true,
+  "components": {
+    "Form": { "signature": "Form(children?: Component[])", "description": "Form root" },
+    "Input": { "signature": "Input(name: string, value: $binding<string>)", "description": "Text input" }
+  }
+}
