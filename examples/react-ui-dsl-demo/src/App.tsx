@@ -244,13 +244,15 @@ export function App() {
   const [debouncedLang, setDebouncedLang] = useState("");
   const [systemPromptDraft, setSystemPromptDraft] = useState("");
   const [isSystemPromptDirty, setIsSystemPromptDirty] = useState(false);
+  const [isSourceCollapsed, setIsSourceCollapsed] = useState(true);
 
+  // Sync on every response change (not gated on isStreaming): the final chunk
+  // and setIsStreaming(false) often land in the same render batch, so an
+  // isStreaming guard would silently drop the tail of the stream.
   useEffect(() => {
-    if (isStreaming || !response) {
-      setEditedLang(response ?? "");
-      setDebouncedLang(response ?? "");
-    }
-  }, [response, isStreaming]);
+    setEditedLang(response);
+    setDebouncedLang(response);
+  }, [response]);
 
   useEffect(() => {
     if (isStreaming) return;
@@ -386,7 +388,15 @@ export function App() {
             overflow: "hidden",
           }}
         >
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
+          <div
+            style={{
+              flex: isSourceCollapsed ? "0 0 35px" : 1,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              minHeight: 0,
+            }}
+          >
             <div
               style={{
                 display: "flex",
@@ -426,29 +436,55 @@ export function App() {
                   );
                 })}
               </div>
-              {sourceTab === "lang" && editedLang && (
-                <span
+              <div style={{ display: "flex", alignItems: "stretch" }}>
+                {sourceTab === "lang" && editedLang && (
+                  <span
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "0 10px",
+                      fontFamily: mono,
+                      fontSize: 10,
+                      color: C.codeMuted,
+                    }}
+                  >
+                    {editedLang.length} chars
+                  </span>
+                )}
+                <button
+                  type="button"
+                  aria-label={isSourceCollapsed ? "Expand source panel" : "Collapse source panel"}
+                  aria-expanded={!isSourceCollapsed}
+                  aria-controls="source-panel-content"
+                  onClick={() => setIsSourceCollapsed((collapsed) => !collapsed)}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    paddingRight: 14,
+                    width: 36,
+                    border: "none",
+                    borderLeft: "1px solid #0d1829",
+                    background: "#111d2e",
+                    color: C.codeText,
+                    cursor: "pointer",
                     fontFamily: mono,
-                    fontSize: 10,
-                    color: C.codeMuted,
+                    fontSize: 16,
                   }}
                 >
-                  {editedLang.length} chars
-                </span>
-              )}
+                  {isSourceCollapsed ? "+" : "-"}
+                </button>
+              </div>
             </div>
 
-            <div style={{ flex: 1, overflow: "auto", background: C.codeBg, padding: "14px 18px" }}>
-              {sourceTab === "lang"
-                ? renderLangTab(editedLang, isStreaming, setEditedLang)
-                : sourceTab === "json"
-                  ? renderJsonTab(parsedJson, isStreaming)
-                  : renderSystemPromptTab(systemPromptDraft, isStreaming, handleSystemPromptChange)}
-            </div>
+            {!isSourceCollapsed && (
+              <div
+                id="source-panel-content"
+                style={{ flex: 1, overflow: "auto", background: C.codeBg, padding: "14px 18px" }}
+              >
+                {sourceTab === "lang"
+                  ? renderLangTab(editedLang, isStreaming, setEditedLang)
+                  : sourceTab === "json"
+                    ? renderJsonTab(parsedJson, isStreaming)
+                    : renderSystemPromptTab(systemPromptDraft, isStreaming, handleSystemPromptChange)}
+              </div>
+            )}
           </div>
 
           <div style={{ height: 1, background: C.divider, flexShrink: 0 }} />
@@ -652,7 +688,11 @@ export function App() {
                 }}
                 onClick={(e) => {
                   const select = e.currentTarget.nextElementSibling as HTMLSelectElement;
-                  select.showPicker?.() || select.click();
+                  if (select.showPicker) {
+                    select.showPicker();
+                  } else {
+                    select.click();
+                  }
                 }}
               >
                 ☰

@@ -15,7 +15,17 @@ const PORT = 3001;
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 
-const httpAgent = process.env.HTTPS_PROXY
+function shouldBypassProxy(baseURL: string | undefined): boolean {
+  if (!baseURL) return false;
+  const host = new URL(baseURL).hostname;
+  return (process.env.NO_PROXY ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .some((entry) => host === entry || host.endsWith(`.${entry}`));
+}
+
+const httpAgent = process.env.HTTPS_PROXY && !shouldBypassProxy(process.env.LLM_BASE_URL)
   ? new HttpsProxyAgent(process.env.HTTPS_PROXY)
   : undefined;
 
@@ -43,22 +53,41 @@ app.post("/api/generate", async (req, res) => {
   let started = false;
 
   try {
+    const model = process.env.LLM_MODEL ?? "deepseek-chat";
     const stream = await openai.chat.completions.create({
-      model: process.env.LLM_MODEL ?? "deepseek-chat",
+      model,
       messages: [
         { role: "system", content: resolveSystemPrompt(systemPrompt, dataModel) },
         { role: "user", content: prompt },
       ],
-      max_tokens: 32768,
+      max_tokens: 8192,
       stream: true,
-    });
+      stream_options: { include_usage: true },
+      // deepseek-v4-* defaults to thinking mode; DSL generation doesn't need it
+      // and it adds seconds of hidden reasoning before the first visible token.
+      ...(model.startsWith("deepseek-v4") ? { thinking: { type: "disabled" } } : {}),
+    } as OpenAI.Chat.ChatCompletionCreateParamsStreaming);
 
+    let finishReason: string | null = null;
     for await (const chunk of stream) {
-      const text = chunk.choices[0]?.delta?.content ?? "";
+      const choice = chunk.choices[0];
+      const text = choice?.delta?.content ?? "";
       if (text) {
         res.write(text);
         started = true;
       }
+      if (choice?.finish_reason) {
+        finishReason = choice.finish_reason;
+      }
+      if (chunk.usage) {
+        console.log("[server] usage:", JSON.stringify(chunk.usage));
+      }
+    }
+    console.log("[server] finish_reason =", finishReason ?? "(none — connection dropped)");
+    if (finishReason !== "stop") {
+      // 流没有以 finish_reason="stop" 收尾:null 表示连接被掐断(代理/网络),"length" 表示 token 上限截断
+      console.warn("[server] stream ended abnormally, finish_reason =", finishReason);
+      res.write(`\n\n[ERROR: incomplete, finish_reason=${finishReason ?? "connection dropped"}]`);
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "OpenAI error";
