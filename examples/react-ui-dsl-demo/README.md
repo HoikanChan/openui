@@ -54,7 +54,9 @@ The first `mvn` run downloads dependencies and generates the API interfaces from
 
 ## Registering your own extension
 
-See `examples/genui-service/register-extension.http` for a copy-paste REST walkthrough (register → list → assemble). Note: components registered only on the backend become model-visible (they appear in the prompt), but the demo client can't render them unless the front-end library is extended via `dslLibrary.extend()` as well.
+See `examples/genui-service/register-extension.http` for a copy-paste REST walkthrough (register → list → assemble).
+
+Component extensions need both sides: the backend contract (model-visible, goes into the prompt) and a front-end implementation registered via `dslLibrary.extend()` (renderable). `src/extensions.tsx` is the worked example paired with the `noe-biz-components` seed — it defines the `AlarmBadge` React component with matching name/props and swaps the extended library into the Renderer/parser when that context is selected.
 
 ## Peer dependencies
 

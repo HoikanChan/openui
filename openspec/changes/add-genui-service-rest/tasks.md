@@ -35,3 +35,9 @@
 - [x] 6.1 Swagger 增加 `POST /v1/tools/{toolName}/execute` + codegen；SeedToolExecutors mock 执行器（queryAlarms 按 severity 过滤、acknowledgeAlarm）；未知工具 404；ToolsApiTest 4 例
 - [x] 6.2 demo Renderer 接 toolProvider（MCP 形态，转发到工具执行端点）
 - [x] 6.3 浏览器 e2e 复测：Query 节点渲染出工具返回的真实告警行
+
+## 7. 组件型扩展链路
+
+- [x] 7.1 新增 seed `noe-biz-components`（AlarmBadge 组件契约 + 组件组），SeedRecoveryAfterRestartTest 同步
+- [x] 7.2 demo `src/extensions.tsx`：defineComponent 实现 AlarmBadge + `dslLibrary.extend()` 不可变扩展，contextId→Library 注册表；App 的 Renderer/parser 随 context 切换扩展库；extensions 单测 3 例
+- [x] 7.3 浏览器 e2e：选 noe-biz-components → prompt 含 AlarmBadge 契约 → 生成渲染出着色徽章；切回 base 组件失效、切回扩展恢复（隔离探针）

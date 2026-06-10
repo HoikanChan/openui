@@ -36,6 +36,6 @@ class SeedRecoveryAfterRestartTest {
     JsonNode contexts = om.readTree(body);
     Set<String> ids = new TreeSet<>();
     contexts.forEach(node -> ids.add(node.get("contextId").asText()));
-    assertEquals(Set.of("noe-alarm-tools", "noe-ops-rules"), ids);
+    assertEquals(Set.of("noe-alarm-tools", "noe-biz-components", "noe-ops-rules"), ids);
   }
 }

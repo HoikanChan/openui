@@ -34,6 +34,17 @@ demo 的 Renderer SHALL 配置 toolProvider,把生成 DSL 中 Query/Mutation 节
 - **WHEN** 生成的 DSL 含 `Query("queryAlarms", ...)` 且服务在运行
 - **THEN** 预览表格渲染工具执行器返回的告警行
 
+### Requirement: Demo pairs front-end library extensions with component-extension contexts
+对于含自定义组件的 Generation Context,demo SHALL 通过 `dslLibrary.extend()` 注册与后端 Component Contract 同名同 props 的前端实现,并在选中该 context 时把扩展库同时用于 Renderer 与 parser;未选中时 SHALL 回落到 base 库,扩展组件不可渲染(上下文隔离)。
+
+#### Scenario: 扩展组件端到端渲染
+- **WHEN** 选中 `noe-biz-components` 并生成含 `AlarmBadge(...)` 的 DSL
+- **THEN** 预览渲染出前端扩展实现的徽章组件
+
+#### Scenario: 切回 base 上下文后扩展组件失效
+- **WHEN** 同一份含 `AlarmBadge` 的 DSL 下把 Context 切回 base
+- **THEN** AlarmBadge 不再渲染(基础库不认识该组件)
+
 ## MODIFIED Requirements
 
 ### Requirement: Demo setup documents real-library prerequisites

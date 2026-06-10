@@ -1,7 +1,7 @@
 import { Renderer, createParser } from "@openuidev/react-lang";
-import { dslLibrary } from "@openuidev/react-ui-dsl";
 import type { KeyboardEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { libraryForContext } from "./extensions";
 import { assemblePrompt, listContexts, serviceToolProvider, type ContextSummary } from "./genuiService";
 import { presets } from "./presets";
 import { useGenerate } from "./useGenerate";
@@ -277,15 +277,18 @@ export function App() {
     return () => clearTimeout(id);
   }, [editedLang, isStreaming]);
 
+  // 选中组件型扩展 context 时,换用注册了对应 React 实现的扩展库
+  const library = useMemo(() => libraryForContext(contextId), [contextId]);
+
   const parsedJson = useMemo(() => {
     if (!debouncedLang) return null;
     try {
-      const parser = createParser(dslLibrary.toJSONSchema());
+      const parser = createParser(library.toJSONSchema());
       return parser.parse(debouncedLang);
     } catch {
       return null;
     }
-  }, [debouncedLang]);
+  }, [debouncedLang, library]);
 
   const { dataModel, dataModelError } = useMemo(() => {
     const trimmed = dataModelRaw.trim();
@@ -539,7 +542,7 @@ export function App() {
                 <div style={{ animation: "fadeIn 0.25s ease" }}>
                   <Renderer
                     response={debouncedLang}
-                    library={dslLibrary}
+                    library={library}
                     isStreaming={isStreaming}
                     dataModel={dataModel}
                     toolProvider={serviceToolProvider}
