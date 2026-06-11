@@ -15,6 +15,8 @@ The OpenUI SDK is split into packages that build on each other:
 
 - **`@openuidev/cli`** — Command-line tool for scaffolding new OpenUI chat apps and generating system prompts or JSON schemas from library definitions.
 
+- **`genui-java-sdk` (Java)** — Back-end Java SDK for UI-generation services: register Generation Context extensions and assemble system prompts byte-aligned with the front-end library. Ships with a REST reference implementation (`examples/genui-service`).
+
 ## Packages
 
 <Cards>
@@ -36,5 +38,9 @@ The OpenUI SDK is split into packages that build on each other:
   <Card title="@openuidev/cli" href="/docs/api-reference/cli">
     openui create (scaffold a Next.js app) and openui generate (system prompt / JSON schema from a
     library definition).
+  </Card>
+  <Card title="genui-java-sdk (Java)" href="/docs/api-reference/genui-java-sdk">
+    GenerationSdk for back-end services: Generation Context registration, Request Overlay, and
+    prompt assembly byte-aligned with the front-end library, plus the GenUI Service REST reference.
   </Card>
 </Cards>

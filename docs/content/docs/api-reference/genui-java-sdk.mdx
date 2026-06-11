@@ -1,0 +1,123 @@
+---
+title: "genui-java-sdk (Java)"
+description: Back-end Java SDK that stores Generation Contexts and assembles UI-generation prompts byte-aligned with the front-end DSL library.
+---
+
+The Java Generation SDK is the server-side counterpart of `dslLibrary.prompt()`. A back-end UI generation service (a SmartCanvasService implementation) uses it to register downstream extension contracts and assemble the system prompt before calling the LLM — without owning any component implementations.
+
+Its prompt output is **byte-aligned** with the TypeScript library: for the same contract and inputs, `GenerationSdk.assemblePrompt(...)` produces exactly the same string as the front-end `dslLibrary.prompt()`. The alignment is pinned by golden tests against the TypeScript oracle.
+
+## Requirements
+
+- **Java 21+** (the SDK uses records) — this constraint applies to any service embedding it.
+- Maven coordinate: `com.huawei.cloudsop:genui-core:0.1.0-SNAPSHOT`. Build it from the monorepo root aggregator:
+
+```bash
+mvn -pl packages/genui-java-sdk install
+```
+
+```xml
+<dependency>
+  <groupId>com.huawei.cloudsop</groupId>
+  <artifactId>genui-core</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+</dependency>
+```
+
+## Quickstart
+
+```java
+import com.huawei.cloudsop.genui.core.*;
+import java.util.*;
+
+// 1. Create the SDK. The default base contract is the bundled DSLEngine
+//    component contract (Stack/Table/Col/...), loaded from resources.
+GenerationSdk sdk = GenerationSdk.create();
+
+// 2. Register a downstream extension under an isolated Context ID.
+//    Schemas MUST use LinkedHashMap — property order drives the prompt
+//    byte alignment (Map.of would reorder keys).
+LinkedHashMap<String, Object> inputProps = new LinkedHashMap<>();
+inputProps.put("period", Map.of("type", "string"));
+inputProps.put("zone", Map.of("type", "string"));
+LinkedHashMap<String, Object> inputSchema = new LinkedHashMap<>();
+inputSchema.put("type", "object");
+inputSchema.put("properties", inputProps);
+inputSchema.put("required", List.of("period"));
+
+LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
+components.put("BillCard",
+    new ComponentPromptSpec("BillCard(title: string, amount: number)", "Billing card"));
+
+sdk.register(new GenUIContextExtension(
+    "team-a-billing",                 // Context ID — isolates this registration
+    "1.0.0",                          // Contract Version
+    components,
+    List.of(new ComponentGroup("Billing", List.of("BillCard"), List.of())),
+    List.of(new ToolSpec("queryBill", "Query bill details by period",
+        inputSchema, null, new ToolAnnotations(true, null))),
+    List.of(),                        // examples
+    List.of("Amounts always keep two decimals.")));
+
+// 3. Assemble a prompt per generation request.
+GenUIPromptAssemblyResult result = sdk.assemblePrompt(new GenUIPromptRequest(
+    "team-a-billing",                 // null → base contract only
+    new DataModelSpec(null, dataModelMap),  // optional host data model
+    List.of(),                        // Request Overlay: one-shot tools
+    List.of("Render everything in a single column."),  // one-shot extra rules
+    null, null, null, null));         // editMode / inlineMode / toolCalls / bindings
+
+String systemPrompt = result.prompt();
+GenUIPromptAssemblyMetadata meta = result.metadata();
+// meta.baseContractVersion(), meta.extensionVersion(),
+// meta.registeredToolNames(), meta.requestToolNames()
+```
+
+## Registration semantics
+
+`register(GenUIContextExtension)` follows the Extension Registration contract:
+
+- **Context ID isolation** — generation for one Context ID never reads another context's contracts.
+- **Replace, not merge** — re-registering the same Context ID replaces the whole extension contract. Registration is idempotent; callers should re-register on startup (the SDK is in-memory).
+- **Name collisions are rejected** — a component or tool name that already exists in the base contract (or repeats inside the extension) throws `GenerationSdkException` with a message starting with `Component name collision` / `Tool name collision`. Nothing is partially registered.
+- **Group validation** — a `ComponentGroup` referencing a component name that exists in neither the base contract nor the extension is rejected.
+
+## Assembling prompts
+
+`assemblePrompt(GenUIPromptRequest)` merges, in order: base contract → selected extension → Request Overlay.
+
+| `GenUIPromptRequest` field | Meaning |
+| --- | --- |
+| `contextId` | Selects one registered Generation Context. `null` assembles from the base contract only. |
+| `dataModel` | `DataModelSpec(description, raw)` — host data injected into the prompt. |
+| `tools` | **Request Overlay**: one-shot tools for this request only, never persisted. A name colliding with a registered tool is rejected. |
+| `extraRules` | **Request Overlay**: one-shot additional rules. |
+| `editMode` / `inlineMode` / `toolCalls` / `bindings` | Optional prompt feature switches (`null` = default). |
+
+The result carries the prompt plus `GenUIPromptAssemblyMetadata` identifying which contract versions and tool names contributed — log it next to every LLM call for traceability.
+
+> **Ordering is part of the contract.** Component insertion order and JSON-schema property order are significant: they drive signature field order in the prompt, which must match the TypeScript output byte-for-byte. Always build schema maps with `LinkedHashMap` (the SDK's records deliberately avoid `Map.copyOf` for the same reason).
+
+## Custom base contract
+
+The default base contract ships in the SDK's resources (`GenerationContractLoader.loadDefault()`). To supply your own — e.g. exported from an extended front-end library via `toSpec()`:
+
+```java
+GenerationSdk sdk = GenerationSdk.builder()
+    .baseContract(myGenerationContract)   // requires a non-blank contractVersion
+    .build();
+```
+
+## REST reference implementation: GenUI Service
+
+`examples/genui-service` wraps this SDK as a runnable REST service (Spring Boot 2.7.18, Swagger 2.0 contract-first with build-time codegen) — copy the directory as a template for an in-house SmartCanvasService:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /v1/contexts` | List registered Generation Contexts (id, version, component/tool counts). |
+| `PUT /v1/contexts/{contextId}` | Extension Registration over REST — replace semantics, `409` on name collision. |
+| `POST /v1/prompts/assemble` | Prompt assembly with Request Overlay; returns prompt + metadata; `404` for unknown contextId. |
+| `POST /v1/generate` | Assemble → call the LLM → stream `openui-lang` back as chunked `text/plain`. Supports a debug-only `promptOverride` bypass. |
+| `POST /v1/tools/{toolName}/execute` | Server-side runtime for `Query`/`Mutation` tool calls in generated DSL. |
+
+The service seeds three example extensions at startup (tools / rules / custom components) and pairs with the demo front-end, which registers matching React implementations via `dslLibrary.extend()` for component extensions. See `examples/genui-service/register-extension.http` for a copy-paste REST walkthrough and `examples/react-ui-dsl-demo/README.md` for the full wiring.
