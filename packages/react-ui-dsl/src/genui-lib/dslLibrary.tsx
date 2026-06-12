@@ -21,6 +21,9 @@ import {
 import { Button } from "./Button";
 import { Card } from "./Card";
 import { CardHeader } from "./CardHeader";
+import { CanvasCard } from "../canvas/CanvasCard";
+import { PreviewCard } from "../canvas/PreviewCard";
+import { HTMLLoader } from "../canvas/HTMLLoader";
 import { DescField, DescGroup, Descriptions } from "./Descriptions";
 import { Form } from "./Form";
 import { Image } from "./Image";
@@ -295,6 +298,9 @@ export const dslLibrary: Library = createLibrary({
     Link,
     Card,
     CardHeader,
+    CanvasCard,
+    PreviewCard,
+    HTMLLoader,
     Descriptions,
     DescGroup,
     DescField,

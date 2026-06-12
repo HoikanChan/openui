@@ -19,7 +19,7 @@ export { Renderer } from "./Renderer";
 export type { RendererProps } from "./Renderer";
 
 // openui-lang action types
-export { ACTION_STEPS, BuiltinActionType } from "@openuidev/lang-core";
+export { ACTION_STEPS, BuiltinActionType, isElementNode } from "@openuidev/lang-core";
 export type {
   ActionEvent,
   ActionPlan,
@@ -44,6 +44,9 @@ export type {
 
 // openui-lang edit/merge
 export { mergeStatements } from "@openuidev/lang-core";
+
+// renderElementNode for canvas rendering
+export { renderElementNode } from "./renderElementNode";
 
 // openui-lang context hooks (for use inside component renderers)
 export {

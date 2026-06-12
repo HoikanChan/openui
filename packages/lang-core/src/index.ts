@@ -43,7 +43,7 @@ export type {
   PromptSpec,
   ToolSpec,
 } from "./parser/prompt";
-export { BuiltinActionType } from "./parser/types";
+export { BuiltinActionType, isElementNode } from "./parser/types";
 export type {
   ActionEvent,
   ActionPlan,

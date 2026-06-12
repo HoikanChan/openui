@@ -54,6 +54,18 @@
       "signature": "CardHeader(title?: string, subtitle?: string)",
       "description": "Header with optional title and subtitle"
     },
+    "CanvasCard": {
+      "signature": "CanvasCard(children: any[], title?: string, tab?: string, size?: {w?: number})",
+      "description": "Canvas dashboard card that adds content to intelligent canvas. LUI does not render this component. Args: children (required, card content), title (optional, card title), tab (optional, default \"Dashboard\", tab name to add to), size (optional, default w=6, grid width 1-12). Tab is auto-created if not exists."
+    },
+    "PreviewCard": {
+      "signature": "PreviewCard(children: any[], title: string, summary?: any[])",
+      "description": "Preview card that shows a small card in LUI. Click adds full content to canvas PreviewTab. Args: children (required, full preview content or HTMLLoader), title (required, tab name), summary (optional, summary content shown in LUI small card). Click replaces existing PreviewTab with same title. HTMLLoader children will render as iframe with bidirectional communication."
+    },
+    "HTMLLoader": {
+      "signature": "HTMLLoader(url: string, iframeId: string, data: Record<string, any>)",
+      "description": "HTMLLoader component for iframe embedding with bidirectional communication. Used as PreviewCard children. Args: url (required, iframe source), iframeId (required, unique identifier for postMessage communication), data (optional, object sent to iframe after it signals ready). Tab name comes from parent PreviewCard.title. Communication protocol: iframe sends {type: \"openui-ready\", iframeId} when loaded; HTMLLoader sends {type: \"openui-data\", iframeId, data} back; iframe can send {type: \"openui-close\", iframeId} to request tab removal."
+    },
     "Descriptions": {
       "signature": "Descriptions(items: (DescField | DescGroup)[], title?: string, extra?: any, columns?: number, border?: boolean)",
       "description": "Descriptions-style detail view for a single record with optional bordered and plain visual modes."
