@@ -6,8 +6,14 @@ export interface UseGenerateResult {
   error: string | null;
   lastGenerateTime: number | null;
   generate: (prompt: string, dataModel?: Record<string, unknown>, systemPrompt?: string) => Promise<void>;
+  replay: (dsl: string) => Promise<void>;
   reset: () => void;
 }
+
+// Playback cadence for replay() — how a canned DSL is streamed back to mimic a
+// live generation. The demo content itself lives in ./replayDemo.
+const REPLAY_CHUNK_SIZE = 32; // 每次"流出"的字符数
+const REPLAY_INTERVAL_MS = 24; // 每个 chunk 之间的间隔
 
 export function useGenerate(): UseGenerateResult {
   const [response, setResponse] = useState("");
@@ -60,5 +66,20 @@ export function useGenerate(): UseGenerateResult {
     }
   }, []);
 
-  return { response, isStreaming, error, lastGenerateTime, generate, reset };
+  // Simulate a streamed generation by emitting the given DSL in small chunks.
+  const replay = useCallback(async (dsl: string) => {
+    setResponse("");
+    setError(null);
+    setIsStreaming(true);
+    const startTime = performance.now();
+    for (let i = REPLAY_CHUNK_SIZE; i < dsl.length; i += REPLAY_CHUNK_SIZE) {
+      setResponse(dsl.slice(0, i));
+      await new Promise((resolve) => setTimeout(resolve, REPLAY_INTERVAL_MS));
+    }
+    setResponse(dsl);
+    setIsStreaming(false);
+    setLastGenerateTime(performance.now() - startTime);
+  }, []);
+
+  return { response, isStreaming, error, lastGenerateTime, generate, replay, reset };
 }

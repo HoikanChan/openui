@@ -6,6 +6,32 @@ export interface Preset {
 
 export const presets: Preset[] = [
   {
+    label: "网络运维总览",
+    prompt:
+      "生成网络运维总览面板。顶部用一组卡片展示关键指标，每张卡片显示指标名称、当前数值和迷你趋势折线图：在线设备、平均CPU、平均内存、活跃告警。下方用标签页分两个视图：「流量趋势」用折线图展示入站和出站流量随时间的变化；「设备明细」用表格展示设备名、IP、状态、类型，状态列用标签样式区分。",
+    dataModel: {
+      kpis: [
+        { label: "在线设备", value: 42, spark: [40, 41, 39, 42, 43, 42, 42] },
+        { label: "平均CPU", value: 53, spark: [48, 50, 55, 52, 58, 54, 53] },
+        { label: "平均内存", value: 61, spark: [58, 60, 59, 62, 63, 61, 61] },
+        { label: "活跃告警", value: 7, spark: [3, 4, 5, 6, 8, 7, 7] },
+      ],
+      trafficTrend: {
+        labels: ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"],
+        series: [
+          { category: "入站 (Mbps)", values: [120, 200, 520, 380, 460, 300, 200] },
+          { category: "出站 (Mbps)", values: [80, 150, 300, 250, 320, 210, 120] },
+        ],
+      },
+      devices: [
+        { name: "Router-Core-01", ip: "192.168.1.1", status: "online", type: "路由器" },
+        { name: "Switch-Access-02", ip: "192.168.1.2", status: "offline", type: "交换机" },
+        { name: "Firewall-Edge-03", ip: "192.168.1.3", status: "warning", type: "防火墙" },
+        { name: "Switch-Access-05", ip: "192.168.1.5", status: "online", type: "交换机" },
+      ],
+    },
+  },
+  {
     label: "真实数据-折线图",
     prompt: "展示UI",
     dataModel: { "rows": [{ "deviceName": "NE-01-Core-Switch", "showName": "GigabitEthernet0/0/1", "time": 1717200000000, "PeakBandwidthUtilization": 45.7, "Traffic": 1234567.89, "portResId": "550e8400-e29b-41d4-a716-446655440001" }, { "deviceName": "NE-01-Core-Switch", "showName": "GigabitEthernet0/0/1", "time": 1717203600000, "PeakBandwidthUtilization": 52.3, "Traffic": 1345678.9, "portResId": "550e8400-e29b-41d4-a716-446655440001" }, { "deviceName": "NE-02-Access-Router", "showName": "Ethernet1/1", "time": 1717200000000, "PeakBandwidthUtilization": 18.2, "Traffic": 456789.12, "portResId": "550e8400-e29b-41d4-a716-446655440002" }, { "deviceName": "NE-02-Access-Router", "showName": "Ethernet1/1", "time": 1717203600000, "PeakBandwidthUtilization": 22.5, "Traffic": 512345.67, "portResId": "550e8400-e29b-41d4-a716-446655440002" }], "times": { "period": 60, "startTime": 1716595200000, "endTime": 1717200000000, "valid_period": 60, "valid_startTime": 1716595200000, "valid_endTime": 1717200000000 }, "statistics": [{ "portResId": "550e8400-e29b-41d4-a716-446655440001", "deviceName": "NE-01-Core-Switch", "showName": "GigabitEthernet0/0/1", "indicatorName": "Traffic", "max": 1345678.9, "min": 1234567.89, "avg": 1290123.395, "last": 1345678.9 }, { "portResId": "550e8400-e29b-41d4-a716-446655440002", "deviceName": "NE-02-Access-Router", "showName": "Ethernet1/1", "indicatorName": "Traffic", "max": 512345.67, "min": 456789.12, "avg": 484567.395, "last": 512345.67 }] }

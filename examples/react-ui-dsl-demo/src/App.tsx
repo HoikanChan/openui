@@ -3,6 +3,7 @@ import { dslLibrary } from "@openuidev/react-ui-dsl";
 import type { KeyboardEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { presets } from "./presets";
+import { REPLAY_DATA_MODEL, REPLAY_DSL, REPLAY_PROMPT } from "./replayDemo";
 import { useGenerate } from "./useGenerate";
 import { useLocalStorage } from "./useLocalStorage";
 
@@ -236,7 +237,7 @@ function renderSystemPromptTab(
 }
 
 export function App() {
-  const { response, isStreaming, error, lastGenerateTime, generate, reset } = useGenerate();
+  const { response, isStreaming, error, lastGenerateTime, generate, replay, reset } = useGenerate();
   const [prompt, setPrompt] = useLocalStorage("demo:prompt", "");
   const [dataModelRaw, setDataModelRaw] = useLocalStorage("demo:dataModelRaw", "{}");
   const [sourceTab, setSourceTab] = useState<"lang" | "json" | "prompt">("lang");
@@ -298,6 +299,17 @@ export function App() {
     if (!prompt.trim() || isStreaming || dataModelError) return;
     reset();
     void generate(prompt, dataModel, systemPromptDraft);
+  }
+
+  // Demo replay: load the self-contained bundle (prompt + data model) and stream
+  // back the curated DSL — a reliable showcase that never calls the LLM and does
+  // not depend on the preset list being present or unedited.
+  function handleReplay() {
+    if (isStreaming) return;
+    setPrompt(REPLAY_PROMPT);
+    setDataModelRaw(JSON.stringify(REPLAY_DATA_MODEL, null, 2));
+    reset();
+    void replay(REPLAY_DSL);
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -410,7 +422,7 @@ export function App() {
             >
               <div style={{ display: "flex" }}>
                 {(["lang", "json", "prompt"] as const).map((tab) => {
-                  const label = tab === "lang" ? "open lang" : tab === "json" ? "parsed json" : "prompt";
+                  const label = tab === "lang" ? "openui lang" : tab === "json" ? "parsed json" : "prompt";
                   const active = sourceTab === tab;
 
                   return (
@@ -720,6 +732,26 @@ export function App() {
                 ))}
               </select>
             </div>
+            <button
+              onClick={handleReplay}
+              disabled={isStreaming}
+              title="回放「网络运维总览」演示"
+              style={{
+                padding: "11px 16px",
+                borderRadius: 8,
+                border: `1px solid ${isStreaming ? C.accentDisabled : C.accent}`,
+                background: C.inputBg,
+                color: isStreaming ? C.accentDisabled : C.accent,
+                fontFamily: sans,
+                fontWeight: 600,
+                fontSize: 13,
+                whiteSpace: "nowrap",
+                cursor: isStreaming ? "not-allowed" : "pointer",
+                transition: "border-color 0.15s, color 0.15s",
+              }}
+            >
+              ▶ 回放
+            </button>
             <button
               onClick={handleGenerate}
               disabled={!canGenerate}
