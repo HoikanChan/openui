@@ -8,6 +8,8 @@ export default defineConfig({
   target: "es2022",
   outDir: "dist",
   clean: true,
+  minify: false,
+  treeshake: true,
   deps: {
     neverBundle: [/^[^./]/],
   },

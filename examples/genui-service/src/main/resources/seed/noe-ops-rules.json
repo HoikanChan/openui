@@ -1,0 +1,11 @@
+{
+  "contextId": "noe-ops-rules",
+  "version": "1.0.0",
+  "examples": [],
+  "additionalRules": [
+    "所有界面文案使用简体中文。",
+    "设备名称列必须完整展示,不允许截断。",
+    "时间戳一律格式化为 YYYY-MM-DD HH:mm。",
+    "百分比指标保留一位小数并附 % 单位。"
+  ]
+}

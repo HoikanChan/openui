@@ -1,0 +1,19 @@
+# 注意:不设置 context-path —— codegen 已把 basePath /v1 生成进接口的 @RequestMapping
+server:
+  port: 3001
+
+spring:
+  mvc:
+    async:
+      # /generate 是长流式响应,放宽 MVC 异步超时
+      request-timeout: 300000
+  jackson:
+    default-property-inclusion: non_null
+
+genui:
+  llm:
+    api-key: ${LLM_API_KEY:}
+    base-url: ${LLM_BASE_URL:}
+    model: ${LLM_MODEL:deepseek-chat}
+    https-proxy: ${HTTPS_PROXY:}
+    no-proxy: ${NO_PROXY:}

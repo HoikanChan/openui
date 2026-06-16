@@ -1,0 +1,95 @@
+# GenUI Service 扩展注册示例
+# 用法:先启动服务(mvn -pl examples/genui-service spring-boot:run),
+#      然后用 IDE 的 HTTP Client(IntelliJ/VS Code REST Client)逐条执行,
+#      或复制末尾的 curl 等价命令。
+#
+# 注意:注册不持久化——服务重启后此注册丢失,调用方应在自身启动时重注册
+#      (PUT 替换语义保证幂等)。
+
+### 1. 查看当前已注册的 Generation Context(应含三套预制种子)
+GET http://localhost:3001/v1/contexts
+
+### 2. 注册一个下游业务扩展:自定义组件 + 工具
+#    组件名不得与 base contract(Stack/Table/...)碰撞,否则 409。
+#    提示:自定义组件要在 demo 前端渲染,需要前端侧 dslLibrary.extend() 配套注册;
+#    仅后端注册时,组件只进入 prompt 契约(模型可见),前端无法渲染。
+PUT http://localhost:3001/v1/contexts/team-a-billing
+Content-Type: application/json
+
+{
+  "version": "1.0.0",
+  "components": {
+    "BillingCard": {
+      "signature": "BillingCard(title: string, amount: number, currency?: \"CNY\" | \"USD\")",
+      "description": "账单卡片:展示账期金额,currency 默认 CNY。"
+    }
+  },
+  "componentGroups": [
+    {
+      "name": "Billing",
+      "components": ["BillingCard"],
+      "notes": ["账单场景优先使用 BillingCard 而非通用 Card。"]
+    }
+  ],
+  "tools": [
+    {
+      "name": "queryBill",
+      "description": "按账期查询账单明细",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "period": { "type": "string" }
+        },
+        "required": ["period"]
+      },
+      "annotations": { "readOnlyHint": true }
+    }
+  ],
+  "additionalRules": [
+    "金额一律保留两位小数。"
+  ]
+}
+
+### 3. 验证注册生效:列表应出现 team-a-billing
+GET http://localhost:3001/v1/contexts
+
+### 4. 验证拼装生效:prompt 中应包含 BillingCard 与 queryBill
+POST http://localhost:3001/v1/prompts/assemble
+Content-Type: application/json
+
+{
+  "contextId": "team-a-billing"
+}
+
+### 5. 重复注册 = 整体替换(幂等);版本升到 1.1.0
+PUT http://localhost:3001/v1/contexts/team-a-billing
+Content-Type: application/json
+
+{
+  "version": "1.1.0",
+  "components": {
+    "BillingCard": {
+      "signature": "BillingCard(title: string, amount: number, currency?: \"CNY\" | \"USD\" | \"EUR\")",
+      "description": "账单卡片:展示账期金额,currency 默认 CNY。"
+    }
+  }
+}
+
+### 6. 名称碰撞示例:Stack 是 base contract 组件,预期 409
+PUT http://localhost:3001/v1/contexts/bad-ext
+Content-Type: application/json
+
+{
+  "version": "1.0.0",
+  "components": {
+    "Stack": { "signature": "Stack()", "description": "试图覆盖基础组件" }
+  }
+}
+
+# ---- curl 等价命令(任选) ----
+# curl http://localhost:3001/v1/contexts
+# curl -X PUT http://localhost:3001/v1/contexts/team-a-billing \
+#   -H "Content-Type: application/json" \
+#   -d '{"version":"1.0.0","components":{"BillingCard":{"signature":"BillingCard(title: string, amount: number)","description":"账单卡片"}}}'
+# curl -X POST http://localhost:3001/v1/prompts/assemble \
+#   -H "Content-Type: application/json" -d '{"contextId":"team-a-billing"}'

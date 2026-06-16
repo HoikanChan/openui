@@ -13,5 +13,5 @@
       "@openuidev/react-lang": ["../../packages/react-lang/src/index.ts"]
     }
   },
-  "include": ["src", "server", "vite.config.ts"]
+  "include": ["src", "vite.config.ts"]
 }

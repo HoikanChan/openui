@@ -1,0 +1,380 @@
+swagger: "2.0"
+info:
+  title: GenUI Service API
+  version: 0.1.0-SNAPSHOT
+  description: |
+    GenUI Service —— Java Generation SDK 的 REST 参考实现(SmartCanvasService 契约)。
+
+    - contexts / prompts 端点由 swagger-codegen 生成接口,手写 Controller 实现。
+    - /generate 为手写流式实现(text/plain chunked),本文档中仅作契约声明;
+      codegen 生成的接口签名无法表达流式,故该接口不被实现。
+basePath: /v1
+# 不设全局 consumes:codegen 会把它刻进 GET 映射,导致无 Content-Type 的 GET 请求 415
+schemes:
+  - http
+produces:
+  - application/json
+tags:
+  - name: contexts
+    description: Generation Context 注册与查询(Extension Registration)
+  - name: prompts
+    description: Prompt 拼装(Request Overlay 支持)
+  - name: generation
+    description: openui-lang 生成(LLM 流式)
+  - name: tools
+    description: 工具执行通道(Query/Mutation 的服务端运行时)
+
+paths:
+  /contexts:
+    get:
+      tags:
+        - contexts
+      operationId: listContexts
+      summary: 列出已注册的 Generation Context
+      description: 返回全部已注册扩展的摘要(含启动种子注册的预制扩展)。注册不持久化,服务重启后仅种子恢复。
+      responses:
+        200:
+          description: 已注册 Generation Context 摘要列表
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/ContextSummary"
+
+  /contexts/{contextId}:
+    put:
+      tags:
+        - contexts
+      operationId: registerContext
+      summary: 注册或整体替换一个 Extension Registration
+      description: 替换语义:同一 contextId 重复注册将整体替换原扩展契约(幂等)。与 base contract 或扩展自身的组件名/工具名碰撞将被拒绝。
+      consumes:
+        - application/json
+      parameters:
+        - name: contextId
+          in: path
+          required: true
+          type: string
+          description: Context ID,隔离一个业务注册
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/ExtensionRegistration"
+      responses:
+        200:
+          description: 注册/替换成功
+          schema:
+            $ref: "#/definitions/ContextSummary"
+        400:
+          description: 非法输入(如组件组引用不存在的组件)
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        409:
+          description: Contract Name Collision(组件名或工具名与现有契约碰撞)
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /prompts/assemble:
+    post:
+      tags:
+        - prompts
+      operationId: assemblePrompt
+      summary: 拼装 system prompt
+      description: contextId 缺省时仅使用 base contract。tools 与 extraRules 为 Request Overlay:仅作用于本次拼装,不持久化。
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/AssembleRequest"
+      responses:
+        200:
+          description: 拼装产物与元数据
+          schema:
+            $ref: "#/definitions/AssembleResult"
+        400:
+          description: 非法输入
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: contextId 未注册
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        409:
+          description: Overlay 工具名与已注册工具碰撞
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /generate:
+    post:
+      tags:
+        - generation
+      operationId: generate
+      summary: 生成 openui-lang(流式)
+      description: |
+        以 text/plain chunked 流式返回 LLM 生成的 openui-lang 文本。
+        手写实现,不经 codegen。
+        流开始前失败返回 502 JSON;流中途失败或 finish_reason 非 stop 时,
+        在流尾追加 "[ERROR: ...]" 文本后正常关闭。
+      consumes:
+        - application/json
+      produces:
+        - text/plain
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: "#/definitions/GenerateRequest"
+      responses:
+        200:
+          description: openui-lang 文本流(chunked)
+          schema:
+            type: string
+        400:
+          description: prompt 为空等非法输入
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        404:
+          description: contextId 未注册
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        409:
+          description: Overlay 工具名碰撞
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        502:
+          description: LLM 调用在产生首个 token 前失败
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /tools/{toolName}/execute:
+    post:
+      tags:
+        - tools
+      operationId: executeTool
+      summary: 执行一个工具,返回结果 JSON
+      description: |
+        生成的 openui-lang 中的 Query/Mutation 节点由前端 Renderer 的 toolProvider
+        转发到此端点执行。参考实现内置种子工具(queryAlarms/acknowledgeAlarm)的
+        mock 执行器;公司内部落地时在此接入真实工具通道。
+      consumes:
+        - application/json
+      parameters:
+        - name: toolName
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          description: 工具入参(对应 ToolSpec.inputSchema)
+          schema:
+            type: object
+            additionalProperties: true
+      responses:
+        200:
+          description: 工具执行结果
+          schema:
+            type: object
+            additionalProperties: true
+        404:
+          description: 工具未注册执行器
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+definitions:
+  ContextSummary:
+    type: object
+    properties:
+      contextId:
+        type: string
+      version:
+        type: string
+        description: 扩展契约版本(Contract Version)
+      componentCount:
+        type: integer
+        format: int32
+      toolCount:
+        type: integer
+        format: int32
+
+  ComponentPromptSpec:
+    type: object
+    description: 模型可见的组件契约(签名 + 描述)
+    properties:
+      signature:
+        type: string
+      description:
+        type: string
+
+  ComponentGroup:
+    type: object
+    properties:
+      name:
+        type: string
+      components:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  ToolAnnotations:
+    type: object
+    properties:
+      readOnlyHint:
+        type: boolean
+      destructiveHint:
+        type: boolean
+
+  ToolSpec:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+      description:
+        type: string
+      inputSchema:
+        type: object
+        description: JSON Schema,属性顺序敏感(影响 prompt 字节对齐)
+        additionalProperties: true
+      outputSchema:
+        type: object
+        additionalProperties: true
+      annotations:
+        $ref: "#/definitions/ToolAnnotations"
+
+  ExtensionRegistration:
+    type: object
+    description: Extension Registration:仅含下游扩展契约,base contract 由服务内置提供
+    properties:
+      version:
+        type: string
+        description: 扩展契约版本(Contract Version)
+      components:
+        type: object
+        description: 组件名 → 组件契约;名称不得与 base contract 碰撞
+        additionalProperties:
+          $ref: "#/definitions/ComponentPromptSpec"
+      componentGroups:
+        type: array
+        items:
+          $ref: "#/definitions/ComponentGroup"
+      tools:
+        type: array
+        items:
+          $ref: "#/definitions/ToolSpec"
+      examples:
+        type: array
+        items:
+          type: string
+      additionalRules:
+        type: array
+        items:
+          type: string
+
+  DataModel:
+    type: object
+    properties:
+      description:
+        type: string
+      raw:
+        type: object
+        description: 原始数据模型(任意 JSON 对象)
+        additionalProperties: true
+
+  AssembleRequest:
+    type: object
+    properties:
+      contextId:
+        type: string
+        description: 缺省时仅使用 base contract
+      dataModel:
+        $ref: "#/definitions/DataModel"
+      tools:
+        type: array
+        description: Request Overlay 工具,仅本次拼装生效,不持久化
+        items:
+          $ref: "#/definitions/ToolSpec"
+      extraRules:
+        type: array
+        description: Request Overlay 规则,仅本次拼装生效
+        items:
+          type: string
+      editMode:
+        type: boolean
+      inlineMode:
+        type: boolean
+      toolCalls:
+        type: boolean
+      bindings:
+        type: boolean
+
+  AssemblyMetadata:
+    type: object
+    properties:
+      contextId:
+        type: string
+      baseContractVersion:
+        type: string
+      extensionVersion:
+        type: string
+      registeredToolNames:
+        type: array
+        items:
+          type: string
+      requestToolNames:
+        type: array
+        items:
+          type: string
+
+  AssembleResult:
+    type: object
+    properties:
+      prompt:
+        type: string
+      metadata:
+        $ref: "#/definitions/AssemblyMetadata"
+
+  GenerateRequest:
+    type: object
+    required:
+      - prompt
+    properties:
+      prompt:
+        type: string
+        description: 用户生成诉求(user message)
+      contextId:
+        type: string
+      dataModel:
+        type: object
+        description: 原始数据模型,等价 DataModel.raw
+        additionalProperties: true
+      tools:
+        type: array
+        description: Request Overlay 工具
+        items:
+          $ref: "#/definitions/ToolSpec"
+      extraRules:
+        type: array
+        description: Request Overlay 规则
+        items:
+          type: string
+      promptOverride:
+        type: string
+        description: |
+          Prompt Override(debug-only):有值时整段替换 SDK 拼装产物,绕过 Generation Context。
+          仅供调试实验,生产调用方不应使用。与 Request Overlay(仅追加)语义严格区分。
+
+  ErrorResponse:
+    type: object
+    properties:
+      error:
+        type: string

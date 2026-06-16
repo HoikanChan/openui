@@ -1,0 +1,60 @@
+{
+  "contextId": "noe-alarm-tools",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "queryAlarms",
+      "description": "按严重级别与时间范围查询当前网络告警列表",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "severity": { "type": "string", "enum": ["critical", "major", "minor"] },
+          "startTime": { "type": "number" },
+          "endTime": { "type": "number" }
+        },
+        "required": ["severity"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "alarms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "description": "告警 ID" },
+                "severity": { "type": "string", "enum": ["critical", "major", "minor"] },
+                "device": { "type": "string", "description": "设备名称" },
+                "title": { "type": "string", "description": "告警标题" },
+                "time": { "type": "number", "description": "发生时间(毫秒时间戳)" }
+              }
+            }
+          },
+          "total": { "type": "number" }
+        }
+      },
+      "annotations": { "readOnlyHint": true }
+    },
+    {
+      "name": "acknowledgeAlarm",
+      "description": "按告警 ID 确认一条告警",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "alarmId": { "type": "string" }
+        },
+        "required": ["alarmId"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" }
+        }
+      },
+      "annotations": { "destructiveHint": true }
+    }
+  ],
+  "additionalRules": [
+    "告警严重级别用颜色区分:critical 红色、major 橙色、minor 黄色。"
+  ]
+}
