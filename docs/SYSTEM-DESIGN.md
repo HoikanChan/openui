@@ -147,12 +147,11 @@ apiDoc：api文档，可选。
 
 **能扩展什么**
 
-可扩展三类东西，按生效范围分「登记长期生效」和「随请求一次性」：
-
 | 扩展什么 | 用来做什么 |
 | --- | --- |
 | 组件 | 新增模型能生成、前端能渲染的 UI 组件 |
-| 工具 | 提供可被调用的tool函数，实现UI 查询数据/发起变更请求） |
+| 工具 | 提供可被调用的 tool 函数，实现 UI 查询数据或发起变更请求；描述结构与 MCP Tool 定义保持兼容 |
+| 模板 | 沉淀可通过 templateId 直接复用的 Stream IR |
 | 提示词规则 | 约束生成风格、业务规则、组件取用偏好 |
 | 生成示例 | UI范例，提升生成稳定性 |
 
@@ -166,11 +165,11 @@ apiDoc：api文档，可选。
 
 | 步骤 | 谁做 | 做什么 |
 | --- | --- | --- |
-| 1 定义组件 | 业务方前端 | 用 defineComponent 写清组件名、参数、说明和渲染代码，createLibrary 汇总成组件库（见 6.2.4.5） |
+| 1 定义拓展能力 | 业务方前端 | 用 defineComponent 写清组件名、参数、说明和渲染代码；按 MCP Tool 兼容结构写清工具名、说明和输入输出 schema（见 6.2.4.5） |
 | 2 注册前端组件和工具 | 业务方前端Piu | 给DSLEngine传入待拉起的业务piu，进行自动拉起。业务piu待拉起后，通过piu事件给DSLEngine注册前端组件和工具 |
-| 3 导出拓展上下文 | 前端工具链 | 从组件库自动导出「拓展上下文」（JSON），不手写，保证描述和渲染代码一致（见 6.2.4.5） |
-| 4 注册拓展上下文 | 业务方 | 把导出拓展上下文，通过/contexts post接口进行注册（业务方直连，不经 AICOService） |
-| 5 发起生成 | Skill / AICOService | 生成请求带上 contextId 选好拓展上下文，需要时再临时附带工具/组件 |
+| 3 导出组件规格 | 前端工具链 | 调用 DSLEngine 暴露的 `generateComponentSpecs`，从多个前端组件定义生成 `components` JSON 片段（见 6.2.4.5） |
+| 4 注册拓展上下文 | 业务方 | 业务方维护完整拓展上下文 JSON，并把组件规格导出结果填入 `components` 后，通过 `/contexts` POST 接口注册（业务方直连，不经 AICOService） |
+| 5 发起生成 | Skill / AICOService | 生成请求带上 contextId 选好拓展上下文，需要时再临时附带一次性工具或规则 |
 | 6 渲染 | DSLEngine | 按组件名和工具名，找到对应注册好的拓展内容 |
 
 拓展内容横跨两头：
@@ -261,7 +260,77 @@ data: {"traceId": "xxx"}
 
 Context 拓展接口用于注册 UI 生成拓展上下文。业务方可以通过 `contextId` 把组件、工具、模板、示例和规则登记为一组可复用的生成上下文，后续 UI 生成请求只需携带该 `contextId` 即可使用这些拓展能力。
 
-拓展上下文内容原则上不手写。`sourcePiu` 可牵引 DSLEngine 拉起业务 PIU；业务 PIU 拉起后通过 PIU 事件向 DSLEngine 注册拓展组件和工具的前端实现，再使用我们提供的导出方式生成注册请求内容。导出的 `components`、`tools`、`templates`、`examples` 和 `additionalRules` 与前端渲染实现保持同源。
+MVP 阶段，`GenUIContextExtension` 注册 JSON 由业务方维护。DSLEngine 侧仅提供 `generateComponentSpecs`，用于从前端组件定义导出 `components` 字段所需的组件规格 JSON，避免业务方手写组件名、组件说明和 props 约束。`contextId`、`version`、`sourcePiu`、`templates`、`componentGroups`、`tools`、`examples` 和 `additionalRules` 仍由业务方按业务场景声明式填写。
+
+`sourcePiu` 可牵引 DSLEngine 拉起业务 PIU；业务 PIU 拉起后通过 PIU 事件向 DSLEngine 注册拓展组件和工具的前端实现。业务方可将同一批前端组件定义传给 `generateComponentSpecs`，生成多个组件组成的 `components` JSON 片段，并填入 Context 拓展接口请求体。
+
+**拓展组件规格导出方式（generateComponentSpecs）**：
+
+```ts
+import { defineComponent, generateComponentSpecs } from "@openuidev/react-ui-dsl";
+import { z } from "zod";
+
+const AlarmSeverityTag = defineComponent({
+  name: "AlarmSeverityTag",
+  props: z.object({
+    severity: z.enum(["critical", "major", "minor", "warning"]),
+    text: z.string().optional()
+  }),
+  description: "告警级别标签，按级别着色展示",
+  component: AlarmSeverityTagView
+});
+
+const AlarmStatusCard = defineComponent({
+  name: "AlarmStatusCard",
+  props: z.object({
+    title: z.string(),
+    total: z.number(),
+    critical: z.number().optional()
+  }),
+  description: "告警状态卡片，用于展示告警总数和严重告警数量",
+  component: AlarmStatusCardView
+});
+
+export const alarmComponentSpecs = generateComponentSpecs([
+  AlarmSeverityTag,
+  AlarmStatusCard
+]);
+```
+
+`generateComponentSpecs` 的输出是一个以组件名为 key 的 JSON 对象，可直接作为 `GenUIContextExtension.components` 字段值使用。输出内容只包含模型生成和服务侧校验所需的组件规格，不包含 React 渲染实现。
+
+```json
+{
+  "AlarmSeverityTag": {
+    "description": "告警级别标签，按级别着色展示",
+    "propsSchema": {
+      "type": "object",
+      "properties": {
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "major", "minor", "warning"]
+        },
+        "text": { "type": "string" }
+      },
+      "required": ["severity"]
+    }
+  },
+  "AlarmStatusCard": {
+    "description": "告警状态卡片，用于展示告警总数和严重告警数量",
+    "propsSchema": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "total": { "type": "number" },
+        "critical": { "type": "number" }
+      },
+      "required": ["title", "total"]
+    }
+  }
+}
+```
+
+`generateComponentSpecs` 支持一次导出多个组件。生成时应校验组件名重复、props schema 可序列化和组件描述是否为空；校验失败时导出失败，业务方修复组件定义后重新导出。
 
 **接口说明**：
 
@@ -269,7 +338,7 @@ Context 拓展接口用于注册 UI 生成拓展上下文。业务方可以通�
 |---|---|
 | 接口名称 | `POST /rest/smartcanvas/v1/contexts` |
 | 功能 | 注册或覆盖 UI 生成拓展上下文 |
-| 请求体 | `GenUIContextExtension`，由前端工具链导出的拓展上下文 |
+| 请求体 | `GenUIContextExtension`，业务方维护；其中 `components` 可由 DSLEngine 的 `generateComponentSpecs` 导出 |
 | 调用方 | 业务方或发布流水线直连，不经 AICOService |
 | 生效方式 | 注册成功后，生成请求通过 `contextId` 选择该拓展上下文 |
 | 返回类型 | JSON 注册摘要 |
@@ -280,15 +349,15 @@ Context 拓展接口用于注册 UI 生成拓展上下文。业务方可以通�
 |---|---|---|---|
 | `contextId` | 必选 | 拓展上下文唯一标识。生成请求通过该值选择要使用的拓展能力。 | string，长度 1-128。 |
 | `version` | 必选 | 拓展上下文版本。组件、工具、模板、示例或规则发生变化时需要更新。 | string，长度 1-64；可使用字母、数字、`.`、`-`、`_`；示例：`1.0.0`、`2026.06.1`。 |
-| `sourcePiu` | 可选 | 需要拉起的业务 PIU 列表。DSLEngine 根据该列表拉起业务 PIU；业务 PIU 通过 PIU 事件注册拓展对应的前端实现。已完成前端实现注册并直接导出完整拓展上下文时可不传。 | array，元素为 string；建议不超过 30 个。 |
+| `sourcePiu` | 可选 | 需要拉起的业务 PIU 列表。DSLEngine 根据该列表拉起业务 PIU；业务 PIU 通过 PIU 事件注册拓展对应的前端实现。 | array，元素为 string；建议不超过 30 个。 |
 | `templates` | 可选 | 可复用 UI 模板集合。key 为模板 ID，对应生成接口的 `templateId`；value 为模板内容，通常是 Stream IR 模板文本。没有模板沉淀时可不传。 | object，JSON 对象；key 为 string；value 为 string；建议不超过 256 KB。 |
-| `components` | 可选 | 拓展组件描述，包含组件说明、propsSchema 和示例。由前端工具链从组件库导出；没有拓展组件时可不传。 | object，JSON 对象；建议不超过 30 个组件。 |
+| `components` | 可选 | 拓展组件描述，包含组件说明和 props 约束。MVP 阶段由 DSLEngine `generateComponentSpecs` 从多个前端组件定义导出，见上文“拓展组件规格导出方式”。没有拓展组件时可不传。 | object，JSON 对象；key 为组件名；建议不超过 30 个组件。 |
 | `componentGroups` | 可选 | 组件分组和使用说明，用于提示词组织；没有分组诉求时可不传。 | array，数组项为 JSON 对象。 |
-| `tools` | 可选 | 拓展工具描述，供 Query/Mutation 或 Action 调用；没有拓展工具时可不传。 | array，数组项为 JSON 对象；建议不超过 30 个工具。 |
+| `tools` | 可选 | 拓展工具描述，供 Query/Mutation 或 Action 调用；采用 MCP Tool 兼容结构，见上文“拓展工具定义”。没有拓展工具时可不传。 | array，数组项为 JSON 对象；建议不超过 30 个工具。 |
 | `examples` | 可选 | 生成示例，用于牵引模型稳定使用拓展组件和工具；没有示例时可不传。 | array，元素为 string；单条建议不超过 4096 字符。 |
 | `additionalRules` | 可选 | 附加生成规则，用于约束生成风格、组件使用偏好或业务规则；没有额外约束时可不传。 | array，元素为 string；单条建议不超过 512 字符。 |
 
-`components`、`tools`、`templates` 等复杂内容应由工具链导出，避免人工维护导致模型可见描述、服务侧校验规则和前端渲染实现不一致。重复注册同一个 `contextId` 时按整包覆盖处理；覆盖成功后应使该上下文关联的旧模板缓存失效。
+MVP 阶段仅 `components` 字段提供导出能力，`tools`、`templates`、`examples` 和 `additionalRules` 由业务方手写维护；其中 `tools` 应按 MCP Tool 兼容结构维护。重复注册同一个 `contextId` 时按整包覆盖处理；覆盖成功后应使该上下文关联的旧模板缓存失效。
 
 **完整 Request 示例**：
 
@@ -316,18 +385,32 @@ Context 拓展接口用于注册 UI 生成拓展上下文。业务方可以通�
         "required": ["severity"]
       },
       "examples": ["sev = AlarmSeverityTag(\"critical\", \"严重\")"]
+    },
+    "AlarmStatusCard": {
+      "description": "告警状态卡片，用于展示告警总数和严重告警数量",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "description": "卡片标题" },
+          "total": { "type": "number", "description": "告警总数" },
+          "critical": { "type": "number", "description": "严重告警数量" }
+        },
+        "required": ["title", "total"]
+      },
+      "examples": ["statusCard = AlarmStatusCard(\"当前告警\", 128, 12)"]
     }
   },
   "componentGroups": [
     {
       "name": "business",
-      "components": ["AlarmSeverityTag"],
-      "notes": ["告警业务专用组件，渲染告警级别时优先使用"]
+      "components": ["AlarmSeverityTag", "AlarmStatusCard"],
+      "notes": ["告警业务专用组件，渲染告警级别时优先使用 AlarmSeverityTag，展示告警汇总时优先使用 AlarmStatusCard"]
     }
   ],
   "tools": [
     {
       "name": "acknowledgeAlarm",
+      "title": "确认告警",
       "description": "确认（ack）一条告警，返回是否成功",
       "inputSchema": {
         "type": "object",
@@ -341,6 +424,11 @@ Context 拓展接口用于注册 UI 生成拓展上下文。业务方可以通�
         "properties": {
           "success": { "type": "boolean" }
         }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true
       }
     }
   ],
@@ -360,7 +448,7 @@ Context 拓展接口用于注册 UI 生成拓展上下文。业务方可以通�
 {
   "contextId": "alarm-genui-presets",
   "version": "1.0.0",
-  "componentCount": 1,
+  "componentCount": 2,
   "toolCount": 1,
   "templateCount": 1,
   "traceId": "xxx"
@@ -527,10 +615,10 @@ react-ui-dsl 负责向生成侧和渲染侧提供一致的组件能力，包括�
 
 后续扩展组件通过组件描述和实现注册进入组件库，供 prompt 注入、类型校验和运行时渲染使用。
 
-组件定义采用 `defineComponent` 描述组件名称、props schema、组件说明和 React 渲染实现；组件集合通过 `createLibrary` 汇总后提供给 Renderer 和 prompt 生成流程。示例如下：
+组件定义采用 `defineComponent` 描述组件名称、props schema、组件说明和 React 渲染实现；内置组件集合通过 `createLibrary` 汇总后提供给 Renderer 和 prompt 生成流程。拓展上下文不要求业务方先创建完整 `Library`，MVP 阶段由 `generateComponentSpecs` 从多个拓展组件定义中导出 `components` JSON 片段，其他注册字段由业务方维护。示例如下：
 
 ```ts
-import { createLibrary, defineComponent } from "@openuidev/react-lang";
+import { createLibrary, defineComponent, generateComponentSpecs } from "@openuidev/react-ui-dsl";
 import { z } from "zod";
 
 const Button = defineComponent({
@@ -547,11 +635,13 @@ export const library = createLibrary({
   root: "VLayout",
   components: [Button]
 });
+
+export const componentSpecs = generateComponentSpecs([Button]);
 ```
 
-`library` 是 Renderer 的运行时组件库，也是生成 prompt 和 JSON Schema 的来源。SmartCanvasService 在拼装 prompt 时应使用与前端 library 同源的组件描述；前端 Renderer 在渲染时根据 Stream IR 中的组件名查找 library 中的组件实现。
+`library` 是 Renderer 的运行时组件库，也是生成 prompt 和 JSON Schema 的来源。`componentSpecs` 是可填入 `GenUIContextExtension.components` 的组件规格 JSON，不包含 React 渲染实现。SmartCanvasService 在拼装 prompt 时应使用与前端组件定义同源的组件描述；前端 Renderer 在渲染时根据 Stream IR 中的组件名查找 library 或 PIU 注册的组件实现。
 
-扩展组件的注册契约（6.2.4.2-8 的 `components` / `tools` schema）即由 `library` 经工具链导出：从 `defineComponent` 的 props（zod）推导 `propsSchema`、组件签名与工具 schema，序列化为 `GenUIContextExtension` JSON。导出而非手写，保证「模型可见描述、服务侧校验规则、前端渲染实现」三者同源；业务方拿到导出产物后通过 `POST /rest/smartcanvas/v1/contexts` 注册。
+MVP 阶段仅 `components` schema 由 DSLEngine 提供的 `generateComponentSpecs` 导出：从 `defineComponent` 的 props（zod）推导组件约束和模型可见描述，序列化为组件名到组件规格的 JSON 对象。`tools`、`templates`、`componentGroups`、`examples` 和 `additionalRules` 由业务方在 `GenUIContextExtension` 注册 JSON 中维护；其中 `tools` 采用 MCP Tool 兼容结构，便于后续映射到 MCP `tools/call` 或现有 PIU/toolProvider 执行通道。业务方把 `components` 导出结果填入注册 JSON 后，通过 `POST /rest/smartcanvas/v1/contexts` 注册。
 
 **3. eview 适配**
 
