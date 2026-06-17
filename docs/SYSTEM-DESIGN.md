@@ -64,149 +64,178 @@
 
 SmartCanvasService 是后续开发的生成侧服务，负责将用户意图、业务数据和 UI 生成建议转换为可被前端消费的 Stream IR。其核心能力包括 Context 拓展注册、prompt 组装、上下文压缩、模板在线固化、生成结果校验、Reflection 重生成和异常降级。
 
-**1. 模板在线固化**
+**1. 提示词管理**
 
-以数据来源、用户意图与生成上下文共同构造模板唯一标识，自动匹配已生成的模板，解决相同场景重复调用大模型导致的生成效率低问题。
+将扩展组件描述、UI 建议信息拼装为完整 prompt，发送给大模型。生成内容支持：
 
-- **唯一标识**：`key = hash(dataSource + normalizedIntent + contextId + extensionVersion + overlayHash)`
-  - `dataSource`：由 Skill 在生成建议中显式传入，标识数据来源（如 `apiName` 或自定义来源标识）
-  - `intent`：用户意图，需做归一化处理（大小写、空白、标点统一）
-  - `contextId` / `extensionVersion`：所选 Generation Context 及其契约版本（见本节 8），未携带 contextId 时取空值
-  - `overlayHash`：Request Overlay（一次性 `tools` + `extraRules`）的规范化哈希，无 Overlay 时取空值；同一 Skill 对同一场景的建议通常稳定，命中率不受影响
-- **固化流程**：大模型生成的 Stream IR 通过语法与类型校验后，自动以 key 固化入 Redis 缓存
-- **命中流程**：每次生成请求先查缓存，命中则跳过大模型调用，直接返回模板 Stream IR，并注入运行时数据；不同 contextId / Overlay 的请求由 key 自然隔离，无需命中后二次兼容性校验
-- **模板与数据解耦**：固化内容为 Stream IR 结构与 `{data.*}` 绑定关系，不固化具体数据值
-- **失效策略**：Extension Registration 替换（同 contextId 重复注册）成功后批量失效该 contextId 下全部模板（防止注册方未递增 version 导致旧模板错误命中）；Stream IR 语法版本升级时全量失效；提供手动失效接口作为运维兜底
-- **观测指标**：模板命中率、模板库规模、命中/未命中时延对比
+UI 组件（内置组件 + 扩展组件）数据处理表达式（详见表 6-2）Action 动作（PIU 事件、跳转事件、点击事件等）
 
-**2. 扩展组件注入**
+数据绑定语法：
 
-扩展组件与扩展工具不在生成请求中传递，而是由业务方通过 Context 拓展接口（见本节 8）预先注册为 Generation Context；生成请求通过 `contextId` 选择上下文。prompt 注入时由注册契约提供扩展组件名称、描述与 propsSchema 推导的签名，使大模型可选用扩展组件；propsSchema 同时用于后续类型校验，检查组件参数类型与取值范围。请求级的一次性工具与附加规则通过 Request Overlay（`tools` / `extraRules` 字段）传入，仅参与本次拼装，不写入注册契约。
+{data.\*}：访问 DataModel 数据{$varName}：访问状态变量
 
-**3. 上下文压缩**
+支持组件
+
+**2. 前置处理**
+
+data使用前需要进行预处理，需要讲data中无用字段进行过滤。
 
 计算数据 token 长度，超过 2K 时尝试进行采样压缩，缓解超大数据导致的 prompt 膨胀问题。
 
-- **压缩范围**：仅对数组结构进行采样压缩，嵌套对象与非数组结构不参与压缩
-- **采样策略**：保留数组头部、尾部及中间均匀采样的元素，保证数据分布特征
-- **恢复机制**：大模型输出 Stream IR 后，对 data 部分进行数据恢复，将完整数据回填至最终响应
-- **约束**：模型仅可对采样数据建立绑定引用关系（`{data.*}`），不可对数据本身做变换
+* 压缩范围：仅对数组结构进行采样压缩，嵌套对象与非数组结构不参与压缩
+* 采样策略：保留数组头部、尾部及中间均匀采样的元素，保证数据分布特征
+* 恢复机制：大模型输出 Stream IR 后，对 data 部分进行数据恢复，将完整数据回填至最终响应
+* 约束：模型仅可对采样数据建立绑定引用关系（{data.\*}），不可对数据本身做变换
 
-**4. 提示词组装**
+**3. 扩展组件注入**
 
-将扩展组件描述、UI 建议信息拼装为完整 prompt，发送给大模型。生成内容支持：
-- UI 组件（内置组件 + 扩展组件）
-- 数据处理表达式（详见表 6-2）
-- Action 动作（PIU 事件、跳转事件、点击事件等）
+Skill 输出的生成建议中包含扩展组件信息，包括扩展组件名称、描述和参数类型描述（propsDes）。扩展组件信息用于 prompt 注入，使大模型可选用扩展组件；同时用于后续类型校验，检查组件参数类型与取值范围。
 
-数据绑定语法：
-- `{data.*}`：访问 DataModel 数据
-- `{$varName}`：访问状态变量
+**4. 校验反思**
 
-**5. 语法检查与 Reflection 重生成**
+对大模型生成的 Stream IR 进行多维校验，校验失败时通过**反思**机制将错误反馈给大模型重新生成。
 
-对大模型生成的 Stream IR 进行多维校验，校验失败时通过 Reflection 机制将错误反馈给大模型重新生成。
+**校验维度：**
 
-- **校验维度**：
-  - 语法校验：Stream IR 词法、语法结构是否合法
-  - 类型校验：组件 props 类型、表达式参数类型是否匹配
-  - 引用完整性：被引用的标识符（如 `tbl = Table([col1, col2])` 中的 `col1`）是否已定义
-- **Reflection 重生成**：将校验错误信息作为上下文反馈给大模型，要求其修复后重新输出
-- **重试策略**：最多 N 次（N 可配置，建议默认 2 次），超过阈值进入降级流程
+语法校验：Stream IR 词法、语法结构是否合法类型校验：
 
-**6. 错误检查**
+组件 props 类型、表达式参数类型是否匹配
 
-- 对模型超大输出（超过 4K token）等异常场景进行检查
-- 重复生成失败则降级返回 markdown 格式数据，确保前端始终有可渲染内容
+引用完整性：被引用的标识符（如 tbl = Table([col1, col2]) 中的 col1）是否已定义
+
+**反思重生成**：
+
+将校验错误信息作为上下文反馈给大模型，要求其修复后重新输出
+
+重试策略：最多 N 次（N 可配置，建议默认 2 次），超过阈值进入降级流程
+
+**5. 模板在线缓存**
+
+以 (dataSource, intent, apiDoc) 三元组作为模板唯一标识，自动匹配已生成的模板，解决相同场景重复调用大模型导致的生成效率低问题。
+
+**唯一标识：key = hash(dataSource + intent +contextId + contextVersion)**
+
+dataSource：由 Skill 在生成建议中显式传入，标识数据来源（如 apiName 或自定义来源标识）
+
+intent：用户意图，需做归一化处理（大小写、空白、标点统一）
+
+contextId /contextVersion：本次所选的UI生成拓展上下文及版本号（见本节 8），未携带 contextId 时取空值
+
+apiDoc：api文档，可选。
+
+* 固化流程：大模型生成的 Stream IR 通过语法与类型校验后，自动以 key 固化入 Redis 缓存
+* 命中流程：每次生成请求先查缓存，命中则跳过大模型调用，直接返回模板 Stream IR，并注入运行时数据
+* 模板与数据解耦：固化内容为 Stream IR 结构与 {data.\*} 绑定关系，不固化具体数据值
+* 扩展组件兼容性校验：命中时校验当前请求的扩展组件集合是否为模板生成时的超集，不兼容则视为未命中
+* 失效策略：扩展组件 schema 变更或 Stream IR 语法版本升级时批量失效；提供手动失效接口作为运维兜底
+
+**Redis 规格与容量设计**
+
+* **实例规格**：256 MB，单节点（可按需升级为主从）
+* **最大容量**：约 1 万条模板（单条 Stream IR 平均 ~20 KB，10000 × 20 KB = 200 MB，留 56 MB 作为键元数据与碎片缓冲）
+* **键结构**：template:{hash} — 纯字符串键，hash 为 SHA-256 截取前 16 字节的十六进制串（32 字符），键本身极小，内存开销可忽略
+* **值结构**：JSON 序列化的 Stream IR，含扩展组件 schema 指纹与 {data.\*} 绑定关系，不含具体数据值
+* **淘汰策略**：allkeys-lru，Redis 内存压力时自动淘汰最久未使用的模板；业务层无需感知，下次请求重新生成并回填
+
+**6 生成自定义拓展**
+
+大模型默认只会用一套内置的标准组件（表格、文本、图表等）。但具体业务往往有自己的专用组件和专用操作——比如告警运维场景，有「告警级别标签」这种专用组件、「确认告警」这种专用操作。这些东西模型本来不认识，也就不会生成出来。
+
+业务方**提前把自己的扩展组件和工具作为UI生成拓展上下文登记到服务里**，之后这个业务的每次生成请求，只要报上这个名字（contextId），服务就自动把对应的扩展能力带进提示词。如果某次生成想临时多加一个工具或一条规则，可以在请求里一次性附带，用完即弃、不登记。
+
+注意服务只登记「描述上下文」（给模型看、给服务校验用的元数据），组件的实际渲染代码仍在前端（见 6.2.4.5），两边用同一个组件名对齐。
+
+**能扩展什么**
+
+可扩展三类东西，按生效范围分「登记长期生效」和「随请求一次性」：
+
+| 扩展什么 | 用来做什么 |
+| --- | --- |
+| 组件 | 新增模型能生成、前端能渲染的 UI 组件 |
+| 工具 | 提供可被调用的tool函数，实现UI 查询数据/发起变更请求） |
+| 提示词规则 | 约束生成风格、业务规则、组件取用偏好 |
+| 生成示例 | UI范例，提升生成稳定性 |
+
+**完整流程**
+
+![](data:image/png;base64...)
+
+**完整流程**
+
+从前端定义组件，到最终在页面上渲染出来，整条链路如下：
+
+| 步骤 | 谁做 | 做什么 |
+| --- | --- | --- |
+| 1 定义组件 | 业务方前端 | 用 defineComponent 写清组件名、参数、说明和渲染代码，createLibrary 汇总成组件库（见 6.2.4.5） |
+| 2 注册前端组件和工具 | 业务方前端Piu | 给DSLEngine传入待拉起的业务piu，进行自动拉起。业务piu待拉起后，通过piu事件给DSLEngine注册前端组件和工具 |
+| 3 导出拓展上下文 | 前端工具链 | 从组件库自动导出「拓展上下文」（JSON），不手写，保证描述和渲染代码一致（见 6.2.4.5） |
+| 4 注册拓展上下文 | 业务方 | 把导出拓展上下文，通过/contexts post接口进行注册（业务方直连，不经 AICOService） |
+| 5 发起生成 | Skill / AICOService | 生成请求带上 contextId 选好拓展上下文，需要时再临时附带工具/组件 |
+| 6 渲染 | DSLEngine | 按组件名和工具名，找到对应注册好的拓展内容 |
+
+拓展内容横跨两头：
+
+* **描述**（步骤 3-4，让模型知道有这个组件、能生成、能校验）
+* **渲染代码**（步骤 1-2，让前端能画出来）。
+
+两头靠同一个组件名对齐，缺一边这个组件就会失效
 
 **7. UI 生成接口**
 
-接口名称：SSE `/rest/smartcanvas/v1/generate/ui`
+**接口说明**：
 
-功能：生成 Stream IR
+| 说明项 | 内容 |
+|---|---|
+| 接口名称 | `SSE /rest/smartcanvas/v1/ui/generate` |
+| 功能 | 生成 Stream IR |
+| 影响 | LUI 对话框与 Canvas 画布入口需要适配流式接口返回内容 |
+| 请求体 | `UIRequestDetail`，生成 UI 接口对应的请求体 |
+| 返回类型 | SSE 流式返回 |
+| SSE 事件 | `data`、`done`、`error` |
 
 **Request 入参（UIRequestDetail）**：
 
-```yaml
-UIRequestDetail:
-  description: 生成UI接口对应的请求体
-  required:
-    - apiRsp
-  properties:
-    scenario:
-      description: 生成式UI使用场景，如LUI中渲染使用
-      type: string
-      pattern: 'LUI'
-      maxLength: 128
-    userInput:
-      description: 用户输入的自然语言
-      type: string
-      maxLength: 4096
-    apiName:
-      description: api name
-      type: string
-      maxLength: 256
-    apiUrl:
-      description: api url
-      type: string
-      maxLength: 256
-    apiMethod:
-      description: api method
-      type: string
-      maxLength: 16
-    apiReq:
-      description: api请求参数
-      type: object
-    apiRsp:
-      description: api响应报文
-      type: object
-    isAnswer:
-      description: 是否为大模型回答部分，需要显示在右侧，默认在左侧
-      type: boolean
-      default: false
-    contextId:
-      description: Generation Context 标识，选择预注册的扩展上下文；缺省时仅使用 base contract
-      type: string
-      maxLength: 128
-    tools:
-      description: Request Overlay 动态工具，仅本次生成生效，不持久化；与已注册工具同名时拒绝
-      type: array
-      items:
-        $ref: '#/definitions/UIToolDescriptor'
-    extraRules:
-      description: Request Overlay 附加生成规则，仅本次生成生效，拼装时追加到 prompt 约束
-      type: array
-      items:
-        type: string
-        maxLength: 512
-```
+| 字段名称 | 可选/必选 | 字段含义 | 字段规范 |
+|---|---|---|---|
+| `templateId` | 可选 | 指定 UI 模板 ID。指定后不进行 UI 生成，直接模板渲染；未指定时按正常UI生成链路处理。 | string，长度 0-64 |
+| `renderPiu` | 可选 | 指定进行渲染的 PIU。指定后不进行 UI 生成，直接由 PIU 进行渲染；未指定时按UI生成链路处理。 | string，长度 0-64 |
+| `iframeUrl` | 可选 | 使用 iframe 加载指定 URL 渲染界面；仅 iframe 直出场景需要。 | string，长度 0-1024；取值为 URL 或站内相对路径。 |
+| `iframeTitle` | 可选 | iframe 页面标题；仅 `iframeUrl` 有值时需要，用于页面说明。 | string，长度 0-64。 |
+| `scenario` | 可选 | 渲染场景。`LUI` 表示渲染到 AI 对话框中；`Canvas` 表示渲染到 LUI 左侧的画布中；未传时默认按 `LUI` 处理。 | string，枚举：`LUI`、`Canvas`；长度 3 或 6。 |
+| `contextId` | 可选 | UI 生成拓展上下文标识。传入后使用第 8 节注册的拓展组件、工具、模板、示例和规则；不传时仅使用基础生成能力。 | string，长度 1-128。 |
+| `userInput` | 可选 | 用户输入的自然语言，作为 intent 参与模板命中标识构造与 prompt 组装；非UI生成场景可不传。 | string，长度 1-4096。 |
+| `source` | 可选 | 上游数据来源唯一标识，用于缓存UI生成结果进行复用；非UI生成场景可不传。 | string，长度 0-128。 |
+| `request` | 可选 | 上游输入参数，如 Skill 工具调用入参或 API 请求参数；非UI生成场景可不传，用于辅助UI生成，如UI标题等。 | object，JSON 对象；不超过 64 KB。 |
+| `response` | 必选 | 生成 UI 的主要数据源，根据数据进行UI生成 | object，JSON 对象；不超过 1 MB。 |
+| `suggestion` | 可选 |  example或者是额外约束的提示词，用于补充默认生成建议；无额外组件约束或示例要求时可不传。 | string，长度 1-4096。 |
 
-**字段说明**：
-- `userInput`：作为 intent，参与模板命中标识构造与 prompt 组装
-- `apiName`：作为 dataSource，参与模板命中标识构造
-- `apiRsp`：作为生成 UI 的数据源，参与上下文压缩与最终数据回填
-- `scenario`：使用场景标识，控制渲染位置（如 LUI 左右栏）
-- `isAnswer`：控制渲染位置，true 时显示在右侧，否则左侧
-- `contextId`：选择预注册的 Generation Context（见本节 8）；携带未注册的 contextId 时服务在拼装前校验并返回 `error` 事件，不静默回退仅 base contract
-- `tools` / `extraRules`：Request Overlay，仅参与本次 prompt 拼装，不写入注册契约；Overlay 工具名与所选上下文已注册工具碰撞时返回 `error` 事件
+`source`、`request`、`response` 是通用上游数据模型，不限定数据必须来自 API；当上游是 Skill 时，`source` 表示 Skill 或场景标识，`request` 表示 Skill 入参，`response` 表示 Skill 输出结果。
+`templateId`、`renderPiu`、`iframeUrl` 属于直出或降级渲染入口，通常不与生成式链路同时携带。
 
-**Request 示例**：
+**完整 Request 示例**：
 ```json
 {
   "scenario": "LUI",
+  "contextId": "alarm-genui-presets",
   "userInput": "查看告警列表",
-  "apiName": "queryAlarmList",
-  "apiUrl": "/rest/alarm/v1/list",
-  "apiMethod": "GET",
-  "apiReq": {},
-  "apiRsp": {
-    "data": [
-      { "id": 1, "name": "Alice Johnson", "ne": "Finance", "status": "Active" }
-    ]
+  "source": "alarmSkill.queryAlarmList",
+  "request": {
+    "pageIndex": 1,
+    "pageSize": 10,
+    "status": "Active"
   },
-  "isAnswer": false,
-  "contextId": "alarm-ops",
-  "extraRules": ["告警级别列使用 Tag 组件呈现"]
+  "response": {
+    "data": [
+      {
+        "id": 1,
+        "name": "Alice Johnson",
+        "ne": "Finance",
+        "status": "Active"
+      }
+    ],
+    "total": 1
+  },
+  "suggestion": "优先使用表格展示告警列表，状态字段使用 Tag 组件呈现。"
 }
 ```
 
@@ -214,306 +243,63 @@ UIRequestDetail:
 
 ```
 event: data
-data: root = VLayout([title, tbl])
+data: root = Stack([title])
 
 event: data
 data: title = Text("Alarm Table")
 
-event: data
-data: tbl = Table([col1, col2, col3, col4])
-
-event: data
-data: col1 = Col("ID", ids, "number")
-
-event: data
-data: col2 = Col("Name", names, "string")
-
-event: data
-data: col3 = Col("Ne", nes, "string")
-
-event: data
-data: col4 = Col("Status", statuses, "string")
-
-event: data
-data: ids = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-
-event: data
-data: names = ["Alice Johnson", "Bob Martinez", ...]
-
-event: data
-data: nes = ["Finance", "Engineering", ...]
-
-event: data
-data: statuses = ["Active", "Active", ...]
-
 event: done
-data: {"traceId": "xxx", "baseContractVersion": "1.0.0", "extensionVersion": "2026.06.1"}
+data: {"traceId": "xxx"}
 ```
 
 **SSE 事件类型**：
 - `data`：Stream IR 语句行，按声明顺序流式下发
-- `done`：生成完成，携带 traceId 与拼装元数据（baseContractVersion、extensionVersion），便于排查当前生效的契约版本
-- `error`：错误事件，携带错误码与降级内容（含 contextId 未注册、Overlay 工具名碰撞等校验失败场景）
+- `done`：生成完成，携带 traceId
+- `error`：错误事件，携带错误码与降级内容
 
 **8. Context 拓展接口**
 
-**要解决的问题**
+Context 拓展接口用于注册 UI 生成拓展上下文。业务方可以通过 `contextId` 把组件、工具、模板、示例和规则登记为一组可复用的生成上下文，后续 UI 生成请求只需携带该 `contextId` 即可使用这些拓展能力。
 
-大模型默认只会用一套内置的标准组件（表格、文本、图表等）。但具体业务往往有自己的专用组件和专用操作——比如告警运维场景，有「告警级别标签」这种专用组件、「确认告警」这种专用操作。这些东西模型本来不认识，也就不会生成出来。
+拓展上下文内容原则上不手写。`sourcePiu` 可牵引 DSLEngine 拉起业务 PIU；业务 PIU 拉起后通过 PIU 事件向 DSLEngine 注册拓展组件和工具的前端实现，再使用我们提供的导出方式生成注册请求内容。导出的 `components`、`tools`、`templates`、`examples` 和 `additionalRules` 与前端渲染实现保持同源。
 
-**做法**
+**接口说明**：
 
-让业务方**提前把自己的扩展组件和工具登记到服务里**，打成一个带名字的包；之后这个业务的每次生成请求，只要报上这个名字（`contextId`），服务就自动把对应的扩展能力带进提示词。如果某次生成想临时多加一个工具或一条规则，可以在请求里一次性附带，用完即弃、不登记。
+| 说明项 | 内容 |
+|---|---|
+| 接口名称 | `POST /rest/smartcanvas/v1/contexts` |
+| 功能 | 注册或覆盖 UI 生成拓展上下文 |
+| 请求体 | `GenUIContextExtension`，由前端工具链导出的拓展上下文 |
+| 调用方 | 业务方或发布流水线直连，不经 AICOService |
+| 生效方式 | 注册成功后，生成请求通过 `contextId` 选择该拓展上下文 |
+| 返回类型 | JSON 注册摘要 |
 
-为什么是「登记一次、反复用」而不是「每次请求都带一遍组件说明」：一个业务的扩展组件可能有几十个、每个上百 token，每次都塞既费 token 又容易写错；登记一次后反复复用，还能把生成结果缓存成模板（见本节 1）。注意服务只登记「描述」（给模型看、给服务校验用的元数据），组件的实际渲染代码仍在前端（见 6.2.4.5），两边用同一个组件名对齐。
+**Request 入参（GenUIContextExtension）**：
 
-**几个说法**（下面接口和示例都会用到，括号内为对应英文术语）：
+| 字段名称 | 可选/必选 | 字段含义 | 字段规范 |
+|---|---|---|---|
+| `contextId` | 必选 | 拓展上下文唯一标识。生成请求通过该值选择要使用的拓展能力。 | string，长度 1-128。 |
+| `version` | 必选 | 拓展上下文版本。组件、工具、模板、示例或规则发生变化时需要更新。 | string，长度 1-64；可使用字母、数字、`.`、`-`、`_`；示例：`1.0.0`、`2026.06.1`。 |
+| `sourcePiu` | 可选 | 需要拉起的业务 PIU 列表。DSLEngine 根据该列表拉起业务 PIU；业务 PIU 通过 PIU 事件注册拓展对应的前端实现。已完成前端实现注册并直接导出完整拓展上下文时可不传。 | array，元素为 string；建议不超过 30 个。 |
+| `templates` | 可选 | 可复用 UI 模板集合。key 为模板 ID，对应生成接口的 `templateId`；value 为模板内容，通常是 Stream IR 模板文本。没有模板沉淀时可不传。 | object，JSON 对象；key 为 string；value 为 string；建议不超过 256 KB。 |
+| `components` | 可选 | 拓展组件描述，包含组件说明、propsSchema 和示例。由前端工具链从组件库导出；没有拓展组件时可不传。 | object，JSON 对象；建议不超过 30 个组件。 |
+| `componentGroups` | 可选 | 组件分组和使用说明，用于提示词组织；没有分组诉求时可不传。 | array，数组项为 JSON 对象。 |
+| `tools` | 可选 | 拓展工具描述，供 Query/Mutation 或 Action 调用；没有拓展工具时可不传。 | array，数组项为 JSON 对象；建议不超过 30 个工具。 |
+| `examples` | 可选 | 生成示例，用于牵引模型稳定使用拓展组件和工具；没有示例时可不传。 | array，元素为 string；单条建议不超过 4096 字符。 |
+| `additionalRules` | 可选 | 附加生成规则，用于约束生成风格、组件使用偏好或业务规则；没有额外约束时可不传。 | array，元素为 string；单条建议不超过 512 字符。 |
 
-| 说法 | 通俗解释 | 术语 |
-|---|---|---|
-| 标准组件包 | 所有业务通用的内置组件清单，服务自带，业务方不用登记 | Base Contract |
-| 业务扩展包 | 「标准组件 + 某业务自己的扩展」合成的一包，用一个 id 认领（`contextId`） | Generation Context |
-| 登记扩展 | 业务方把自己的扩展组件/工具交给服务记下来这个动作 | Extension Registration |
-| 临时追加 | 某次生成想额外加的工具或规则，只这一次有效、不登记 | Request Overlay |
-| 重名拒绝 | 登记的组件/工具名和已有的撞了，直接拒绝、不覆盖 | Contract Name Collision |
-| 扩展版本号 | 业务扩展包的版本，改了内容就该改号 | Contract Version |
+`components`、`tools`、`templates` 等复杂内容应由工具链导出，避免人工维护导致模型可见描述、服务侧校验规则和前端渲染实现不一致。重复注册同一个 `contextId` 时按整包覆盖处理；覆盖成功后应使该上下文关联的旧模板缓存失效。
 
-**能扩展什么**
-
-可扩展三类东西，按生效范围分「登记长期生效」和「随请求一次性」：
-
-| 扩展什么 | 怎么生效 | 用来做什么 |
-|---|---|---|
-| 组件 | 只能登记（长期） | 新增模型能生成、前端能渲染的 UI 组件 |
-| 工具 | 登记（长期）或随请求附带（一次性） | 提供可被调用的后端能力（查询/变更，对应 Query/Mutation） |
-| 提示词规则 | 登记（长期）或随请求附带（一次性） | 约束生成风格、业务规则、组件取用偏好 |
-| 生成示例 | 只能登记（长期） | 给模型几个范例，提升生成稳定性 |
-
-组件必须登记——因为它在前端要有对应的渲染代码，没法只靠一次请求临时塞进来；工具和规则既能登记成长期能力，也能某次生成临时加。
-
-**完整流程**
-
-从前端定义组件，到最终在页面上渲染出来，整条链路如下：
-
-| 步骤 | 谁做 | 做什么 |
-|---|---|---|
-| 1 定义组件 | 前端 | 用 `defineComponent` 写清组件名、参数、说明和渲染代码，`createLibrary` 汇总成组件库（见 6.2.4.5） |
-| 2 导出描述 | 前端工具链 | 从组件库自动导出「扩展包描述」（JSON），不手写，保证描述和渲染代码一致（见 6.2.4.5） |
-| 3 登记 | 业务方 | 把导出的描述 `PUT` 给服务登记（业务方直连，不经 AICOService） |
-| 4 服务存档 | 服务 | 检查没有重名、引用合法后存入 Redis 并加载生效，同时清掉该业务的旧模板缓存 |
-| 5 发起生成 | Skill / AICOService | 生成请求带上 `contextId` 选好业务扩展包，需要时再临时附带工具/规则 |
-| 6 拼提示词 | 服务 | 把「标准组件 + 该业务扩展 + 临时追加」拼成提示词喂给模型 |
-| 7 模型生成 | 大模型 | 输出用到这些扩展组件/工具的界面描述（Stream IR），校验通过后可缓存成模板 |
-| 8 渲染 | 前端 | 按组件名找到渲染代码画出界面，工具调用接到后端 |
-
-组件这件事横跨两头：**描述**（步骤 2-3，让模型知道有这个组件、能生成、能校验）和**渲染代码**（步骤 1、8，让前端能画出来）。两头靠同一个组件名对齐，缺一边这个组件就在那一边失效——描述缺了模型不会生成它，渲染代码缺了前端只能显示一个「未知组件」占位。
-
-**接口定义**：
-
-- `PUT /rest/smartcanvas/v1/contexts/{contextId}`：注册或整体替换一个 Generation Context 的扩展契约（替换语义，幂等）
-- `GET /rest/smartcanvas/v1/contexts`：返回已注册 Generation Context 摘要列表（contextId、version、组件数、工具数）
-
-**注册体（GenUIContextExtension）**：
-
-```yaml
-GenUIContextExtension:
-  description: Generation Context 扩展契约
-  required:
-    - version
-  properties:
-    version:
-      description: 扩展契约版本（Contract Version），由注册方维护，契约内容变更时应同步变更
-      type: string
-      maxLength: 64
-    components:
-      description: 扩展组件描述，key 为组件名，需与前端 library 中 defineComponent 注册名称一致
-      type: object
-      additionalProperties:
-        $ref: '#/definitions/UIComponentDescriptor'
-    componentGroups:
-      description: 组件分组说明，引用的组件名必须存在于 base contract 与本扩展的合集中
-      type: array
-      items:
-        type: object
-        required:
-          - name
-          - components
-        properties:
-          name:
-            description: 分组名称
-            type: string
-          components:
-            description: 分组内组件名列表
-            type: array
-            items:
-              type: string
-          notes:
-            description: 分组使用说明，用于 prompt 注入
-            type: array
-            items:
-              type: string
-    tools:
-      description: 扩展工具描述（Query/Mutation 可调用的后端能力）
-      type: array
-      items:
-        $ref: '#/definitions/UIToolDescriptor'
-    examples:
-      description: 生成示例，用于提升生成稳定性
-      type: array
-      items:
-        type: string
-    additionalRules:
-      description: 附加生成规则，拼装时追加到 prompt 约束
-      type: array
-      items:
-        type: string
-  definitions:
-    UIToolDescriptor:
-      description: 扩展工具描述
-      required:
-        - name
-        - description
-        - inputSchema
-      properties:
-        name:
-          description: 工具名称，同一 Generation Context 内唯一
-          type: string
-          maxLength: 128
-        description:
-          description: 工具用途说明，用于 prompt 注入
-          type: string
-          maxLength: 512
-        inputSchema:
-          description: 入参 JSON Schema
-          type: object
-        outputSchema:
-          description: 出参 JSON Schema
-          type: object
-```
-
-**扩展组件描述（UIComponentDescriptor）**：
-
-```yaml
-UIComponentDescriptor:
-  description: 扩展组件描述
-  required:
-    - description
-    - propsSchema
-  properties:
-    description:
-      description: 组件用途说明，用于 prompt 注入
-      type: string
-      maxLength: 512
-    propsSchema:
-      description: 组件 props 的 JSON Schema 子集描述，用于推导 prompt 组件签名描述和服务侧类型校验
-      type: object
-      required:
-        - type
-        - properties
-      properties:
-        type:
-          description: 固定为 object，表示组件 props 为对象结构
-          type: string
-          enum:
-            - object
-        properties:
-          description: props 字段定义，key 为 props 名称，value 为字段 schema
-          type: object
-          additionalProperties:
-            $ref: '#/definitions/PropSchema'
-        required:
-          description: 必填 props 名称列表
-          type: array
-          items:
-            type: string
-        additionalProperties:
-          description: 是否允许未声明 props，默认 false
-          type: boolean
-          default: false
-    examples:
-      description: 组件调用示例，用于提升生成稳定性
-      type: array
-      items:
-        type: string
-  definitions:
-    PropSchema:
-      description: 单个 props 字段 schema
-      type: object
-      required:
-        - type
-      properties:
-        type:
-          description: 字段类型
-          type: string
-          enum:
-            - string
-            - number
-            - integer
-            - boolean
-            - array
-            - object
-            - component
-            - action
-            - any
-        description:
-          description: 字段含义，用于 prompt 注入
-          type: string
-          maxLength: 512
-        enum:
-          description: 枚举取值，仅 string/number/integer 类型使用
-          type: array
-          items:
-            type:
-              - string
-              - number
-        items:
-          description: 数组元素 schema，仅 array 类型使用
-          $ref: '#/definitions/PropSchema'
-        properties:
-          description: 对象字段 schema，仅 object 类型使用
-          type: object
-          additionalProperties:
-            $ref: '#/definitions/PropSchema'
-        required:
-          description: 对象类型内部必填字段列表
-          type: array
-          items:
-            type: string
-        default:
-          description: 默认值，用于模型理解字段缺省行为
-        examples:
-          description: 字段取值示例
-          type: array
-```
-
-`propsSchema` 与前端 `defineComponent({ name, props, description, component })` 的组件定义保持同源：前端组件库通过 `createLibrary()` 汇总组件并生成 prompt/schema，注册契约按相同信息组织（建议由前端扩展 library 工具链导出，禁止手写），确保模型可见描述、服务侧校验规则和前端渲染实现一致。
-
-**登记的几条规矩**：
-
-- **重复登记 = 整包覆盖**：同一个 id 再登记一次，就整包替换掉旧的（登记几次结果都一样，幂等）；想「下线」某个业务扩展，登记一个空包即可，不需要单独的删除接口
-- **重名直接拒绝**：登记的组件名/工具名如果和标准组件包、或本扩展内部自己撞了，整次登记被拒（返回 409），原来已登记的不受影响；其他不合法输入返回 400
-- **分组要指到真组件**：组件分组里引用的组件名，必须确实存在（标准组件包 + 本扩展里有），否则登记被拒
-- **存 Redis、重启不丢**：登记内容写进 Redis，服务重启时重新加载生效（生成内核 SDK 本身只把契约放在内存里，"存盘"这件事由服务层负责）
-- **登记后清掉旧模板**：覆盖登记成功后，自动清掉这个业务之前缓存的模板（见本节 1），避免旧模板套用新契约出错
-- **谁能登记**：登记是「管理动作」，业务方在上线/变更时直接调服务完成（不走 AICOService）；生成请求才走 AICOService。登记接口接入产品统一鉴权，只有授权方能写
-
-**和生成是怎么接上的**：
-
-- **怎么进提示词**：登记时把组件描述喂进生成内核；每次生成时，把「标准组件 + 该业务扩展 + 本次临时追加」拼成提示词，且和前端组件库自己生成的提示词逐字节一致
-- **顺带做类型校验**：组件的参数描述（propsSchema）还用来校验模型生成的界面里、组件参数填得对不对（见本节 5）
-- **报了不存在的 id 会报错**：生成请求若带了一个没登记过的 `contextId`，服务直接报错（`error` 事件），不会「假装没扩展、只用标准组件」硬生成——否则会悄悄产出缺组件的错界面，还可能被缓存成错模板
-- **结果里带版本号**：`done` 事件会带上本次用的标准组件包和扩展包各是什么版本，方便排查
-- **不开「整段改提示词」的后门**：生产服务不提供「直接替换整段提示词」的调试旁路；要调提示词，用登记的长期规则（`additionalRules`）或请求里的临时规则（`extraRules`）。（参考实现 GenUI Service 作为实验环境保留了这个后门，定位不同）
-
-**示例：扩展注册请求**
-
-以告警运维场景为例，给一个叫 `alarm-ops` 的业务扩展包登记内容：一个扩展组件（告警级别标签）、一个扩展工具（确认告警），外加组件分组、示例和规则。下面这段 JSON 不是手写的，是前端组件库自动导出的（怎么导出见 6.2.4.5）。
-
-`PUT /rest/smartcanvas/v1/contexts/alarm-ops`
+**完整 Request 示例**：
 
 ```json
 {
-  "version": "2026.06.1",
+  "contextId": "alarm-genui-presets",
+  "version": "1.0.0",
+  "sourcePiu": ["alarmPiu", "topoPiu"],
+  "templates": {
+    "alarmList": "root = Stack([title])\ntitle = Text(\"Alarm Table\")"
+  },
   "components": {
     "AlarmSeverityTag": {
       "description": "告警级别标签，按级别（critical/major/minor/warning）着色展示",
@@ -545,12 +331,16 @@ UIComponentDescriptor:
       "description": "确认（ack）一条告警，返回是否成功",
       "inputSchema": {
         "type": "object",
-        "properties": { "alarmId": { "type": "string", "description": "告警 ID" } },
+        "properties": {
+          "alarmId": { "type": "string", "description": "告警 ID" }
+        },
         "required": ["alarmId"]
       },
       "outputSchema": {
         "type": "object",
-        "properties": { "success": { "type": "boolean" } }
+        "properties": {
+          "success": { "type": "boolean" }
+        }
       }
     }
   ],
@@ -564,45 +354,18 @@ UIComponentDescriptor:
 }
 ```
 
-注册成功返回注册摘要（contextId、version、组件数、工具数），并可在 `GET /rest/smartcanvas/v1/contexts` 中观察到 `alarm-ops` 生效。
-
-**示例：使用扩展上下文的生成请求**
-
-生成请求用 `contextId` 选中上面这个业务扩展包，再临时附带一个一次性工具和一条一次性规则（只这次有效，不会被登记下来）。完整请求字段见本节 7。
-
-`POST /rest/smartcanvas/v1/generate/ui`
+**Response 示例**：
 
 ```json
 {
-  "scenario": "LUI",
-  "userInput": "查看告警列表并支持确认操作",
-  "apiName": "queryAlarmList",
-  "apiUrl": "/rest/alarm/v1/list",
-  "apiMethod": "GET",
-  "apiReq": {},
-  "apiRsp": {
-    "data": [
-      { "id": 1, "name": "链路中断", "severity": "critical", "status": "active" }
-    ]
-  },
-  "isAnswer": false,
-  "contextId": "alarm-ops",
-  "tools": [
-    {
-      "name": "exportAlarmReport",
-      "description": "导出当前告警列表为报表（仅本次会话临时启用）",
-      "inputSchema": {
-        "type": "object",
-        "properties": { "format": { "type": "string", "enum": ["csv", "xlsx"] } },
-        "required": ["format"]
-      }
-    }
-  ],
-  "extraRules": ["列表顶部展示告警总数"]
+  "contextId": "alarm-genui-presets",
+  "version": "1.0.0",
+  "componentCount": 1,
+  "toolCount": 1,
+  "templateCount": 1,
+  "traceId": "xxx"
 }
 ```
-
-这次请求如果缓存成模板，模板的 key 会把数据来源、用户意图、`contextId`、扩展包版本、临时追加内容都算进去（见本节 1），所以不同业务、不同临时内容不会串用同一个模板；临时工具 `exportAlarmReport` 和已登记的 `acknowledgeAlarm` 不重名，校验通过。
 
 #### 6.2.4.3 协议设计：Stream IR
 
@@ -788,7 +551,7 @@ export const library = createLibrary({
 
 `library` 是 Renderer 的运行时组件库，也是生成 prompt 和 JSON Schema 的来源。SmartCanvasService 在拼装 prompt 时应使用与前端 library 同源的组件描述；前端 Renderer 在渲染时根据 Stream IR 中的组件名查找 library 中的组件实现。
 
-扩展组件的注册契约（6.2.4.2-8 的 `components` / `tools` schema）即由 `library` 经工具链导出：从 `defineComponent` 的 props（zod）推导 `propsSchema`、组件签名与工具 schema，序列化为 `GenUIContextExtension` JSON。导出而非手写，保证「模型可见描述、服务侧校验规则、前端渲染实现」三者同源；业务方拿到导出产物后通过 `PUT /contexts/{contextId}` 注册。
+扩展组件的注册契约（6.2.4.2-8 的 `components` / `tools` schema）即由 `library` 经工具链导出：从 `defineComponent` 的 props（zod）推导 `propsSchema`、组件签名与工具 schema，序列化为 `GenUIContextExtension` JSON。导出而非手写，保证「模型可见描述、服务侧校验规则、前端渲染实现」三者同源；业务方拿到导出产物后通过 `POST /rest/smartcanvas/v1/contexts` 注册。
 
 **3. eview 适配**
 
