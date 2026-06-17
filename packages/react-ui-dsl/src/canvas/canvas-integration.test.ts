@@ -11,22 +11,19 @@ describe("CanvasCard schema", () => {
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.tab).toBe("Dashboard");
       expect(result.data.size).toEqual({ w: 6 });
     }
   });
 
-  it("accepts custom tab and size", () => {
+  it("accepts custom size", () => {
     const result = CanvasCardSchema.safeParse({
       children: [],
       title: "Devices",
-      tab: "Network",
       size: { w: 12 },
     });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.title).toBe("Devices");
-      expect(result.data.tab).toBe("Network");
       expect(result.data.size?.w).toBe(12);
     }
   });
@@ -38,6 +35,10 @@ describe("CanvasCard schema", () => {
   it("rejects size.w outside 1-12 range", () => {
     expect(CanvasCardSchema.safeParse({ children: [], size: { w: 0 } }).success).toBe(false);
     expect(CanvasCardSchema.safeParse({ children: [], size: { w: 13 } }).success).toBe(false);
+  });
+
+  it("rejects tab prop (no longer supported)", () => {
+    expect(CanvasCardSchema.safeParse({ children: [], tab: "Network" }).success).toBe(false);
   });
 
   it("accepts optional title", () => {
@@ -68,6 +69,42 @@ describe("PreviewCard schema", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.summary).toBeDefined();
+    }
+  });
+
+  it("accepts optional type", () => {
+    const result = PreviewCardSchema.safeParse({
+      children: [],
+      title: "Preview",
+      type: "replace",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.type).toBe("replace");
+    }
+  });
+
+  it("accepts optional tabId", () => {
+    const result = PreviewCardSchema.safeParse({
+      children: [],
+      title: "Preview",
+      tabId: "my-tab",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.tabId).toBe("my-tab");
+    }
+  });
+
+  it("accepts optional cardId", () => {
+    const result = PreviewCardSchema.safeParse({
+      children: [],
+      title: "Preview",
+      cardId: "my-card",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.cardId).toBe("my-card");
     }
   });
 
@@ -120,55 +157,53 @@ describe("CanvasCard + canvasStore integration", () => {
     canvasStore.clear();
   });
 
-  it("CanvasCard pushes children to canvasStore as DashboardCard", () => {
+  it("CanvasCard pushes children to canvasStore", () => {
     const children = [{ typeName: "Table", props: { columns: [], data: "data" } }];
-    canvasStore.addDashboardCard({
+    canvasStore.addCanvasCard({
       title: "Devices",
       children,
       size: { w: 6 },
     });
 
     const snapshot = canvasStore.getSnapshot();
-    expect(snapshot.tabs["Dashboard"]).toHaveLength(1);
-    expect(snapshot.tabs["Dashboard"][0].title).toBe("Devices");
-    expect(snapshot.tabs["Dashboard"][0].children).toEqual(children);
-    expect(snapshot.tabs["Dashboard"][0].size?.w).toBe(6);
+    expect(snapshot.canvasCards).toHaveLength(1);
+    expect(snapshot.canvasCards[0].title).toBe("Devices");
+    expect(snapshot.canvasCards[0].children).toEqual(children);
+    expect(snapshot.canvasCards[0].size?.w).toBe(6);
   });
 
-  it("CanvasCard with same title replaces existing card", () => {
-    canvasStore.addDashboardCard({
+  it("CanvasCard with same cardId replaces existing card", () => {
+    canvasStore.addCanvasCard({
       title: "Devices",
       children: [{ typeName: "Table" }],
-    });
-    canvasStore.addDashboardCard({
-      title: "Devices",
+    }, "card-1");
+    canvasStore.addCanvasCard({
+      title: "Devices Updated",
       children: [{ typeName: "Chart" }],
-    });
+    }, "card-1");
 
     const snapshot = canvasStore.getSnapshot();
-    expect(snapshot.tabs["Dashboard"]).toHaveLength(1);
+    expect(snapshot.canvasCards).toHaveLength(1);
+    expect(snapshot.canvasCards[0].title).toBe("Devices Updated");
   });
 
-  it("CanvasCard with custom tab creates that tab", () => {
-    canvasStore.addDashboardCard({
-      title: "Network Devices",
-      children: [],
-      size: { w: 12 },
-    }, "Network");
+  it("CanvasCard with different cardId adds as new card", () => {
+    canvasStore.addCanvasCard({ title: "Card A", children: [] });
+    canvasStore.addCanvasCard({ title: "Card B", children: [] });
 
-    const snapshot = canvasStore.getSnapshot();
-    expect(snapshot.tabs["Network"]).toHaveLength(1);
+    expect(canvasStore.getSnapshot().canvasCards).toHaveLength(2);
   });
 });
 
 describe("PreviewCard + canvasStore integration", () => {
   beforeEach(() => {
     canvasStore.clear();
+    canvasStore.setEnableMultiTab(true);
   });
 
   it("PreviewCard pushes children to canvasStore as PreviewTab", () => {
     const children = [{ typeName: "Table", props: {} }];
-    canvasStore.addPreviewTab({
+    canvasStore.addPreviewCard({
       title: "Device List",
       children,
     });
@@ -176,11 +211,11 @@ describe("PreviewCard + canvasStore integration", () => {
     const snapshot = canvasStore.getSnapshot();
     expect(snapshot.previewTabs).toHaveLength(1);
     expect(snapshot.previewTabs[0].title).toBe("Device List");
-    expect(snapshot.previewTabs[0].children).toEqual(children);
+    expect(snapshot.previewTabs[0].cards[0].children).toEqual(children);
   });
 
-  it("PreviewCard with HTMLLoader children adds url/iframeId/data to tab", () => {
-    canvasStore.addPreviewTab({
+  it("PreviewCard with HTMLLoader children adds url/iframeId/data", () => {
+    canvasStore.addPreviewCard({
       title: "External Page",
       children: [],
       url: "https://example.com",
@@ -189,17 +224,78 @@ describe("PreviewCard + canvasStore integration", () => {
     });
 
     const snapshot = canvasStore.getSnapshot();
-    expect(snapshot.previewTabs[0].url).toBe("https://example.com");
-    expect(snapshot.previewTabs[0].iframeId).toBe("iframe-1");
-    expect(snapshot.previewTabs[0].data).toEqual({ theme: "dark" });
+    expect(snapshot.previewTabs[0].cards[0].url).toBe("https://example.com");
+    expect(snapshot.previewTabs[0].cards[0].iframeId).toBe("iframe-1");
+    expect(snapshot.previewTabs[0].cards[0].data).toEqual({ theme: "dark" });
   });
 
-  it("PreviewCard with same title replaces existing preview tab", () => {
-    canvasStore.addPreviewTab({ title: "X", children: [] });
-    canvasStore.addPreviewTab({ title: "X", children: [], url: "https://new.com", iframeId: "new" });
+  it("PreviewCard with tabId replaces card when type=replace", () => {
+    canvasStore.addPreviewCard({ title: "X", children: [], cardId: "c1" }, "tab-x");
+    canvasStore.addPreviewCard({ title: "X", children: [], url: "https://new.com", iframeId: "new", cardId: "c1" }, "tab-x", "replace");
 
     const snapshot = canvasStore.getSnapshot();
     expect(snapshot.previewTabs).toHaveLength(1);
-    expect(snapshot.previewTabs[0].url).toBe("https://new.com");
+    expect(snapshot.previewTabs[0].cards).toHaveLength(1);
+    expect(snapshot.previewTabs[0].cards[0].url).toBe("https://new.com");
+  });
+
+  it("PreviewCard with tabId appends card when type=append", () => {
+    canvasStore.addPreviewCard({ title: "X", children: [{ typeName: "Table" }] }, "tab-x");
+    canvasStore.addPreviewCard({ title: "Extra", children: [{ typeName: "Chart" }] }, "tab-x");
+
+    const snapshot = canvasStore.getSnapshot();
+    expect(snapshot.previewTabs).toHaveLength(1);
+    expect(snapshot.previewTabs[0].cards).toHaveLength(2);
+  });
+
+  it("PreviewCard with unknown tabId creates new tab", () => {
+    canvasStore.addPreviewCard({ title: "A", children: [] }, "tab-a");
+    canvasStore.addPreviewCard({ title: "B", children: [] }, "tab-b");
+
+    const snapshot = canvasStore.getSnapshot();
+    expect(snapshot.previewTabs).toHaveLength(2);
+    expect(snapshot.previewTabs[1].tabId).toBe("tab-b");
+  });
+
+  it("PreviewCard without tabId always creates new tab", () => {
+    canvasStore.addPreviewCard({ title: "X", children: [] });
+    canvasStore.addPreviewCard({ title: "X", children: [] });
+
+    expect(canvasStore.getSnapshot().previewTabs).toHaveLength(2);
+  });
+});
+
+describe("PreviewCard + canvasStore integration (single-view mode)", () => {
+  beforeEach(() => {
+    canvasStore.clear();
+    canvasStore.setEnableMultiTab(false);
+  });
+
+  it("PreviewCard clears canvasCards and creates single preview tab", () => {
+    canvasStore.addCanvasCard({ title: "Card", children: [] });
+    canvasStore.addPreviewCard({ title: "Preview", children: [] });
+
+    const snapshot = canvasStore.getSnapshot();
+    expect(snapshot.canvasCards).toHaveLength(0);
+    expect(snapshot.previewTabs).toHaveLength(1);
+    expect(snapshot.previewTabs[0].tabId).toBe("preview-single");
+  });
+
+  it("PreviewCard replaces previous preview in single-view mode", () => {
+    canvasStore.addPreviewCard({ title: "First", children: [] });
+    canvasStore.addPreviewCard({ title: "Second", children: [] });
+
+    const snapshot = canvasStore.getSnapshot();
+    expect(snapshot.previewTabs).toHaveLength(1);
+    expect(snapshot.previewTabs[0].title).toBe("Second");
+  });
+
+  it("CanvasCard clears previewTabs in single-view mode", () => {
+    canvasStore.addPreviewCard({ title: "Preview", children: [] });
+    canvasStore.addCanvasCard({ title: "Card", children: [] });
+
+    const snapshot = canvasStore.getSnapshot();
+    expect(snapshot.previewTabs).toHaveLength(0);
+    expect(snapshot.canvasCards).toHaveLength(1);
   });
 });

@@ -55,12 +55,12 @@
       "description": "Header with optional title and subtitle"
     },
     "CanvasCard": {
-      "signature": "CanvasCard(children: any[], title?: string, tab?: string, size?: {w?: number})",
-      "description": "Canvas dashboard card that adds content to intelligent canvas. LUI does not render this component. Args: children (required, card content), title (optional, card title), tab (optional, default \"Dashboard\", tab name to add to), size (optional, default w=6, grid width 1-12). Tab is auto-created if not exists."
+      "signature": "CanvasCard(children: any[], title?: string, cardId?: string, size?: {w?: number})",
+      "description": "Canvas dashboard card that adds content to intelligent canvas. LUI does not render this component. Args: children (required, card content), title (optional, card title), cardId (optional, deduplication key — same cardId replaces existing card), size (optional, default w=6, grid width 1-12)."
     },
     "PreviewCard": {
-      "signature": "PreviewCard(children: any[], title: string, summary?: any[])",
-      "description": "Preview card that shows a small card in LUI. Click adds full content to canvas PreviewTab. Args: children (required, full preview content or HTMLLoader), title (required, tab name), summary (optional, summary content shown in LUI small card). Click replaces existing PreviewTab with same title. HTMLLoader children will render as iframe with bidirectional communication."
+      "signature": "PreviewCard(children: any[], title: string, summary?: any[], type?: \"replace\" | \"append\", tabId?: string, cardId?: string)",
+      "description": "Preview card that shows a small card in LUI. Click adds full content to canvas PreviewTab. Args: children (required, full preview content or HTMLLoader), title (required, tab name), summary (optional, summary content shown in LUI small card), type (optional, \"replace\" or \"append\", default \"append\"), tabId (optional, target tab identifier), cardId (optional, card unique identifier for deduplication). If tabId exists: type=\"replace\" replaces card with same cardId or adds new card; type=\"append\" always adds a new card to the tab. If tabId absent or not found: creates a new tab. HTMLLoader children will render as iframe with bidirectional communication."
     },
     "HTMLLoader": {
       "signature": "HTMLLoader(url: string, iframeId: string, data: Record<string, any>)",
@@ -157,6 +157,10 @@
     "Tabs": {
       "signature": "Tabs(items: {value: string, label: string, content: any[]}[], style?: Record<string, any>)",
       "description": "Tabbed container with streaming-aware skeleton and auto tab-switching"
+    },
+    "Piu": {
+      "signature": "Piu(name: string, eventName?: string, destroy?: boolean, param: Record<string, any>)",
+      "description": "Piu component placeholder — implementation to be added later"
     }
   },
   "componentGroups": [

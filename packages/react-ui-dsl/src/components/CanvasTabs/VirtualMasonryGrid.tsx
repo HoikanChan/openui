@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Library } from "@openuidev/react-lang";
 import { renderElementNode } from "@openuidev/react-lang";
 import { Card } from "antd";
-import type { DashboardCardData } from "../../canvas/canvasStore";
+import type { CanvasCardData } from "../../canvas/canvasStore";
 
 export interface VirtualMasonryGridProps {
-  cards: DashboardCardData[];
+  cards: CanvasCardData[];
   library: Library;
   dataModel?: Record<string, unknown>;
   columns?: number;
@@ -23,7 +23,7 @@ const DEFAULT_ESTIMATED_ROW_HEIGHT = 300;
 
 interface CardLayout {
   cardId: string;
-  card: DashboardCardData;
+  card: CanvasCardData;
   colSpan: number;
   top: number;
   height: number;
@@ -193,7 +193,7 @@ function MeasuredCard({
   onMeasured,
 }: {
   cardId: string;
-  card: DashboardCardData;
+  card: CanvasCardData;
   library: Library;
   dataModel?: Record<string, unknown>;
   top: number;

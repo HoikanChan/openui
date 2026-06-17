@@ -18,40 +18,45 @@ export interface CanvasTabsProps {
 function buildTabsFromState(state: CanvasStoreState, library: Library, dataModel?: Record<string, unknown>) {
   const tabs: Array<{ key: string; label: string; closable: boolean; children: React.ReactNode }> = [];
 
-  for (const [tabName, cards] of Object.entries(state.tabs)) {
-    if (cards.length > 0) {
-      tabs.push({
-        key: `dashboard-${tabName}`,
-        label: tabName,
-        closable: true,
-        children: <DashboardGrid cards={cards} library={library} dataModel={dataModel} />,
-      });
-    }
+  if (state.canvasCards.length > 0) {
+    tabs.push({
+      key: "canvas",
+      label: "Dashboard",
+      closable: false,
+      children: <DashboardGrid cards={state.canvasCards} library={library} dataModel={dataModel} />,
+    });
   }
 
   for (const tab of state.previewTabs) {
-    if (tab.url && tab.iframeId) {
+    const allCards = tab.cards;
+    const hasIframe = allCards.some(c => c.url && c.iframeId);
+    const hasDslContent = allCards.some(c => !c.url);
+
+    if (hasIframe && !hasDslContent) {
+      const card = allCards.find(c => c.url && c.iframeId)!;
       tabs.push({
         key: tab.tabId,
         label: tab.title,
         closable: true,
-        children: <HTMLLoaderEmbed url={tab.url} iframeId={tab.iframeId} data={tab.data} tabId={tab.tabId} />,
+        children: <HTMLLoaderEmbed url={card.url!} iframeId={card.iframeId!} data={card.data} tabId={tab.tabId} />,
       });
-    } else if (tab.url) {
+    } else if (hasIframe) {
+      const card = allCards.find(c => c.url && c.iframeId)!;
       tabs.push({
         key: tab.tabId,
         label: tab.title,
         closable: true,
-        children: <HTMLLoaderEmbed url={tab.url} iframeId={tab.tabId} tabId={tab.tabId} />,
+        children: <HTMLLoaderEmbed url={card.url!} iframeId={card.iframeId!} data={card.data} tabId={tab.tabId} />,
       });
     } else {
+      const children = allCards.flatMap(c => c.children);
       tabs.push({
         key: tab.tabId,
         label: tab.title,
         closable: true,
         children: (
           <div style={{ width: "100%", minHeight: "calc(100vh - 120px)", padding: 16 }}>
-            {renderElementNode(tab.children, library, dataModel)}
+            {renderElementNode(children, library, dataModel)}
           </div>
         ),
       });
@@ -72,12 +77,8 @@ export function CanvasTabs({ library, dataModel, showClearButton = true, onClear
   }, []);
 
   const handleClose = (key: string) => {
-    if (key.startsWith("dashboard-")) {
-      const tabName = key.replace("dashboard-", "");
-      canvasStore.removeDashboardTab(tabName);
-    } else {
-      canvasStore.removePreviewTab(key);
-    }
+    if (key === "canvas") return;
+    canvasStore.removePreviewTab(key);
   };
 
   const tabItems = useMemo(
@@ -90,7 +91,9 @@ export function CanvasTabs({ library, dataModel, showClearButton = true, onClear
     onClear?.();
   };
 
-  if (tabItems.length === 0) {
+  const hasData = state.canvasCards.length > 0 || state.previewTabs.length > 0;
+
+  if (!hasData) {
     return (
       <div
         style={{
@@ -103,6 +106,50 @@ export function CanvasTabs({ library, dataModel, showClearButton = true, onClear
         }}
       >
         No Canvas items. Add CanvasCard, PreviewCard, or HTMLLoader to DSL.
+      </div>
+    );
+  }
+
+  if (!state.enableMultiTab) {
+    const content = state.activeKey === "canvas"
+      ? <DashboardGrid cards={state.canvasCards} library={library} dataModel={dataModel} />
+      : (() => {
+          const tab = state.previewTabs[0];
+          if (!tab) return null;
+          const allCards = tab.cards;
+          const iframeCard = allCards.find(c => c.url && c.iframeId);
+          if (iframeCard) {
+            return <HTMLLoaderEmbed url={iframeCard.url!} iframeId={iframeCard.iframeId!} data={iframeCard.data} tabId={tab.tabId} />;
+          }
+          const children = allCards.flatMap(c => c.children);
+          return (
+            <div style={{ width: "100%", minHeight: "calc(100vh - 120px)", padding: 16 }}>
+              {renderElementNode(children, library, dataModel)}
+            </div>
+          );
+        })();
+
+    return (
+      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+        {showClearButton && (
+          <button
+            onClick={handleClear}
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              padding: "4px 12px",
+              fontSize: 12,
+              border: "1px solid #d9d9d9",
+              borderRadius: 4,
+              background: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            清空画布
+          </button>
+        )}
+        {content}
       </div>
     );
   }

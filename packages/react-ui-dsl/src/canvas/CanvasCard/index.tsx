@@ -13,7 +13,7 @@ export const CanvasCard = defineComponent({
   name: "CanvasCard",
   props: CanvasCardSchema,
   description:
-    'Canvas dashboard card that adds content to intelligent canvas. LUI does not render this component. Args: children (required, card content), title (optional, card title), tab (optional, default "Dashboard", tab name to add to), size (optional, default w=6, grid width 1-12). Tab is auto-created if not exists.',
+    'Canvas dashboard card that adds content to intelligent canvas. LUI does not render this component. Args: children (required, card content), title (optional, card title), cardId (optional, deduplication key — same cardId replaces existing card), size (optional, default w=6, grid width 1-12).',
   component: ({
     props,
   }: ComponentRenderProps<z.infer<typeof CanvasCardSchema>>) => {
@@ -21,27 +21,23 @@ export const CanvasCard = defineComponent({
 
     useEffect(() => {
       const prevCardId = cardIdRef.current;
-      const tab = props.tab ?? "Dashboard";
       if (prevCardId) {
-        canvasStore.removeDashboardCard(tab, prevCardId);
+        canvasStore.removeCanvasCard(prevCardId);
       }
-      const cardId = canvasStore.addDashboardCard(
-        {
-          title: props.title,
-          children: props.children,
-          size: props.size,
-        },
-        tab
-      );
+      const cardId = canvasStore.addCanvasCard({
+        title: props.title,
+        children: props.children,
+        size: props.size,
+      }, props.cardId);
       cardIdRef.current = cardId;
 
       return () => {
         if (cardIdRef.current) {
-          canvasStore.removeDashboardCard(tab, cardIdRef.current);
+          canvasStore.removeCanvasCard(cardIdRef.current);
           cardIdRef.current = null;
         }
       };
-    }, [props.title, props.tab, props.children, props.size]);
+    }, [props.title, props.children, props.size, props.cardId]);
 
     return null;
   },

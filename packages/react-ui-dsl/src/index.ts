@@ -41,6 +41,8 @@ export { TagBlock } from "./genui-lib/TagBlock";
 export { Col, Table } from "./genui-lib/Table";
 export { TextContent } from "./genui-lib/TextContent";
 export { TimeLine } from "./genui-lib/TimeLine";
+export { Piu } from "./genui-lib/Piu";
+export type { PiuProps } from "./genui-lib/Piu";
 export { CanvasCard } from "./canvas/CanvasCard";
 export type { CanvasCardProps } from "./canvas/CanvasCard";
 export { PreviewCard } from "./canvas/PreviewCard";
@@ -66,9 +68,9 @@ export { canvasStore } from "./canvas/canvasStore";
 export type {
   CanvasStore,
   CanvasStoreState,
-  DashboardCardData,
+  CanvasCardData,
+  PreviewCardData,
   PreviewTabData,
 } from "./canvas/canvasStore";
-export { CanvasDemo } from "./canvas/CanvasDemo";
-export type { CanvasDemoProps } from "./canvas/CanvasDemo";
+
 

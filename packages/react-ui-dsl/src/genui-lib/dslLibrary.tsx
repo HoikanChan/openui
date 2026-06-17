@@ -40,6 +40,7 @@ import { MarkDownRenderer } from "./MarkDownRenderer";
 import { TimeLine } from "./TimeLine";
 import { Tabs } from "./Tabs";
 import { Stack } from "./Stack";
+import { Piu } from "./Piu";
 import { PACKAGE_NAME, PACKAGE_VERSION } from "./packageMetadata";
 
 // ── Component Groups ──
@@ -324,5 +325,6 @@ export const dslLibrary: Library = createLibrary({
     Point,
     TimeLine,
     Tabs,
+    Piu,
   ],
 });

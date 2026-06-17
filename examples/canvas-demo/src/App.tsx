@@ -25,6 +25,9 @@ kpiCard = Card([cardTitle, miniChart])
 cardTitle = TextContent("7-Day Latency", "large")
 miniChart = MiniChart("line", [45, 52, 38, 60, 55, 48, 42])`;
 
+
+const DEMO_DSL_PIU = `root = Piu("DemoPiu", eventName="click", destroy=false, param={"key": "value"})`;
+
 const DEMO_DSL_DESC = `root = Descriptions([field1, field2, field3])
 field1 = DescGroup("Server Info", [DescField("Host", "web-01.example.com"), DescField("IP", "10.0.1.42"), DescField("Status", data.devices[0].status)])
 field2 = DescGroup("Network", [DescField("Port", "443"), DescField("Protocol", "HTTPS")])
@@ -59,15 +62,15 @@ function App() {
   const handleAddPreviewCard = useCallback((dsl: string, title: string) => {
     const children = parseDslToChildren(dsl);
     if (children) {
-      canvasStore.addPreviewTab({ title, children });
+      canvasStore.addPreviewCard({ title, children });
     }
   }, []);
 
-  const handleAddDashboardCard = useCallback(
-    (dsl: string, title: string, tab?: string, size?: { w?: number }) => {
+  const handleAddCanvasCard = useCallback(
+    (dsl: string, title: string, size?: { w?: number }) => {
       const children = parseDslToChildren(dsl);
       if (children) {
-        canvasStore.addDashboardCard({ title, children, size }, tab);
+        canvasStore.addCanvasCard({ title, children, size });
       }
     },
     []
@@ -75,7 +78,7 @@ function App() {
 
   const handleAddHtmlLoader = useCallback(
     (url: string, iframeId: string, title: string) => {
-      canvasStore.addPreviewTab({ title, children: [], url, iframeId });
+      canvasStore.addPreviewCard({ title, children: [], url, iframeId });
     },
     []
   );
@@ -86,9 +89,8 @@ function App() {
         const children = parseDslToChildren(dsl);
         if (children) {
           const w = type === "wide" ? 12 : 6;
-          canvasStore.addDashboardCard(
-            { title: `${type} #${i + 1}`, children, size: { w } },
-            "StressTest"
+          canvasStore.addCanvasCard(
+            { title: `${type} #${i + 1}`, children, size: { w } }
           );
         }
       }
@@ -140,31 +142,34 @@ function App() {
                 <button className="button-sm" onClick={() => handleAddPreviewCard(DEMO_DSL_KPI, "KPI Card")}>
                   KPI
                 </button>
+                <button className="button-sm" onClick={() => handleAddPreviewCard(DEMO_DSL_PIU, "Piu Demo")}>
+                  Piu
+                </button>
               </div>
 
               <div className="store-group">
-                <span className="store-label">DashboardCard:</span>
+                <span className="store-label">CanvasCard:</span>
                 <button
                   className="button-sm"
-                  onClick={() => handleAddDashboardCard(DEMO_DSL_TABLE, "Devices", "Dashboard", { w: 6 })}
+                  onClick={() => handleAddCanvasCard(DEMO_DSL_TABLE, "Devices", { w: 6 })}
                 >
                   Table (w=6)
                 </button>
                 <button
                   className="button-sm"
-                  onClick={() => handleAddDashboardCard(DEMO_DSL_CHART, "Traffic", "Dashboard", { w: 6 })}
+                  onClick={() => handleAddCanvasCard(DEMO_DSL_CHART, "Traffic", { w: 6 })}
                 >
                   Chart (w=6)
                 </button>
                 <button
                   className="button-sm"
-                  onClick={() => handleAddDashboardCard(DEMO_DSL_DESC, "Server Info", "Dashboard", { w: 6 })}
+                  onClick={() => handleAddCanvasCard(DEMO_DSL_DESC, "Server Info", { w: 6 })}
                 >
                   Descriptions (w=6)
                 </button>
                 <button
                   className="button-sm"
-                  onClick={() => handleAddDashboardCard(DEMO_DSL_TABLE, "Devices", "Network", { w: 12 })}
+                  onClick={() => handleAddCanvasCard(DEMO_DSL_TABLE, "Devices", { w: 12 })}
                 >
                   Table (w=12)
                 </button>

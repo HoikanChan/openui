@@ -4,137 +4,157 @@ import { canvasStore } from "./canvasStore";
 describe("canvasStore", () => {
   beforeEach(() => {
     canvasStore.clear();
+    canvasStore.setEnableMultiTab(true);
   });
 
-  describe("addDashboardCard", () => {
-    it("adds a card to default Dashboard tab", () => {
-      const cardId = canvasStore.addDashboardCard({ title: "Devices", children: [], size: { w: 6 } });
+  describe("addCanvasCard", () => {
+    it("adds a card and returns cardId", () => {
+      const cardId = canvasStore.addCanvasCard({ title: "Devices", children: [], size: { w: 6 } });
 
       expect(cardId).toMatch(/^card-/);
       const snapshot = canvasStore.getSnapshot();
-      expect(snapshot.tabs["Dashboard"]).toHaveLength(1);
-      expect(snapshot.tabs["Dashboard"][0].title).toBe("Devices");
+      expect(snapshot.canvasCards).toHaveLength(1);
+      expect(snapshot.canvasCards[0].title).toBe("Devices");
     });
 
-    it("adds a card to a custom tab", () => {
-      canvasStore.addDashboardCard({ title: "Devices", children: [], size: { w: 12 } }, "Network");
+    it("adds a card with custom cardId", () => {
+      const cardId = canvasStore.addCanvasCard({ title: "Devices", children: [] }, "my-card");
+
+      expect(cardId).toBe("my-card");
+      expect(canvasStore.getSnapshot().canvasCards[0].cardId).toBe("my-card");
+    });
+
+    it("replaces card with same cardId", () => {
+      canvasStore.addCanvasCard({ title: "Devices", children: [] }, "card-1");
+      canvasStore.addCanvasCard({ title: "Devices Updated", children: [], size: { w: 12 } }, "card-1");
 
       const snapshot = canvasStore.getSnapshot();
-      expect(snapshot.tabs["Network"]).toHaveLength(1);
-      expect(snapshot.tabs["Network"][0].size?.w).toBe(12);
+      expect(snapshot.canvasCards).toHaveLength(1);
+      expect(snapshot.canvasCards[0].title).toBe("Devices Updated");
+      expect(snapshot.canvasCards[0].size?.w).toBe(12);
     });
 
-    it("replaces card with same title instead of duplicating", () => {
-      const id1 = canvasStore.addDashboardCard({ title: "Devices", children: [] });
-      const id2 = canvasStore.addDashboardCard({ title: "Devices", children: [], size: { w: 12 } });
+    it("adds multiple cards with different cardIds", () => {
+      canvasStore.addCanvasCard({ title: "Card A", children: [] });
+      canvasStore.addCanvasCard({ title: "Card B", children: [] });
 
-      expect(id1).toBe(id2);
-      const snapshot = canvasStore.getSnapshot();
-      expect(snapshot.tabs["Dashboard"]).toHaveLength(1);
-      expect(snapshot.tabs["Dashboard"][0].size?.w).toBe(12);
+      expect(canvasStore.getSnapshot().canvasCards).toHaveLength(2);
     });
 
-    it("adds multiple cards with different titles", () => {
-      canvasStore.addDashboardCard({ title: "Card A", children: [] });
-      canvasStore.addDashboardCard({ title: "Card B", children: [] });
+    it("switches activeKey to canvas", () => {
+      canvasStore.addCanvasCard({ title: "Card", children: [] });
 
-      expect(canvasStore.getSnapshot().tabs["Dashboard"]).toHaveLength(2);
+      expect(canvasStore.getSnapshot().activeKey).toBe("canvas");
     });
   });
 
-  describe("addPreviewTab", () => {
+  describe("addPreviewCard", () => {
     it("adds a preview tab and switches activeKey", () => {
-      canvasStore.addPreviewTab({ title: "Device List", children: [] });
+      canvasStore.addPreviewCard({ title: "Device List", children: [] });
 
       const snapshot = canvasStore.getSnapshot();
       expect(snapshot.previewTabs).toHaveLength(1);
       expect(snapshot.previewTabs[0].title).toBe("Device List");
+      expect(snapshot.previewTabs[0].cards).toHaveLength(1);
       expect(snapshot.activeKey).toBe(snapshot.previewTabs[0].tabId);
     });
 
-    it("replaces preview tab with same title", () => {
-      canvasStore.addPreviewTab({ title: "Device List", children: [] });
-      canvasStore.addPreviewTab({ title: "Device List", children: [], url: "https://x.com", iframeId: "x" });
+    it("always creates new tab when no tabId provided", () => {
+      canvasStore.addPreviewCard({ title: "Device List", children: [] });
+      canvasStore.addPreviewCard({ title: "Device List", children: [], url: "https://x.com", iframeId: "x" });
+
+      const snapshot = canvasStore.getSnapshot();
+      expect(snapshot.previewTabs).toHaveLength(2);
+    });
+
+    it("replaces card in existing tab when tabId exists and type=replace", () => {
+      canvasStore.addPreviewCard({ title: "Device List", children: [{ typeName: "Table" }], cardId: "card-1" }, "device-tab");
+      canvasStore.addPreviewCard({ title: "Device List", children: [{ typeName: "Chart" }], cardId: "card-1" }, "device-tab", "replace");
 
       const snapshot = canvasStore.getSnapshot();
       expect(snapshot.previewTabs).toHaveLength(1);
-      expect(snapshot.previewTabs[0].url).toBe("https://x.com");
+      expect(snapshot.previewTabs[0].tabId).toBe("device-tab");
+      expect(snapshot.previewTabs[0].cards).toHaveLength(1);
+      expect(snapshot.previewTabs[0].cards[0].cardId).toBe("card-1");
+    });
+
+    it("appends card to existing tab when tabId exists and type=append", () => {
+      canvasStore.addPreviewCard({ title: "Device List", children: [{ typeName: "Table" }] }, "device-tab");
+      canvasStore.addPreviewCard({ title: "Extra", children: [{ typeName: "Chart" }] }, "device-tab");
+
+      const snapshot = canvasStore.getSnapshot();
+      expect(snapshot.previewTabs).toHaveLength(1);
+      expect(snapshot.previewTabs[0].cards).toHaveLength(2);
+      expect(snapshot.previewTabs[0].title).toBe("Device List");
+    });
+
+    it("creates new tab when tabId provided but not found", () => {
+      canvasStore.addPreviewCard({ title: "Device List", children: [] }, "device-tab");
+      canvasStore.addPreviewCard({ title: "Network", children: [] }, "network-tab");
+
+      const snapshot = canvasStore.getSnapshot();
+      expect(snapshot.previewTabs).toHaveLength(2);
+      expect(snapshot.previewTabs[1].tabId).toBe("network-tab");
+    });
+
+    it("uses provided tabId when creating new tab", () => {
+      canvasStore.addPreviewCard({ title: "Device List", children: [] }, "my-custom-id");
+
+      const snapshot = canvasStore.getSnapshot();
+      expect(snapshot.previewTabs[0].tabId).toBe("my-custom-id");
     });
 
     it("adds multiple preview tabs with different titles", () => {
-      canvasStore.addPreviewTab({ title: "Tab A", children: [] });
-      canvasStore.addPreviewTab({ title: "Tab B", children: [] });
+      canvasStore.addPreviewCard({ title: "Tab A", children: [] });
+      canvasStore.addPreviewCard({ title: "Tab B", children: [] });
 
       expect(canvasStore.getSnapshot().previewTabs).toHaveLength(2);
     });
   });
 
-  describe("removeDashboardCard", () => {
-    it("removes a specific card from a tab", () => {
-      const id1 = canvasStore.addDashboardCard({ title: "Card 1", children: [] });
-      canvasStore.addDashboardCard({ title: "Card 2", children: [] });
+  describe("removeCanvasCard", () => {
+    it("removes a specific card", () => {
+      const id1 = canvasStore.addCanvasCard({ title: "Card 1", children: [] });
+      canvasStore.addCanvasCard({ title: "Card 2", children: [] });
 
-      canvasStore.removeDashboardCard("Dashboard", id1);
+      canvasStore.removeCanvasCard(id1);
 
       const snapshot = canvasStore.getSnapshot();
-      expect(snapshot.tabs["Dashboard"]).toHaveLength(1);
-      expect(snapshot.tabs["Dashboard"][0].title).toBe("Card 2");
+      expect(snapshot.canvasCards).toHaveLength(1);
+      expect(snapshot.canvasCards[0].title).toBe("Card 2");
     });
 
     it("is a no-op for unknown cardId", () => {
-      canvasStore.addDashboardCard({ title: "Card 1", children: [] });
-      canvasStore.removeDashboardCard("Dashboard", "nonexistent");
+      canvasStore.addCanvasCard({ title: "Card 1", children: [] });
+      canvasStore.removeCanvasCard("nonexistent");
 
-      expect(canvasStore.getSnapshot().tabs["Dashboard"]).toHaveLength(1);
+      expect(canvasStore.getSnapshot().canvasCards).toHaveLength(1);
     });
   });
 
-  describe("removeDashboardTab", () => {
-    it("removes the entire tab and its cards", () => {
-      canvasStore.addDashboardCard({ title: "Card 1", children: [] }, "Network");
-      canvasStore.addDashboardCard({ title: "Card 2", children: [] }, "Dashboard");
+  describe("removePreviewCard", () => {
+    it("removes a card from a preview tab", () => {
+      const cardId = canvasStore.addPreviewCard({ title: "Tab", children: [] }, "tab-x");
+      canvasStore.addPreviewCard({ title: "Tab", children: [] }, "tab-x");
 
-      canvasStore.removeDashboardTab("Network");
-
-      const snapshot = canvasStore.getSnapshot();
-      expect(snapshot.tabs["Network"]).toBeUndefined();
-      expect(snapshot.tabs["Dashboard"]).toHaveLength(1);
-    });
-
-    it("switches activeKey to another dashboard tab with cards", () => {
-      canvasStore.addDashboardCard({ title: "Card A", children: [] }, "Tab1");
-      canvasStore.addDashboardCard({ title: "Card B", children: [] }, "Tab2");
-
-      canvasStore.setActiveKey("dashboard-Tab1");
-      canvasStore.removeDashboardTab("Tab1");
-
-      expect(canvasStore.getSnapshot().activeKey).toBe("dashboard-Tab2");
-    });
-
-    it("falls back to preview tab if no dashboard tabs with cards remain", () => {
-      canvasStore.addDashboardCard({ title: "Card A", children: [] }, "Tab1");
-      canvasStore.addPreviewTab({ title: "Preview", children: [] });
-
-      canvasStore.setActiveKey("dashboard-Tab1");
-      canvasStore.removeDashboardTab("Tab1");
+      canvasStore.removePreviewCard("tab-x", cardId);
 
       const snapshot = canvasStore.getSnapshot();
-      expect(snapshot.activeKey).toBe(snapshot.previewTabs[0].tabId);
+      expect(snapshot.previewTabs[0].cards).toHaveLength(1);
     });
 
-    it("falls back to default Dashboard when nothing remains", () => {
-      canvasStore.addDashboardCard({ title: "Card A", children: [] }, "Tab1");
+    it("removes the tab when last card is removed", () => {
+      const cardId = canvasStore.addPreviewCard({ title: "Tab", children: [] }, "tab-x");
 
-      canvasStore.setActiveKey("dashboard-Tab1");
-      canvasStore.removeDashboardTab("Tab1");
+      canvasStore.removePreviewCard("tab-x", cardId);
 
-      expect(canvasStore.getSnapshot().activeKey).toBe("dashboard-Dashboard");
+      expect(canvasStore.getSnapshot().previewTabs).toHaveLength(0);
     });
   });
 
   describe("removePreviewTab", () => {
     it("removes a preview tab by tabId", () => {
-      canvasStore.addPreviewTab({ title: "Tab A", children: [] });
+      canvasStore.addPreviewCard({ title: "Tab A", children: [] });
       const snapshot = canvasStore.getSnapshot();
       const tabId = snapshot.previewTabs[0].tabId;
 
@@ -144,30 +164,45 @@ describe("canvasStore", () => {
     });
 
     it("switches activeKey away from removed tab", () => {
-      canvasStore.addDashboardCard({ title: "Card A", children: [] });
-      canvasStore.addPreviewTab({ title: "Preview", children: [] });
+      canvasStore.addCanvasCard({ title: "Card A", children: [] });
+      canvasStore.addPreviewCard({ title: "Preview", children: [] });
       const snapshot = canvasStore.getSnapshot();
       const previewTabId = snapshot.previewTabs[0].tabId;
 
       canvasStore.setActiveKey(previewTabId);
       canvasStore.removePreviewTab(previewTabId);
 
-      expect(canvasStore.getSnapshot().activeKey).toBe("dashboard-Dashboard");
+      expect(canvasStore.getSnapshot().activeKey).toBe("canvas");
     });
   });
 
   describe("clear", () => {
-    it("removes all tabs, preview tabs, and resets activeKey", () => {
-      canvasStore.addDashboardCard({ title: "Card A", children: [] });
-      canvasStore.addDashboardCard({ title: "Card B", children: [] }, "Network");
-      canvasStore.addPreviewTab({ title: "Preview", children: [] });
+    it("removes all cards, tabs, and resets activeKey", () => {
+      canvasStore.addCanvasCard({ title: "Card A", children: [] });
+      canvasStore.addPreviewCard({ title: "Preview", children: [] });
 
       canvasStore.clear();
 
       const snapshot = canvasStore.getSnapshot();
-      expect(Object.keys(snapshot.tabs)).toHaveLength(0);
+      expect(snapshot.canvasCards).toHaveLength(0);
       expect(snapshot.previewTabs).toHaveLength(0);
-      expect(snapshot.activeKey).toBe("dashboard-Dashboard");
+      expect(snapshot.activeKey).toBe("canvas");
+    });
+  });
+
+  describe("hasData", () => {
+    it("returns false when empty", () => {
+      expect(canvasStore.hasData).toBe(false);
+    });
+
+    it("returns true when canvas card exists", () => {
+      canvasStore.addCanvasCard({ title: "Card", children: [] });
+      expect(canvasStore.hasData).toBe(true);
+    });
+
+    it("returns true when preview tab exists", () => {
+      canvasStore.addPreviewCard({ title: "Preview", children: [] });
+      expect(canvasStore.hasData).toBe(true);
     });
   });
 
@@ -176,7 +211,7 @@ describe("canvasStore", () => {
       const calls: number[] = [];
       canvasStore.subscribe(() => calls.push(1));
 
-      canvasStore.addDashboardCard({ title: "Card", children: [] });
+      canvasStore.addCanvasCard({ title: "Card", children: [] });
       canvasStore.clear();
 
       expect(calls.length).toBeGreaterThanOrEqual(2);
@@ -187,7 +222,7 @@ describe("canvasStore", () => {
       const unsub = canvasStore.subscribe(() => calls.push(1));
 
       unsub();
-      canvasStore.addDashboardCard({ title: "Card", children: [] });
+      canvasStore.addCanvasCard({ title: "Card", children: [] });
 
       expect(calls).toHaveLength(0);
     });
@@ -441,5 +476,107 @@ describe("virtual scroll binary search", () => {
     const range = findVisibleRange(layouts, 500, 200, 100);
     expect(range.start).toBeLessThanOrEqual(2);
     expect(range.end).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe("single-view mode (enableMultiTab=false)", () => {
+  beforeEach(() => {
+    canvasStore.clear();
+    canvasStore.setEnableMultiTab(false);
+  });
+
+  describe("addCanvasCard", () => {
+    it("appends canvasCard when existing content is canvasCards", () => {
+      canvasStore.addCanvasCard({ title: "Card A", children: [] });
+      canvasStore.addCanvasCard({ title: "Card B", children: [] });
+
+      const snapshot = canvasStore.getSnapshot();
+      expect(snapshot.canvasCards).toHaveLength(2);
+      expect(snapshot.activeKey).toBe("canvas");
+    });
+
+    it("clears previewTabs and shows canvasCard when existing content is previewCard", () => {
+      canvasStore.addPreviewCard({ title: "Preview A", children: [] });
+      canvasStore.addCanvasCard({ title: "Card A", children: [] });
+
+      const snapshot = canvasStore.getSnapshot();
+      expect(snapshot.previewTabs).toHaveLength(0);
+      expect(snapshot.canvasCards).toHaveLength(1);
+      expect(snapshot.activeKey).toBe("canvas");
+    });
+
+    it("replaces existing previewCard with canvasCard", () => {
+      canvasStore.addPreviewCard({ title: "Preview", children: [] });
+      expect(canvasStore.getSnapshot().previewTabs).toHaveLength(1);
+
+      canvasStore.addCanvasCard({ title: "Dashboard", children: [] });
+      const snapshot = canvasStore.getSnapshot();
+      expect(snapshot.previewTabs).toHaveLength(0);
+      expect(snapshot.canvasCards).toHaveLength(1);
+    });
+  });
+
+  describe("addPreviewCard", () => {
+    it("creates single preview tab and clears canvasCards", () => {
+      canvasStore.addCanvasCard({ title: "Card A", children: [] });
+      canvasStore.addCanvasCard({ title: "Card B", children: [] });
+      canvasStore.addPreviewCard({ title: "Preview", children: [] });
+
+      const snapshot = canvasStore.getSnapshot();
+      expect(snapshot.canvasCards).toHaveLength(0);
+      expect(snapshot.previewTabs).toHaveLength(1);
+      expect(snapshot.previewTabs[0].tabId).toBe("preview-single");
+      expect(snapshot.activeKey).toBe("preview-single");
+    });
+
+    it("replaces previous previewCard with new one", () => {
+      canvasStore.addPreviewCard({ title: "First", children: [] });
+      canvasStore.addPreviewCard({ title: "Second", children: [] });
+
+      const snapshot = canvasStore.getSnapshot();
+      expect(snapshot.previewTabs).toHaveLength(1);
+      expect(snapshot.previewTabs[0].title).toBe("Second");
+      expect(snapshot.previewTabs[0].cards).toHaveLength(1);
+    });
+
+    it("ignores tabId and type parameters in single-view mode", () => {
+      canvasStore.addPreviewCard({ title: "Preview", children: [] }, "custom-tab", "replace");
+
+      const snapshot = canvasStore.getSnapshot();
+      expect(snapshot.previewTabs[0].tabId).toBe("preview-single");
+      expect(snapshot.previewTabs[0].title).toBe("Preview");
+    });
+  });
+
+  describe("setEnableMultiTab", () => {
+    it("defaults to false", () => {
+      const snapshot = canvasStore.getSnapshot();
+      expect(snapshot.enableMultiTab).toBe(false);
+    });
+
+    it("can be toggled to true", () => {
+      canvasStore.setEnableMultiTab(true);
+      expect(canvasStore.getSnapshot().enableMultiTab).toBe(true);
+    });
+
+    it("preserves enableMultiTab through clear()", () => {
+      canvasStore.setEnableMultiTab(true);
+      canvasStore.addCanvasCard({ title: "Card", children: [] });
+      canvasStore.clear();
+
+      expect(canvasStore.getSnapshot().enableMultiTab).toBe(true);
+    });
+
+    it("clears conflicting content when switching to single-view", () => {
+      canvasStore.setEnableMultiTab(true);
+      canvasStore.addCanvasCard({ title: "Card A", children: [] });
+      canvasStore.addPreviewCard({ title: "Preview A", children: [] });
+
+      canvasStore.setEnableMultiTab(false);
+
+      const snapshot = canvasStore.getSnapshot();
+      expect(snapshot.canvasCards).toHaveLength(0);
+      expect(snapshot.previewTabs).toHaveLength(1);
+    });
   });
 });

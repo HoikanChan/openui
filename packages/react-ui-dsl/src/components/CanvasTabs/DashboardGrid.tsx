@@ -1,11 +1,11 @@
 "use client";
 
 import type { Library } from "@openuidev/react-lang";
-import type { DashboardCardData } from "../../canvas/canvasStore";
+import type { CanvasCardData } from "../../canvas/canvasStore";
 import { VirtualMasonryGrid } from "./VirtualMasonryGrid";
 
 export interface DashboardGridProps {
-  cards: DashboardCardData[];
+  cards: CanvasCardData[];
   library: Library;
   dataModel?: Record<string, unknown>;
 }
