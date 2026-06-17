@@ -24,7 +24,7 @@
 
 本功能采用端到端生成与渲染链路实现：
 
-1. 前置 Agents/Skills 产生用户意图、业务数据和 UI 生成建议，包括组件布局、扩展上下文选择（contextId）、一次性工具与附加规则（Request Overlay）、UI 交互等信息；扩展组件与扩展工具由业务方通过 Context 拓展接口预先注册。
+1. 前置 Agents/Skills 根据用户意图生成数据，并产生UI生成建议，包括组件布局，扩展组件、UI交互等信息
 2. AICOService 透传或编排生成请求，将用户意图、业务数据和生成建议转发给 SmartCanvasService。
 3. SmartCanvasService 组装生成上下文和提示词，约束大模型输出 Stream IR。
 4. 前端 Renderer 接收 Stream IR 流式内容，通过 parser 解析、dataModel 绑定和组件库映射完成增量渲染。
@@ -38,7 +38,7 @@
 |---|---|---|---|---|---|---|---|
 | AI 生成 UI IR | 支持通过提示词生成 UI 界面的 IR 中间表示 | 目标规格 | 支持生成通用 UI 组件、交互事件的 IR | NetGraph-Smart V100R027C10 | | | 当前已有 parser / Renderer / react-ui-dsl 基础 |
 | 扩展组件提示词长度 | 单个扩展组件的描述长度上限 | 目标规格 | 100 token | NetGraph-Smart V100R027C10 | | 含名称、描述、propsSchema | 后续开发 |
-| 支持扩展组件数量 | 单个 Generation Context 中扩展组件数量上限 | 目标规格 | 30 | NetGraph-Smart V100R027C10 | | 扩展组件通过 Context 拓展接口注册 | 后续开发 |
+| 支持扩展组件数量 | 单个 Generation Extension 中扩展组件数量上限 | 目标规格 | 30 | NetGraph-Smart V100R027C10 | | 扩展组件通过 Extension 注册接口注册 | 后续开发 |
 | UI 生成成功率 | 生成的 IR 通过语法与类型校验，且端侧成功渲染的比例 | 目标规格 | 95% | NetGraph-Smart V100R027C10 | | 基于内部测试集统计 | 作为验收目标统计 |
 | 端到端生成时延 | 从接收请求到返回完整 IR 的耗时（P95） | 目标规格 | < 5s | NetGraph-Smart V100R027C10 | | 不含模板命中场景 | 作为验收目标统计 |
 | 模板命中时延 | 模板命中场景下接口响应时延（P95） | 目标规格 | < 200ms | NetGraph-Smart V100R027C10 | | | 后续开发 |
@@ -62,7 +62,7 @@
 
 #### 6.2.4.2 生成侧设计：SmartCanvasService
 
-SmartCanvasService 是后续开发的生成侧服务，负责将用户意图、业务数据和 UI 生成建议转换为可被前端消费的 Stream IR。其核心能力包括 Context 拓展注册、prompt 组装、上下文压缩、模板在线固化、生成结果校验、Reflection 重生成和异常降级。
+SmartCanvasService 是后续开发的生成侧服务，负责将用户意图、业务数据和 UI 生成建议转换为可被前端消费的 Stream IR。其核心能力包括 拓展能力注册、prompt 组装、上下文压缩、模板在线固化、生成结果校验、Reflection 重生成和异常降级。
 
 **1. 提示词管理**
 
@@ -113,13 +113,13 @@ Skill 输出的生成建议中包含扩展组件信息，包括扩展组件名�
 
 以 (dataSource, intent, apiDoc) 三元组作为模板唯一标识，自动匹配已生成的模板，解决相同场景重复调用大模型导致的生成效率低问题。
 
-**唯一标识：key = hash(dataSource + intent +contextId + contextVersion)**
+**唯一标识：key = hash(dataSource + intent + extensionId + extensionVersion)**
 
 dataSource：由 Skill 在生成建议中显式传入，标识数据来源（如 apiName 或自定义来源标识）
 
 intent：用户意图，需做归一化处理（大小写、空白、标点统一）
 
-contextId /contextVersion：本次所选的UI生成拓展上下文及版本号（见本节 8），未携带 contextId 时取空值
+extensionId / extensionVersion：本次所选的 UI 生成扩展配置及版本号（见本节 8），未携带 extensionId 时取空值
 
 apiDoc：api文档，可选。
 
@@ -139,11 +139,11 @@ apiDoc：api文档，可选。
 
 **6 生成自定义拓展**
 
-大模型默认只会用一套内置的标准组件（表格、文本、图表等）。但具体业务往往有自己的专用组件和专用操作——比如告警运维场景，有「告警级别标签」这种专用组件、「确认告警」这种专用操作。这些东西模型本来不认识，也就不会生成出来。
+业务往往有自己的专用组件和专用操作——比如告警运维场景，有「告警级别标签」这种专用组件、「确认告警」这种专用操作。这些东西模型本来不认识，也就不会生成出来。
 
-业务方**提前把自己的扩展组件和工具作为UI生成拓展上下文登记到服务里**，之后这个业务的每次生成请求，只要报上这个名字（contextId），服务就自动把对应的扩展能力带进提示词。如果某次生成想临时多加一个工具或一条规则，可以在请求里一次性附带，用完即弃、不登记。
+业务方**提前把自己的扩展组件和工具作为 UI 生成扩展配置等通过扩展注册接口进行注册**，之后这个业务的每次生成请求，只要报上extensionId，服务就自动把对应的扩展能力带进提示词。
 
-注意服务只登记「描述上下文」（给模型看、给服务校验用的元数据），组件的实际渲染代码仍在前端（见 6.2.4.5），两边用同一个组件名对齐。
+注意服务只记录「扩展描述」（给模型看、给服务校验用的元数据），组件的实际渲染代码仍在前端（见 6.2.4.5），两边用同一个组件名对齐。
 
 **能扩展什么**
 
@@ -168,8 +168,8 @@ apiDoc：api文档，可选。
 | 1 定义拓展能力 | 业务方前端 | 用 defineComponent 写清组件名、参数、说明和渲染代码；按 MCP Tool 兼容结构写清工具名、说明和输入输出 schema（见 6.2.4.5） |
 | 2 注册前端组件和工具 | 业务方前端Piu | 给DSLEngine传入待拉起的业务piu，进行自动拉起。业务piu待拉起后，通过piu事件给DSLEngine注册前端组件和工具 |
 | 3 导出组件规格 | 前端工具链 | 调用 DSLEngine 暴露的 `generateComponentSpecs`，从多个前端组件定义生成 `components` JSON 片段（见 6.2.4.5） |
-| 4 注册拓展上下文 | 业务方 | 业务方维护完整拓展上下文 JSON，并把组件规格导出结果填入 `components` 后，通过 `/contexts` POST 接口注册（业务方直连，不经 AICOService） |
-| 5 发起生成 | Skill / AICOService | 生成请求带上 contextId 选好拓展上下文，需要时再临时附带一次性工具或规则 |
+| 4 注册扩展配置 | 业务方 | 业务方维护完整扩展配置 JSON，并把组件规格导出结果填入 `components` 后，通过 `/extensions` POST 接口注册（业务方直连，不经 AICOService） |
+| 5 发起生成 | Skill / AICOService | 生成请求带上 extensionId 选好扩展配置，需要时再临时附带一次性工具或规则 |
 | 6 渲染 | DSLEngine | 按组件名和工具名，找到对应注册好的拓展内容 |
 
 拓展内容横跨两头：
@@ -201,7 +201,7 @@ apiDoc：api文档，可选。
 | `iframeUrl` | 可选 | 使用 iframe 加载指定 URL 渲染界面；仅 iframe 直出场景需要。 | string，长度 0-1024；取值为 URL 或站内相对路径。 |
 | `iframeTitle` | 可选 | iframe 页面标题；仅 `iframeUrl` 有值时需要，用于页面说明。 | string，长度 0-64。 |
 | `scenario` | 可选 | 渲染场景。`LUI` 表示渲染到 AI 对话框中；`Canvas` 表示渲染到 LUI 左侧的画布中；未传时默认按 `LUI` 处理。 | string，枚举：`LUI`、`Canvas`；长度 3 或 6。 |
-| `contextId` | 可选 | UI 生成拓展上下文标识。传入后使用第 8 节注册的拓展组件、工具、模板、示例和规则；不传时仅使用基础生成能力。 | string，长度 1-128。 |
+| `extensionId` | 可选 | UI 生成扩展配置标识。传入后使用第 8 节注册的拓展组件、工具、模板、示例和规则；不传时仅使用基础生成能力。 | string，长度 1-128。 |
 | `userInput` | 可选 | 用户输入的自然语言，作为 intent 参与模板命中标识构造与 prompt 组装；非UI生成场景可不传。 | string，长度 1-4096。 |
 | `source` | 可选 | 上游数据来源唯一标识，用于缓存UI生成结果进行复用；非UI生成场景可不传。 | string，长度 0-128。 |
 | `request` | 可选 | 上游输入参数，如 Skill 工具调用入参或 API 请求参数；非UI生成场景可不传，用于辅助UI生成，如UI标题等。 | object，JSON 对象；不超过 64 KB。 |
@@ -215,7 +215,7 @@ apiDoc：api文档，可选。
 ```json
 {
   "scenario": "LUI",
-  "contextId": "alarm-genui-presets",
+  "extensionId": "alarm-genui-presets",
   "userInput": "查看告警列表",
   "source": "alarmSkill.queryAlarmList",
   "request": {
@@ -256,13 +256,13 @@ data: {"traceId": "xxx"}
 - `done`：生成完成，携带 traceId
 - `error`：错误事件，携带错误码与降级内容
 
-**8. Context 拓展接口**
+**8. Extension 注册接口**
 
-Context 拓展接口用于注册 UI 生成拓展上下文。业务方可以通过 `contextId` 把组件、工具、模板、示例和规则登记为一组可复用的生成上下文，后续 UI 生成请求只需携带该 `contextId` 即可使用这些拓展能力。
+Extension 注册接口用于注册 UI 生成扩展配置。业务方可以通过 `extensionId` 把组件、工具、模板、示例和规则登记为一组可复用的生成扩展配置，后续 UI 生成请求只需携带该 `extensionId` 即可使用这些拓展能力。
 
-MVP 阶段，`GenUIContextExtension` 注册 JSON 由业务方维护。DSLEngine 侧仅提供 `generateComponentSpecs`，用于从前端组件定义导出 `components` 字段所需的组件规格 JSON，避免业务方手写组件名、组件说明和 props 约束。`contextId`、`version`、`sourcePiu`、`templates`、`componentGroups`、`tools`、`examples` 和 `additionalRules` 仍由业务方按业务场景声明式填写。
+MVP 阶段，`GenUIExtension` 注册 JSON 由业务方维护。DSLEngine 侧仅提供 `generateComponentSpecs`，用于从前端组件定义导出 `components` 字段所需的组件规格 JSON，避免业务方手写组件名、组件说明和 props 约束。`extensionId`、`version`、`sourcePiu`、`templates`、`componentGroups`、`tools`、`examples` 和 `additionalRules` 仍由业务方按业务场景声明式填写。
 
-`sourcePiu` 可牵引 DSLEngine 拉起业务 PIU；业务 PIU 拉起后通过 PIU 事件向 DSLEngine 注册拓展组件和工具的前端实现。业务方可将同一批前端组件定义传给 `generateComponentSpecs`，生成多个组件组成的 `components` JSON 片段，并填入 Context 拓展接口请求体。
+`sourcePiu` 可牵引 DSLEngine 拉起业务 PIU；业务 PIU 拉起后通过 PIU 事件向 DSLEngine 注册拓展组件和工具的前端实现。业务方可将同一批前端组件定义传给 `generateComponentSpecs`，生成多个组件组成的 `components` JSON 片段，并填入 Extension 注册接口请求体。
 
 **拓展组件规格导出方式（generateComponentSpecs）**：
 
@@ -297,7 +297,7 @@ export const alarmComponentSpecs = generateComponentSpecs([
 ]);
 ```
 
-`generateComponentSpecs` 的输出是一个以组件名为 key 的 JSON 对象，可直接作为 `GenUIContextExtension.components` 字段值使用。输出内容只包含模型生成和服务侧校验所需的组件规格，不包含 React 渲染实现。
+`generateComponentSpecs` 的输出是一个以组件名为 key 的 JSON 对象，可直接作为 `GenUIExtension.components` 字段值使用。输出内容只包含模型生成和服务侧校验所需的组件规格，不包含 React 渲染实现。
 
 ```json
 {
@@ -336,19 +336,19 @@ export const alarmComponentSpecs = generateComponentSpecs([
 
 | 说明项 | 内容 |
 |---|---|
-| 接口名称 | `POST /rest/smartcanvas/v1/contexts` |
-| 功能 | 注册或覆盖 UI 生成拓展上下文 |
-| 请求体 | `GenUIContextExtension`，业务方维护；其中 `components` 可由 DSLEngine 的 `generateComponentSpecs` 导出 |
+| 接口名称 | `POST /rest/smartcanvas/v1/extensions` |
+| 功能 | 注册或覆盖 UI 生成扩展配置 |
+| 请求体 | `GenUIExtension`，业务方维护；其中 `components` 可由 DSLEngine 的 `generateComponentSpecs` 导出 |
 | 调用方 | 业务方或发布流水线直连，不经 AICOService |
-| 生效方式 | 注册成功后，生成请求通过 `contextId` 选择该拓展上下文 |
+| 生效方式 | 注册成功后，生成请求通过 `extensionId` 选择该扩展配置 |
 | 返回类型 | JSON 注册摘要 |
 
-**Request 入参（GenUIContextExtension）**：
+**Request 入参（GenUIExtension）**：
 
 | 字段名称 | 可选/必选 | 字段含义 | 字段规范 |
 |---|---|---|---|
-| `contextId` | 必选 | 拓展上下文唯一标识。生成请求通过该值选择要使用的拓展能力。 | string，长度 1-128。 |
-| `version` | 必选 | 拓展上下文版本。组件、工具、模板、示例或规则发生变化时需要更新。 | string，长度 1-64；可使用字母、数字、`.`、`-`、`_`；示例：`1.0.0`、`2026.06.1`。 |
+| `extensionId` | 必选 | 扩展配置唯一标识。生成请求通过该值选择要使用的拓展能力。 | string，长度 1-128。 |
+| `version` | 必选 | 扩展配置版本。组件、工具、模板、示例或规则发生变化时需要更新。 | string，长度 1-64；可使用字母、数字、`.`、`-`、`_`；示例：`1.0.0`、`2026.06.1`。 |
 | `sourcePiu` | 可选 | 需要拉起的业务 PIU 列表。DSLEngine 根据该列表拉起业务 PIU；业务 PIU 通过 PIU 事件注册拓展对应的前端实现。 | array，元素为 string；建议不超过 30 个。 |
 | `templates` | 可选 | 可复用 UI 模板集合。key 为模板 ID，对应生成接口的 `templateId`；value 为模板内容，通常是 Stream IR 模板文本。没有模板沉淀时可不传。 | object，JSON 对象；key 为 string；value 为 string；建议不超过 256 KB。 |
 | `components` | 可选 | 拓展组件描述，包含组件说明和 props 约束。MVP 阶段由 DSLEngine `generateComponentSpecs` 从多个前端组件定义导出，见上文“拓展组件规格导出方式”。没有拓展组件时可不传。 | object，JSON 对象；key 为组件名；建议不超过 30 个组件。 |
@@ -357,13 +357,13 @@ export const alarmComponentSpecs = generateComponentSpecs([
 | `examples` | 可选 | 生成示例，用于牵引模型稳定使用拓展组件和工具；没有示例时可不传。 | array，元素为 string；单条建议不超过 4096 字符。 |
 | `additionalRules` | 可选 | 附加生成规则，用于约束生成风格、组件使用偏好或业务规则；没有额外约束时可不传。 | array，元素为 string；单条建议不超过 512 字符。 |
 
-MVP 阶段仅 `components` 字段提供导出能力，`tools`、`templates`、`examples` 和 `additionalRules` 由业务方手写维护；其中 `tools` 应按 MCP Tool 兼容结构维护。重复注册同一个 `contextId` 时按整包覆盖处理；覆盖成功后应使该上下文关联的旧模板缓存失效。
+MVP 阶段仅 `components` 字段提供导出能力，`tools`、`templates`、`examples` 和 `additionalRules` 由业务方手写维护；其中 `tools` 应按 MCP Tool 兼容结构维护。重复注册同一个 `extensionId` 时按整包覆盖处理；覆盖成功后应使该扩展配置关联的旧模板缓存失效。
 
 **完整 Request 示例**：
 
 ```json
 {
-  "contextId": "alarm-genui-presets",
+  "extensionId": "alarm-genui-presets",
   "version": "1.0.0",
   "sourcePiu": ["alarmPiu", "topoPiu"],
   "templates": {
@@ -446,7 +446,7 @@ MVP 阶段仅 `components` 字段提供导出能力，`tools`、`templates`、`e
 
 ```json
 {
-  "contextId": "alarm-genui-presets",
+  "extensionId": "alarm-genui-presets",
   "version": "1.0.0",
   "componentCount": 2,
   "toolCount": 1,
@@ -615,7 +615,7 @@ react-ui-dsl 负责向生成侧和渲染侧提供一致的组件能力，包括�
 
 后续扩展组件通过组件描述和实现注册进入组件库，供 prompt 注入、类型校验和运行时渲染使用。
 
-组件定义采用 `defineComponent` 描述组件名称、props schema、组件说明和 React 渲染实现；内置组件集合通过 `createLibrary` 汇总后提供给 Renderer 和 prompt 生成流程。拓展上下文不要求业务方先创建完整 `Library`，MVP 阶段由 `generateComponentSpecs` 从多个拓展组件定义中导出 `components` JSON 片段，其他注册字段由业务方维护。示例如下：
+组件定义采用 `defineComponent` 描述组件名称、props schema、组件说明和 React 渲染实现；内置组件集合通过 `createLibrary` 汇总后提供给 Renderer 和 prompt 生成流程。扩展配置不要求业务方先创建完整 `Library`，MVP 阶段由 `generateComponentSpecs` 从多个拓展组件定义中导出 `components` JSON 片段，其他注册字段由业务方维护。示例如下：
 
 ```ts
 import { createLibrary, defineComponent, generateComponentSpecs } from "@openuidev/react-ui-dsl";
@@ -639,9 +639,9 @@ export const library = createLibrary({
 export const componentSpecs = generateComponentSpecs([Button]);
 ```
 
-`library` 是 Renderer 的运行时组件库，也是生成 prompt 和 JSON Schema 的来源。`componentSpecs` 是可填入 `GenUIContextExtension.components` 的组件规格 JSON，不包含 React 渲染实现。SmartCanvasService 在拼装 prompt 时应使用与前端组件定义同源的组件描述；前端 Renderer 在渲染时根据 Stream IR 中的组件名查找 library 或 PIU 注册的组件实现。
+`library` 是 Renderer 的运行时组件库，也是生成 prompt 和 JSON Schema 的来源。`componentSpecs` 是可填入 `GenUIExtension.components` 的组件规格 JSON，不包含 React 渲染实现。SmartCanvasService 在拼装 prompt 时应使用与前端组件定义同源的组件描述；前端 Renderer 在渲染时根据 Stream IR 中的组件名查找 library 或 PIU 注册的组件实现。
 
-MVP 阶段仅 `components` schema 由 DSLEngine 提供的 `generateComponentSpecs` 导出：从 `defineComponent` 的 props（zod）推导组件约束和模型可见描述，序列化为组件名到组件规格的 JSON 对象。`tools`、`templates`、`componentGroups`、`examples` 和 `additionalRules` 由业务方在 `GenUIContextExtension` 注册 JSON 中维护；其中 `tools` 采用 MCP Tool 兼容结构，便于后续映射到 MCP `tools/call` 或现有 PIU/toolProvider 执行通道。业务方把 `components` 导出结果填入注册 JSON 后，通过 `POST /rest/smartcanvas/v1/contexts` 注册。
+MVP 阶段仅 `components` schema 由 DSLEngine 提供的 `generateComponentSpecs` 导出：从 `defineComponent` 的 props（zod）推导组件约束和模型可见描述，序列化为组件名到组件规格的 JSON 对象。`tools`、`templates`、`componentGroups`、`examples` 和 `additionalRules` 由业务方在 `GenUIExtension` 注册 JSON 中维护；其中 `tools` 采用 MCP Tool 兼容结构，便于后续映射到 MCP `tools/call` 或现有 PIU/toolProvider 执行通道。业务方把 `components` 导出结果填入注册 JSON 后，通过 `POST /rest/smartcanvas/v1/extensions` 注册。
 
 **3. eview 适配**
 
@@ -653,8 +653,8 @@ eview 作为目标 UI 组件库，通过 react-ui-dsl 的 view target 机制适�
 
 | 异常场景 | 处理策略 |
 |---|---|
-| 注册契约名称碰撞 | 注册接口返回 409，原 Generation Context 保持不变 |
-| 生成请求 contextId 未注册 | 拼装前校验失败，返回错误事件，不静默回退仅 base contract |
+| 注册契约名称碰撞 | 注册接口返回 409，原 Generation Extension 保持不变 |
+| 生成请求 extensionId 未注册 | 拼装前校验失败，返回错误事件，不静默回退仅 base contract |
 | Overlay 工具名与已注册工具碰撞 | 返回错误事件，不产生拼装结果 |
 | Stream IR 生成失败 | SmartCanvasService 捕获异常，返回错误事件或降级 markdown |
 | 语法校验失败 | 通过 Reflection 反馈错误并触发重生成，超过阈值后降级 |
@@ -665,7 +665,7 @@ eview 作为目标 UI 组件库，通过 react-ui-dsl 的 view target 机制适�
 | 扩展组件未注册 | 渲染未知组件占位提示，不阻塞其他组件 |
 | PIU 拉起失败 | 降级为静态展示，并记录日志 |
 
-全链路通过 traceId 串联生成请求、大模型调用、Stream IR 校验、SSE 返回和前端渲染。关键观测指标包括模板命中率、生成时延、首字节时延、生成成功率、token 用量、校验失败率、降级率、端侧渲染错误率，以及 Generation Context 注册数与注册失败率。
+全链路通过 traceId 串联生成请求、大模型调用、Stream IR 校验、SSE 返回和前端渲染。关键观测指标包括模板命中率、生成时延、首字节时延、生成成功率、token 用量、校验失败率、降级率、端侧渲染错误率，以及 Generation Extension 注册数与注册失败率。
 
 
 ### 6.2.5 增量SR清单
@@ -709,7 +709,7 @@ eview 作为目标 UI 组件库，通过 react-ui-dsl 的 view target 机制适�
 5. **表达式与数据绑定**：支持 `{data.*}`、`{$varName}`、数据表达式、Query/Mutation 和 Action 事件绑定。
 6. **eview 组件适配**：通过 react-ui-dsl 管控组件能力，并完成 eview 目标组件属性映射和渲染适配。
 7. **降级能力**：生成失败、校验失败、流式中断、未知组件、表达式异常和 PIU 拉起失败时提供分层兜底。
-8. **Context 拓展接口**：扩展组件与工具的注册式管理（PUT/GET contexts、替换语义、碰撞拒绝）、Redis 持久化、模板失效联动，以及生成请求的 contextId 选择与 Request Overlay。
+8. **Extension 注册接口**：扩展组件与工具的注册式管理（PUT/GET extensions、替换语义、碰撞拒绝）、Redis 持久化、模板失效联动，以及生成请求的 extensionId 选择与 Request Overlay。
 
 ##### 6.2.5.1.4 DFX分析
 
@@ -728,9 +728,9 @@ eview 作为目标 UI 组件库，通过 react-ui-dsl 的 view target 机制适�
 | 架构元素 | 影响类型 | 新增/修改/复用 | 说明 |
 |---|---|---|---|
 | AICOService | 接入编排 | 修改 | 增加 UI 生成请求透传与结果接收能力，将用户意图、业务数据和生成建议转发至 SmartCanvasService |
-| SmartCanvasService | 生成服务 | 新增 | 承担 Stream IR 生成、提示词组装、Context 拓展注册、模板在线固化、上下文压缩、校验与 Reflection 重生成等能力 |
+| SmartCanvasService | 生成服务 | 新增 | 承担 Stream IR 生成、提示词组装、Extension 注册、模板在线固化、上下文压缩、校验与 Reflection 重生成等能力 |
 | Java Generation SDK | 生成内核 | 复用 | SmartCanvasService 集成 SDK 完成 base contract 加载、Extension Registration 与 prompt 拼装（与前端 library prompt 字节对齐）；SDK 保持纯内存语义 |
-| Redis 模板与注册存储 | 缓存能力 | 新增 | 存储经校验通过的模板 Stream IR 与已注册的 Generation Context 扩展契约（分 key 空间），支撑模板命中/失效与注册持久化、启动加载 |
+| Redis 模板与注册存储 | 缓存能力 | 新增 | 存储经校验通过的模板 Stream IR 与已注册的 Generation Extension 扩展契约（分 key 空间），支撑模板命中/失效与注册持久化、启动加载 |
 | 大模型服务 | 生成依赖 | 复用 | 根据提示词和生成约束输出 Stream IR，并在 Reflection 流程中根据错误反馈重新生成 |
 | Stream IR | 协议能力 | 复用并扩展 | 作为服务侧与前端之间的 UI 中间表示，承载组件、数据绑定、状态、表达式和交互 |
 | Renderer / parser / dataModel | 前端渲染运行时 | 复用并扩展 | 负责 Stream IR 解析、表达式求值、数据绑定、Action 事件绑定与流式渲染 |
@@ -761,6 +761,6 @@ eview 作为目标 UI 组件库，通过 react-ui-dsl 的 view target 机制进�
 
 SmartCanvas 负责生成侧能力，包括 prompt 组装、大模型调用、Stream IR 生成约束、校验、Reflection、模板固化和服务侧降级。OpenUI 负责协议解析和前端渲染能力，包括 Stream IR parser、Renderer、dataModel、表达式求值、组件库映射和端侧错误隔离。两者通过 Stream IR 解耦，避免生成服务直接依赖具体前端实现，也避免前端承担大模型生成职责。
 
-**AR-06：扩展组件采用注册式 Generation Context 管理**
+**AR-06：扩展组件采用注册式 Generation Extension 管理**
 
-扩展组件与扩展工具通过 Extension Registration 预注册为以 contextId 隔离的 Generation Context，生成请求仅携带 contextId 与一次性 Request Overlay（动态 tools 与 extraRules），不在请求中内嵌组件契约。该模型与 Java Generation SDK（genui-java-sdk）及 GenUI Service 参考实现（examples/genui-service）保持一致，收益包括：每次生成请求节省扩展描述 token（单 context 上限 30 个组件 × 100 token）；模板固化 key 纳入 contextId 与 Contract Version，实现确定性命中并取代命中后兼容性校验；契约名称碰撞在注册期即被拒绝，而非生成期才暴露。备选「每次请求内嵌扩展组件描述」被否：请求体膨胀、模板固化需逐次做扩展组件超集校验、且与 SDK/参考实现的契约模型脱节。注册契约由 Redis 持久化并在启动时加载（服务层职责），SDK 保持纯内存语义；未注册 contextId 的生成请求在服务层报错，不沿用 SDK 内部的静默回退行为。
+扩展组件与扩展工具通过 Extension Registration 预注册为以 extensionId 隔离的 Generation Extension，生成请求仅携带 extensionId 与一次性 Request Overlay（动态 tools 与 extraRules），不在请求中内嵌组件契约。该模型与 Java Generation SDK（genui-java-sdk）及 GenUI Service 参考实现（examples/genui-service）保持一致，收益包括：每次生成请求节省扩展描述 token（单 extension 上限 30 个组件 × 100 token）；模板固化 key 纳入 extensionId 与 Contract Version，实现确定性命中并取代命中后兼容性校验；契约名称碰撞在注册期即被拒绝，而非生成期才暴露。备选「每次请求内嵌扩展组件描述」被否：请求体膨胀、模板固化需逐次做扩展组件超集校验、且与 SDK/参考实现的契约模型脱节。注册契约由 Redis 持久化并在启动时加载（服务层职责），SDK 保持纯内存语义；未注册 extensionId 的生成请求在服务层报错，不沿用 SDK 内部的静默回退行为。
