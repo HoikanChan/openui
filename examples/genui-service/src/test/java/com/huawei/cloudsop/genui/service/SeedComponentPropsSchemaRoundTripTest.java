@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.cloudsop.genui.core.ComponentPromptSpec;
-import com.huawei.cloudsop.genui.core.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
+import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
 
 /**
  * 锁住 SeedExtensionsRunner 的绑定路径:种子经 {@code objectMapper.readValue(in,

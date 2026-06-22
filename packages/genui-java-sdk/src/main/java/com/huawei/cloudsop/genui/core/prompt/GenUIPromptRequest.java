@@ -1,5 +1,7 @@
-package com.huawei.cloudsop.genui.core;
+package com.huawei.cloudsop.genui.core.prompt;
 
+import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
+import com.huawei.cloudsop.genui.core.contract.ToolSpec;
 import java.util.List;
 
 public record GenUIPromptRequest(

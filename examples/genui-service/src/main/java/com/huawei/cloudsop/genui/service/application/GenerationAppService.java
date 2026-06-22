@@ -1,8 +1,8 @@
 package com.huawei.cloudsop.genui.service.application;
 
-import com.huawei.cloudsop.genui.core.GenUIGeneration;
-import com.huawei.cloudsop.genui.core.GenUIPromptAssemblyResult;
-import com.huawei.cloudsop.genui.core.GenUIPromptRequest;
+import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.GenerationSdk;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

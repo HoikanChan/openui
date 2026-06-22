@@ -1,5 +1,7 @@
-package com.huawei.cloudsop.genui.core;
+package com.huawei.cloudsop.genui.core.contract;
 
+import com.huawei.cloudsop.genui.core.GenerationSdkException;
+import com.huawei.cloudsop.genui.core.Json;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;

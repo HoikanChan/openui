@@ -16,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.cloudsop.genui.core.GenUIPromptRequest;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.GenerationSdk;
 
 /** 拼装端点行为:与 SDK 直接拼装字节一致、Generation 生效、Overlay 工具碰撞 409。 */
