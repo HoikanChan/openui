@@ -1,6 +1,6 @@
 ---
 title: "genui-java-sdk (Java)"
-description: Back-end Java SDK that stores Generation Contexts and assembles UI-generation prompts byte-aligned with the front-end DSL library.
+description: Back-end Java SDK that stores Generation registrations and assembles UI-generation prompts byte-aligned with the front-end DSL library.
 ---
 
 The Java Generation SDK is the server-side counterpart of `dslLibrary.prompt()`. A back-end UI generation service (a SmartCanvasService implementation) uses it to register downstream extension contracts and assemble the system prompt before calling the LLM — without owning any component implementations.
@@ -34,7 +34,7 @@ import java.util.*;
 //    component contract (Stack/Table/Col/...), loaded from resources.
 GenerationSdk sdk = GenerationSdk.create();
 
-// 2. Register a downstream extension under an isolated Context ID.
+// 2. Register a downstream extension under an isolated Generation ID.
 //    Schemas MUST use LinkedHashMap — property order drives the prompt
 //    byte alignment (Map.of would reorder keys).
 LinkedHashMap<String, Object> inputProps = new LinkedHashMap<>();
@@ -46,11 +46,19 @@ inputSchema.put("properties", inputProps);
 inputSchema.put("required", List.of("period"));
 
 LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
-components.put("BillCard",
-    new ComponentPromptSpec("BillCard(title: string, amount: number)", "Billing card"));
+LinkedHashMap<String, Object> billProps = new LinkedHashMap<>();
+billProps.put("title", Map.of("type", "string"));
+billProps.put("amount", Map.of("type", "number"));
+LinkedHashMap<String, Object> billSchema = new LinkedHashMap<>();
+billSchema.put("type", "object");
+billSchema.put("properties", billProps);
+billSchema.put("required", List.of("title", "amount"));
 
-sdk.register(new GenUIContextExtension(
-    "team-a-billing",                 // Context ID — isolates this registration
+components.put("BillCard",
+    new ComponentPromptSpec("Billing card", billSchema));
+
+sdk.register(new GenUIGeneration(
+    "team-a-billing",                 // Generation ID — isolates this registration
     "1.0.0",                          // Contract Version
     components,
     List.of(new ComponentGroup("Billing", List.of("BillCard"), List.of())),
@@ -69,16 +77,16 @@ GenUIPromptAssemblyResult result = sdk.assemblePrompt(new GenUIPromptRequest(
 
 String systemPrompt = result.prompt();
 GenUIPromptAssemblyMetadata meta = result.metadata();
-// meta.baseContractVersion(), meta.extensionVersion(),
+// meta.baseContractVersion(), meta.generationVersion(),
 // meta.registeredToolNames(), meta.requestToolNames()
 ```
 
 ## Registration semantics
 
-`register(GenUIContextExtension)` follows the Extension Registration contract:
+`register(GenUIGeneration)` follows the Extension Registration contract:
 
-- **Context ID isolation** — generation for one Context ID never reads another context's contracts.
-- **Replace, not merge** — re-registering the same Context ID replaces the whole extension contract. Registration is idempotent; callers should re-register on startup (the SDK is in-memory).
+- **Generation ID isolation** — generation for one Generation ID never reads another generation's contracts.
+- **Replace, not merge** — re-registering the same Generation ID replaces the whole generation contract. Registration is idempotent; callers should re-register on startup (the SDK is in-memory).
 - **Name collisions are rejected** — a component or tool name that already exists in the base contract (or repeats inside the extension) throws `GenerationSdkException` with a message starting with `Component name collision` / `Tool name collision`. Nothing is partially registered.
 - **Group validation** — a `ComponentGroup` referencing a component name that exists in neither the base contract nor the extension is rejected.
 
@@ -88,7 +96,7 @@ GenUIPromptAssemblyMetadata meta = result.metadata();
 
 | `GenUIPromptRequest` field | Meaning |
 | --- | --- |
-| `contextId` | Selects one registered Generation Context. `null` assembles from the base contract only. |
+| `generationId` | Selects one registered Generation. `null` assembles from the base contract only. |
 | `dataModel` | `DataModelSpec(description, raw)` — host data injected into the prompt. |
 | `tools` | **Request Overlay**: one-shot tools for this request only, never persisted. A name colliding with a registered tool is rejected. |
 | `extraRules` | **Request Overlay**: one-shot additional rules. |
@@ -114,9 +122,9 @@ GenerationSdk sdk = GenerationSdk.builder()
 
 | Endpoint | Purpose |
 | --- | --- |
-| `GET /v1/contexts` | List registered Generation Contexts (id, version, component/tool counts). |
-| `PUT /v1/contexts/{contextId}` | Extension Registration over REST — replace semantics, `409` on name collision. |
-| `POST /v1/prompts/assemble` | Prompt assembly with Request Overlay; returns prompt + metadata; `404` for unknown contextId. |
+| `GET /v1/generations` | List registered Generations (id, version, component/tool counts). |
+| `PUT /v1/generations/{generationId}` | Extension Registration over REST — replace semantics, `409` on name collision. |
+| `POST /v1/prompts/assemble` | Prompt assembly with Request Overlay; returns prompt + metadata; `404` for unknown generationId. |
 | `POST /v1/generate` | Assemble → call the LLM → stream `openui-lang` back as chunked `text/plain`. Supports a debug-only `promptOverride` bypass. |
 | `POST /v1/tools/{toolName}/execute` | Server-side runtime for `Query`/`Mutation` tool calls in generated DSL. |
 

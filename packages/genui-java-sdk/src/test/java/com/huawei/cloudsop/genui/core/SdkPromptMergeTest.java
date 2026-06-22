@@ -10,10 +10,10 @@ import org.junit.jupiter.api.Test;
 
 /**
  * SDK-level end-to-end checks that {@link GenerationSdk#assemblePrompt} merges base + registered
- * extension + request overlay and feeds the result into {@link PromptAssembler} correctly.
+ * generation + request overlay and feeds the result into {@link PromptAssembler} correctly.
  *
  * <p>The assembler itself is byte-pinned to the TypeScript oracle by {@link PromptGoldenTest}; here
- * we independently reconstruct the merged {@code PromptInput} (base → extension → request order) and
+ * we independently reconstruct the merged {@code PromptInput} (base → generation → request order) and
  * assert the SDK produces exactly that prompt — locking the merge wiring and ordering.
  */
 class SdkPromptMergeTest {
@@ -25,27 +25,27 @@ class SdkPromptMergeTest {
     GenerationContract base = baseContract();
     GenerationSdk sdk = GenerationSdk.builder().baseContract(base).build();
 
-    GenUIContextExtension extension =
-        new GenUIContextExtension(
-            "ctxA",
-            "ext-v1",
+    GenUIGeneration generation =
+        new GenUIGeneration(
+            "genA",
+            "gen-v1",
             singleComponent("BizCard", "BizCard(title: string)", "Business card"),
             List.of(new ComponentGroup("Business", List.of("BizCard"), List.of())),
             List.of(tool("loadOrders")),
             List.of("root = Stack([BizCard(\"A\")])"),
-            List.of("Extension rule"));
-    sdk.register(extension);
+            List.of("Generation rule"));
+    sdk.register(generation);
 
     DataModelSpec dataModel = new DataModelSpec("Order data", orderedMap("orders", List.of(orderedMap("id", 1L))));
     ToolSpec requestTool = tool("searchTickets");
     GenUIPromptRequest request =
         new GenUIPromptRequest(
-            "ctxA", dataModel, List.of(requestTool), List.of("Request rule"), null, null, null, null);
+            "genA", dataModel, List.of(requestTool), List.of("Request rule"), null, null, null, null);
 
     String actual = sdk.assemblePrompt(request).prompt();
     String expected =
         PromptAssembler.assemble(
-            mergedInput(base, extension, dataModel, List.of(requestTool), List.of("Request rule")),
+            mergedInput(base, generation, dataModel, List.of(requestTool), List.of("Request rule")),
             base.builtins());
 
     assertEquals(expected, actual);
@@ -59,7 +59,7 @@ class SdkPromptMergeTest {
     ToolSpec requestTool = tool("searchTickets");
     GenUIPromptRequest request =
         new GenUIPromptRequest(
-            "ctxA", null, List.of(requestTool), List.of("Request rule"), null, null, null, null);
+            "genA", null, List.of(requestTool), List.of("Request rule"), null, null, null, null);
 
     String actual = sdk.assemblePrompt(request).prompt();
     String expected =
@@ -74,7 +74,7 @@ class SdkPromptMergeTest {
 
   private static PromptAssembler.PromptInput mergedInput(
       GenerationContract base,
-      GenUIContextExtension extension,
+      GenUIGeneration generation,
       DataModelSpec dataModel,
       List<ToolSpec> requestTools,
       List<String> requestRules) {
@@ -84,12 +84,12 @@ class SdkPromptMergeTest {
     List<String> examples = new ArrayList<>(base.examples());
     List<String> rules = new ArrayList<>(base.additionalRules());
 
-    if (extension != null) {
-      components.putAll(extension.components());
-      groups.addAll(extension.componentGroups());
-      tools.addAll(extension.tools());
-      examples.addAll(extension.examples());
-      rules.addAll(extension.additionalRules());
+    if (generation != null) {
+      components.putAll(generation.components());
+      groups.addAll(generation.componentGroups());
+      tools.addAll(generation.tools());
+      examples.addAll(generation.examples());
+      rules.addAll(generation.additionalRules());
     }
     tools.addAll(requestTools);
     rules.addAll(requestRules);

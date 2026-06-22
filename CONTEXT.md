@@ -6,42 +6,63 @@
 
 **GenUI Service** - Reference REST implementation (in this repo) of the SmartCanvasService contract: it exposes Java Generation SDK registration and prompt assembly as service APIs and streams generated `openui-lang`.
 
-**Java Generation SDK** - Back-end SDK that stores registered Generation Contexts and assembles model prompts for UI generation.
+**Java Generation SDK** - Back-end SDK that stores registered Extension Registrations by Generation ID and assembles model prompts for UI generation.
 
-**Generation Context** - Registered generation contract used to guide UI generation, including component capability descriptions, tool metadata, examples, business rules, prompt rules, and data model information.
+**Generation Extension** - Registered generation contract used to guide UI generation, including component capability descriptions, tool metadata, examples, business rules, prompt rules, and data model information.
 
-**Component Contract** - Model-visible component metadata supplied by DSLEngine or downstream extensions so SmartCanvasService can generate valid `openui-lang`.
+**Component Contract** - Model-visible and service-validated component metadata supplied by DSLEngine or downstream extensions so SmartCanvasService can generate valid `openui-lang`; it is based on component description plus `propsSchema`, not a prompt-only signature.
 
-**Extension Registration** - Downstream-provided model-visible component or tool contract added to the Generation Context before UI generation.
+**Props Schema** - OpenUI-controlled subset of JSON Schema used in a Component Contract for registration-time shape validation and post-generation prop validation.
 
-**Contract Name Collision** - A registration attempt that reuses an existing component or tool name in the same Generation Context.
+**Extension Registration** - Downstream-provided model-visible component or tool contract registered under a Generation ID before UI generation.
 
-**Context ID** - Identifier that selects one isolated Generation Context for registration and prompt assembly.
+**Contract Name Collision** - A registration attempt that reuses an existing component or tool name in the same Generation Extension.
 
-**Request Overlay** - Per-generation prompt assembly input that can add dynamic tools or extra rules without changing the registered Generation Context.
+**Generation ID** - Identifier that selects one isolated Generation Extension for registration and prompt assembly.
 
-**Prompt Override** - Debug-only generation input that replaces the entire assembled prompt, bypassing the Generation Context; not for production callers.
+**Request Overlay** - Per-generation prompt assembly input that can add dynamic tools or extra rules without changing the registered Generation Extension.
+
+**Prompt Override** - Debug-only generation input that replaces the entire assembled prompt, bypassing the Generation Extension; not for production callers.
 
 **Contract Version** - Version identifier for the base or extension contract used to assemble a prompt.
+
+**Extension Template** - Business-authored reusable `openui-lang` template registered inside a Generation Extension and selected by `templateId`; it is distinct from generated template cache entries.
+
+**Generated Template Cache** - SmartCanvasService-managed cache of generated and validated `openui-lang` templates, keyed from request context such as source, intent, Generation ID, and Contract Version.
+
+**Direct Render Response** - SmartCanvasService response envelope that instructs DSLEngine to render without LLM generation, such as Extension Template, PIU render, or iframe render.
+
+**Render Stream Payload** - JSON payload carried over SmartCanvasService SSE responses; its `type` field tells DSLEngine whether the payload is generated `openui-lang`, an Extension Template, a PIU render instruction, an iframe render instruction, completion metadata, or an error.
+
+**Streaming IR Validation** - SmartCanvasService validation mode where generated `openui-lang` may be forwarded as arbitrary chunks, while the service buffers to line boundaries and validates each completed line against the selected Generation Extension.
 
 ## Relationships
 
 - **DSLEngine** owns the base **Component Contract** for the front-end SDK components.
-- **Extension Registration** extends the **Generation Context** with downstream components or tools.
-- A **Context ID** isolates one business registration from another; generation for one **Context ID** does not read another context's contracts.
-- Re-registering the same **Context ID** replaces that context's extension contract.
-- A **Contract Name Collision** inside one **Generation Context** is rejected instead of overriding an existing contract.
+- **Extension Registration** defines one **Generation Extension** with downstream components or tools.
+- A **Component Contract** must include `propsSchema` so **SmartCanvasService** can validate generated component props before streaming or caching generated `openui-lang`.
+- **Extension Registration** validates basic `propsSchema` shape at registration time; generated `openui-lang` is validated against that schema after model generation.
+- **Props Schema** is not full JSON Schema; SmartCanvasService supports only the agreed OpenUI subset needed for component prop validation.
+- **Props Schema** property order defines the positional argument order for generated `openui-lang` component calls.
+- A **Props Schema** for positional component calls must list all required properties before optional properties; registration rejects schemas with required properties after optional properties.
+- A **Generation ID** isolates one business registration from another; generation for one **Generation ID** does not read another extension's contracts.
+- Re-registering the same **Generation ID** replaces that extension's contract.
+- A **Contract Name Collision** inside one **Generation Extension** is rejected instead of overriding an existing contract.
 - An **Extension Registration** contains only downstream extension contracts; the base DSLEngine contract is supplied separately by the Java Generation SDK.
-- A **Request Overlay** applies only to one generation request and is not persisted into the selected **Generation Context**.
+- A **Request Overlay** applies only to one generation request and is not persisted into the selected **Generation Extension**.
 - A **Prompt Override** is distinct from a **Request Overlay**: an overlay augments prompt assembly, an override discards it entirely.
-- A tool in a **Request Overlay** must not reuse a tool name already present in the selected **Generation Context**.
+- A tool in a **Request Overlay** must not reuse a tool name already present in the selected **Generation Extension**.
 - **Java Generation SDK** supplies the base DSLEngine **Component Contract** by default; callers register only extensions.
 - **Contract Version** identifies which component and tool contracts contributed to a generated prompt.
 - A front-end library extension derives a new **Component Contract** instead of mutating DSLEngine's base contract.
 - **Java Generation SDK** provides registration and prompt assembly capabilities that **SmartCanvasService** can expose as service APIs.
-- **SmartCanvasService** assembles prompts from the **Generation Context** but does not own component implementations.
+- **SmartCanvasService** assembles prompts from the selected **Generation Extension** but does not own component implementations.
 - **GenUI Service** does not persist an **Extension Registration**; callers re-register after a service restart.
-- **GenUI Service** seeds preset **Generation Context**s at startup; a consumer selects one by **Context ID**.
+- **GenUI Service** seeds preset **Generation Extension**s at startup; a consumer selects one by **Generation ID**.
+- An **Extension Template** is registered business configuration; a **Generated Template Cache** entry is runtime output and is not part of the Extension Registration contract.
+- A **Direct Render Response** is selected by upstream request fields such as `templateId`, `renderPiu`, or `iframeUrl`; DSLEngine owns the final rendering behavior for each direct render mode.
+- SmartCanvasService uses one SSE response channel; DSLEngine dispatches each **Render Stream Payload** by its `type` field instead of by distinct SSE event names.
+- **Streaming IR Validation** does not require `ir` payload chunks to align with `openui-lang` statements; validation runs when the service observes completed line boundaries.
 
 # Canvas Glossary
 

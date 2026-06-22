@@ -64,6 +64,8 @@
 
 SmartCanvasService 是后续开发的生成侧服务，负责将用户意图、业务数据和 UI 生成建议转换为可被前端消费的 Stream IR。其核心能力包括 拓展能力注册、prompt 组装、上下文压缩、模板在线固化、生成结果校验、Reflection 重生成和异常降级。
 
+全链路统一使用 `Extension ID` / `extensionId` 作为生成扩展配置的选择标识，不再使用 `Context ID` / `contextId` 作为公开概念或接口字段。原先的 Generation Context 概念统一收敛为 Generation Extension。
+
 **1. 提示词管理**
 
 将扩展组件描述、UI 建议信息拼装为完整 prompt，发送给大模型。生成内容支持：
@@ -141,7 +143,7 @@ apiDoc：api文档，可选。
 
 业务往往有自己的专用组件和专用操作——比如告警运维场景，有「告警级别标签」这种专用组件、「确认告警」这种专用操作。这些东西模型本来不认识，也就不会生成出来。
 
-业务方**提前把自己的扩展组件和工具作为 UI 生成扩展配置等通过扩展注册接口进行注册**，之后这个业务的每次生成请求，只要报上extensionId，服务就自动把对应的扩展能力带进提示词。
+业务方**提前把自己的扩展组件和工具作为 UI 生成扩展配置等通过扩展注册接口进行注册**，之后这个业务的每次生成请求，只要报上 `extensionId`，服务就自动把对应的扩展能力带进提示词。
 
 注意服务只记录「扩展描述」（给模型看、给服务校验用的元数据），组件的实际渲染代码仍在前端（见 6.2.4.5），两边用同一个组件名对齐。
 
@@ -151,7 +153,7 @@ apiDoc：api文档，可选。
 | --- | --- |
 | 组件 | 新增模型能生成、前端能渲染的 UI 组件 |
 | 工具 | 提供可被调用的 tool 函数，实现 UI 查询数据或发起变更请求；描述结构与 MCP Tool 定义保持兼容 |
-| 模板 | 沉淀可通过 templateId 直接复用的 Stream IR |
+| Extension Template | 业务手写、随 Generation Extension 注册的 Stream IR 模板，可通过 `templateId` 直接复用；与服务在线固化的 Generated Template Cache 是两类对象 |
 | 提示词规则 | 约束生成风格、业务规则、组件取用偏好 |
 | 生成示例 | UI范例，提升生成稳定性 |
 
@@ -238,31 +240,45 @@ apiDoc：api文档，可选。
 }
 ```
 
+`templateId`、`renderPiu` 和 `iframeUrl` 属于上游业务指定的直出分支。`templateId` 命中 Extension Template 时不调用 LLM，但仍需进行服务端校验；校验失败按 Extension Template 配置错误返回。`renderPiu` 和 `iframeUrl` 由 SmartCanvasService 通过统一响应消息体返回给 DSLEngine，DSLEngine 根据消息体类型选择 PIU 或 iframe 渲染方式。
+
 **Response（SSE 流式）**：
 
 ```
 event: data
-data: root = Stack([title])
+data: {"type":"ir","content":"root = Stack([title])"}
 
 event: data
-data: title = Text("Alarm Table")
+data: {"type":"ir","content":"\ntitle = Text(\"Alarm Table\")"}
 
 event: done
-data: {"traceId": "xxx"}
+data: {"type":"done","traceId":"xxx","source":"llm"}
 ```
 
 **SSE 事件类型**：
-- `data`：Stream IR 语句行，按声明顺序流式下发
-- `done`：生成完成，携带 traceId
-- `error`：错误事件，携带错误码与降级内容
+- `data`：统一承载 Render Stream Payload，通过 payload `type` 字段区分 openui-lang、Extension Template、PIU、iframe、done 或 error
+
+Render Stream Payload 最小集合如下：
+
+```ts
+type RenderStreamPayload =
+  | { type: "ir"; content: string }
+  | { type: "extensionTemplate"; templateId: string; content: string }
+  | { type: "piu"; renderPiu: string; payload?: object }
+  | { type: "iframe"; iframeUrl: string; iframeTitle?: string; payload?: object }
+  | { type: "done"; traceId: string; source: "llm" | "extensionTemplate" | "piu" | "iframe" | "generatedTemplateCache" }
+  | { type: "error"; traceId: string; code: string; message: string; fallback?: object };
+```
 
 **8. Extension 注册接口**
 
-Extension 注册接口用于注册 UI 生成扩展配置。业务方可以通过 `extensionId` 把组件、工具、模板、示例和规则登记为一组可复用的生成扩展配置，后续 UI 生成请求只需携带该 `extensionId` 即可使用这些拓展能力。
+Extension 注册接口用于注册 UI 生成扩展配置。业务方可以通过 `extensionId` 把组件、工具、Extension Template、示例和规则登记为一组可复用的生成扩展配置，后续 UI 生成请求只需携带该 `extensionId` 即可使用这些拓展能力。
 
 MVP 阶段，`GenUIExtension` 注册 JSON 由业务方维护。DSLEngine 侧仅提供 `generateComponentSpecs`，用于从前端组件定义导出 `components` 字段所需的组件规格 JSON，避免业务方手写组件名、组件说明和 props 约束。`extensionId`、`version`、`sourcePiu`、`templates`、`componentGroups`、`tools`、`examples` 和 `additionalRules` 仍由业务方按业务场景声明式填写。
 
 `sourcePiu` 可牵引 DSLEngine 拉起业务 PIU；业务 PIU 拉起后通过 PIU 事件向 DSLEngine 注册拓展组件和工具的前端实现。业务方可将同一批前端组件定义传给 `generateComponentSpecs`，生成多个组件组成的 `components` JSON 片段，并填入 Extension 注册接口请求体。
+
+注册体中的 `templates` 表示业务手写的 Extension Template，不表示 SmartCanvasService 在线固化的 Generated Template Cache。Extension Template 是业务配置，Generated Template Cache 是运行期缓存产物，两者使用不同存储空间和失效策略。
 
 **拓展组件规格导出方式（generateComponentSpecs）**：
 
@@ -331,6 +347,8 @@ export const alarmComponentSpecs = generateComponentSpecs([
 ```
 
 `generateComponentSpecs` 支持一次导出多个组件。生成时应校验组件名重复、props schema 可序列化和组件描述是否为空；校验失败时导出失败，业务方修复组件定义后重新导出。
+
+Component Contract 统一由组件说明和 `propsSchema` 表达，不再以 prompt-only `signature` 作为核心契约。`propsSchema` 是 OpenUI 受控 JSON Schema 子集，用于注册期基础校验和生成后组件 props 校验，不要求支持完整 JSON Schema。Stream IR 组件调用仍采用位置参数；`propsSchema.properties` 的声明顺序即位置参数顺序，所有 required 参数必须排在 optional 参数之前。注册期应拒绝不满足该顺序约束的组件契约。
 
 **接口说明**：
 
@@ -666,7 +684,6 @@ eview 作为目标 UI 组件库，通过 react-ui-dsl 的 view target 机制适�
 | PIU 拉起失败 | 降级为静态展示，并记录日志 |
 
 全链路通过 traceId 串联生成请求、大模型调用、Stream IR 校验、SSE 返回和前端渲染。关键观测指标包括模板命中率、生成时延、首字节时延、生成成功率、token 用量、校验失败率、降级率、端侧渲染错误率，以及 Generation Extension 注册数与注册失败率。
-
 
 ### 6.2.5 增量SR清单
 

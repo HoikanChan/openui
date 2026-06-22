@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.cloudsop.genui.core.ComponentGroup;
 import com.huawei.cloudsop.genui.core.ComponentPromptSpec;
-import com.huawei.cloudsop.genui.core.GenUIContextExtension;
+import com.huawei.cloudsop.genui.core.GenUIGeneration;
 import com.huawei.cloudsop.genui.core.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.GenerationSdk;
 import com.huawei.cloudsop.genui.core.ToolAnnotations;
@@ -30,18 +30,18 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** 注册端点行为:种子可见、替换语义、名称碰撞 409、未知 contextId 404。 */
+/** 注册端点行为:种子可见、替换语义、名称碰撞 409、未知 generationId 404。 */
 @SpringBootTest
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = ClassMode.AFTER_CLASS)
-class ContextsApiTest {
+class GenerationsApiTest {
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper om;
 
   @Test
-  void listsSeededContexts() throws Exception {
-    JsonNode contexts = list();
-    Map<String, JsonNode> byId = byContextId(contexts);
+  void listsSeededGenerations() throws Exception {
+    JsonNode generations = list();
+    Map<String, JsonNode> byId = byGenerationId(generations);
     assertTrue(byId.containsKey("noe-alarm-tools"), "seed noe-alarm-tools missing");
     assertTrue(byId.containsKey("noe-ops-rules"), "seed noe-ops-rules missing");
     assertEquals(2, byId.get("noe-alarm-tools").get("toolCount").asInt());
@@ -52,15 +52,15 @@ class ContextsApiTest {
   void registersAndReplacesExtension() throws Exception {
     String v1 =
         "{\"version\":\"v1\",\"components\":{\"BizCard\":{\"signature\":\"BizCard(title: string)\",\"description\":\"Business card\"}}}";
-    mvc.perform(put("/v1/contexts/test-ext").contentType(MediaType.APPLICATION_JSON).content(v1))
+    mvc.perform(put("/v1/generations/test-ext").contentType(MediaType.APPLICATION_JSON).content(v1))
         .andExpect(status().isOk());
 
     String v2 =
         "{\"version\":\"v2\",\"components\":{\"BizCard\":{\"signature\":\"BizCard(title: string)\",\"description\":\"Business card v2\"}}}";
-    mvc.perform(put("/v1/contexts/test-ext").contentType(MediaType.APPLICATION_JSON).content(v2))
+    mvc.perform(put("/v1/generations/test-ext").contentType(MediaType.APPLICATION_JSON).content(v2))
         .andExpect(status().isOk());
 
-    Map<String, JsonNode> byId = byContextId(list());
+    Map<String, JsonNode> byId = byGenerationId(list());
     assertEquals("v2", byId.get("test-ext").get("version").asText(), "replace semantics");
   }
 
@@ -68,10 +68,10 @@ class ContextsApiTest {
   void rejectsBaseComponentCollisionWith409() throws Exception {
     String colliding =
         "{\"version\":\"v1\",\"components\":{\"Stack\":{\"signature\":\"Stack()\",\"description\":\"colliding\"}}}";
-    mvc.perform(put("/v1/contexts/collide-ext").contentType(MediaType.APPLICATION_JSON).content(colliding))
+    mvc.perform(put("/v1/generations/collide-ext").contentType(MediaType.APPLICATION_JSON).content(colliding))
         .andExpect(status().isConflict());
 
-    assertTrue(!byContextId(list()).containsKey("collide-ext"), "colliding context must not register");
+    assertTrue(!byGenerationId(list()).containsKey("collide-ext"), "colliding generation must not register");
   }
 
   @Test
@@ -90,7 +90,7 @@ class ContextsApiTest {
             + "\"examples\":[\"root = Stack([])\"],"
             + "\"additionalRules\":[\"rule-1\"]}";
     mvc.perform(
-            put("/v1/contexts/byte-align-ext")
+            put("/v1/generations/byte-align-ext")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(registration))
         .andExpect(status().isOk());
@@ -100,7 +100,7 @@ class ContextsApiTest {
                 mvc.perform(
                         post("/v1/prompts/assemble")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"contextId\":\"byte-align-ext\"}"))
+                            .content("{\"generationId\":\"byte-align-ext\"}"))
                     .andExpect(status().isOk())
                     .andReturn()
                     .getResponse()
@@ -118,7 +118,7 @@ class ContextsApiTest {
     assertEquals(viaSdk, viaRest, "REST-DTO 路径拼装产物必须与 SDK 直注册逐字节一致");
   }
 
-  private static GenUIContextExtension sameExtensionViaSdk() {
+  private static GenUIGeneration sameExtensionViaSdk() {
     LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
     components.put("BillCard", new ComponentPromptSpec("BillCard(title: string)", "Bill card"));
 
@@ -139,7 +139,7 @@ class ContextsApiTest {
     outputSchema.put("type", "object");
     outputSchema.put("properties", outputProps);
 
-    return new GenUIContextExtension(
+    return new GenUIGeneration(
         "byte-align-ext",
         "ba-v1",
         components,
@@ -156,22 +156,22 @@ class ContextsApiTest {
     // 评审复现场景:组件名含 "collision" 子串时,组缺失错误(400)曾被子串匹配误判为 409
     String invalid =
         "{\"version\":\"v1\",\"componentGroups\":[{\"name\":\"G\",\"components\":[\"XcollisionY\"]}]}";
-    mvc.perform(put("/v1/contexts/probe-ext").contentType(MediaType.APPLICATION_JSON).content(invalid))
+    mvc.perform(put("/v1/generations/probe-ext").contentType(MediaType.APPLICATION_JSON).content(invalid))
         .andExpect(status().isBadRequest());
   }
 
   @Test
-  void unknownContextIdOnAssembleReturns404() throws Exception {
+  void unknownGenerationIdOnAssembleReturns404() throws Exception {
     mvc.perform(
             post("/v1/prompts/assemble")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"contextId\":\"no-such-context\"}"))
+                .content("{\"generationId\":\"no-such-generation\"}"))
         .andExpect(status().isNotFound());
   }
 
   private JsonNode list() throws Exception {
     String body =
-        mvc.perform(get("/v1/contexts"))
+        mvc.perform(get("/v1/generations"))
             .andExpect(status().isOk())
             .andReturn()
             .getResponse()
@@ -179,9 +179,9 @@ class ContextsApiTest {
     return om.readTree(body);
   }
 
-  private static Map<String, JsonNode> byContextId(JsonNode contexts) {
+  private static Map<String, JsonNode> byGenerationId(JsonNode generations) {
     Map<String, JsonNode> byId = new HashMap<>();
-    contexts.forEach(node -> byId.put(node.get("contextId").asText(), node));
+    generations.forEach(node -> byId.put(node.get("generationId").asText(), node));
     return byId;
   }
 }

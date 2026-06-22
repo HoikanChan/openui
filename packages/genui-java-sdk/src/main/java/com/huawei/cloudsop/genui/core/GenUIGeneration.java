@@ -5,16 +5,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public record GenUIContextExtension(
-    String contextId,
+public record GenUIGeneration(
+    String generationId,
     String version,
     Map<String, ComponentPromptSpec> components,
     List<ComponentGroup> componentGroups,
     List<ToolSpec> tools,
     List<String> examples,
     List<String> additionalRules) {
-  public GenUIContextExtension {
-    // Preserve component insertion order — significant for prompt byte-alignment (NOT Map.copyOf).
+  public GenUIGeneration {
     components =
         components == null
             ? Map.of()

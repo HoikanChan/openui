@@ -63,7 +63,10 @@ public final class GenerationContractLoader {
       Map<String, Object> component = Json.asObject(entry.getValue(), "component " + entry.getKey());
       result.put(
           entry.getKey(),
-          new ComponentPromptSpec(string(component.get("signature")), string(component.get("description"))));
+          component.containsKey("propsSchema")
+              ? new ComponentPromptSpec(
+                  string(component.get("description")), Json.asObject(component.get("propsSchema"), "propsSchema"))
+              : new ComponentPromptSpec(string(component.get("signature")), string(component.get("description"))));
     }
     return result;
   }
