@@ -10,13 +10,24 @@ describe("DSLEngine base contract", () => {
 
     expect(contract.contractVersion).toBe(DSL_BASE_CONTRACT_VERSION);
     expect(contract.root).toBe("Stack");
-    expect(contract.components.Stack.signature).toContain("Stack(");
+    expect(Object.keys(contract.components.Stack.propsSchema?.properties ?? {})).toEqual([
+      "children",
+      "direction",
+      "gap",
+      "align",
+      "justify",
+      "wrap",
+    ]);
+    expect(contract.components.Stack.propsSchema?.properties.direction).toEqual({
+      type: "string",
+      enum: ["row", "column"],
+    });
     expect(contract.componentGroups?.map((group) => group.name)).toEqual(
       dslComponentGroups.map((group) => group.name),
     );
     expect(contract.additionalRules?.length).toBeGreaterThan(0);
     expect(contract.examples?.length).toBeGreaterThan(0);
-    expect(Object.keys(contract.components.Stack).sort()).toEqual(["description", "signature"]);
+    expect(Object.keys(contract.components.Stack).sort()).toEqual(["description", "propsSchema"]);
   });
 
   it("ships a top-level ordered builtins manifest for the Java SDK", () => {
@@ -38,7 +49,9 @@ describe("DSLEngine base contract", () => {
 
     // Data builtins (e.g. Count) are non-template and come from the same registry.
     expect(
-      baseContract.builtins.some((entry) => !entry.templateBuiltin && entry.signature.startsWith("Count(")),
+      baseContract.builtins.some(
+        (entry) => !entry.templateBuiltin && entry.signature.startsWith("Count("),
+      ),
     ).toBe(true);
   });
 

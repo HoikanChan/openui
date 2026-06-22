@@ -1,7 +1,9 @@
 // define library
-export { createLibrary, defineComponent } from "./library";
+export { createLibrary, defineComponent, generateComponentSpecs } from "./library";
 export type {
   ComponentGroup,
+  ComponentPropsSchema,
+  ComponentPropsSchemaProperty,
   ComponentRenderProps,
   ComponentRenderer,
   DefinedComponent,

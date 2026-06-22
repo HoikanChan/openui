@@ -29,9 +29,20 @@ describe("Stack schema", () => {
     expect(StackSchema.safeParse({ gap: 16 }).success).toBe(false);
   });
 
-  it("keeps direction as second positional arg in signature", () => {
+  it("keeps direction as second positional prop", () => {
     const spec = dslLibrary.toSpec();
-    expect(spec.components.Stack.signature).toContain('Stack(children?: any[], direction?: "row" | "column"');
+    expect(Object.keys(spec.components.Stack.propsSchema?.properties ?? {})).toEqual([
+      "children",
+      "direction",
+      "gap",
+      "align",
+      "justify",
+      "wrap",
+    ]);
+    expect(spec.components.Stack.propsSchema?.properties.direction).toEqual({
+      type: "string",
+      enum: ["row", "column"],
+    });
   });
 });
 

@@ -2,67 +2,62 @@ import { describe, expect, it } from "vitest";
 import { dslLibrary } from "./dslLibrary";
 
 describe("react-ui-dsl exported prompt and schema surface", () => {
-  it("exposes flattened component signatures for representative components", () => {
+  it("exposes controlled props schemas for representative components", () => {
     const spec = dslLibrary.toSpec();
+    const propsOf = (name: keyof typeof spec.components) =>
+      spec.components[name].propsSchema?.properties ?? {};
 
-    expect(spec.components.Button.signature).toContain("Button(text?:");
-    expect(spec.components.Button.signature).not.toContain("properties");
-    expect(spec.components.Button.signature).not.toContain("style");
-    expect(spec.components.Button.signature).not.toContain("actions");
+    expect(Object.keys(propsOf("Button"))).toEqual(["text", "status", "disabled", "type"]);
+    expect(propsOf("Button")).not.toHaveProperty("properties");
+    expect(propsOf("Button")).not.toHaveProperty("style");
+    expect(propsOf("Button")).not.toHaveProperty("actions");
 
-    expect(spec.components.TextContent.signature).toContain("TextContent(text: string");
-    expect(spec.components.TextContent.signature).toContain("size?:");
-    expect(spec.components.TextContent.signature).not.toContain("properties");
-    expect(spec.components.TextContent.signature).not.toContain("style");
+    expect(Object.keys(propsOf("TextContent"))).toEqual(["text", "size"]);
+    expect(propsOf("TextContent").text).toEqual({ type: "string" });
+    expect(propsOf("TextContent")).not.toHaveProperty("properties");
+    expect(propsOf("TextContent")).not.toHaveProperty("style");
 
-    expect(spec.components.MarkDownRenderer.signature).toContain("MarkDownRenderer(textMarkdown: string");
-    expect(spec.components.MarkDownRenderer.signature).toContain("variant?:");
+    expect(Object.keys(propsOf("MarkDownRenderer"))).toEqual(["textMarkdown", "variant"]);
 
-    expect(spec.components.CardHeader.signature).toContain("CardHeader(title?:");
-    expect(spec.components.CardHeader.signature).toContain("subtitle?:");
+    expect(Object.keys(propsOf("CardHeader"))).toEqual(["title", "subtitle"]);
 
-    expect(spec.components.Card.signature).toContain("variant?:");
-    expect(spec.components.Card.signature).toContain("width?:");
-    expect(spec.components.Card.signature).not.toContain("direction");
-    expect(spec.components.Card.signature).not.toContain("gap?:");
-    expect(spec.components.Card.signature).not.toContain("style");
-    expect(spec.components.Card.signature).not.toContain("actions");
-    expect(spec.components.Card.signature).not.toContain("header");
+    expect(propsOf("Card")).toHaveProperty("variant");
+    expect(propsOf("Card")).toHaveProperty("width");
+    expect(propsOf("Card")).not.toHaveProperty("direction");
+    expect(propsOf("Card")).not.toHaveProperty("gap");
+    expect(propsOf("Card")).not.toHaveProperty("style");
+    expect(propsOf("Card")).not.toHaveProperty("actions");
+    expect(propsOf("Card")).not.toHaveProperty("header");
 
-    expect(spec.components.Table.signature).not.toContain("style");
-    expect(spec.components.Tag.signature).toContain("Tag(text:");
-    expect(spec.components.Tag.signature).toContain("icon?:");
-    expect(spec.components.Tag.signature).toContain("size?:");
-    expect(spec.components.Tag.signature).toContain("variant?:");
+    expect(propsOf("Table")).not.toHaveProperty("style");
+    expect(Object.keys(propsOf("Tag"))).toEqual(["text", "variant", "icon", "size"]);
 
-    expect(spec.components.Descriptions.signature).toContain("Descriptions(items:");
-    expect(spec.components.Descriptions.signature).toContain("title?:");
-    expect(spec.components.Descriptions.signature).toContain("extra?:");
-    expect(spec.components.Descriptions.signature).toContain("columns?:");
-    expect(spec.components.Descriptions.signature).toContain("border?:");
+    expect(Object.keys(propsOf("Descriptions"))).toEqual([
+      "items",
+      "title",
+      "extra",
+      "columns",
+      "border",
+    ]);
 
-    expect(spec.components.DescGroup.signature).toContain("DescGroup(title: string");
-    expect(spec.components.DescGroup.signature).toContain("fields:");
-    expect(spec.components.DescGroup.signature).toContain("columns?:");
+    expect(Object.keys(propsOf("DescGroup"))).toEqual(["title", "fields", "columns"]);
 
-    expect(spec.components.DescField.signature).toContain("DescField(label: string");
-    expect(spec.components.DescField.signature).toContain("value:");
-    expect(spec.components.DescField.signature).toContain("span?:");
-    expect(spec.components.DescField.signature).not.toContain("format?:");
+    expect(Object.keys(propsOf("DescField"))).toEqual(["label", "value", "span"]);
+    expect(propsOf("DescField")).not.toHaveProperty("format");
 
-    expect(spec.components.MiniChart.signature).toContain("MiniChart(type:");
-    expect(spec.components.MiniChart.signature).toContain("data:");
-    expect(spec.components.MiniChart.signature).toContain("height?:");
-    expect(spec.components.MiniChart.signature).toContain("color?:");
-    expect(spec.components.MiniChart.signature).not.toContain("size?:");
-    expect(spec.components.MiniChart.signature).not.toContain("labels:");
-    expect(spec.components.MiniChart.signature).not.toContain("series:");
+    expect(Object.keys(propsOf("MiniChart"))).toEqual(["type", "data", "height", "color"]);
+    expect(propsOf("MiniChart")).not.toHaveProperty("size");
+    expect(propsOf("MiniChart")).not.toHaveProperty("labels");
+    expect(propsOf("MiniChart")).not.toHaveProperty("series");
   });
 
   it("exports json schema without legacy properties wrappers or removed host-control fields", () => {
     const spec = dslLibrary.toSpec();
     const schema = dslLibrary.toJSONSchema();
-    const defs = ("$defs" in schema ? schema.$defs : {}) as Record<string, { properties?: Record<string, unknown> }>;
+    const defs = ("$defs" in schema ? schema.$defs : {}) as Record<
+      string,
+      { properties?: Record<string, unknown> }
+    >;
 
     const button = defs.Button;
     const separator = defs.Separator;
@@ -87,9 +82,10 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(button.properties).not.toHaveProperty("style");
     expect(button.properties).not.toHaveProperty("actions");
 
-    expect(spec.components.Separator.signature).toContain("Separator(");
-    expect(spec.components.Separator.signature).toContain("orientation?:");
-    expect(spec.components.Separator.signature).toContain("decorative?:");
+    expect(Object.keys(spec.components.Separator.propsSchema?.properties ?? {})).toEqual([
+      "orientation",
+      "decorative",
+    ]);
 
     expect(separator.properties).toMatchObject({
       orientation: expect.anything(),
@@ -124,7 +120,7 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
       variant: expect.anything(),
       width: expect.anything(),
     });
-    expect(JSON.stringify(card.properties)).not.toContain("\"actions\"");
+    expect(JSON.stringify(card.properties)).not.toContain('"actions"');
 
     expect(tag.properties).toMatchObject({
       text: expect.anything(),
@@ -178,15 +174,25 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     const prompt = dslLibrary.prompt({
       dataModel: {
         raw: {
-          employees: [{ name: "Alice", salary: 95000, joinedAt: "2023-06-15T00:00:00.000Z", active: 1 }],
+          employees: [
+            { name: "Alice", salary: 95000, joinedAt: "2023-06-15T00:00:00.000Z", active: 1 },
+          ],
         },
       },
     });
 
-    expect(prompt).toContain('For Table column options.cell, `@Render("v", expr)` receives the cell value');
-    expect(prompt).toContain('If the render body needs other fields from the row, use `@Render("v", "row", expr)`');
-    expect(prompt).toContain("If a table cell label must combine the current value with another field from the same row");
-    expect(prompt).toContain("Use `@FormatDate`, `@FormatBytes`, `@FormatNumber`, `@FormatPercent`, and `@FormatDuration`");
+    expect(prompt).toContain(
+      'For Table column options.cell, `@Render("v", expr)` receives the cell value',
+    );
+    expect(prompt).toContain(
+      'If the render body needs other fields from the row, use `@Render("v", "row", expr)`',
+    );
+    expect(prompt).toContain(
+      "If a table cell label must combine the current value with another field from the same row",
+    );
+    expect(prompt).toContain(
+      "Use `@FormatDate`, `@FormatBytes`, `@FormatNumber`, `@FormatPercent`, and `@FormatDuration`",
+    );
     expect(prompt).toContain("Never use the removed `format` prop on `Col` or `DescField`");
     expect(prompt).toContain("For dynamic-key object maps");
     expect(prompt).toContain(
@@ -201,8 +207,8 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain(
       'statusCol = Col("Status", "status", {cell: @Render("v", "row", TextContent(row.id + ": " + @Switch(v, {"paid": "Paid", "pending": "Pending"}, "Unknown")))})',
     );
-    expect(prompt).toContain('deviceRows = @ObjectEntries(data.devicesById)');
-    expect(prompt).toContain('deviceTable = Table([deviceKeyCol, statusCol], deviceRows)');
+    expect(prompt).toContain("deviceRows = @ObjectEntries(data.devicesById)");
+    expect(prompt).toContain("deviceTable = Table([deviceKeyCol, statusCol], deviceRows)");
     expect(prompt).toContain('deviceKeyCol = Col("Device", "key")');
     expect(prompt).toContain('statusCol = Col("Status", "value.status")');
   });
@@ -264,15 +270,25 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
 
     expect(prompt).toContain("For positional tuple arrays");
     expect(prompt).toContain("project the needed tuple index before formatting");
-    expect(prompt).toContain('timestampLabels = @Each(data.samples, "item", @FormatDate(item[0], "dateTime"))');
+    expect(prompt).toContain(
+      'timestampLabels = @Each(data.samples, "item", @FormatDate(item[0], "dateTime"))',
+    );
     expect(prompt).toContain("Byte-count fields");
     expect(prompt).toContain("`*Bytes`");
     expect(prompt).toContain("@FormatBytes");
-    expect(prompt).toContain("Rate fields such as `bandwidth`, `bps`, `bitrate`, or `bitsPerSecond`");
-    expect(prompt).toContain('TextContent(v >= 1000000000 ? @FormatNumber(v / 1000000000, 1) + " Gbps"');
-    expect(prompt).toContain("Do not compute utilization percentages by dividing cumulative byte totals by bandwidth or bitrate fields");
+    expect(prompt).toContain(
+      "Rate fields such as `bandwidth`, `bps`, `bitrate`, or `bitsPerSecond`",
+    );
+    expect(prompt).toContain(
+      'TextContent(v >= 1000000000 ? @FormatNumber(v / 1000000000, 1) + " Gbps"',
+    );
+    expect(prompt).toContain(
+      "Do not compute utilization percentages by dividing cumulative byte totals by bandwidth or bitrate fields",
+    );
     expect(prompt).toContain("Ratios derived from fields such as `used / total`");
-    expect(prompt).toContain('@Render("v", "row", TextContent(@FormatPercent(row.usedBytes / row.totalBytes, 1)))');
+    expect(prompt).toContain(
+      '@Render("v", "row", TextContent(@FormatPercent(row.usedBytes / row.totalBytes, 1)))',
+    );
     expect(prompt).toContain("Do not declare pseudo-reusable component templates");
     expect(prompt).toContain("prefer one clear Table with formatted columns");
     expect(prompt).toContain("Do not add a chart that repeats the same homogeneous records");
@@ -316,7 +332,9 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain(
       "If timeline rows already expose `title`, `description`, and `status`, pass them directly to `TimeLine(data.timeline.items, data.timeline.title)`",
     );
-    expect(prompt).toContain("timelineComponent = TimeLine(data.timeline.items, data.timeline.title)");
+    expect(prompt).toContain(
+      "timelineComponent = TimeLine(data.timeline.items, data.timeline.title)",
+    );
   });
 
   it("includes chart guidance that forbids inventing derived series from raw rows", () => {
@@ -348,10 +366,18 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
       },
     });
 
-    expect(prompt).toContain("Only use chart components when the data model already exposes chart-ready fields");
-    expect(prompt).toContain("Do not invent labels, series, categories, or missing time points from raw rows");
-    expect(prompt).toContain("If the data model only contains raw row records, prefer Table or Descriptions");
-    expect(prompt).toContain('rawRowsTable = Table([deviceCol, interfaceCol, timeCol, utilizationCol], data.rows)');
+    expect(prompt).toContain(
+      "Only use chart components when the data model already exposes chart-ready fields",
+    );
+    expect(prompt).toContain(
+      "Do not invent labels, series, categories, or missing time points from raw rows",
+    );
+    expect(prompt).toContain(
+      "If the data model only contains raw row records, prefer Table or Descriptions",
+    );
+    expect(prompt).toContain(
+      "rawRowsTable = Table([deviceCol, interfaceCol, timeCol, utilizationCol], data.rows)",
+    );
   });
 
   it("includes neutral null-dominant anti-fabrication guidance", () => {
@@ -373,7 +399,9 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).toContain("null-dominant");
     expect(prompt).toContain('data.record.file ?? "No data"');
     expect(prompt).toContain('DescField("ID", data.record.id ?? "No data")');
-    expect(prompt).toContain("Never synthesize rows, metrics, statuses, timestamps, percentages, details");
+    expect(prompt).toContain(
+      "Never synthesize rows, metrics, statuses, timestamps, percentages, details",
+    );
     expect(prompt).not.toContain("For unlabeled ratio arrays");
     expect(prompt).not.toContain("data.deviceId");
     expect(prompt).not.toContain("CPU Utilization");
@@ -392,17 +420,31 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
 
     expect(prompt).toContain("MiniChart");
     expect(prompt).toContain("compact single-series trend primitive");
-    expect(prompt).toContain("Treat primitive numeric arrays (`number[]`) as compact quantitative series");
-    expect(prompt).toContain("When a `number[]` appears as a field inside records shown in a Table");
+    expect(prompt).toContain(
+      "Treat primitive numeric arrays (`number[]`) as compact quantitative series",
+    );
+    expect(prompt).toContain(
+      "When a `number[]` appears as a field inside records shown in a Table",
+    );
     expect(prompt).toContain('Col(..., {cell: @Render("v", MiniChart(..., v))})');
-    expect(prompt).toContain("MiniChart accepts `number[]` directly and derives compact point labels automatically");
-    expect(prompt).toContain("For standalone numeric arrays rendered with MiniChart, keep the chart compact");
-    expect(prompt).toContain("Include scalar identifier and context fields such as id, name, title, endpoint, label, unit, count, current, min, max, avg, p95");
+    expect(prompt).toContain(
+      "MiniChart accepts `number[]` directly and derives compact point labels automatically",
+    );
+    expect(prompt).toContain(
+      "For standalone numeric arrays rendered with MiniChart, keep the chart compact",
+    );
+    expect(prompt).toContain(
+      "Include scalar identifier and context fields such as id, name, title, endpoint, label, unit, count, current, min, max, avg, p95",
+    );
     expect(prompt).toContain("Never set MiniChart height above 96 for a primitive numeric array");
-    expect(prompt).toContain("MiniChart(\"line\", data.metrics.sparkline");
-    expect(prompt).toContain('valuesCol = Col("Values", "values", {cell: @Render("v", MiniChart("line", v))})');
+    expect(prompt).toContain('MiniChart("line", data.metrics.sparkline');
+    expect(prompt).toContain(
+      'valuesCol = Col("Values", "values", {cell: @Render("v", MiniChart("line", v))})',
+    );
     expect(prompt).toContain('measurementsChart = MiniChart("bar", data.summary.measurements');
-    expect(prompt).toContain("Omit MiniChart height unless the layout needs a tighter or taller trend");
+    expect(prompt).toContain(
+      "Omit MiniChart height unless the layout needs a tighter or taller trend",
+    );
     expect(prompt).not.toContain("MiniChart(data.labels");
   });
 });
