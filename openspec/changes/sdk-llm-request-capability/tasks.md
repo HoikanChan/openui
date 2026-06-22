@@ -13,7 +13,7 @@
 - [x] 1.6 更新既有测试（`PromptGoldenTest`、`GenerationSdkTest`、`JsonTest`、`PromptAssemblySnippetTest`、`SdkPromptMergeTest`、`BaseContractFixtureTest`、`PromptGoldenTest`）的 import 与包；golden 资源不变
 - [x] 1.7 更新 `examples/genui-service` 全部 import（`DtoMapper`、`GenerationAppService`、`GenerationsController`、`GenerationSummaryData`、相关测试）
 - [x] 1.8 术语收敛：`generationId`→`extensionId` 字段重命名 **已完成**（SDK 与 `examples/genui-service` 全仓 `generationId` 0 处）。类型名 `GenUIGeneration` 保留不动（类型级 `GenUIExtension` 重命名不在本次）
-- [ ] 1.9 编译 + 跑既有全部测试，确认重组与重命名**零行为变化**（golden 字节不变）
+- [x] 1.9 编译 + 跑既有全部测试，确认重组与重命名**零行为变化**（golden 字节不变）
 
 ## 2. GenUiLlmConfig（配置）
 

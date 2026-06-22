@@ -26,7 +26,7 @@ class BaseContractFixtureTest {
     assertEquals("@openuidev/react-ui-dsl@0.1.0", contract.contractVersion());
     assertEquals("Stack", contract.root());
     assertTrue(contract.components().containsKey("Stack"));
-    assertTrue(contract.components().get("Stack").signature().contains("Stack("));
+    assertFalse(contract.components().get("Stack").propsSchema().isEmpty());
     assertTrue(
         contract.componentGroups().stream()
             .anyMatch(group -> group.name().equals("Layout") && group.components().contains("Stack")));
