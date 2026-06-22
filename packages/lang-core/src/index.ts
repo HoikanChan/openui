@@ -1,5 +1,5 @@
 // ── Library (framework-generic) ──
-export { createLibrary, defineComponent } from "./library";
+export { createLibrary, defineComponent, generateComponentSpecs } from "./library";
 export type {
   ComponentGroup,
   ComponentRenderProps,
@@ -29,16 +29,14 @@ export {
   isBuiltin,
   toNumber,
 } from "./parser/builtins";
-export type {
-  BuiltinDef,
-  BuiltinManifestEntry,
-  BuiltinRuntimeContext,
-} from "./parser/builtins";
+export type { BuiltinDef, BuiltinManifestEntry, BuiltinRuntimeContext } from "./parser/builtins";
 export { enrichErrors } from "./parser/enrich-errors";
 export { mergeStatements } from "./parser/merge";
 export { generatePrompt } from "./parser/prompt";
 export type {
   ComponentPromptSpec,
+  ComponentPropsSchema,
+  ComponentPropsSchemaProperty,
   DataModelSpec,
   PromptSpec,
   ToolSpec,

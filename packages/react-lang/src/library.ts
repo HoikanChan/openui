@@ -1,6 +1,7 @@
 import {
   createLibrary as coreCreateLibrary,
   defineComponent as coreDefineComponent,
+  generateComponentSpecs,
   type DefinedComponent as CoreDefinedComponent,
   type Library as CoreLibrary,
   type LibraryDefinition as CoreLibraryDefinition,
@@ -12,13 +13,17 @@ import { z } from "zod";
 // Re-export framework-agnostic types unchanged
 export type {
   ComponentGroup,
+  ComponentPropsSchema,
+  ComponentPropsSchemaProperty,
   GenerationContract,
-  LibraryJSONSchema,
   LibraryExtensionDefinition,
+  LibraryJSONSchema,
   PromptOptions,
   SubComponentOf,
   ToolDescriptor,
 } from "@openuidev/lang-core";
+
+export { generateComponentSpecs };
 
 // ─── React-specific types ───────────────────────────────────────────────────
 

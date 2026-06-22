@@ -1,5 +1,12 @@
 import { z } from "zod";
-import type { ComponentPromptSpec, DataModelSpec, PromptSpec, ToolSpec } from "./parser/prompt";
+import type {
+  ComponentPromptSpec,
+  ComponentPropsSchema,
+  ComponentPropsSchemaProperty,
+  DataModelSpec,
+  PromptSpec,
+  ToolSpec,
+} from "./parser/prompt";
 import { generatePrompt } from "./parser/prompt";
 import type { LibraryJSONSchema } from "./parser/types";
 import { isReactiveSchema } from "./reactive";
@@ -305,6 +312,106 @@ function buildComponentSpecs(
   return specs;
 }
 
+function schemaToPropsSchemaProperty(schema: unknown): ComponentPropsSchemaProperty {
+  const inner = unwrap(schema);
+  const directId = getSchemaId(inner);
+  if (directId) return { component: directId };
+
+  const unionOpts = getUnionOptions(inner);
+  if (unionOpts) return { anyOf: unionOpts.map((option) => schemaToPropsSchemaProperty(option)) };
+
+  const zodType = getZodType(inner);
+  if (zodType === "string") return { type: "string" };
+  if (zodType === "number") return { type: "number" };
+  if (zodType === "boolean") return { type: "boolean" };
+  if (zodType === "any" || zodType === "unknown") return { type: "any" };
+
+  if (zodType === "array") {
+    const innerType = getArrayInnerType(inner);
+    return {
+      type: "array",
+      items: innerType ? schemaToPropsSchemaProperty(innerType) : { type: "any" },
+    };
+  }
+
+  if (zodType === "record") {
+    const def = getZodDef(inner);
+    return {
+      type: "object",
+      additionalProperties: def?.valueType
+        ? schemaToPropsSchemaProperty(def.valueType)
+        : { type: "any" },
+    };
+  }
+
+  const enumVals = getEnumValues(inner);
+  if (enumVals) return { type: "string", enum: enumVals };
+
+  if (zodType === "literal") {
+    const vals = getZodDef(inner)?.values;
+    if (Array.isArray(vals) && vals.length === 1) return { const: vals[0] };
+  }
+
+  const shape = getObjectShape(inner);
+  if (shape) return buildPropsSchemaFromShape(shape as Record<string, z.ZodType>);
+
+  return { type: "any" };
+}
+
+function buildPropsSchemaFromShape(shape: Record<string, z.ZodType>): ComponentPropsSchema {
+  const properties: Record<string, ComponentPropsSchemaProperty> = {};
+  const required: string[] = [];
+
+  for (const [name, schema] of Object.entries(shape)) {
+    properties[name] = schemaToPropsSchemaProperty(schema);
+    if (!isOptionalType(schema)) required.push(name);
+  }
+
+  return required.length
+    ? { type: "object", properties, required }
+    : { type: "object", properties };
+}
+
+function validateRequiredBeforeOptional(componentName: string, schema: ComponentPropsSchema): void {
+  const required = new Set(schema.required ?? []);
+  let sawOptional = false;
+  for (const propName of Object.keys(schema.properties)) {
+    if (!required.has(propName)) {
+      sawOptional = true;
+      continue;
+    }
+    if (sawOptional) {
+      throw new Error(
+        `[generateComponentSpecs] ${componentName}.${propName}: required props must be declared before optional props for positional arguments`,
+      );
+    }
+  }
+}
+
+/**
+ * Generate renderer-free component contracts. `propsSchema.properties` order is
+ * the positional argument order used by openui-lang component calls.
+ */
+export function generateComponentSpecs<C = unknown>(
+  components: DefinedComponent<any, C>[] | Record<string, DefinedComponent<any, C>>,
+): Record<string, ComponentPromptSpec> {
+  const entries = Array.isArray(components)
+    ? components.map((component) => [component.name, component] as const)
+    : Object.entries(components);
+  const specs: Record<string, ComponentPromptSpec> = {};
+
+  for (const [name, def] of entries) {
+    const propsSchema = buildPropsSchemaFromShape(def.props.shape);
+    validateRequiredBeforeOptional(name, propsSchema);
+    specs[name] = {
+      description: def.description,
+      propsSchema,
+    };
+  }
+
+  return specs;
+}
+
 // ─── Library ────────────────────────────────────────────────────────────────
 
 export interface Library<C = unknown> {
@@ -346,7 +453,10 @@ function cloneStrings(values: string[] | undefined): string[] | undefined {
   return values ? [...values] : undefined;
 }
 
-function assertUniqueComponentNames<C>(components: DefinedComponent<any, C>[], scope: string): void {
+function assertUniqueComponentNames<C>(
+  components: DefinedComponent<any, C>[],
+  scope: string,
+): void {
   const seen = new Set<string>();
   const duplicates = new Set<string>();
   for (const component of components) {
@@ -459,7 +569,7 @@ export function createLibrary<C = unknown>(input: LibraryDefinition<C>): Library
       return {
         contractVersion,
         root: input.root,
-        components: buildComponentSpecs(componentsRecord),
+        components: generateComponentSpecs(componentsRecord),
         componentGroups: cloneGroups(componentGroups),
         tools: cloneTools(tools) ?? [],
         examples: cloneStrings(examples) ?? [],
