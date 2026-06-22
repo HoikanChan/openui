@@ -1,6 +1,8 @@
 package com.huawei.cloudsop.genui.core.llm;
 
 import com.huawei.cloudsop.genui.core.contract.ToolSpec;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -17,10 +19,14 @@ public record UiGenerationRequest(
     Boolean toolCalls,
     Boolean bindings) {
   public UiGenerationRequest {
-    request = request == null ? Map.of() : Map.copyOf(request);
-    response = response == null ? Map.of() : Map.copyOf(response);
+    request = immutableOrderedMap(request);
+    response = immutableOrderedMap(response);
     overlayTools = overlayTools == null ? List.of() : List.copyOf(overlayTools);
     overlayRules = overlayRules == null ? List.of() : List.copyOf(overlayRules);
+  }
+
+  private static Map<String, Object> immutableOrderedMap(Map<String, Object> value) {
+    return value == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(value));
   }
 
   public static Builder builder() {

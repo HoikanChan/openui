@@ -1,6 +1,7 @@
 package com.huawei.cloudsop.genui.core.llm.stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayInputStream;
 import java.io.FilterInputStream;
@@ -64,6 +65,21 @@ class SseDeltaParserTest {
 
     assertEquals(List.of("next"), deltas);
     assertEquals("next", accumulated);
+  }
+
+  @Test
+  void propagatesSinkFailures() {
+    IllegalStateException error =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SseDeltaParser.parse(
+                    input(frame("boom")),
+                    delta -> {
+                      throw new IllegalStateException("sink failed: " + delta);
+                    }));
+
+    assertEquals("sink failed: boom", error.getMessage());
   }
 
   private static String frame(String content) {

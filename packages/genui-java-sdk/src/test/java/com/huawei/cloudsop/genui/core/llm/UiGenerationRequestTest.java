@@ -73,4 +73,22 @@ class UiGenerationRequestTest {
     assertThrows(UnsupportedOperationException.class, () -> request.response().put("x", 1));
     assertThrows(UnsupportedOperationException.class, () -> request.overlayRules().add("C"));
   }
+
+  @Test
+  void preservesRequestAndResponseInsertionOrder() {
+    LinkedHashMap<String, Object> requestMap = new LinkedHashMap<>();
+    requestMap.put("firstRequest", 1);
+    requestMap.put("secondRequest", 2);
+    requestMap.put("thirdRequest", 3);
+    LinkedHashMap<String, Object> responseMap = new LinkedHashMap<>();
+    responseMap.put("firstResponse", 1);
+    responseMap.put("secondResponse", 2);
+    responseMap.put("thirdResponse", 3);
+
+    UiGenerationRequest request =
+        UiGenerationRequest.builder().request(requestMap).response(responseMap).build();
+
+    assertEquals(List.of("firstRequest", "secondRequest", "thirdRequest"), List.copyOf(request.request().keySet()));
+    assertEquals(List.of("firstResponse", "secondResponse", "thirdResponse"), List.copyOf(request.response().keySet()));
+  }
 }

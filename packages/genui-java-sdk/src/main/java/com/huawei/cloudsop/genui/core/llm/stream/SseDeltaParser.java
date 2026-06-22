@@ -63,19 +63,27 @@ public final class SseDeltaParser {
       return;
     }
 
+    String content;
     try {
-      Map<String, Object> object = Json.asObject(Json.parse(payload), "SSE frame");
-      List<Object> choices = Json.asList(object.get("choices"), "choices");
-      if (choices.isEmpty()) return;
-      Map<String, Object> first = Json.asObject(choices.getFirst(), "choice");
-      Map<String, Object> delta = Json.asObject(first.get("delta"), "delta");
-      Object contentValue = delta.get("content");
-      if (!(contentValue instanceof String content) || content.isEmpty()) return;
-      sink.accept(content);
-      accumulated.append(content);
+      content = extractContent(payload);
     } catch (RuntimeException ignored) {
       // Bad frames should not interrupt the rest of the stream.
+      return;
     }
+    if (content == null || content.isEmpty()) return;
+
+    sink.accept(content);
+    accumulated.append(content);
+  }
+
+  private static String extractContent(String payload) {
+    Map<String, Object> object = Json.asObject(Json.parse(payload), "SSE frame");
+    List<Object> choices = Json.asList(object.get("choices"), "choices");
+    if (choices.isEmpty()) return null;
+    Map<String, Object> first = Json.asObject(choices.getFirst(), "choice");
+    Map<String, Object> delta = Json.asObject(first.get("delta"), "delta");
+    Object contentValue = delta.get("content");
+    return contentValue instanceof String content ? content : null;
   }
 
   private static String dataPayload(String frame) {

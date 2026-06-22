@@ -4,7 +4,12 @@ public final class SseFrames {
   private SseFrames() {}
 
   public static String of(String content) {
-    return "data: " + String.valueOf(content) + "\n\n";
+    StringBuilder frame = new StringBuilder();
+    for (String line : String.valueOf(content).split("\\R", -1)) {
+      frame.append("data: ").append(line).append('\n');
+    }
+    frame.append('\n');
+    return frame.toString();
   }
 
   public static String done() {

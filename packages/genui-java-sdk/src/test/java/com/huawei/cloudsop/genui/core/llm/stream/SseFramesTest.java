@@ -11,6 +11,11 @@ class SseFramesTest {
   }
 
   @Test
+  void wrapsEachLineOfMultilineContentAsSseData() {
+    assertEquals("data: first\ndata: second\n\n", SseFrames.of("first\nsecond"));
+  }
+
+  @Test
   void wrapsDoneAsSseFrame() {
     assertEquals("data: [DONE]\n\n", SseFrames.done());
   }
