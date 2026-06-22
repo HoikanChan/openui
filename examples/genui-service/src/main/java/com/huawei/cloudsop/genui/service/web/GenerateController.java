@@ -74,7 +74,7 @@ public class GenerateController {
   }
 
   private String resolveSystemPrompt(GenerateRequest body) {
-    // Prompt Override(debug-only):整段替换拼装产物,绕过 Generation Context
+    // Prompt Override(debug-only):整段替换拼装产物,绕过 Generation
     if (body.getPromptOverride() != null && !body.getPromptOverride().trim().isEmpty()) {
       return body.getPromptOverride();
     }
@@ -84,7 +84,7 @@ public class GenerateController {
             : new DataModelSpec(null, body.getDataModel());
     GenUIPromptRequest request =
         new GenUIPromptRequest(
-            body.getContextId(),
+            body.getGenerationId(),
             dataModel,
             DtoMapper.toTools(body.getTools()),
             body.getExtraRules(),

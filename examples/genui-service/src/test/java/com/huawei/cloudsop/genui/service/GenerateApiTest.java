@@ -84,11 +84,11 @@ class GenerateApiTest {
   }
 
   @Test
-  void unknownContextIdReturns404BeforeStreaming() throws Exception {
+  void unknownGenerationIdReturns404BeforeStreaming() throws Exception {
     mvc.perform(
             post("/v1/generate")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"prompt\":\"展示UI\",\"contextId\":\"no-such\"}"))
+                .content("{\"prompt\":\"展示UI\",\"generationId\":\"no-such\"}"))
         .andExpect(status().isNotFound());
   }
 

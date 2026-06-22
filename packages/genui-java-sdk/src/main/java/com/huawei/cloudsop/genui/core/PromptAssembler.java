@@ -28,8 +28,7 @@ final class PromptAssembler {
     boolean bindings = input.bindings() == null ? toolCalls : input.bindings();
     boolean supportsExpressions = toolCalls || bindings;
     boolean usesActionExpression =
-        input.components().values().stream()
-            .anyMatch(c -> c.signature() != null && c.signature().contains("ActionExpression"));
+        componentSignatures(input.components()).stream().anyMatch(signature -> signature.contains("ActionExpression"));
     boolean hasRawDataModel = hasRawDataModel(input.dataModel());
 
     ArrayList<String> parts = new ArrayList<>();
@@ -187,8 +186,7 @@ final class PromptAssembler {
 
     boolean usesBindings =
         bindings
-            || components.values().stream()
-                .anyMatch(c -> c.signature() != null && c.signature().contains("$binding"));
+            || componentSignatures(components).stream().anyMatch(signature -> signature.contains("$binding"));
     if (usesBindings) {
       lines.add("Props marked `$binding<type>` accept a `$variable` reference for two-way binding.");
     }
@@ -203,7 +201,7 @@ final class PromptAssembler {
           ComponentPromptSpec comp = components.get(name);
           if (comp == null) continue;
           grouped.add(name);
-          lines.add(formatSig(comp));
+          lines.add(formatSig(name, comp));
         }
         if (group.notes() != null && !group.notes().isEmpty()) {
           for (String note : group.notes()) lines.add(note);
@@ -216,19 +214,30 @@ final class PromptAssembler {
       if (!ungrouped.isEmpty()) {
         lines.add("");
         lines.add("### Other");
-        for (String name : ungrouped) lines.add(formatSig(components.get(name)));
+        for (String name : ungrouped) lines.add(formatSig(name, components.get(name)));
       }
     } else {
       lines.add("");
-      for (ComponentPromptSpec comp : components.values()) lines.add(formatSig(comp));
+      for (Map.Entry<String, ComponentPromptSpec> entry : components.entrySet()) {
+        lines.add(formatSig(entry.getKey(), entry.getValue()));
+      }
     }
     return String.join("\n", lines);
   }
 
-  private static String formatSig(ComponentPromptSpec comp) {
+  private static String formatSig(String componentName, ComponentPromptSpec comp) {
     String description = comp.description();
-    if (description == null || description.isEmpty()) return comp.signature();
-    return comp.signature() + " — " + description;
+    String signature = ComponentPropsSchema.formatSignature(componentName, comp);
+    if (description == null || description.isEmpty()) return signature;
+    return signature + " — " + description;
+  }
+
+  private static List<String> componentSignatures(Map<String, ComponentPromptSpec> components) {
+    ArrayList<String> signatures = new ArrayList<>();
+    for (Map.Entry<String, ComponentPromptSpec> entry : components.entrySet()) {
+      signatures.add(ComponentPropsSchema.formatSignature(entry.getKey(), entry.getValue()));
+    }
+    return signatures;
   }
 
   // ─── Data model ────────────────────────────────────────────────────────────

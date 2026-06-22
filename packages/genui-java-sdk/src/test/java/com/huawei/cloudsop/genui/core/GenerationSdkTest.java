@@ -22,25 +22,67 @@ class GenerationSdkTest {
     assertTrue(result.prompt().contains("Stack(children?: Component[])"));
     assertFalse(result.prompt().contains("BizCard("));
     assertEquals("base-v1", result.metadata().baseContractVersion());
-    assertEquals(null, result.metadata().extensionVersion());
+    assertEquals(null, result.metadata().generationVersion());
   }
 
   @Test
   void registersReplacesAndIsolatesContexts() {
     GenerationSdk sdk = GenerationSdk.builder().baseContract(testBaseContract()).build();
 
-    sdk.register(extension("ctxA", "v1", component("OldCard"), List.of(tool("loadOrders"))));
-    sdk.register(extension("ctxB", "v1", component("OtherCard"), List.of()));
-    sdk.register(extension("ctxA", "v2", component("BizCard"), List.of(tool("loadOrders"))));
+    sdk.register(generation("genA", "v1", component("OldCard"), List.of(tool("loadOrders"))));
+    sdk.register(generation("genB", "v1", component("OtherCard"), List.of()));
+    sdk.register(generation("genA", "v2", component("BizCard"), List.of(tool("loadOrders"))));
 
     GenUIPromptAssemblyResult result =
-        sdk.assemblePrompt(new GenUIPromptRequest("ctxA", null, List.of(), List.of(), null, null, null, null));
+        sdk.assemblePrompt(new GenUIPromptRequest("genA", null, List.of(), List.of(), null, null, null, null));
 
     assertTrue(result.prompt().contains("BizCard(title: string)"));
     assertFalse(result.prompt().contains("OldCard("));
     assertFalse(result.prompt().contains("OtherCard("));
-    assertEquals("v2", result.metadata().extensionVersion());
+    assertEquals("genA", result.metadata().generationId());
+    assertEquals("v2", result.metadata().generationVersion());
     assertIterableEquals(List.of("loadOrders"), result.metadata().registeredToolNames());
+  }
+
+  @Test
+  void derivesPromptSignatureFromPropsSchema() {
+    GenerationSdk sdk = GenerationSdk.builder().baseContract(testBaseContract()).build();
+    sdk.register(generation("genA", "v1", component("AlarmBadge"), List.of()));
+
+    GenUIPromptAssemblyResult result =
+        sdk.assemblePrompt(new GenUIPromptRequest("genA", null, List.of(), List.of(), null, null, null, null));
+
+    assertTrue(result.prompt().contains("AlarmBadge(severity: \"critical\" | \"major\" | \"minor\", count: number, label?: string)"));
+    assertTrue(result.prompt().contains("AlarmBadge description"));
+  }
+
+  @Test
+  void rejectsRequiredPropsAfterOptionalProps() {
+    LinkedHashMap<String, Object> properties = new LinkedHashMap<>();
+    properties.put("optionalLabel", Map.of("type", "string"));
+    properties.put("requiredCount", Map.of("type", "number"));
+    ComponentPromptSpec component =
+        new ComponentPromptSpec(
+            "Broken component",
+            schema(properties, List.of("requiredCount")));
+
+    GenerationSdkException error =
+        assertThrows(
+            GenerationSdkException.class,
+            () ->
+                GenerationSdk.builder()
+                    .baseContract(
+                        new GenerationContract(
+                            "base-v1",
+                            "BrokenCard",
+                            Map.of("BrokenCard", component),
+                            List.of(),
+                            List.of(),
+                            List.of(),
+                            List.of()))
+                    .build());
+
+    assertTrue(error.getMessage().contains("required props must precede optional props"));
   }
 
   @Test
@@ -50,7 +92,7 @@ class GenerationSdkTest {
     GenerationSdkException error =
         assertThrows(
             GenerationSdkException.class,
-            () -> sdk.register(extension("ctxA", "v1", component("Stack"), List.of())));
+            () -> sdk.register(generation("ctxA", "v1", component("Stack"), List.of())));
 
     assertTrue(error.getMessage().contains("Stack"));
   }
@@ -58,9 +100,9 @@ class GenerationSdkTest {
   @Test
   void rejectsMissingComponentGroupReferences() {
     GenerationSdk sdk = GenerationSdk.builder().baseContract(testBaseContract()).build();
-    GenUIContextExtension extension =
-        new GenUIContextExtension(
-            "ctxA",
+    GenUIGeneration generation =
+        new GenUIGeneration(
+            "genA",
             "v1",
             Map.of(),
             List.of(new ComponentGroup("Broken", List.of("MissingCard"), List.of())),
@@ -69,7 +111,7 @@ class GenerationSdkTest {
             List.of());
 
     GenerationSdkException error =
-        assertThrows(GenerationSdkException.class, () -> sdk.register(extension));
+        assertThrows(GenerationSdkException.class, () -> sdk.register(generation));
 
     assertTrue(error.getMessage().contains("MissingCard"));
   }
@@ -77,12 +119,12 @@ class GenerationSdkTest {
   @Test
   void requestToolsAndExtraRulesAreRequestScoped() {
     GenerationSdk sdk = GenerationSdk.builder().baseContract(testBaseContract()).build();
-    sdk.register(extension("ctxA", "v1", component("BizCard"), List.of()));
+    sdk.register(generation("genA", "v1", component("BizCard"), List.of()));
 
     GenUIPromptAssemblyResult withOverlay =
         sdk.assemblePrompt(
             new GenUIPromptRequest(
-                "ctxA",
+                "genA",
                 null,
                 List.of(tool("searchTickets")),
                 List.of("Prefer tables over charts for this request"),
@@ -91,7 +133,7 @@ class GenerationSdkTest {
                 null,
                 null));
     GenUIPromptAssemblyResult withoutOverlay =
-        sdk.assemblePrompt(new GenUIPromptRequest("ctxA", null, List.of(), List.of(), null, null, null, null));
+        sdk.assemblePrompt(new GenUIPromptRequest("genA", null, List.of(), List.of(), null, null, null, null));
 
     assertTrue(withOverlay.prompt().contains("searchTickets"));
     assertTrue(withOverlay.prompt().contains("Prefer tables over charts for this request"));
@@ -103,7 +145,7 @@ class GenerationSdkTest {
   @Test
   void rejectsRequestToolCollisionWithRegisteredTool() {
     GenerationSdk sdk = GenerationSdk.builder().baseContract(testBaseContract()).build();
-    sdk.register(extension("ctxA", "v1", component("BizCard"), List.of(tool("loadOrders"))));
+    sdk.register(generation("genA", "v1", component("BizCard"), List.of(tool("loadOrders"))));
 
     GenerationSdkException error =
         assertThrows(
@@ -111,7 +153,7 @@ class GenerationSdkTest {
             () ->
                 sdk.assemblePrompt(
                     new GenUIPromptRequest(
-                        "ctxA", null, List.of(tool("loadOrders")), List.of(), null, null, null, null)));
+                        "genA", null, List.of(tool("loadOrders")), List.of(), null, null, null, null)));
 
     assertTrue(error.getMessage().contains("loadOrders"));
   }
@@ -122,9 +164,9 @@ class GenerationSdkTest {
     DataModelSpec dataModel = new DataModelSpec("Ticket data", Map.of("tickets", List.of(Map.of("id", 7))));
 
     GenUIPromptAssemblyResult withData =
-        sdk.assemblePrompt(new GenUIPromptRequest("ctxA", dataModel, List.of(), List.of(), null, null, null, null));
+        sdk.assemblePrompt(new GenUIPromptRequest("genA", dataModel, List.of(), List.of(), null, null, null, null));
     GenUIPromptAssemblyResult withoutData =
-        sdk.assemblePrompt(new GenUIPromptRequest("ctxA", null, List.of(), List.of(), null, null, null, null));
+        sdk.assemblePrompt(new GenUIPromptRequest("genA", null, List.of(), List.of(), null, null, null, null));
 
     assertTrue(withData.prompt().contains("## Data Model"));
     assertTrue(withData.prompt().contains("Ticket data"));
@@ -141,7 +183,7 @@ class GenerationSdkTest {
     raw.put("status", "mutated");
 
     GenUIPromptAssemblyResult result =
-        sdk.assemblePrompt(new GenUIPromptRequest("ctxA", dataModel, List.of(), List.of(), null, null, null, null));
+        sdk.assemblePrompt(new GenUIPromptRequest("genA", dataModel, List.of(), List.of(), null, null, null, null));
 
     assertTrue(result.prompt().contains("\"status\": \"initial\""));
     assertFalse(result.prompt().contains("mutated"));
@@ -157,8 +199,19 @@ class GenerationSdkTest {
 
   private static GenerationContract testBaseContract() {
     LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
-    components.put("Stack", new ComponentPromptSpec("Stack(children?: Component[])", "Layout"));
-    components.put("TextContent", new ComponentPromptSpec("TextContent(text: string)", "Text"));
+    components.put(
+        "Stack",
+        new ComponentPromptSpec(
+            "Layout",
+            schema(
+                new LinkedHashMap<>(
+                    Map.of("children", Map.of("type", "array", "items", Map.of("component", true)))),
+                List.of())));
+    components.put(
+        "TextContent",
+        new ComponentPromptSpec(
+            "Text",
+            schema(new LinkedHashMap<>(Map.of("text", Map.of("type", "string"))), List.of("text"))));
     return new GenerationContract(
         "base-v1",
         "Stack",
@@ -169,10 +222,10 @@ class GenerationSdkTest {
         List.of("Do not invent components."));
   }
 
-  private static GenUIContextExtension extension(
-      String contextId, String version, Map.Entry<String, ComponentPromptSpec> component, List<ToolSpec> tools) {
-    return new GenUIContextExtension(
-        contextId,
+  private static GenUIGeneration generation(
+      String generationId, String version, Map.Entry<String, ComponentPromptSpec> component, List<ToolSpec> tools) {
+    return new GenUIGeneration(
+        generationId,
         version,
         Map.ofEntries(component),
         List.of(new ComponentGroup("Business", List.of(component.getKey()), List.of())),
@@ -182,7 +235,24 @@ class GenerationSdkTest {
   }
 
   private static Map.Entry<String, ComponentPromptSpec> component(String name) {
-    return Map.entry(name, new ComponentPromptSpec(name + "(title: string)", name + " description"));
+    LinkedHashMap<String, Object> properties = new LinkedHashMap<>();
+    if (name.equals("AlarmBadge")) {
+      properties.put("severity", Map.of("enum", List.of("critical", "major", "minor")));
+      properties.put("count", Map.of("type", "number"));
+      properties.put("label", Map.of("type", "string"));
+      return Map.entry(
+          name, new ComponentPromptSpec(name + " description", schema(properties, List.of("severity", "count"))));
+    }
+    properties.put("title", Map.of("type", "string"));
+    return Map.entry(name, new ComponentPromptSpec(name + " description", schema(properties, List.of("title"))));
+  }
+
+  private static Map<String, Object> schema(Map<String, Object> properties, List<String> required) {
+    LinkedHashMap<String, Object> schema = new LinkedHashMap<>();
+    schema.put("type", "object");
+    schema.put("properties", properties);
+    schema.put("required", required);
+    return schema;
   }
 
   private static ToolSpec tool(String name) {

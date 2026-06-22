@@ -9,7 +9,7 @@ import java.util.Set;
 
 public final class GenerationSdk {
   private final GenerationContract baseContract;
-  private final Map<String, GenUIContextExtension> extensions = new LinkedHashMap<>();
+  private final Map<String, GenUIGeneration> generations = new LinkedHashMap<>();
 
   private GenerationSdk(GenerationContract baseContract) {
     if (baseContract == null) throw new GenerationSdkException("baseContract is required");
@@ -17,6 +17,7 @@ public final class GenerationSdk {
       throw new GenerationSdkException("baseContract.contractVersion is required");
     }
     this.baseContract = baseContract;
+    validateComponents(baseContract.components(), "base contract");
     validateComponentGroups(baseContract.componentGroups(), baseContract.components().keySet(), "base contract");
   }
 
@@ -32,49 +33,50 @@ public final class GenerationSdk {
     return baseContract;
   }
 
-  public void register(GenUIContextExtension extension) {
-    if (extension == null) throw new GenerationSdkException("extension is required");
-    if (extension.contextId() == null || extension.contextId().isBlank()) {
-      throw new GenerationSdkException("extension.contextId is required");
+  public void register(GenUIGeneration generation) {
+    if (generation == null) throw new GenerationSdkException("generation is required");
+    if (generation.generationId() == null || generation.generationId().isBlank()) {
+      throw new GenerationSdkException("generation.generationId is required");
     }
+    validateComponents(generation.components(), "generation " + generation.generationId());
 
     Set<String> baseComponentNames = baseContract.components().keySet();
-    Set<String> extensionComponentNames = extension.components().keySet();
-    Set<String> componentCollisions = intersection(baseComponentNames, extensionComponentNames);
+    Set<String> generationComponentNames = generation.components().keySet();
+    Set<String> componentCollisions = intersection(baseComponentNames, generationComponentNames);
     if (!componentCollisions.isEmpty()) {
       throw new GenerationSdkException("Component name collision: " + String.join(", ", componentCollisions));
     }
 
     LinkedHashSet<String> finalComponentNames = new LinkedHashSet<>(baseComponentNames);
-    finalComponentNames.addAll(extensionComponentNames);
-    validateComponentGroups(extension.componentGroups(), finalComponentNames, "extension " + extension.contextId());
+    finalComponentNames.addAll(generationComponentNames);
+    validateComponentGroups(generation.componentGroups(), finalComponentNames, "generation " + generation.generationId());
 
     Set<String> baseToolNames = toolNames(baseContract.tools());
-    Set<String> extensionToolNames = toolNames(extension.tools());
-    Set<String> toolCollisions = intersection(baseToolNames, extensionToolNames);
+    Set<String> generationToolNames = toolNames(generation.tools());
+    Set<String> toolCollisions = intersection(baseToolNames, generationToolNames);
     if (!toolCollisions.isEmpty()) {
       throw new GenerationSdkException("Tool name collision: " + String.join(", ", toolCollisions));
     }
 
-    extensions.put(extension.contextId(), extension);
+    generations.put(generation.generationId(), generation);
   }
 
   public GenUIPromptAssemblyResult assemblePrompt(GenUIPromptRequest request) {
     GenUIPromptRequest effectiveRequest =
         request == null ? new GenUIPromptRequest(null, null, List.of(), List.of(), null, null, null, null) : request;
-    GenUIContextExtension extension =
-        effectiveRequest.contextId() == null ? null : extensions.get(effectiveRequest.contextId());
+    GenUIGeneration generation =
+        effectiveRequest.generationId() == null ? null : generations.get(effectiveRequest.generationId());
 
     LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
     components.putAll(baseContract.components());
-    if (extension != null) components.putAll(extension.components());
+    if (generation != null) components.putAll(generation.components());
 
     ArrayList<ComponentGroup> componentGroups = new ArrayList<>(baseContract.componentGroups());
-    if (extension != null) componentGroups.addAll(extension.componentGroups());
+    if (generation != null) componentGroups.addAll(generation.componentGroups());
     validateComponentGroups(componentGroups, components.keySet(), "assembled context");
 
     ArrayList<ToolSpec> registeredTools = new ArrayList<>(baseContract.tools());
-    if (extension != null) registeredTools.addAll(extension.tools());
+    if (generation != null) registeredTools.addAll(generation.tools());
     Set<String> registeredToolNames = toolNames(registeredTools);
     Set<String> requestToolNames = toolNames(effectiveRequest.tools());
     Set<String> requestCollisions = intersection(registeredToolNames, requestToolNames);
@@ -86,10 +88,10 @@ public final class GenerationSdk {
     allTools.addAll(effectiveRequest.tools());
 
     ArrayList<String> examples = new ArrayList<>(baseContract.examples());
-    if (extension != null) examples.addAll(extension.examples());
+    if (generation != null) examples.addAll(generation.examples());
 
     ArrayList<String> additionalRules = new ArrayList<>(baseContract.additionalRules());
-    if (extension != null) additionalRules.addAll(extension.additionalRules());
+    if (generation != null) additionalRules.addAll(generation.additionalRules());
     additionalRules.addAll(effectiveRequest.extraRules());
 
     String prompt =
@@ -111,9 +113,9 @@ public final class GenerationSdk {
 
     GenUIPromptAssemblyMetadata metadata =
         new GenUIPromptAssemblyMetadata(
-            effectiveRequest.contextId(),
+            effectiveRequest.generationId(),
             baseContract.contractVersion(),
-            extension == null ? null : extension.version(),
+            generation == null ? null : generation.version(),
             new ArrayList<>(registeredToolNames),
             new ArrayList<>(requestToolNames));
     return new GenUIPromptAssemblyResult(prompt, metadata);
@@ -130,6 +132,15 @@ public final class GenerationSdk {
     if (!missing.isEmpty()) {
       throw new GenerationSdkException(
           "Component group references missing component(s) in " + scope + ": " + String.join(", ", missing));
+    }
+  }
+
+  private static void validateComponents(Map<String, ComponentPromptSpec> components, String scope) {
+    for (Map.Entry<String, ComponentPromptSpec> entry : components.entrySet()) {
+      if (entry.getKey() == null || entry.getKey().isBlank()) {
+        throw new GenerationSdkException("Component name is required in " + scope);
+      }
+      ComponentPropsSchema.validate(entry.getKey(), entry.getValue());
     }
   }
 

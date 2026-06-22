@@ -16,7 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * 重启语义:ContextsApiTest 标记 @DirtiesContext(AFTER_CLASS),本类拿到的是全新应用上下文
+ * 重启语义:GenerationsApiTest 标记 @DirtiesContext(AFTER_CLASS),本类拿到的是全新应用上下文
  * (等价服务重启)——运行期注册的 test-ext 不复存在,只有种子恢复。
  */
 @SpringBootTest
@@ -26,16 +26,16 @@ class SeedRecoveryAfterRestartTest {
   @Autowired ObjectMapper om;
 
   @Test
-  void freshContextContainsExactlySeeds() throws Exception {
+  void freshApplicationContextContainsExactlySeedGenerations() throws Exception {
     String body =
-        mvc.perform(get("/v1/contexts"))
+        mvc.perform(get("/v1/generations"))
             .andExpect(status().isOk())
             .andReturn()
             .getResponse()
             .getContentAsString(StandardCharsets.UTF_8);
-    JsonNode contexts = om.readTree(body);
+    JsonNode generations = om.readTree(body);
     Set<String> ids = new TreeSet<>();
-    contexts.forEach(node -> ids.add(node.get("contextId").asText()));
+    generations.forEach(node -> ids.add(node.get("generationId").asText()));
     assertEquals(Set.of("noe-alarm-tools", "noe-biz-components", "noe-ops-rules"), ids);
   }
 }

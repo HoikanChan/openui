@@ -1,7 +1,7 @@
 package com.huawei.cloudsop.genui.service.web;
 
 import com.huawei.cloudsop.genui.core.DataModelSpec;
-import com.huawei.cloudsop.genui.core.GenUIContextExtension;
+import com.huawei.cloudsop.genui.core.GenUIGeneration;
 import com.huawei.cloudsop.genui.core.GenUIPromptAssemblyMetadata;
 import com.huawei.cloudsop.genui.core.GenUIPromptAssemblyResult;
 import com.huawei.cloudsop.genui.core.GenUIPromptRequest;
@@ -9,12 +9,12 @@ import com.huawei.cloudsop.genui.service.api.model.AssembleRequest;
 import com.huawei.cloudsop.genui.service.api.model.AssembleResult;
 import com.huawei.cloudsop.genui.service.api.model.AssemblyMetadata;
 import com.huawei.cloudsop.genui.service.api.model.ComponentGroup;
-import com.huawei.cloudsop.genui.service.api.model.ContextSummary;
+import com.huawei.cloudsop.genui.service.api.model.GenerationSummary;
 import com.huawei.cloudsop.genui.service.api.model.DataModel;
 import com.huawei.cloudsop.genui.service.api.model.ExtensionRegistration;
 import com.huawei.cloudsop.genui.service.api.model.ToolAnnotations;
 import com.huawei.cloudsop.genui.service.api.model.ToolSpec;
-import com.huawei.cloudsop.genui.service.application.ContextSummaryData;
+import com.huawei.cloudsop.genui.service.application.GenerationSummaryData;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,7 +27,7 @@ import java.util.List;
 final class DtoMapper {
   private DtoMapper() {}
 
-  static GenUIContextExtension toExtension(String contextId, ExtensionRegistration dto) {
+  static GenUIGeneration toGeneration(String generationId, ExtensionRegistration dto) {
     LinkedHashMap<String, com.huawei.cloudsop.genui.core.ComponentPromptSpec> components =
         new LinkedHashMap<>();
     if (dto.getComponents() != null) {
@@ -39,8 +39,8 @@ final class DtoMapper {
                       new com.huawei.cloudsop.genui.core.ComponentPromptSpec(
                           spec.getSignature(), spec.getDescription())));
     }
-    return new GenUIContextExtension(
-        contextId,
+    return new GenUIGeneration(
+        generationId,
         dto.getVersion(),
         components,
         toGroups(dto.getComponentGroups()),
@@ -51,7 +51,7 @@ final class DtoMapper {
 
   static GenUIPromptRequest toPromptRequest(AssembleRequest dto) {
     return new GenUIPromptRequest(
-        dto.getContextId(),
+        dto.getGenerationId(),
         toDataModel(dto.getDataModel()),
         toTools(dto.getTools()),
         dto.getExtraRules(),
@@ -77,9 +77,9 @@ final class DtoMapper {
     return tools;
   }
 
-  static ContextSummary toDto(ContextSummaryData data) {
-    return new ContextSummary()
-        .contextId(data.contextId())
+  static GenerationSummary toDto(GenerationSummaryData data) {
+    return new GenerationSummary()
+        .generationId(data.generationId())
         .version(data.version())
         .componentCount(data.componentCount())
         .toolCount(data.toolCount());
@@ -91,9 +91,9 @@ final class DtoMapper {
         .prompt(result.prompt())
         .metadata(
             new AssemblyMetadata()
-                .contextId(metadata.contextId())
+                .generationId(metadata.generationId())
                 .baseContractVersion(metadata.baseContractVersion())
-                .extensionVersion(metadata.extensionVersion())
+                .generationVersion(metadata.generationVersion())
                 .registeredToolNames(metadata.registeredToolNames())
                 .requestToolNames(metadata.requestToolNames()));
   }

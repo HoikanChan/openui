@@ -5,7 +5,7 @@ info:
   description: |
     GenUI Service —— Java Generation SDK 的 REST 参考实现(SmartCanvasService 契约)。
 
-    - contexts / prompts 端点由 swagger-codegen 生成接口,手写 Controller 实现。
+    - generations / prompts 端点由 swagger-codegen 生成接口,手写 Controller 实现。
     - /generate 为手写流式实现(text/plain chunked),本文档中仅作契约声明;
       codegen 生成的接口签名无法表达流式,故该接口不被实现。
 basePath: /v1
@@ -15,8 +15,8 @@ schemes:
 produces:
   - application/json
 tags:
-  - name: contexts
-    description: Generation Context 注册与查询(Extension Registration)
+  - name: generations
+    description: Generation 注册与查询(Extension Registration)
   - name: prompts
     description: Prompt 拼装(Request Overlay 支持)
   - name: generation
@@ -25,36 +25,36 @@ tags:
     description: 工具执行通道(Query/Mutation 的服务端运行时)
 
 paths:
-  /contexts:
+  /generations:
     get:
       tags:
-        - contexts
-      operationId: listContexts
-      summary: 列出已注册的 Generation Context
+        - generations
+      operationId: listGenerations
+      summary: 列出已注册的 Generation
       description: 返回全部已注册扩展的摘要(含启动种子注册的预制扩展)。注册不持久化,服务重启后仅种子恢复。
       responses:
         200:
-          description: 已注册 Generation Context 摘要列表
+          description: 已注册 Generation 摘要列表
           schema:
             type: array
             items:
-              $ref: "#/definitions/ContextSummary"
+              $ref: "#/definitions/GenerationSummary"
 
-  /contexts/{contextId}:
+  /generations/{generationId}:
     put:
       tags:
-        - contexts
-      operationId: registerContext
+        - generations
+      operationId: registerGeneration
       summary: 注册或整体替换一个 Extension Registration
-      description: 替换语义:同一 contextId 重复注册将整体替换原扩展契约(幂等)。与 base contract 或扩展自身的组件名/工具名碰撞将被拒绝。
+      description: 替换语义:同一 generationId 重复注册将整体替换原扩展契约(幂等)。与 base contract 或扩展自身的组件名/工具名碰撞将被拒绝。
       consumes:
         - application/json
       parameters:
-        - name: contextId
+        - name: generationId
           in: path
           required: true
           type: string
-          description: Context ID,隔离一个业务注册
+          description: Generation ID,隔离一个业务注册
         - name: body
           in: body
           required: true
@@ -64,7 +64,7 @@ paths:
         200:
           description: 注册/替换成功
           schema:
-            $ref: "#/definitions/ContextSummary"
+            $ref: "#/definitions/GenerationSummary"
         400:
           description: 非法输入(如组件组引用不存在的组件)
           schema:
@@ -80,7 +80,7 @@ paths:
         - prompts
       operationId: assemblePrompt
       summary: 拼装 system prompt
-      description: contextId 缺省时仅使用 base contract。tools 与 extraRules 为 Request Overlay:仅作用于本次拼装,不持久化。
+      description: generationId 缺省时仅使用 base contract。tools 与 extraRules 为 Request Overlay:仅作用于本次拼装,不持久化。
       consumes:
         - application/json
       parameters:
@@ -99,7 +99,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorResponse"
         404:
-          description: contextId 未注册
+          description: generationId 未注册
           schema:
             $ref: "#/definitions/ErrorResponse"
         409:
@@ -138,7 +138,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorResponse"
         404:
-          description: contextId 未注册
+          description: generationId 未注册
           schema:
             $ref: "#/definitions/ErrorResponse"
         409:
@@ -186,10 +186,10 @@ paths:
             $ref: "#/definitions/ErrorResponse"
 
 definitions:
-  ContextSummary:
+  GenerationSummary:
     type: object
     properties:
-      contextId:
+      generationId:
         type: string
       version:
         type: string
@@ -293,7 +293,7 @@ definitions:
   AssembleRequest:
     type: object
     properties:
-      contextId:
+      generationId:
         type: string
         description: 缺省时仅使用 base contract
       dataModel:
@@ -320,11 +320,11 @@ definitions:
   AssemblyMetadata:
     type: object
     properties:
-      contextId:
+      generationId:
         type: string
       baseContractVersion:
         type: string
-      extensionVersion:
+      generationVersion:
         type: string
       registeredToolNames:
         type: array
@@ -351,7 +351,7 @@ definitions:
       prompt:
         type: string
         description: 用户生成诉求(user message)
-      contextId:
+      generationId:
         type: string
       dataModel:
         type: object
@@ -370,7 +370,7 @@ definitions:
       promptOverride:
         type: string
         description: |
-          Prompt Override(debug-only):有值时整段替换 SDK 拼装产物,绕过 Generation Context。
+          Prompt Override(debug-only):有值时整段替换 SDK 拼装产物,绕过 Generation。
           仅供调试实验,生产调用方不应使用。与 Request Overlay(仅追加)语义严格区分。
 
   ErrorResponse:

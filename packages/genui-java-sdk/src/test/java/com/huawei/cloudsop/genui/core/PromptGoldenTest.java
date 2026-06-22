@@ -92,7 +92,10 @@ class PromptGoldenTest {
       Map<String, Object> comp = Json.asObject(entry.getValue(), "component");
       result.put(
           entry.getKey(),
-          new ComponentPromptSpec(string(comp.get("signature")), string(comp.get("description"))));
+          comp.containsKey("propsSchema")
+              ? new ComponentPromptSpec(
+                  string(comp.get("description")), Json.asObject(comp.get("propsSchema"), "propsSchema"))
+              : new ComponentPromptSpec(string(comp.get("signature")), string(comp.get("description"))));
     }
     return result;
   }

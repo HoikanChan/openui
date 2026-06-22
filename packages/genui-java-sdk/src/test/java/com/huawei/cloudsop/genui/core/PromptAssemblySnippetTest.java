@@ -23,19 +23,19 @@ class PromptAssemblySnippetTest {
             List.of("Base rule"));
     GenerationSdk sdk = GenerationSdk.builder().baseContract(base).build();
     sdk.register(
-        new GenUIContextExtension(
-            "ctxA",
-            "ext-v1",
+        new GenUIGeneration(
+            "genA",
+            "gen-v1",
             Map.of("BizCard", new ComponentPromptSpec("BizCard(title: string)", "Business card")),
             List.of(new ComponentGroup("Business", List.of("BizCard"), List.of())),
             List.of(),
             List.of("root = Stack([BizCard(\"A\")])"),
-            List.of("Extension rule")));
+            List.of("Generation rule")));
 
     GenUIPromptAssemblyResult result =
         sdk.assemblePrompt(
             new GenUIPromptRequest(
-                "ctxA",
+                "genA",
                 new DataModelSpec("Business data", Map.of("accounts", List.of(Map.of("name", "Acme")))),
                 List.of(
                     new ToolSpec(
@@ -54,7 +54,7 @@ class PromptAssemblySnippetTest {
     assertTrue(result.prompt().contains("BizCard(title: string)"));
     assertTrue(result.prompt().contains("searchTickets"));
     assertTrue(result.prompt().contains("Request rule"));
-    assertTrue(result.prompt().contains("Extension rule"));
+    assertTrue(result.prompt().contains("Generation rule"));
     assertTrue(result.prompt().contains("## Data Model"));
     assertTrue(result.prompt().contains("Business data"));
   }

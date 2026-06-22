@@ -2,7 +2,7 @@ package com.huawei.cloudsop.genui.service.web;
 
 import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.service.api.model.ErrorResponse;
-import com.huawei.cloudsop.genui.service.application.UnknownContextException;
+import com.huawei.cloudsop.genui.service.application.UnknownGenerationException;
 import com.huawei.cloudsop.genui.service.llm.LlmUpstreamException;
 import com.huawei.cloudsop.genui.service.tools.UnknownToolException;
 import org.springframework.http.HttpStatus;
@@ -28,8 +28,8 @@ public class ApiExceptionHandler {
     return ResponseEntity.status(status).body(new ErrorResponse().error(message));
   }
 
-  @ExceptionHandler(UnknownContextException.class)
-  public ResponseEntity<ErrorResponse> handleUnknownContext(UnknownContextException ex) {
+  @ExceptionHandler(UnknownGenerationException.class)
+  public ResponseEntity<ErrorResponse> handleUnknownGeneration(UnknownGenerationException ex) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse().error(ex.getMessage()));
   }
 

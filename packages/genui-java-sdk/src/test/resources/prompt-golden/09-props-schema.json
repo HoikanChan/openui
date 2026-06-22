@@ -1,0 +1,38 @@
+{
+  "root": "Stack",
+  "components": {
+    "Stack": {
+      "description": "Layout",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "component": true
+            }
+          }
+        },
+        "required": []
+      }
+    },
+    "AlarmBadge": {
+      "description": "Alarm summary badge",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "enum": ["critical", "major", "minor"]
+          },
+          "count": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": ["severity", "count"]
+      }
+    }
+  }
+}

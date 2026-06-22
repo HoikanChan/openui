@@ -1,7 +1,7 @@
 package com.huawei.cloudsop.genui.service.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.cloudsop.genui.core.GenUIContextExtension;
+import com.huawei.cloudsop.genui.core.GenUIGeneration;
 import com.huawei.cloudsop.genui.service.application.GenerationAppService;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -39,9 +39,9 @@ public class SeedExtensionsRunner implements ApplicationRunner {
     Arrays.sort(resources, Comparator.comparing(Resource::getFilename));
     for (Resource resource : resources) {
       try (InputStream in = resource.getInputStream()) {
-        GenUIContextExtension extension = objectMapper.readValue(in, GenUIContextExtension.class);
-        appService.register(extension);
-        log.info("[seed] registered preset context '{}' from {}", extension.contextId(), resource.getFilename());
+        GenUIGeneration generation = objectMapper.readValue(in, GenUIGeneration.class);
+        appService.register(generation);
+        log.info("[seed] registered preset generation '{}' from {}", generation.generationId(), resource.getFilename());
       }
     }
   }

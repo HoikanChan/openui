@@ -18,7 +18,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** 拼装端点行为:与 SDK 直接拼装字节一致、扩展上下文生效、Overlay 工具碰撞 409。 */
+/** 拼装端点行为:与 SDK 直接拼装字节一致、Generation 生效、Overlay 工具碰撞 409。 */
 @SpringBootTest
 @AutoConfigureMockMvc
 class PromptsApiTest {
@@ -39,17 +39,17 @@ class PromptsApiTest {
   }
 
   @Test
-  void extensionContextContributesToolsToPrompt() throws Exception {
-    JsonNode result = assemble("{\"contextId\":\"noe-alarm-tools\"}");
+  void generationContributesToolsToPrompt() throws Exception {
+    JsonNode result = assemble("{\"generationId\":\"noe-alarm-tools\"}");
     String prompt = result.get("prompt").asText();
-    assertTrue(prompt.contains("queryAlarms"), "extension tool must appear in prompt");
-    assertEquals("1.0.0", result.get("metadata").get("extensionVersion").asText());
+    assertTrue(prompt.contains("queryAlarms"), "generation tool must appear in prompt");
+    assertEquals("1.0.0", result.get("metadata").get("generationVersion").asText());
   }
 
   @Test
   void overlayToolNameCollisionReturns409() throws Exception {
     String body =
-        "{\"contextId\":\"noe-alarm-tools\",\"tools\":[{\"name\":\"queryAlarms\",\"description\":\"dup\"}]}";
+        "{\"generationId\":\"noe-alarm-tools\",\"tools\":[{\"name\":\"queryAlarms\",\"description\":\"dup\"}]}";
     mvc.perform(post("/v1/prompts/assemble").contentType(MediaType.APPLICATION_JSON).content(body))
         .andExpect(status().isConflict());
   }
