@@ -1,6 +1,6 @@
 ## 0. 依赖与脚手架
 
-- [ ] 0.1 新建分层包目录 `.../genui/core/llm/` 及子包 `transport/`、`protocol/`、`stream/`、`extract/`（入口类 `GenUiGenerator`/`GenUiLlmConfig`/`UiGenerationRequest` 置于 `llm` 根），测试目录镜像同结构
+- [x] 0.1 新建分层包目录 `.../genui/core/llm/` 及子包 `transport/`、`protocol/`、`stream/`、`extract/`（入口类 `GenUiGenerator`/`GenUiLlmConfig`/`UiGenerationRequest` 置于 `llm` 根），测试目录镜像同结构
 - [ ] 0.2 `pom.xml` 加入 BSP restclient 依赖 `com.huawei.bsp:com.huawei.bsp.commonlib.resetclient:25.590.54`，`<scope>provided</scope>`，并加注释（BSP 运行时提供，不随 SDK 打包；"resetclient" 拼写待核对疑似 restclient）
 
 ## 1. 既有 core 分层重组（前置：先于 llm 实现，使新代码直接 import 最终包）
@@ -17,46 +17,46 @@
 
 ## 2. GenUiLlmConfig（配置）
 
-- [ ] 2.1 定义 `GenUiLlmConfig`（不可变）字段：`endpoint`、`defaultModel`、`temperature`、`enableThinking`、`jsonObjectResponse`、`extraHeaders`
-- [ ] 2.2 加常量 `DEFAULT_ENDPOINT="/rest/netrsn/v1/chat/completions"`、`DEFAULT_MODEL="qwen3.6-27b"`，及 `defaults()` 工厂
-- [ ] 2.3 加 `Builder`（每字段 setter + `putHeader` + `build()`），空值回退默认
-- [ ] 2.4 单测：`defaults()` 各字段值、builder 覆盖 endpoint/model/temperature、`extraHeaders` 不可变
+- [x] 2.1 定义 `GenUiLlmConfig`（不可变）字段：`endpoint`、`defaultModel`、`temperature`、`enableThinking`、`jsonObjectResponse`、`extraHeaders`
+- [x] 2.2 加常量 `DEFAULT_ENDPOINT="/rest/netrsn/v1/chat/completions"`、`DEFAULT_MODEL="qwen3.6-27b"`，及 `defaults()` 工厂
+- [x] 2.3 加 `Builder`（每字段 setter + `putHeader` + `build()`），空值回退默认
+- [x] 2.4 单测：`defaults()` 各字段值、builder 覆盖 endpoint/model/temperature、`extraHeaders` 不可变
 
 ## 3. 传输端口与异常
 
-- [ ] 3.1 定义受检异常 `LlmTransportException extends Exception`（(String) 与 (String,Throwable) 构造）
-- [ ] 3.2 定义端口 `LlmTransport`：`String post(String body) throws LlmTransportException`、`InputStream postStream(String body) throws LlmTransportException`
+- [x] 3.1 定义受检异常 `LlmTransportException extends Exception`（(String) 与 (String,Throwable) 构造）
+- [x] 3.2 定义端口 `LlmTransport`：`String post(String body) throws LlmTransportException`、`InputStream postStream(String body) throws LlmTransportException`
 
 ## 4. 请求体构造（ChatMessage / ChatCompletionRequest）
 
-- [ ] 4.1 定义 `ChatMessage`（record `role`/`content` + `system()`/`user()` 工厂）
-- [ ] 4.2 实现 `ChatCompletionRequest.of(config, model, messages, stream)`：model 空白回退 `config.defaultModel()`；从 config 取 `temperature`/`enable_thinking`/`response_format`（`jsonObjectResponse` 为真→`{"type":"json_object"}`）
-- [ ] 4.3 实现 `toJson()`：用 fastjson2 序列化 `model/stream/temperature/enable_thinking/response_format/messages`（messages 按 role 原样输出，LinkedHashMap 保序）
-- [ ] 4.4 单测：同步体含默认 model+`stream=false`+`temperature=0`+`response_format.type=json_object`；流式体 `stream=true`；多消息按 role 输出；config 自定义 temperature / 关 jsonObject 生效
+- [x] 4.1 定义 `ChatMessage`（record `role`/`content` + `system()`/`user()` 工厂）
+- [x] 4.2 实现 `ChatCompletionRequest.of(config, model, messages, stream)`：model 空白回退 `config.defaultModel()`；从 config 取 `temperature`/`enable_thinking`/`response_format`（`jsonObjectResponse` 为真→`{"type":"json_object"}`）
+- [x] 4.3 实现 `toJson()`：用 fastjson2 序列化 `model/stream/temperature/enable_thinking/response_format/messages`（messages 按 role 原样输出，LinkedHashMap 保序）
+- [x] 4.4 单测：同步体含默认 model+`stream=false`+`temperature=0`+`response_format.type=json_object`；流式体 `stream=true`；多消息按 role 输出；config 自定义 temperature / 关 jsonObject 生效
 
 ## 5. 响应解析（ChatCompletionResponse）
 
-- [ ] 5.1 定义 `ChatCompletionResponse` DTO（`choices[].message{role,content}`、`finish_reason` snake_case 对齐）
-- [ ] 5.2 实现 `parse(json)`（非法 JSON 抛 `GenerationSdkException`）与 `firstContent()`（choices 空/缺失抛明确异常）
-- [ ] 5.3 单测：取首条 content；空 choices 抛异常；缺 message 抛异常；非法 JSON 抛异常
+- [x] 5.1 定义 `ChatCompletionResponse` DTO（`choices[].message{role,content}`、`finish_reason` snake_case 对齐）
+- [x] 5.2 实现 `parse(json)`（非法 JSON 抛 `GenerationSdkException`）与 `firstContent()`（choices 空/缺失抛明确异常）
+- [x] 5.3 单测：取首条 content；空 choices 抛异常；缺 message 抛异常；非法 JSON 抛异常
 
 ## 6. 流式拆帧与 SSE 帧
 
-- [ ] 6.1 实现 `SseDeltaParser.parse(InputStream, Consumer<String> sink)`：按 `data: ...\n\n` 拆帧、取 `choices[0].delta.content`、逐段回调非空纯文本 delta、累积返回；坏帧/`[DONE]` 跳过
-- [ ] 6.2 实现 `SseFrames`：`of(content)` → `data: <content>\n\n`；`done()` → `data: [DONE]\n\n`
-- [ ] 6.3 单测 `SseDeltaParser`：多帧粘连、半帧跨读、坏帧跳过、`[DONE]` 跳过、回调顺序与累积全文一致
-- [ ] 6.4 单测 `SseFrames`：`of`/`done` 帧格式
+- [x] 6.1 实现 `SseDeltaParser.parse(InputStream, Consumer<String> sink)`：按 `data: ...\n\n` 拆帧、取 `choices[0].delta.content`、逐段回调非空纯文本 delta、累积返回；坏帧/`[DONE]` 跳过
+- [x] 6.2 实现 `SseFrames`：`of(content)` → `data: <content>\n\n`；`done()` → `data: [DONE]\n\n`
+- [x] 6.3 单测 `SseDeltaParser`：多帧粘连、半帧跨读、坏帧跳过、`[DONE]` 跳过、回调顺序与累积全文一致
+- [x] 6.4 单测 `SseFrames`：`of`/`done` 帧格式
 
 ## 7. 代码抽取（OpenuiCodeExtractor）
 
-- [ ] 7.1 实现 `extract(raw)`：```openui/```openui-lang/```text 代码块优先 → 含 `root = Stack(` 的代码块回退 → 去空白原文回退；null/空返回 ""（内联内部 `CodeExtractor` 逻辑，留 TODO 标注待核对原实现）
-- [ ] 7.2 单测：openui 块、openui-lang 块、Stack 启发式、无标记原文、空/ null 输入
+- [x] 7.1 实现 `extract(raw)`：```openui/```openui-lang/```text 代码块优先 → 含 `root = Stack(` 的代码块回退 → 去空白原文回退；null/空返回 ""（内联内部 `CodeExtractor` 逻辑，留 TODO 标注待核对原实现）
+- [x] 7.2 单测：openui 块、openui-lang 块、Stack 启发式、无标记原文、空/ null 输入
 
 ## 8. 生成入参（UiGenerationRequest）
 
-- [ ] 8.1 定义 `UiGenerationRequest`（record：`extensionId`、`userInput`、`request`、`response`、`suggestion`、`overlayTools`、`overlayRules`、`editMode`/`inlineMode`/`toolCalls`/`bindings`）
-- [ ] 8.2 加 `Builder` + 必要的 null 归一（集合空列表、map 不可变）
-- [ ] 8.3 单测：builder 构造、默认空集合、不可变性
+- [x] 8.1 定义 `UiGenerationRequest`（record：`extensionId`、`userInput`、`request`、`response`、`suggestion`、`overlayTools`、`overlayRules`、`editMode`/`inlineMode`/`toolCalls`/`bindings`）
+- [x] 8.2 加 `Builder` + 必要的 null 归一（集合空列表、map 不可变）
+- [x] 8.3 单测：builder 构造、默认空集合、不可变性
 
 ## 9. 编排门面（GenUiGenerator）
 
