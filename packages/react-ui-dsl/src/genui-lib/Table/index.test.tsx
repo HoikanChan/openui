@@ -1,4 +1,3 @@
-import React from "react";
 import { describe, expect, it } from "vitest";
 import { createParser } from "../../../../lang-core/src";
 import { dslLibrary } from "../dslLibrary";
@@ -15,18 +14,37 @@ function createCol(props: Record<string, unknown>) {
 }
 
 describe("react-ui-dsl Table schema redesign", () => {
-  it("exposes openui lang-style Table and Col signatures", () => {
+  it("exposes openui lang-style Table and Col props schemas", () => {
     const spec = dslLibrary.toSpec();
 
-    expect(spec.components.Table.signature).toContain("Table(columns: Col[]");
-    expect(spec.components.Table.signature).toContain("rows: Record<string, any>[]");
-    expect(spec.components.Col.signature).toContain("Col(title: string, field: string");
-    expect(spec.components.Col.signature).toContain("options?: {sortable?: boolean");
+    expect(spec.components.Table.propsSchema?.properties.columns).toEqual({
+      type: "array",
+      items: { component: "Col" },
+    });
+    expect(spec.components.Table.propsSchema?.properties.rows).toEqual({
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: { type: "any" },
+      },
+    });
+    expect(Object.keys(spec.components.Col.propsSchema?.properties ?? {})).toEqual([
+      "title",
+      "field",
+      "options",
+    ]);
+    expect(spec.components.Col.propsSchema?.properties.options).toMatchObject({
+      type: "object",
+      properties: {
+        sortable: { type: "boolean" },
+      },
+    });
   });
 
   it("renders a table from declarative Col components and row data", () => {
     const parser = createParser(dslLibrary.toJSONSchema());
-    const result = parser.parse(`root = Table([Col("Name", "name"), Col("Joined", "joinDate", {cell: @Render("v", TextContent(@FormatDate(v, "date")))})], rows)
+    const result =
+      parser.parse(`root = Table([Col("Name", "name"), Col("Joined", "joinDate", {cell: @Render("v", TextContent(@FormatDate(v, "date")))})], rows)
 rows = [{name: "Alice", joinDate: "2026-01-02T03:04:05.000Z"}]`);
 
     expect(result.meta.errors).toHaveLength(0);
@@ -45,7 +63,9 @@ rows = [{name: "Alice", joinDate: "2026-01-02T03:04:05.000Z"}]`);
 
   it("allows ObjectEntries rows to feed iterable table patterns", () => {
     const parser = createParser(dslLibrary.toJSONSchema());
-    const result = parser.parse(`root = Table([Col("Device", "key"), Col("Status", "value.status")], @ObjectEntries(data.devicesById))`);
+    const result = parser.parse(
+      `root = Table([Col("Device", "key"), Col("Status", "value.status")], @ObjectEntries(data.devicesById))`,
+    );
 
     expect(result.meta.errors).toHaveLength(0);
     expect(result.root?.typeName).toBe("Table");
@@ -124,10 +144,9 @@ rows = [{name: "Alice", joinDate: "2026-01-02T03:04:05.000Z"}]`);
     const result = parser.parse(`root = Table([Col("Name", "name"), Col("Status", "status")], rows)
 rows = [{name: "Alice", status: "Active"}]`);
 
-    const columns = mapColumnsToAntd(
-      result.root?.props.columns as any,
-      (value) => <span data-rendered="true">{JSON.stringify(value)}</span>,
-    );
+    const columns = mapColumnsToAntd(result.root?.props.columns as any, (value) => (
+      <span data-rendered="true">{JSON.stringify(value)}</span>
+    ));
 
     expect(columns).toHaveLength(2);
     expect(columns[0].title).toBe("Name");
@@ -181,7 +200,11 @@ describe("Table expandRow", () => {
 
   it("sets defaultExpandAllRows true when rows.length <= 3", () => {
     const expandFn = () => <span>details</span>;
-    const view = TableView({ columns: [], rows: [{ id: 1 }, { id: 2 }, { id: 3 }], expandRow: expandFn });
+    const view = TableView({
+      columns: [],
+      rows: [{ id: 1 }, { id: 2 }, { id: 3 }],
+      expandRow: expandFn,
+    });
 
     expect(view.props.expandable.defaultExpandAllRows).toBe(true);
   });

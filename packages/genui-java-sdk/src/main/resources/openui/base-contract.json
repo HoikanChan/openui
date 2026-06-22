@@ -3,160 +3,1297 @@
   "root": "Stack",
   "components": {
     "Stack": {
-      "signature": "Stack(children?: any[], direction?: \"row\" | \"column\", gap?: \"none\" | \"xs\" | \"s\" | \"m\" | \"l\" | \"xl\" | \"2xl\", align?: \"start\" | \"center\" | \"end\" | \"stretch\" | \"baseline\", justify?: \"start\" | \"center\" | \"end\" | \"between\" | \"around\" | \"evenly\", wrap?: boolean)",
-      "description": "Flex container. direction: \"row\"|\"column\" (default \"column\"). gap: \"none\"|\"xs\"|\"s\"|\"m\"|\"l\"|\"xl\"|\"2xl\" (default \"m\"). align: \"start\"|\"center\"|\"end\"|\"stretch\"|\"baseline\". justify: \"start\"|\"center\"|\"end\"|\"between\"|\"around\"|\"evenly\"."
+      "description": "Flex container. direction: \"row\"|\"column\" (default \"column\"). gap: \"none\"|\"xs\"|\"s\"|\"m\"|\"l\"|\"xl\"|\"2xl\" (default \"m\"). align: \"start\"|\"center\"|\"end\"|\"stretch\"|\"baseline\". justify: \"start\"|\"center\"|\"end\"|\"between\"|\"around\"|\"evenly\".",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "any"
+            }
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "row",
+              "column"
+            ]
+          },
+          "gap": {
+            "type": "string",
+            "enum": [
+              "none",
+              "xs",
+              "s",
+              "m",
+              "l",
+              "xl",
+              "2xl"
+            ]
+          },
+          "align": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "stretch",
+              "baseline"
+            ]
+          },
+          "justify": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "between",
+              "around",
+              "evenly"
+            ]
+          },
+          "wrap": {
+            "type": "boolean"
+          }
+        }
+      }
     },
     "TextContent": {
-      "signature": "TextContent(text: string, size?: \"small\" | \"default\" | \"large\" | \"small-heavy\" | \"large-heavy\")",
-      "description": "Text block. Supports markdown. Optional size: \"small\" | \"default\" | \"large\" | \"small-heavy\" | \"large-heavy\"."
+      "description": "Text block. Supports markdown. Optional size: \"small\" | \"default\" | \"large\" | \"small-heavy\" | \"large-heavy\".",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string",
+            "enum": [
+              "small",
+              "default",
+              "large",
+              "small-heavy",
+              "large-heavy"
+            ]
+          }
+        },
+        "required": [
+          "text"
+        ]
+      }
     },
     "MarkDownRenderer": {
-      "signature": "MarkDownRenderer(textMarkdown: string, variant?: \"clear\" | \"card\" | \"sunk\")",
-      "description": "Renders markdown text with optional container variant (\"clear\" | \"card\" | \"sunk\"). Use for long-form documents, README content, or markdown with code blocks. For short UI text and labels, use TextContent."
+      "description": "Renders markdown text with optional container variant (\"clear\" | \"card\" | \"sunk\"). Use for long-form documents, README content, or markdown with code blocks. For short UI text and labels, use TextContent.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "textMarkdown": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "clear",
+              "card",
+              "sunk"
+            ]
+          }
+        },
+        "required": [
+          "textMarkdown"
+        ]
+      }
     },
     "Button": {
-      "signature": "Button(text?: string, status?: \"default\" | \"primary\" | \"risk\", disabled?: boolean, type?: \"default\" | \"text\")",
-      "description": "Clickable button"
+      "description": "Clickable button",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "default",
+              "primary",
+              "risk"
+            ]
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "default",
+              "text"
+            ]
+          }
+        }
+      }
     },
     "Input": {
-      "signature": "Input(placeholder?: string, defaultValue?: string | number, disabled?: boolean, readOnly?: boolean, size?: \"small\" | \"medium\" | \"large\", hasError?: boolean, maxLength?: number)",
-      "description": "Single-line text input control"
+      "description": "Single-line text input control",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "placeholder": {
+            "type": "string"
+          },
+          "defaultValue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "readOnly": {
+            "type": "boolean"
+          },
+          "size": {
+            "type": "string",
+            "enum": [
+              "small",
+              "medium",
+              "large"
+            ]
+          },
+          "hasError": {
+            "type": "boolean"
+          },
+          "maxLength": {
+            "type": "number"
+          }
+        }
+      }
     },
     "Select": {
-      "signature": "Select(options: {label: string, value: number | string}[], defaultValue?: number | string, allowClear?: boolean)",
-      "description": "Dropdown select"
+      "description": "Dropdown select",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "label",
+                "value"
+              ]
+            }
+          },
+          "defaultValue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "allowClear": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "options"
+        ]
+      }
     },
     "Separator": {
-      "signature": "Separator(orientation?: \"horizontal\" | \"vertical\", decorative?: boolean)",
-      "description": "Visual divider between content sections"
+      "description": "Visual divider between content sections",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "orientation": {
+            "type": "string",
+            "enum": [
+              "horizontal",
+              "vertical"
+            ]
+          },
+          "decorative": {
+            "type": "boolean"
+          }
+        }
+      }
     },
     "Tag": {
-      "signature": "Tag(text: string, variant?: \"neutral\" | \"info\" | \"success\" | \"warning\" | \"danger\", icon?: string, size?: \"sm\" | \"md\" | \"lg\")",
-      "description": "Compact semantic tag or badge with optional icon token"
+      "description": "Compact semantic tag or badge with optional icon token",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "neutral",
+              "info",
+              "success",
+              "warning",
+              "danger"
+            ]
+          },
+          "icon": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string",
+            "enum": [
+              "sm",
+              "md",
+              "lg"
+            ]
+          }
+        },
+        "required": [
+          "text"
+        ]
+      }
     },
     "TagBlock": {
-      "signature": "TagBlock(tags: string[])",
-      "description": "tags is an array of strings"
+      "description": "tags is an array of strings",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tags"
+        ]
+      }
     },
     "Image": {
-      "signature": "Image(content: string, type: \"url\" | \"base64\" | \"svg\")",
-      "description": "Image that supports url, base64, or inline SVG"
+      "description": "Image that supports url, base64, or inline SVG",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "url",
+              "base64",
+              "svg"
+            ]
+          }
+        },
+        "required": [
+          "content",
+          "type"
+        ]
+      }
     },
     "Link": {
-      "signature": "Link(href: string, text?: string, target?: \"_self\" | \"_blank\", disabled?: boolean, download?: string)",
-      "description": "Anchor link"
+      "description": "Anchor link",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "href": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string",
+            "enum": [
+              "_self",
+              "_blank"
+            ]
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "download": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "href"
+        ]
+      }
     },
     "Card": {
-      "signature": "Card(children?: any[], variant?: \"card\" | \"clear\" | \"sunk\", width?: \"standard\" | \"full\")",
-      "description": "Styled container. variant: \"card\" (default, elevated) | \"sunk\" (recessed) | \"clear\" (transparent). width: \"standard\" (default) | \"full\". Accepts any DSL component as children. For internal layout (spacing, direction), wrap children in VLayout or HLayout."
+      "description": "Styled container. variant: \"card\" (default, elevated) | \"sunk\" (recessed) | \"clear\" (transparent). width: \"standard\" (default) | \"full\". Accepts any DSL component as children. For internal layout (spacing, direction), wrap children in VLayout or HLayout.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "any"
+            }
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "card",
+              "clear",
+              "sunk"
+            ]
+          },
+          "width": {
+            "type": "string",
+            "enum": [
+              "standard",
+              "full"
+            ]
+          }
+        }
+      }
     },
     "CardHeader": {
-      "signature": "CardHeader(title?: string, subtitle?: string)",
-      "description": "Header with optional title and subtitle"
+      "description": "Header with optional title and subtitle",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          }
+        }
+      }
     },
     "CanvasCard": {
-      "signature": "CanvasCard(children: any[], title?: string, tab?: string, size?: {w?: number})",
-      "description": "Canvas dashboard card that adds content to intelligent canvas. LUI does not render this component. Args: children (required, card content), title (optional, card title), tab (optional, default \"Dashboard\", tab name to add to), size (optional, default w=6, grid width 1-12). Tab is auto-created if not exists."
+      "description": "Canvas dashboard card that adds content to intelligent canvas. LUI does not render this component. Args: children (required, card content), title (optional, card title), tab (optional, default \"Dashboard\", tab name to add to), size (optional, default w=6, grid width 1-12). Tab is auto-created if not exists.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "any"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "tab": {
+            "type": "string"
+          },
+          "size": {
+            "type": "object",
+            "properties": {
+              "w": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "required": [
+          "children"
+        ]
+      }
     },
     "PreviewCard": {
-      "signature": "PreviewCard(children: any[], title: string, summary?: any[])",
-      "description": "Preview card that shows a small card in LUI. Click adds full content to canvas PreviewTab. Args: children (required, full preview content or HTMLLoader), title (required, tab name), summary (optional, summary content shown in LUI small card). Click replaces existing PreviewTab with same title. HTMLLoader children will render as iframe with bidirectional communication."
+      "description": "Preview card that shows a small card in LUI. Click adds full content to canvas PreviewTab. Args: children (required, full preview content or HTMLLoader), title (required, tab name), summary (optional, summary content shown in LUI small card). Click replaces existing PreviewTab with same title. HTMLLoader children will render as iframe with bidirectional communication.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "any"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "array",
+            "items": {
+              "type": "any"
+            }
+          }
+        },
+        "required": [
+          "children",
+          "title"
+        ]
+      }
     },
     "HTMLLoader": {
-      "signature": "HTMLLoader(url: string, iframeId: string, data: Record<string, any>)",
-      "description": "HTMLLoader component for iframe embedding with bidirectional communication. Used as PreviewCard children. Args: url (required, iframe source), iframeId (required, unique identifier for postMessage communication), data (optional, object sent to iframe after it signals ready). Tab name comes from parent PreviewCard.title. Communication protocol: iframe sends {type: \"openui-ready\", iframeId} when loaded; HTMLLoader sends {type: \"openui-data\", iframeId, data} back; iframe can send {type: \"openui-close\", iframeId} to request tab removal."
+      "description": "HTMLLoader component for iframe embedding with bidirectional communication. Used as PreviewCard children. Args: url (required, iframe source), iframeId (required, unique identifier for postMessage communication), data (optional, object sent to iframe after it signals ready). Tab name comes from parent PreviewCard.title. Communication protocol: iframe sends {type: \"openui-ready\", iframeId} when loaded; HTMLLoader sends {type: \"openui-data\", iframeId, data} back; iframe can send {type: \"openui-close\", iframeId} to request tab removal.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "iframeId": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        },
+        "required": [
+          "url",
+          "iframeId",
+          "data"
+        ]
+      }
     },
     "Descriptions": {
-      "signature": "Descriptions(items: (DescField | DescGroup)[], title?: string, extra?: any, columns?: number, border?: boolean)",
-      "description": "Descriptions-style detail view for a single record with optional bordered and plain visual modes."
+      "description": "Descriptions-style detail view for a single record with optional bordered and plain visual modes.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "component": "DescField"
+                },
+                {
+                  "component": "DescGroup"
+                }
+              ]
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "extra": {
+            "type": "any"
+          },
+          "columns": {
+            "type": "number"
+          },
+          "border": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items"
+        ]
+      }
     },
     "DescGroup": {
-      "signature": "DescGroup(title: string, fields: DescField[], columns?: number)",
-      "description": "Declarative descriptions group with a title, field list, and optional column override."
+      "description": "Declarative descriptions group with a title, field list, and optional column override.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "component": "DescField"
+            }
+          },
+          "columns": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "title",
+          "fields"
+        ]
+      }
     },
     "DescField": {
-      "signature": "DescField(label: string, value: any, span?: number)",
-      "description": "Declarative descriptions field with label, direct value expression, and optional span."
+      "description": "Declarative descriptions field with label, direct value expression, and optional span.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "any"
+          },
+          "span": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ]
+      }
     },
     "List": {
-      "signature": "List(children?: any[], header?: string, isOrder?: boolean)",
-      "description": "Ordered or unordered list"
+      "description": "Ordered or unordered list",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "any"
+            }
+          },
+          "header": {
+            "type": "string"
+          },
+          "isOrder": {
+            "type": "boolean"
+          }
+        }
+      }
     },
     "Form": {
-      "signature": "Form(fields: {label: string, name: string, rules?: {required: boolean}[], component: any}[], layout?: \"vertical\" | \"inline\" | \"horizontal\", labelAlign?: \"left\" | \"right\", initialValues?: Record<string, any>)",
-      "description": "Form with inline field definitions"
+      "description": "Form with inline field definitions",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "rules": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "required": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "required"
+                    ]
+                  }
+                },
+                "component": {
+                  "type": "any"
+                }
+              },
+              "required": [
+                "label",
+                "name",
+                "component"
+              ]
+            }
+          },
+          "layout": {
+            "type": "string",
+            "enum": [
+              "vertical",
+              "inline",
+              "horizontal"
+            ]
+          },
+          "labelAlign": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right"
+            ]
+          },
+          "initialValues": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        },
+        "required": [
+          "fields"
+        ]
+      }
     },
     "Col": {
-      "signature": "Col(title: string, field: string, options?: {sortable?: boolean, filterable?: boolean, filterOptions?: string[], cell?: any, tooltip?: boolean})",
-      "description": "Declarative table column. Use Col(title, field, options?) instead of writing a raw columns JSON object."
+      "description": "Declarative table column. Use Col(title, field, options?) instead of writing a raw columns JSON object.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "options": {
+            "type": "object",
+            "properties": {
+              "sortable": {
+                "type": "boolean"
+              },
+              "filterable": {
+                "type": "boolean"
+              },
+              "filterOptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "cell": {
+                "type": "any"
+              },
+              "tooltip": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "required": [
+          "title",
+          "field"
+        ]
+      }
     },
     "Table": {
-      "signature": "Table(columns: Col[], rows: Record<string, any>[], expandRow?: any)",
-      "description": "Data table: Table(columns, rows, expandRow?). Col(title, field, options?) defines each column. For nested array fields, pass @Render(\"item\", Table([childCols], item.nestedField)) as 3rd arg — rows auto-expand when ≤3 parents."
+      "description": "Data table: Table(columns, rows, expandRow?). Col(title, field, options?) defines each column. For nested array fields, pass @Render(\"item\", Table([childCols], item.nestedField)) as 3rd arg — rows auto-expand when ≤3 parents.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "component": "Col"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          },
+          "expandRow": {
+            "type": "any"
+          }
+        },
+        "required": [
+          "columns",
+          "rows"
+        ]
+      }
     },
     "PieChart": {
-      "signature": "PieChart(labels: string[], values: number[], variant?: \"pie\" | \"donut\")",
-      "description": "Circular slices; use for protocol distribution or traffic breakdown by source"
+      "description": "Circular slices; use for protocol distribution or traffic breakdown by source",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "pie",
+              "donut"
+            ]
+          }
+        },
+        "required": [
+          "labels",
+          "values"
+        ]
+      }
     },
     "LineChart": {
-      "signature": "LineChart(labels: string[], series: Series[], variant?: \"linear\" | \"smooth\" | \"step\", xLabel?: string, yLabel?: string)",
-      "description": "Lines over time; use for latency, throughput, or any time-series metric"
+      "description": "Lines over time; use for latency, throughput, or any time-series metric",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "component": "Series"
+            }
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "linear",
+              "smooth",
+              "step"
+            ]
+          },
+          "xLabel": {
+            "type": "string"
+          },
+          "yLabel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "labels",
+          "series"
+        ]
+      }
     },
     "BarChart": {
-      "signature": "BarChart(labels: string[], series: Series[], variant?: \"grouped\" | \"stacked\", xLabel?: string, yLabel?: string)",
-      "description": "Vertical bars; use for comparing values across categories or devices"
+      "description": "Vertical bars; use for comparing values across categories or devices",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "component": "Series"
+            }
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "grouped",
+              "stacked"
+            ]
+          },
+          "xLabel": {
+            "type": "string"
+          },
+          "yLabel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "labels",
+          "series"
+        ]
+      }
     },
     "GaugeChart": {
-      "signature": "GaugeChart(readings: {name: string, value: number}[], min?: number, max?: number)",
-      "description": "Gauge dials; use for KPI status, utilization %, or health score — supports multiple needles"
+      "description": "Gauge dials; use for KPI status, utilization %, or health score — supports multiple needles",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "readings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "name",
+                "value"
+              ]
+            }
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "readings"
+        ]
+      }
     },
     "HorizontalBarChart": {
-      "signature": "HorizontalBarChart(labels: string[], series: Series[], variant?: \"grouped\" | \"stacked\", xLabel?: string, yLabel?: string)",
-      "description": "Horizontal bars; use for long category labels, ranked lists, or interface throughput comparison"
+      "description": "Horizontal bars; use for long category labels, ranked lists, or interface throughput comparison",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "component": "Series"
+            }
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "grouped",
+              "stacked"
+            ]
+          },
+          "xLabel": {
+            "type": "string"
+          },
+          "yLabel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "labels",
+          "series"
+        ]
+      }
     },
     "AreaChart": {
-      "signature": "AreaChart(labels: string[], series: Series[], variant?: \"linear\" | \"smooth\" | \"step\", xLabel?: string, yLabel?: string, stacked?: boolean)",
-      "description": "Filled area under lines; use for bandwidth utilization, cumulative traffic, or capacity trends"
+      "description": "Filled area under lines; use for bandwidth utilization, cumulative traffic, or capacity trends",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "component": "Series"
+            }
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "linear",
+              "smooth",
+              "step"
+            ]
+          },
+          "xLabel": {
+            "type": "string"
+          },
+          "yLabel": {
+            "type": "string"
+          },
+          "stacked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "labels",
+          "series"
+        ]
+      }
     },
     "RadarChart": {
-      "signature": "RadarChart(labels: string[], series: Series[])",
-      "description": "Radar/spider chart; use for comparing multiple metrics across devices or interfaces"
+      "description": "Radar/spider chart; use for comparing multiple metrics across devices or interfaces",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "component": "Series"
+            }
+          }
+        },
+        "required": [
+          "labels",
+          "series"
+        ]
+      }
     },
     "HeatmapChart": {
-      "signature": "HeatmapChart(xLabels: string[], yLabels: string[], values: number[][])",
-      "description": "Color-coded grid; use for traffic patterns by hour/day or alert frequency heatmaps"
+      "description": "Color-coded grid; use for traffic patterns by hour/day or alert frequency heatmaps",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "xLabels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "yLabels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "required": [
+          "xLabels",
+          "yLabels",
+          "values"
+        ]
+      }
     },
     "TreeMapChart": {
-      "signature": "TreeMapChart(data: {name: string, value: number, group?: string}[])",
-      "description": "Proportional rectangles; use for bandwidth or resource breakdown by subnet or device group"
+      "description": "Proportional rectangles; use for bandwidth or resource breakdown by subnet or device group",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "number"
+                },
+                "group": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "value"
+              ]
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      }
     },
     "ScatterChart": {
-      "signature": "ScatterChart(datasets: ScatterSeries[], xLabel?: string, yLabel?: string, xType?: \"time\" | \"value\")",
-      "description": "Scatter points; use for correlations like latency vs packet loss or throughput vs error rate. Pass xType='time' when X values are epoch millisecond timestamps to enable automatic date axis formatting."
+      "description": "Scatter points; use for correlations like latency vs packet loss or throughput vs error rate. Pass xType='time' when X values are epoch millisecond timestamps to enable automatic date axis formatting.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "datasets": {
+            "type": "array",
+            "items": {
+              "component": "ScatterSeries"
+            }
+          },
+          "xLabel": {
+            "type": "string"
+          },
+          "yLabel": {
+            "type": "string"
+          },
+          "xType": {
+            "type": "string",
+            "enum": [
+              "time",
+              "value"
+            ]
+          }
+        },
+        "required": [
+          "datasets"
+        ]
+      }
     },
     "MiniChart": {
-      "signature": "MiniChart(type: \"line\" | \"bar\" | \"area\", data: (number | {value: number, label?: string})[], height?: number | string, color?: string)",
-      "description": "Compact single-series trend primitive for KPI cards, table cells, and dense summaries. Width always fills the container; height auto-scales unless height is provided."
+      "description": "Compact single-series trend primitive for KPI cards, table cells, and dense summaries. Width always fills the container; height auto-scales unless height is provided.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "line",
+              "bar",
+              "area"
+            ]
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "value": {
+                      "type": "number"
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "value"
+                  ]
+                }
+              ]
+            }
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "color": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "data"
+        ]
+      }
     },
     "Series": {
-      "signature": "Series(category: string, values: number[])",
-      "description": "A named data series for multi-series charts"
+      "description": "A named data series for multi-series charts",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "category",
+          "values"
+        ]
+      }
     },
     "ScatterSeries": {
-      "signature": "ScatterSeries(name: string, points: Point[])",
-      "description": "A named scatter series with data points for ScatterChart"
+      "description": "A named scatter series with data points for ScatterChart",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "component": "Point"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "points"
+        ]
+      }
     },
     "Point": {
-      "signature": "Point(x: number, y: number, z?: number)",
-      "description": "A data point with optional z dimension for bubble charts"
+      "description": "A data point with optional z dimension for bubble charts",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "z": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ]
+      }
     },
     "TimeLine": {
-      "signature": "TimeLine(data: ({content: {title: string, children: any[]}, iconType: \"success\" | \"error\" | \"default\"} | {title: string, description?: any, status?: \"success\" | \"error\" | \"default\"})[], title?: string, id?: string)",
-      "description": "Timeline that accepts either typed DSL items or raw rows with title/description/status"
+      "description": "Timeline that accepts either typed DSL items or raw rows with title/description/status",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string"
+                        },
+                        "children": {
+                          "type": "array",
+                          "items": {
+                            "type": "any"
+                          }
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "children"
+                      ]
+                    },
+                    "iconType": {
+                      "type": "string",
+                      "enum": [
+                        "success",
+                        "error",
+                        "default"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "content",
+                    "iconType"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "any"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "success",
+                        "error",
+                        "default"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "title"
+                  ]
+                }
+              ]
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data"
+        ]
+      }
     },
     "Tabs": {
-      "signature": "Tabs(items: {value: string, label: string, content: any[]}[], style?: Record<string, any>)",
-      "description": "Tabbed container with streaming-aware skeleton and auto tab-switching"
+      "description": "Tabbed container with streaming-aware skeleton and auto tab-switching",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "array",
+                  "items": {
+                    "type": "any"
+                  }
+                }
+              },
+              "required": [
+                "value",
+                "label",
+                "content"
+              ]
+            }
+          },
+          "style": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      }
     }
   },
   "componentGroups": [

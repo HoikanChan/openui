@@ -14,8 +14,33 @@ export interface ToolSpec {
   annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean };
 }
 
+export type ComponentPropsSchemaProperty =
+  | { type: "string"; enum?: string[] }
+  | { type: "number" }
+  | { type: "boolean" }
+  | { type: "array"; items: ComponentPropsSchemaProperty }
+  | {
+      type: "object";
+      properties?: Record<string, ComponentPropsSchemaProperty>;
+      required?: string[];
+      additionalProperties?: ComponentPropsSchemaProperty;
+    }
+  | { type: "any" }
+  | { component: string }
+  | { const: unknown }
+  | { anyOf: ComponentPropsSchemaProperty[] };
+
+export interface ComponentPropsSchema {
+  type: "object";
+  properties: Record<string, ComponentPropsSchemaProperty>;
+  required?: string[];
+}
+
 export interface ComponentPromptSpec {
-  signature: string; // pre-built: "Card(children: Component[], title?: string)"
+  /** Legacy prompt-only signature: "Card(children: Component[], title?: string)" */
+  signature?: string;
+  /** Public component contract. Property order is positional argument order. */
+  propsSchema?: ComponentPropsSchema;
   description?: string;
 }
 
@@ -551,6 +576,53 @@ function renderToolsSection(tools: (string | ToolSpec)[]): string {
 
 // ─── Component signatures ───────────────────────────────────────────────────
 
+function propsSchemaPropertyTypeStr(schema: ComponentPropsSchemaProperty): string {
+  if ("component" in schema) return schema.component;
+  if ("const" in schema)
+    return typeof schema.const === "string" ? `"${schema.const}"` : String(schema.const);
+  if ("anyOf" in schema)
+    return schema.anyOf.map((option) => propsSchemaPropertyTypeStr(option)).join(" | ");
+
+  if (schema.type === "string") {
+    return schema.enum ? schema.enum.map((v) => `"${v}"`).join(" | ") : "string";
+  }
+  if (schema.type === "number") return "number";
+  if (schema.type === "boolean") return "boolean";
+  if (schema.type === "any") return "any";
+  if (schema.type === "array") {
+    const itemType = propsSchemaPropertyTypeStr(schema.items);
+    return "anyOf" in schema.items ? `(${itemType})[]` : `${itemType}[]`;
+  }
+  if (schema.type === "object") {
+    if (schema.properties && Object.keys(schema.properties).length > 0) {
+      const required = new Set(schema.required ?? []);
+      const fields = Object.entries(schema.properties).map(([name, propSchema]) => {
+        const optional = required.has(name) ? "" : "?";
+        return `${name}${optional}: ${propsSchemaPropertyTypeStr(propSchema)}`;
+      });
+      return `{${fields.join(", ")}}`;
+    }
+    if (schema.additionalProperties) {
+      return `Record<string, ${propsSchemaPropertyTypeStr(schema.additionalProperties)}>`;
+    }
+    return "object";
+  }
+
+  return "any";
+}
+
+function componentSignatureFromSpec(name: string, comp: ComponentPromptSpec): string {
+  if (comp.signature) return comp.signature;
+  if (!comp.propsSchema) return `${name}()`;
+
+  const required = new Set(comp.propsSchema.required ?? []);
+  const params = Object.entries(comp.propsSchema.properties).map(([propName, propSchema]) => {
+    const optional = required.has(propName) ? "" : "?";
+    return `${propName}${optional}: ${propsSchemaPropertyTypeStr(propSchema)}`;
+  });
+  return `${name}(${params.join(", ")})`;
+}
+
 function generateComponentSignatures(
   spec: PromptSpec,
   flags: { toolCalls: boolean; bindings: boolean; usesActionExpression: boolean },
@@ -573,13 +645,18 @@ function generateComponentSignatures(
     );
   }
   const usesBindings =
-    flags.bindings || Object.values(spec.components).some((c) => c.signature?.includes("$binding"));
+    flags.bindings ||
+    Object.entries(spec.components).some(([name, c]) =>
+      componentSignatureFromSpec(name, c).includes("$binding"),
+    );
   if (usesBindings) {
     lines.push("Props marked `$binding<type>` accept a `$variable` reference for two-way binding.");
   }
 
-  const formatSig = (comp: { signature: string; description?: string }) =>
-    comp.description ? `${comp.signature} — ${comp.description}` : comp.signature;
+  const formatSig = (name: string, comp: ComponentPromptSpec) => {
+    const signature = componentSignatureFromSpec(name, comp);
+    return comp.description ? `${signature} — ${comp.description}` : signature;
+  };
 
   if (spec.componentGroups?.length) {
     const grouped = new Set<string>();
@@ -590,7 +667,7 @@ function generateComponentSignatures(
         const comp = spec.components[name];
         if (!comp) continue;
         grouped.add(name);
-        lines.push(formatSig(comp));
+        lines.push(formatSig(name, comp));
       }
       if (group.notes?.length) {
         for (const note of group.notes) lines.push(note);
@@ -601,13 +678,13 @@ function generateComponentSignatures(
       lines.push("", "### Other");
       for (const name of ungrouped) {
         const comp = spec.components[name];
-        lines.push(formatSig(comp));
+        lines.push(formatSig(name, comp));
       }
     }
   } else {
     lines.push("");
-    for (const [, comp] of Object.entries(spec.components)) {
-      lines.push(formatSig(comp));
+    for (const [name, comp] of Object.entries(spec.components)) {
+      lines.push(formatSig(name, comp));
     }
   }
   return lines.join("\n");
@@ -652,8 +729,8 @@ export function generatePrompt(spec: PromptSpec): string {
   const supportsExpressions = toolCalls || bindings;
 
   // Detect component-level feature usage
-  const usesActionExpression = Object.values(spec.components).some((c) =>
-    c.signature?.includes("ActionExpression"),
+  const usesActionExpression = Object.entries(spec.components).some(([name, c]) =>
+    componentSignatureFromSpec(name, c).includes("ActionExpression"),
   );
 
   const parts: string[] = [];
