@@ -9,6 +9,7 @@ import com.huawei.cloudsop.genui.service.api.model.AssembleRequest;
 import com.huawei.cloudsop.genui.service.api.model.AssembleResult;
 import com.huawei.cloudsop.genui.service.api.model.AssemblyMetadata;
 import com.huawei.cloudsop.genui.service.api.model.ComponentGroup;
+import com.huawei.cloudsop.genui.service.api.model.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.service.api.model.GenerationSummary;
 import com.huawei.cloudsop.genui.service.api.model.DataModel;
 import com.huawei.cloudsop.genui.service.api.model.ExtensionRegistration;
@@ -31,13 +32,7 @@ final class DtoMapper {
     LinkedHashMap<String, com.huawei.cloudsop.genui.core.ComponentPromptSpec> components =
         new LinkedHashMap<>();
     if (dto.getComponents() != null) {
-      dto.getComponents()
-          .forEach(
-              (name, spec) ->
-                  components.put(
-                      name,
-                      new com.huawei.cloudsop.genui.core.ComponentPromptSpec(
-                          spec.getSignature(), spec.getDescription())));
+      dto.getComponents().forEach((name, spec) -> components.put(name, toComponent(spec)));
     }
     return new GenUIGeneration(
         generationId,
@@ -47,6 +42,20 @@ final class DtoMapper {
         toTools(dto.getTools()),
         dto.getExamples(),
         dto.getAdditionalRules());
+  }
+
+  /**
+   * 组件契约 DTO→SDK 映射:优先 propsSchema 走规范构造器 (description, propsSchema),
+   * propsSchema 缺省时回退旧 signature 形——与 SDK GenerationContractLoader.componentMap 一致。
+   */
+  private static com.huawei.cloudsop.genui.core.ComponentPromptSpec toComponent(
+      ComponentPromptSpec spec) {
+    if (spec.getPropsSchema() != null && !spec.getPropsSchema().isEmpty()) {
+      return new com.huawei.cloudsop.genui.core.ComponentPromptSpec(
+          spec.getDescription(), spec.getPropsSchema());
+    }
+    return new com.huawei.cloudsop.genui.core.ComponentPromptSpec(
+        spec.getSignature(), spec.getDescription());
   }
 
   static GenUIPromptRequest toPromptRequest(AssembleRequest dto) {

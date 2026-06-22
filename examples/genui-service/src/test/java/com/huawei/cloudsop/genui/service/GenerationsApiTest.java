@@ -152,6 +152,61 @@ class GenerationsApiTest {
   }
 
   @Test
+  void restRegisteredPropsSchemaComponentAssemblyMatchesSdk() throws Exception {
+    // propsSchema 形导出产物经 REST(codegen DTO→Jackson→DtoMapper)注册,拼装产物须与
+    // SDK 用规范构造器 (description, propsSchema) 直注册逐字节一致——证明 propsSchema 通路打通,
+    // 而非被当作未知字段静默丢弃(那样会渲染成无参的 AlarmBadge())。
+    String registration =
+        "{\"version\":\"ps-v1\","
+            + "\"components\":{\"AlarmBadge\":{\"description\":\"alarm badge\","
+            + "\"propsSchema\":{\"type\":\"object\",\"properties\":{\"severity\":{\"type\":\"string\"},\"count\":{\"type\":\"number\"},\"label\":{\"type\":\"string\"}},\"required\":[\"severity\",\"count\"]}}}}";
+    mvc.perform(
+            put("/v1/generations/props-ext")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(registration))
+        .andExpect(status().isOk());
+
+    String viaRest =
+        om.readTree(
+                mvc.perform(
+                        post("/v1/prompts/assemble")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"generationId\":\"props-ext\"}"))
+                    .andExpect(status().isOk())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString(StandardCharsets.UTF_8))
+            .get("prompt")
+            .asText();
+
+    GenerationSdk sdk = GenerationSdk.create();
+    sdk.register(propsSchemaExtensionViaSdk());
+    String viaSdk =
+        sdk.assemblePrompt(
+                new GenUIPromptRequest("props-ext", null, List.of(), List.of(), null, null, null, null))
+            .prompt();
+
+    assertEquals(viaSdk, viaRest, "propsSchema 形 REST 注册拼装产物须与 SDK 直注册逐字节一致");
+  }
+
+  private static GenUIGeneration propsSchemaExtensionViaSdk() {
+    LinkedHashMap<String, Object> props = new LinkedHashMap<>();
+    props.put("severity", Map.of("type", "string"));
+    props.put("count", Map.of("type", "number"));
+    props.put("label", Map.of("type", "string"));
+    LinkedHashMap<String, Object> propsSchema = new LinkedHashMap<>();
+    propsSchema.put("type", "object");
+    propsSchema.put("properties", props);
+    propsSchema.put("required", List.of("severity", "count"));
+
+    LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
+    components.put("AlarmBadge", new ComponentPromptSpec("alarm badge", propsSchema));
+
+    return new GenUIGeneration(
+        "props-ext", "ps-v1", components, List.of(), List.of(), List.of(), List.of());
+  }
+
+  @Test
   void groupReferencingMissingComponentReturns400EvenIfNameContainsCollision() throws Exception {
     // 评审复现场景:组件名含 "collision" 子串时,组缺失错误(400)曾被子串匹配误判为 409
     String invalid =

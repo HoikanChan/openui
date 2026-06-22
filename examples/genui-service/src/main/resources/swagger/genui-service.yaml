@@ -203,12 +203,17 @@ definitions:
 
   ComponentPromptSpec:
     type: object
-    description: 模型可见的组件契约(签名 + 描述)
+    description: 模型可见的组件契约;优先 propsSchema,signature 为迁移期兼容回退
     properties:
-      signature:
-        type: string
       description:
         type: string
+      propsSchema:
+        type: object
+        description: 组件 props 的 JSON Schema,属性顺序敏感(影响 prompt 字节对齐)
+        additionalProperties: true
+      signature:
+        type: string
+        description: 旧形态签名;仅当 propsSchema 缺省时回退使用
 
   ComponentGroup:
     type: object
