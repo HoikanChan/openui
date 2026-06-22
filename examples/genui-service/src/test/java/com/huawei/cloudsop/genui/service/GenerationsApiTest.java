@@ -1,7 +1,21 @@
 package com.huawei.cloudsop.genui.service;
 
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.annotation.DirtiesContext.ClassMode;
+import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -16,21 +30,8 @@ import com.huawei.cloudsop.genui.core.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.GenerationSdk;
 import com.huawei.cloudsop.genui.core.ToolAnnotations;
 import com.huawei.cloudsop.genui.core.ToolSpec;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.annotation.DirtiesContext.ClassMode;
-import org.springframework.test.web.servlet.MockMvc;
 
-/** 注册端点行为:种子可见、替换语义、名称碰撞 409、未知 generationId 404。 */
+/** 注册端点行为:种子可见、替换语义、名称碰撞 409、未知 extensionId 404。 */
 @SpringBootTest
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = ClassMode.AFTER_CLASS)
@@ -41,7 +42,7 @@ class GenerationsApiTest {
   @Test
   void listsSeededGenerations() throws Exception {
     JsonNode generations = list();
-    Map<String, JsonNode> byId = byGenerationId(generations);
+    Map<String, JsonNode> byId = byextensionId(generations);
     assertTrue(byId.containsKey("noe-alarm-tools"), "seed noe-alarm-tools missing");
     assertTrue(byId.containsKey("noe-ops-rules"), "seed noe-ops-rules missing");
     assertEquals(2, byId.get("noe-alarm-tools").get("toolCount").asInt());
@@ -60,7 +61,7 @@ class GenerationsApiTest {
     mvc.perform(put("/v1/generations/test-ext").contentType(MediaType.APPLICATION_JSON).content(v2))
         .andExpect(status().isOk());
 
-    Map<String, JsonNode> byId = byGenerationId(list());
+    Map<String, JsonNode> byId = byextensionId(list());
     assertEquals("v2", byId.get("test-ext").get("version").asText(), "replace semantics");
   }
 
@@ -71,7 +72,7 @@ class GenerationsApiTest {
     mvc.perform(put("/v1/generations/collide-ext").contentType(MediaType.APPLICATION_JSON).content(colliding))
         .andExpect(status().isConflict());
 
-    assertTrue(!byGenerationId(list()).containsKey("collide-ext"), "colliding generation must not register");
+    assertTrue(!byextensionId(list()).containsKey("collide-ext"), "colliding generation must not register");
   }
 
   @Test
@@ -100,7 +101,7 @@ class GenerationsApiTest {
                 mvc.perform(
                         post("/v1/prompts/assemble")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"generationId\":\"byte-align-ext\"}"))
+                            .content("{\"extensionId\":\"byte-align-ext\"}"))
                     .andExpect(status().isOk())
                     .andReturn()
                     .getResponse()
@@ -171,7 +172,7 @@ class GenerationsApiTest {
                 mvc.perform(
                         post("/v1/prompts/assemble")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"generationId\":\"props-ext\"}"))
+                            .content("{\"extensionId\":\"props-ext\"}"))
                     .andExpect(status().isOk())
                     .andReturn()
                     .getResponse()
@@ -216,11 +217,11 @@ class GenerationsApiTest {
   }
 
   @Test
-  void unknownGenerationIdOnAssembleReturns404() throws Exception {
+  void unknownextensionIdOnAssembleReturns404() throws Exception {
     mvc.perform(
             post("/v1/prompts/assemble")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"generationId\":\"no-such-generation\"}"))
+                .content("{\"extensionId\":\"no-such-generation\"}"))
         .andExpect(status().isNotFound());
   }
 
@@ -234,9 +235,9 @@ class GenerationsApiTest {
     return om.readTree(body);
   }
 
-  private static Map<String, JsonNode> byGenerationId(JsonNode generations) {
+  private static Map<String, JsonNode> byextensionId(JsonNode generations) {
     Map<String, JsonNode> byId = new HashMap<>();
-    generations.forEach(node -> byId.put(node.get("generationId").asText(), node));
+    generations.forEach(node -> byId.put(node.get("extensionId").asText(), node));
     return byId;
   }
 }

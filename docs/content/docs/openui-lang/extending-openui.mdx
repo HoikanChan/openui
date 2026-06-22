@@ -113,19 +113,35 @@ export function Preview({ code }: { code: string }) {
 
 ### 从前端库导出组件 spec
 
-后端契约不用手写——前端把组件库（`createLibrary` / `library.extend` 的结果）定义好之后，用 CLI 直接从库定义导出，组件名和字段顺序天然和前端一致：
+后端契约不用手写——前端用 `generateComponentSpecs(...)` 从组件定义直接生成 renderer-free 的组件契约（只含 `description` + `propsSchema`，不含 React 实现），再包成扩展对象写出 JSON。组件名和 `propsSchema.properties` 顺序天然和前端 Zod props 一致：
 
-```bash
-openui generate-component-spec ./src/billing-library.ts \
-  --generation-id team-a-billing \
-  --out billing-extension.json
+```ts
+import { writeFileSync } from "node:fs";
+import { generateComponentSpecs } from "@openuidev/react-lang";
+import { BillingCard } from "./billing-library"; // 记得 export 你定义的组件
+
+// 只传你扩展的组件；返回 { [name]: { description, propsSchema } }
+const components = generateComponentSpecs([BillingCard]);
+
+const extension = {
+  extensionId: "team-a-billing",
+  version: "1.0.0",
+  components,
+  componentGroups: [
+    { name: "Billing", components: ["BillingCard"], notes: ["账单场景优先使用 BillingCard。"] },
+  ],
+};
+
+writeFileSync("billing-extension.json", `${JSON.stringify(extension, null, 2)}\n`);
 ```
 
-导出的是一个**可直接注册的 `GenUIGeneration` 形 JSON**：顶层带 `generationId` / `version`，`components` 用 `propsSchema`（JSON Schema）描述，且只含你扩展的组件，不含 base 内置件：
+> `generateComponentSpecs` 要求每个组件的必填 props 排在可选 props 之前（对应 openui-lang 的位置参数顺序），否则会抛错。
+
+写出的 `billing-extension.json` 就是一个**可直接注册的 `GenUIGeneration` 形 JSON**：顶层带 `extensionId` / `version`，`components` 用 `propsSchema`（JSON Schema）描述，且只含你扩展的组件，不含 base 内置件：
 
 ```json
 {
-  "generationId": "team-a-billing",
+  "extensionId": "team-a-billing",
   "version": "1.0.0",
   "components": {
     "BillingCard": {
@@ -152,7 +168,7 @@ openui generate-component-spec ./src/billing-library.ts \
 
 ### 通过 REST 注册
 
-当前 GenUI Service 的 REST 参考实现使用 `/v1/generations` 管理扩展。`generationId` 用来隔离不同业务扩展，重复注册同一个 `generationId` 会整体替换旧契约。
+当前 GenUI Service 的 REST 参考实现使用 `/v1/generations` 管理扩展。`extensionId` 用来隔离不同业务扩展，重复注册同一个 `extensionId` 会整体替换旧契约。
 
 ```http
 PUT http://localhost:3001/v1/generations/team-a-billing
@@ -193,13 +209,13 @@ POST http://localhost:3001/v1/prompts/assemble
 Content-Type: application/json
 
 {
-  "generationId": "team-a-billing"
+  "extensionId": "team-a-billing"
 }
 ```
 
 常见语义：
 
-- `generationId` 隔离一套业务扩展。
+- `extensionId` 隔离一套业务扩展。
 - `version` 是扩展契约版本，建议随业务组件或 tool 变化递增。
 - `components` 只放扩展组件，base contract 由 DSLEngine / SDK 提供。
 - 组件名或 tool 名不能和 base contract 冲突，冲突返回 `409`。
@@ -282,7 +298,7 @@ Content-Type: application/json
 
 ```json
 {
-  "generationId": "team-a-billing",
+  "extensionId": "team-a-billing",
   "tools": [
     {
       "name": "queryCurrentUserBill",
@@ -370,11 +386,11 @@ npx @openuidev/cli@latest generate ./src/billing-library.ts --out src/generated/
 
 如果不同业务线有不同组件、tools 或规则，使用 Java Generation SDK 或 GenUI Service：
 
-1. 服务启动时注册每个业务的 `generationId`。
-2. 每次生成时传 `generationId`、`dataModel`、Request Overlay。
+1. 服务启动时注册每个业务的 `extensionId`。
+2. 每次生成时传 `extensionId`、`dataModel`、Request Overlay。
 3. 后端 assemble system prompt，调用 LLM。
 4. 流式返回 `openui-lang`。
-5. 前端按同一个 `generationId` 选择匹配的扩展 library，并传入 `toolProvider`。
+5. 前端按同一个 `extensionId` 选择匹配的扩展 library，并传入 `toolProvider`。
 
 参考请求：
 
@@ -384,7 +400,7 @@ Content-Type: application/json
 
 {
   "prompt": "生成 6 月账单总览，包含金额表格和异常账单提醒。",
-  "generationId": "team-a-billing",
+  "extensionId": "team-a-billing",
   "dataModel": {
     "currentPeriod": "2026-06"
   },
@@ -405,7 +421,7 @@ Content-Type: application/json
 - 后端注册的 tool 都能被前端 `toolProvider` 执行。
 - tool 的 `inputSchema` 和真实执行器入参一致。
 - tool 的 `outputSchema` 和真实返回值一致，Query 默认值能表达同样形状。
-- `generationId` 和前端选择的扩展 library 一一对应。
+- `extensionId` 和前端选择的扩展 library 一一对应。
 - 注册接口在服务启动时可重复执行，因为参考实现不持久化运行时注册。
 - prompt 里有 1 到 2 个业务示例，尤其是 tool + component 组合示例。
 
@@ -429,4 +445,4 @@ Content-Type: application/json
 
 **修改了扩展但生成结果没变化。**
 
-确认服务是否重新注册了对应 `generationId`，请求是否传了正确的 `generationId`，以及前端是否切换到了匹配的扩展 library。
+确认服务是否重新注册了对应 `extensionId`，请求是否传了正确的 `extensionId`，以及前端是否切换到了匹配的扩展 library。

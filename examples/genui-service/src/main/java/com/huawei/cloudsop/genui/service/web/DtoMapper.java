@@ -28,14 +28,14 @@ import java.util.List;
 final class DtoMapper {
   private DtoMapper() {}
 
-  static GenUIGeneration toGeneration(String generationId, ExtensionRegistration dto) {
+  static GenUIGeneration toGeneration(String extensionId, ExtensionRegistration dto) {
     LinkedHashMap<String, com.huawei.cloudsop.genui.core.ComponentPromptSpec> components =
         new LinkedHashMap<>();
     if (dto.getComponents() != null) {
       dto.getComponents().forEach((name, spec) -> components.put(name, toComponent(spec)));
     }
     return new GenUIGeneration(
-        generationId,
+        extensionId,
         dto.getVersion(),
         components,
         toGroups(dto.getComponentGroups()),
@@ -60,7 +60,7 @@ final class DtoMapper {
 
   static GenUIPromptRequest toPromptRequest(AssembleRequest dto) {
     return new GenUIPromptRequest(
-        dto.getGenerationId(),
+        dto.getextensionId(),
         toDataModel(dto.getDataModel()),
         toTools(dto.getTools()),
         dto.getExtraRules(),
@@ -88,7 +88,7 @@ final class DtoMapper {
 
   static GenerationSummary toDto(GenerationSummaryData data) {
     return new GenerationSummary()
-        .generationId(data.generationId())
+        .extensionId(data.extensionId())
         .version(data.version())
         .componentCount(data.componentCount())
         .toolCount(data.toolCount());
@@ -100,7 +100,7 @@ final class DtoMapper {
         .prompt(result.prompt())
         .metadata(
             new AssemblyMetadata()
-                .generationId(metadata.generationId())
+                .extensionId(metadata.extensionId())
                 .baseContractVersion(metadata.baseContractVersion())
                 .generationVersion(metadata.generationVersion())
                 .registeredToolNames(metadata.registeredToolNames())

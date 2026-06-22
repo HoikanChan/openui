@@ -3,7 +3,7 @@ package com.huawei.cloudsop.genui.core;
 import java.util.List;
 
 public record GenUIPromptAssemblyMetadata(
-    String generationId,
+    String extensionId,
     String baseContractVersion,
     String generationVersion,
     List<String> registeredToolNames,

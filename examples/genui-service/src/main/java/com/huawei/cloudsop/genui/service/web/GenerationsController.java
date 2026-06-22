@@ -1,14 +1,16 @@
 package com.huawei.cloudsop.genui.service.web;
 
-import com.huawei.cloudsop.genui.service.api.GenerationsApi;
-import com.huawei.cloudsop.genui.service.api.model.GenerationSummary;
-import com.huawei.cloudsop.genui.service.api.model.ExtensionRegistration;
-import com.huawei.cloudsop.genui.service.application.GenerationSummaryData;
-import com.huawei.cloudsop.genui.service.application.GenerationAppService;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.huawei.cloudsop.genui.service.api.GenerationsApi;
+import com.huawei.cloudsop.genui.service.api.model.ExtensionRegistration;
+import com.huawei.cloudsop.genui.service.api.model.GenerationSummary;
+import com.huawei.cloudsop.genui.service.application.GenerationAppService;
+import com.huawei.cloudsop.genui.service.application.GenerationSummaryData;
 
 @RestController
 public class GenerationsController implements GenerationsApi {
@@ -28,8 +30,8 @@ public class GenerationsController implements GenerationsApi {
   }
 
   @Override
-  public ResponseEntity<GenerationSummary> registerGeneration(String generationId, ExtensionRegistration body) {
-    GenerationSummaryData summary = appService.register(DtoMapper.toGeneration(generationId, body));
+  public ResponseEntity<GenerationSummary> registerGeneration(String extensionId, ExtensionRegistration body) {
+    GenerationSummaryData summary = appService.register(DtoMapper.toGeneration(extensionId, body));
     return ResponseEntity.ok(DtoMapper.toDto(summary));
   }
 }

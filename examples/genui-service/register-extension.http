@@ -58,7 +58,7 @@ POST http://localhost:3001/v1/prompts/assemble
 Content-Type: application/json
 
 {
-  "generationId": "team-a-billing"
+  "extensionId": "team-a-billing"
 }
 
 ### 5. 重复注册 = 整体替换(幂等);版本升到 1.1.0
@@ -92,4 +92,4 @@ Content-Type: application/json
 #   -H "Content-Type: application/json" \
 #   -d '{"version":"1.0.0","components":{"BillingCard":{"signature":"BillingCard(title: string, amount: number)","description":"账单卡片"}}}'
 # curl -X POST http://localhost:3001/v1/prompts/assemble \
-#   -H "Content-Type: application/json" -d '{"generationId":"team-a-billing"}'
+#   -H "Content-Type: application/json" -d '{"extensionId":"team-a-billing"}'

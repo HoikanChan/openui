@@ -9,8 +9,6 @@ import { z } from "zod";
 import { ColSchema, TableSchema } from "./schema";
 import { type ColViewProps, TableView } from "./view";
 
-export { formatCell, mapColumnsToAntd } from "./view";
-
 export const Col = defineComponent({
   name: "Col",
   props: ColSchema,

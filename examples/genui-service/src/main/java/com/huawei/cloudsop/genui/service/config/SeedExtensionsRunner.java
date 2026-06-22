@@ -41,7 +41,7 @@ public class SeedExtensionsRunner implements ApplicationRunner {
       try (InputStream in = resource.getInputStream()) {
         GenUIGeneration generation = objectMapper.readValue(in, GenUIGeneration.class);
         appService.register(generation);
-        log.info("[seed] registered preset generation '{}' from {}", generation.generationId(), resource.getFilename());
+        log.info("[seed] registered preset generation '{}' from {}", generation.extensionId(), resource.getFilename());
       }
     }
   }

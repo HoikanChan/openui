@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
  * 用例编排层:DTO 之下、SDK 之上。
  *
  * <p>SDK 不暴露已注册扩展的枚举能力(且本服务不修改 packages/ 库代码),所以这里维护一份只读镜像,
- * 仅在 SDK 注册成功后写入,用于 generations 列表与未知 generationId 的 404 判断。
+ * 仅在 SDK 注册成功后写入,用于 generations 列表与未知 extensionId 的 404 判断。
  */
 @Service
 public class GenerationAppService {
@@ -27,7 +27,7 @@ public class GenerationAppService {
 
   public synchronized GenerationSummaryData register(GenUIGeneration generation) {
     sdk.register(generation);
-    registered.put(generation.generationId(), generation);
+    registered.put(generation.extensionId(), generation);
     return summarize(generation);
   }
 
@@ -40,16 +40,16 @@ public class GenerationAppService {
   }
 
   public synchronized GenUIPromptAssemblyResult assemble(GenUIPromptRequest request) {
-    // SDK 对未注册的 generationId 会静默回落到 base contract;服务层选择 fail loudly。
-    if (request.generationId() != null && !registered.containsKey(request.generationId())) {
-      throw new UnknownGenerationException(request.generationId());
+    // SDK 对未注册的 extensionId 会静默回落到 base contract;服务层选择 fail loudly。
+    if (request.extensionId() != null && !registered.containsKey(request.extensionId())) {
+      throw new UnknownGenerationException(request.extensionId());
     }
     return sdk.assemblePrompt(request);
   }
 
   private static GenerationSummaryData summarize(GenUIGeneration generation) {
     return new GenerationSummaryData(
-        generation.generationId(),
+        generation.extensionId(),
         generation.version(),
         generation.components().size(),
         generation.tools().size());

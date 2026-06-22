@@ -84,7 +84,7 @@ public class GenerateController {
             : new DataModelSpec(null, body.getDataModel());
     GenUIPromptRequest request =
         new GenUIPromptRequest(
-            body.getGenerationId(),
+            body.getextensionId(),
             dataModel,
             DtoMapper.toTools(body.getTools()),
             body.getExtraRules(),

@@ -39,7 +39,7 @@ class GenerationSdkTest {
     assertTrue(result.prompt().contains("BizCard(title: string)"));
     assertFalse(result.prompt().contains("OldCard("));
     assertFalse(result.prompt().contains("OtherCard("));
-    assertEquals("genA", result.metadata().generationId());
+    assertEquals("genA", result.metadata().extensionId());
     assertEquals("v2", result.metadata().generationVersion());
     assertIterableEquals(List.of("loadOrders"), result.metadata().registeredToolNames());
   }
@@ -223,9 +223,9 @@ class GenerationSdkTest {
   }
 
   private static GenUIGeneration generation(
-      String generationId, String version, Map.Entry<String, ComponentPromptSpec> component, List<ToolSpec> tools) {
+      String extensionId, String version, Map.Entry<String, ComponentPromptSpec> component, List<ToolSpec> tools) {
     return new GenUIGeneration(
-        generationId,
+        extensionId,
         version,
         Map.ofEntries(component),
         List.of(new ComponentGroup("Business", List.of(component.getKey()), List.of())),

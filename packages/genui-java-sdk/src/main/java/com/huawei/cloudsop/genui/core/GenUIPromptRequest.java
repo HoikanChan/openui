@@ -3,7 +3,7 @@ package com.huawei.cloudsop.genui.core;
 import java.util.List;
 
 public record GenUIPromptRequest(
-    String generationId,
+    String extensionId,
     DataModelSpec dataModel,
     List<ToolSpec> tools,
     List<String> extraRules,

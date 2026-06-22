@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 public record GenUIGeneration(
-    String generationId,
+    String extensionId,
     String version,
     Map<String, ComponentPromptSpec> components,
     List<ComponentGroup> componentGroups,

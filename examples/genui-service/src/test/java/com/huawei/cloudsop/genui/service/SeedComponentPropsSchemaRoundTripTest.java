@@ -1,17 +1,18 @@
 package com.huawei.cloudsop.genui.service;
 
+import java.io.InputStream;
+import java.util.Map;
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.cloudsop.genui.core.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.GenUIGeneration;
-import java.io.InputStream;
-import java.util.Map;
-import java.util.Set;
-import org.junit.jupiter.api.Test;
 
 /**
  * 锁住 SeedExtensionsRunner 的绑定路径:种子经 {@code objectMapper.readValue(in,
@@ -19,7 +20,7 @@ import org.junit.jupiter.api.Test;
  *
  * <p>历史隐患:种子若用旧 {@code signature} 形,该字段是未知属性被 Jackson 静默丢弃,组件在 prompt
  * 里没有 props(渲染成无参 {@code AlarmBadge()})。SeedRecoveryAfterRestartTest 只校验
- * generationId 集合,覆盖不到。本测试直读种子资源,断言 propsSchema 完整保真。
+ * extensionId 集合,覆盖不到。本测试直读种子资源,断言 propsSchema 完整保真。
  */
 class SeedComponentPropsSchemaRoundTripTest {
   // 关闭 FAIL_ON_UNKNOWN_PROPERTIES,对齐 Spring Boot 默认 ObjectMapper(SeedExtensionsRunner 用的就是它):
