@@ -1,7 +1,7 @@
 ## 0. 依赖与脚手架
 
 - [x] 0.1 新建分层包目录 `.../genui/core/llm/` 及子包 `transport/`、`protocol/`、`stream/`、`extract/`（入口类 `GenUiGenerator`/`GenUiLlmConfig`/`UiGenerationRequest` 置于 `llm` 根），测试目录镜像同结构
-- [ ] 0.2 `pom.xml` 加入 BSP restclient 依赖 `com.huawei.bsp:com.huawei.bsp.commonlib.resetclient:25.590.54`，`<scope>provided</scope>`，并加注释（BSP 运行时提供，不随 SDK 打包；"resetclient" 拼写待核对疑似 restclient）
+- [x] 0.2 `pom.xml` 加入 BSP restclient 依赖 `com.huawei.bsp:com.huawei.bsp.commonlib.resetclient:25.590.54`，`<scope>provided</scope>`，并加注释（BSP 运行时提供，不随 SDK 打包；"resetclient" 拼写待核对疑似 restclient）
 
 ## 1. 既有 core 分层重组（前置：先于 llm 实现，使新代码直接 import 最终包）
 
@@ -60,29 +60,29 @@
 
 ## 9. 编排门面（GenUiGenerator）
 
-- [ ] 9.1 实现私有映射：`UiGenerationRequest` → `GenUIPromptRequest`（`extensionId`→`extensionId`、`response`→`DataModelSpec`、`suggestion` 追加 `extraRules`、overlay tools/rules、透传 flags）
-- [ ] 9.2 实现 `create()` / `create(config)`：内部自持 `GenerationSdk.create()` + `new RestfulLlmTransport(config)`，不对外暴露 `GenerationSdk`
-- [ ] 9.3 实现 `withTransport(config, transport)`（高级/测试入口）+ `register(GenUIGeneration)`（委托内部 sdk，返回 `this` 链式）
-- [ ] 9.4 实现 `generate(UiGenerationRequest)`：映射 → `assemblePrompt` 作 system 消息 + `userInput`(+` /no_think`) 作 user 消息 → `ChatCompletionRequest.of(..., false)` → `post` → `ChatCompletionResponse.firstContent()` → `OpenuiCodeExtractor.extract`；`LlmTransportException` 包装为 `GenerationSdkException`
-- [ ] 9.5 实现 `generateStream(UiGenerationRequest, sink)`：同 9.4 但 `stream=true` → `postStream` → `SseDeltaParser.parse(in, sink)` → 流尾 `extract` 返回；`IOException`/`LlmTransportException` 包装
-- [ ] 9.6 单测（fake `LlmTransport`）：同一实例 `register` 后 `generate`、同步/流式端到端、extensionId 选中已注册扩展（system prompt 含其组件/工具）、response 进 DataModel、未注册 extensionId 回落 base contract、endpoint/model 配置生效、默认 `create` 不暴露 `GenerationSdk`/transport
+- [x] 9.1 实现私有映射：`UiGenerationRequest` → `GenUIPromptRequest`（`extensionId`→`extensionId`、`response`→`DataModelSpec`、`suggestion` 追加 `extraRules`、overlay tools/rules、透传 flags）
+- [x] 9.2 实现 `create()` / `create(config)`：内部自持 `GenerationSdk.create()` + `new RestfulLlmTransport(config)`，不对外暴露 `GenerationSdk`
+- [x] 9.3 实现 `withTransport(config, transport)`（高级/测试入口）+ `register(GenUIGeneration)`（委托内部 sdk，返回 `this` 链式）
+- [x] 9.4 实现 `generate(UiGenerationRequest)`：映射 → `assemblePrompt` 作 system 消息 + `userInput`(+` /no_think`) 作 user 消息 → `ChatCompletionRequest.of(..., false)` → `post` → `ChatCompletionResponse.firstContent()` → `OpenuiCodeExtractor.extract`；`LlmTransportException` 包装为 `GenerationSdkException`
+- [x] 9.5 实现 `generateStream(UiGenerationRequest, sink)`：同 9.4 但 `stream=true` → `postStream` → `SseDeltaParser.parse(in, sink)` → 流尾 `extract` 返回；`IOException`/`LlmTransportException` 包装
+- [x] 9.6 单测（fake `LlmTransport`）：同一实例 `register` 后 `generate`、同步/流式端到端、extensionId 选中已注册扩展（system prompt 含其组件/工具）、response 进 DataModel、未注册 extensionId 回落 base contract、endpoint/model 配置生效、默认 `create` 不暴露 `GenerationSdk`/transport
 
 ## 10. BSP 传输实现 + 离线 stub
 
-- [ ] 10.1 实现 `RestfulLlmTransport implements LlmTransport`：`post` 用 `RestfulFactory.getRestInstance().post(config.endpoint(), params)`，非 200 抛 `LlmTransportException`；`postStream` 额外 `putHttpContextHeader("SUPPORT_STREAM_CONTENT_FOR_SDK","true")` 返回 `getDataStream()`；`config.extraHeaders()` 注入；捕获底层 `Exception` 包装
-- [ ] 10.2 写 BSP API stub 源码（`com.huawei.bsp.roa.util.restclient`：`RestfulParametes`、`RestfulResponse`、`RestfulFactory`/client，`post(String,RestfulParametes) throws Exception`），其 `post` 用 JDK `HttpClient` 向可配 base URL（系统属性）转发，供集成测试真实打到内嵌 server
-- [ ] 10.3 `javac` 编译 stub → 打 jar → `mvn install:install-file` 安装到本地仓库，GAV 同 0.2（脚本化，记录到 README/迁移说明，标注仅离线构建用）
-- [ ] 10.4 集成测试：用 `com.sun.net.httpserver.HttpServer` 起内嵌服务，断言 `RestfulLlmTransport.post` 返回体、`postStream` 流内容与 `SUPPORT_STREAM_CONTENT_FOR_SDK` 头、非 200 抛 `LlmTransportException`
+- [x] 10.1 实现 `RestfulLlmTransport implements LlmTransport`：`post` 用 `RestfulFactory.getRestInstance().post(config.endpoint(), params)`，非 200 抛 `LlmTransportException`；`postStream` 额外 `putHttpContextHeader("SUPPORT_STREAM_CONTENT_FOR_SDK","true")` 返回 `getDataStream()`；`config.extraHeaders()` 注入；捕获底层 `Exception` 包装
+- [x] 10.2 写 BSP API stub 源码（`com.huawei.bsp.roa.util.restclient`：`RestfulParametes`、`RestfulResponse`、`RestfulFactory`/client，`post(String,RestfulParametes) throws Exception`），其 `post` 用 JDK `HttpClient` 向可配 base URL（系统属性）转发，供集成测试真实打到内嵌 server
+- [x] 10.3 `javac` 编译 stub → 打 jar → `mvn install:install-file` 安装到本地仓库，GAV 同 0.2（脚本化，记录到 README/迁移说明，标注仅离线构建用）
+- [x] 10.4 集成测试：用 `com.sun.net.httpserver.HttpServer` 起内嵌服务，断言 `RestfulLlmTransport.post` 返回体、`postStream` 流内容与 `SUPPORT_STREAM_CONTENT_FOR_SDK` 头、非 200 抛 `LlmTransportException`
 
 ## 11. 构建与验证
 
-- [ ] 11.1 `mvn -o -Dtest=...llm.* test` 跑 llm 子包测试（受本机内存限制，独立 java 进程/限定用例，勿杀 IDE LSP）
-- [ ] 11.2 跑既有 `PromptGoldenTest` 等，确认重组+迁移后无回归
-- [ ] 11.3 `mvn -o -pl packages/genui-java-sdk -am package -DskipTests` 确认带 provided BSP 依赖可编译打包
+- [x] 11.1 `mvn -o -Dtest=...llm.* test` 跑 llm 子包测试（受本机内存限制，独立 java 进程/限定用例，勿杀 IDE LSP）
+- [x] 11.2 跑既有 `PromptGoldenTest` 等，确认重组+迁移后无回归
+- [x] 11.3 `mvn -o -pl packages/genui-java-sdk -am package -DskipTests` 确认带 provided BSP 依赖可编译打包
 
 ## 12. 内部仓库迁移指引（随附文档，不在本仓改代码）
 
-- [ ] 12.1 `GenUIServiceDelegateImpl` 瘦身：sha256 → 查缓存 → `GenUiGenerator.generate/generateStream` → 写缓存；流式回调用 `SseFrames` 写出；删除自有请求体/解析/拆帧/抽取
-- [ ] 12.2 删除内部 `LLMService`/`ChatCompletionsRsp`（整体迁入 SDK）
-- [ ] 12.3 内部 `UIRequestDetail`（apiRsp/apiReq/apiUrl 旧形）→ `UiGenerationRequest`（response/request/...）字段映射对照表，列出需对照 `PromptTemplateUtil` 确认的点
+- [x] 12.1 `GenUIServiceDelegateImpl` 瘦身：sha256 → 查缓存 → `GenUiGenerator.generate/generateStream` → 写缓存；流式回调用 `SseFrames` 写出；删除自有请求体/解析/拆帧/抽取
+- [x] 12.2 删除内部 `LLMService`/`ChatCompletionsRsp`（整体迁入 SDK）
+- [x] 12.3 内部 `UIRequestDetail`（apiRsp/apiReq/apiUrl 旧形）→ `UiGenerationRequest`（response/request/...）字段映射对照表，列出需对照 `PromptTemplateUtil` 确认的点
 - [ ] 12.4 用真 BSP 依赖替换离线 stub（删除本地 install-file 步骤），核对 "resetclient" 拼写
