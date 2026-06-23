@@ -1,5 +1,6 @@
-package com.huawei.cloudsop.genui.core;
+package com.huawei.cloudsop.genui.core.contract;
 
+import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -7,10 +8,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-final class ComponentPropsSchema {
+public final class ComponentPropsSchema {
   private ComponentPropsSchema() {}
 
-  static void validate(String componentName, ComponentPromptSpec component) {
+  public static void validate(String componentName, ComponentPromptSpec component) {
     Map<String, Object> schema = component.propsSchema();
     if (schema.isEmpty() || schema.containsKey("x-openui-signature")) return;
 
@@ -41,7 +42,7 @@ final class ComponentPropsSchema {
     }
   }
 
-  static String formatSignature(String componentName, ComponentPromptSpec component) {
+  public static String formatSignature(String componentName, ComponentPromptSpec component) {
     String legacy = component.signature();
     if (legacy != null && !legacy.isBlank()) return legacy;
 

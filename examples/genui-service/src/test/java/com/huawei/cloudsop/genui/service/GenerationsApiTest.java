@@ -20,16 +20,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.cloudsop.genui.core.ComponentGroup;
-import com.huawei.cloudsop.genui.core.ComponentPromptSpec;
-import com.huawei.cloudsop.genui.core.GenUIGeneration;
-import com.huawei.cloudsop.genui.core.GenUIPromptRequest;
+import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
+import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
+import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.GenerationSdk;
-import com.huawei.cloudsop.genui.core.ToolAnnotations;
-import com.huawei.cloudsop.genui.core.ToolSpec;
+import com.huawei.cloudsop.genui.core.contract.ToolAnnotations;
+import com.huawei.cloudsop.genui.core.contract.ToolSpec;
 
 /** 注册端点行为:种子可见、替换语义、名称碰撞 409、未知 extensionId 404。 */
 @SpringBootTest

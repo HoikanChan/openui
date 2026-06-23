@@ -1,4 +1,4 @@
-package com.huawei.cloudsop.genui.core;
+package com.huawei.cloudsop.genui.core.contract;
 
 /**
  * Runtime-free prompt documentation for a single openui-lang builtin.

@@ -1,5 +1,12 @@
-package com.huawei.cloudsop.genui.core;
+package com.huawei.cloudsop.genui.core.prompt;
 
+import com.huawei.cloudsop.genui.core.Json;
+import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
+import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
+import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
+import com.huawei.cloudsop.genui.core.contract.ComponentPropsSchema;
+import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
+import com.huawei.cloudsop.genui.core.contract.ToolSpec;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -14,14 +21,14 @@ import java.util.Set;
  * section is transcribed from {@code prompt.ts}. Cross-language golden tests pin the two outputs to
  * byte equality on the merged-{@code PromptSpec} layer.
  */
-final class PromptAssembler {
+public final class PromptAssembler {
   private static final String PREAMBLE =
       "You are an AI assistant that responds using openui-lang, a declarative UI language. "
           + "Your ENTIRE response must be valid openui-lang code — no markdown, no explanations, just openui-lang.";
 
   private PromptAssembler() {}
 
-  static String assemble(PromptInput input, List<BuiltinSpec> builtins) {
+  public static String assemble(PromptInput input, List<BuiltinSpec> builtins) {
     String rootName = input.root() == null ? "Root" : input.root();
     boolean hasTools = input.tools() != null && !input.tools().isEmpty();
     boolean toolCalls = input.toolCalls() == null ? hasTools : input.toolCalls();
@@ -733,7 +740,7 @@ final class PromptAssembler {
       - When the user asks a question, respond with text only — NO code. The dashboard stays unchanged.
       - The parser extracts code from fences automatically. Text outside fences is shown as chat.""";
 
-  record PromptInput(
+  public record PromptInput(
       String preamble,
       String root,
       Map<String, ComponentPromptSpec> components,

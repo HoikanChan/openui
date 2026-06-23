@@ -1,7 +1,7 @@
 package com.huawei.cloudsop.genui.service.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.cloudsop.genui.core.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
 import com.huawei.cloudsop.genui.service.application.GenerationAppService;
 import java.io.InputStream;
 import java.util.Arrays;

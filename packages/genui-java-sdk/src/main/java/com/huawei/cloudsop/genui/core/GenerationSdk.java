@@ -1,5 +1,16 @@
 package com.huawei.cloudsop.genui.core;
 
+import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
+import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
+import com.huawei.cloudsop.genui.core.contract.ComponentPropsSchema;
+import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenerationContract;
+import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
+import com.huawei.cloudsop.genui.core.contract.ToolSpec;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyMetadata;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
+import com.huawei.cloudsop.genui.core.prompt.PromptAssembler;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
