@@ -40,17 +40,17 @@ paths:
             items:
               $ref: "#/definitions/GenerationSummary"
 
-  /generations/{generationId}:
+  /generations/{extensionId}:
     put:
       tags:
         - generations
       operationId: registerGeneration
       summary: 注册或整体替换一个 Extension Registration
-      description: 替换语义:同一 generationId 重复注册将整体替换原扩展契约(幂等)。与 base contract 或扩展自身的组件名/工具名碰撞将被拒绝。
+      description: 替换语义:同一 extensionId 重复注册将整体替换原扩展契约(幂等)。与 base contract 或扩展自身的组件名/工具名碰撞将被拒绝。
       consumes:
         - application/json
       parameters:
-        - name: generationId
+        - name: extensionId
           in: path
           required: true
           type: string
@@ -80,7 +80,7 @@ paths:
         - prompts
       operationId: assemblePrompt
       summary: 拼装 system prompt
-      description: generationId 缺省时仅使用 base contract。tools 与 extraRules 为 Request Overlay:仅作用于本次拼装,不持久化。
+      description: extensionId 缺省时仅使用 base contract。tools 与 extraRules 为 Request Overlay:仅作用于本次拼装,不持久化。
       consumes:
         - application/json
       parameters:
@@ -99,7 +99,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorResponse"
         404:
-          description: generationId 未注册
+          description: extensionId 未注册
           schema:
             $ref: "#/definitions/ErrorResponse"
         409:
@@ -138,7 +138,7 @@ paths:
           schema:
             $ref: "#/definitions/ErrorResponse"
         404:
-          description: generationId 未注册
+          description: extensionId 未注册
           schema:
             $ref: "#/definitions/ErrorResponse"
         409:
@@ -189,7 +189,7 @@ definitions:
   GenerationSummary:
     type: object
     properties:
-      generationId:
+      extensionId:
         type: string
       version:
         type: string
@@ -203,12 +203,17 @@ definitions:
 
   ComponentPromptSpec:
     type: object
-    description: 模型可见的组件契约(签名 + 描述)
+    description: 模型可见的组件契约;优先 propsSchema,signature 为迁移期兼容回退
     properties:
-      signature:
-        type: string
       description:
         type: string
+      propsSchema:
+        type: object
+        description: 组件 props 的 JSON Schema,属性顺序敏感(影响 prompt 字节对齐)
+        additionalProperties: true
+      signature:
+        type: string
+        description: 旧形态签名;仅当 propsSchema 缺省时回退使用
 
   ComponentGroup:
     type: object
@@ -293,7 +298,7 @@ definitions:
   AssembleRequest:
     type: object
     properties:
-      generationId:
+      extensionId:
         type: string
         description: 缺省时仅使用 base contract
       dataModel:
@@ -320,7 +325,7 @@ definitions:
   AssemblyMetadata:
     type: object
     properties:
-      generationId:
+      extensionId:
         type: string
       baseContractVersion:
         type: string
@@ -351,7 +356,7 @@ definitions:
       prompt:
         type: string
         description: 用户生成诉求(user message)
-      generationId:
+      extensionId:
         type: string
       dataModel:
         type: object

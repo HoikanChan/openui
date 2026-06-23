@@ -1,5 +1,17 @@
 package com.huawei.cloudsop.genui.core;
 
+import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
+import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
+import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
+import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
+import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenerationContract;
+import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
+import com.huawei.cloudsop.genui.core.contract.ToolAnnotations;
+import com.huawei.cloudsop.genui.core.contract.ToolSpec;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
+import com.huawei.cloudsop.genui.core.prompt.PromptAssembler;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashMap;

@@ -1,7 +1,7 @@
 package com.huawei.cloudsop.genui.service.web;
 
-import com.huawei.cloudsop.genui.core.DataModelSpec;
-import com.huawei.cloudsop.genui.core.GenUIPromptRequest;
+import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.service.api.model.GenerateRequest;
 import com.huawei.cloudsop.genui.service.application.GenerationAppService;
 import com.huawei.cloudsop.genui.service.llm.LlmClient;
@@ -84,7 +84,7 @@ public class GenerateController {
             : new DataModelSpec(null, body.getDataModel());
     GenUIPromptRequest request =
         new GenUIPromptRequest(
-            body.getGenerationId(),
+            body.getExtensionId(),
             dataModel,
             DtoMapper.toTools(body.getTools()),
             body.getExtraRules(),

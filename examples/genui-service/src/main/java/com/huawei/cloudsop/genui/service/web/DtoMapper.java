@@ -1,14 +1,15 @@
 package com.huawei.cloudsop.genui.service.web;
 
-import com.huawei.cloudsop.genui.core.DataModelSpec;
-import com.huawei.cloudsop.genui.core.GenUIGeneration;
-import com.huawei.cloudsop.genui.core.GenUIPromptAssemblyMetadata;
-import com.huawei.cloudsop.genui.core.GenUIPromptAssemblyResult;
-import com.huawei.cloudsop.genui.core.GenUIPromptRequest;
+import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
+import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyMetadata;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.service.api.model.AssembleRequest;
 import com.huawei.cloudsop.genui.service.api.model.AssembleResult;
 import com.huawei.cloudsop.genui.service.api.model.AssemblyMetadata;
 import com.huawei.cloudsop.genui.service.api.model.ComponentGroup;
+import com.huawei.cloudsop.genui.service.api.model.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.service.api.model.GenerationSummary;
 import com.huawei.cloudsop.genui.service.api.model.DataModel;
 import com.huawei.cloudsop.genui.service.api.model.ExtensionRegistration;
@@ -27,20 +28,14 @@ import java.util.List;
 final class DtoMapper {
   private DtoMapper() {}
 
-  static GenUIGeneration toGeneration(String generationId, ExtensionRegistration dto) {
-    LinkedHashMap<String, com.huawei.cloudsop.genui.core.ComponentPromptSpec> components =
+  static GenUIGeneration toGeneration(String extensionId, ExtensionRegistration dto) {
+    LinkedHashMap<String, com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec> components =
         new LinkedHashMap<>();
     if (dto.getComponents() != null) {
-      dto.getComponents()
-          .forEach(
-              (name, spec) ->
-                  components.put(
-                      name,
-                      new com.huawei.cloudsop.genui.core.ComponentPromptSpec(
-                          spec.getSignature(), spec.getDescription())));
+      dto.getComponents().forEach((name, spec) -> components.put(name, toComponent(spec)));
     }
     return new GenUIGeneration(
-        generationId,
+        extensionId,
         dto.getVersion(),
         components,
         toGroups(dto.getComponentGroups()),
@@ -49,9 +44,23 @@ final class DtoMapper {
         dto.getAdditionalRules());
   }
 
+  /**
+   * 组件契约 DTO→SDK 映射:优先 propsSchema 走规范构造器 (description, propsSchema),
+   * propsSchema 缺省时回退旧 signature 形——与 SDK GenerationContractLoader.componentMap 一致。
+   */
+  private static com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec toComponent(
+      ComponentPromptSpec spec) {
+    if (spec.getPropsSchema() != null && !spec.getPropsSchema().isEmpty()) {
+      return new com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec(
+          spec.getDescription(), spec.getPropsSchema());
+    }
+    return new com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec(
+        spec.getSignature(), spec.getDescription());
+  }
+
   static GenUIPromptRequest toPromptRequest(AssembleRequest dto) {
     return new GenUIPromptRequest(
-        dto.getGenerationId(),
+        dto.getExtensionId(),
         toDataModel(dto.getDataModel()),
         toTools(dto.getTools()),
         dto.getExtraRules(),
@@ -61,12 +70,12 @@ final class DtoMapper {
         dto.isBindings());
   }
 
-  static List<com.huawei.cloudsop.genui.core.ToolSpec> toTools(List<ToolSpec> dtos) {
-    List<com.huawei.cloudsop.genui.core.ToolSpec> tools = new ArrayList<>();
+  static List<com.huawei.cloudsop.genui.core.contract.ToolSpec> toTools(List<ToolSpec> dtos) {
+    List<com.huawei.cloudsop.genui.core.contract.ToolSpec> tools = new ArrayList<>();
     if (dtos != null) {
       for (ToolSpec dto : dtos) {
         tools.add(
-            new com.huawei.cloudsop.genui.core.ToolSpec(
+            new com.huawei.cloudsop.genui.core.contract.ToolSpec(
                 dto.getName(),
                 dto.getDescription(),
                 dto.getInputSchema(),
@@ -79,7 +88,7 @@ final class DtoMapper {
 
   static GenerationSummary toDto(GenerationSummaryData data) {
     return new GenerationSummary()
-        .generationId(data.generationId())
+        .extensionId(data.extensionId())
         .version(data.version())
         .componentCount(data.componentCount())
         .toolCount(data.toolCount());
@@ -91,30 +100,30 @@ final class DtoMapper {
         .prompt(result.prompt())
         .metadata(
             new AssemblyMetadata()
-                .generationId(metadata.generationId())
+                .extensionId(metadata.extensionId())
                 .baseContractVersion(metadata.baseContractVersion())
                 .generationVersion(metadata.generationVersion())
                 .registeredToolNames(metadata.registeredToolNames())
                 .requestToolNames(metadata.requestToolNames()));
   }
 
-  private static List<com.huawei.cloudsop.genui.core.ComponentGroup> toGroups(
+  private static List<com.huawei.cloudsop.genui.core.contract.ComponentGroup> toGroups(
       List<ComponentGroup> dtos) {
-    List<com.huawei.cloudsop.genui.core.ComponentGroup> groups = new ArrayList<>();
+    List<com.huawei.cloudsop.genui.core.contract.ComponentGroup> groups = new ArrayList<>();
     if (dtos != null) {
       for (ComponentGroup dto : dtos) {
         groups.add(
-            new com.huawei.cloudsop.genui.core.ComponentGroup(
+            new com.huawei.cloudsop.genui.core.contract.ComponentGroup(
                 dto.getName(), dto.getComponents(), dto.getNotes()));
       }
     }
     return groups;
   }
 
-  private static com.huawei.cloudsop.genui.core.ToolAnnotations toAnnotations(ToolAnnotations dto) {
+  private static com.huawei.cloudsop.genui.core.contract.ToolAnnotations toAnnotations(ToolAnnotations dto) {
     return dto == null
         ? null
-        : new com.huawei.cloudsop.genui.core.ToolAnnotations(
+        : new com.huawei.cloudsop.genui.core.contract.ToolAnnotations(
             dto.isReadOnlyHint(), dto.isDestructiveHint());
   }
 

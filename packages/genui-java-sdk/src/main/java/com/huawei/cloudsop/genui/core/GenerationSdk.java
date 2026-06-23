@@ -1,5 +1,16 @@
 package com.huawei.cloudsop.genui.core;
 
+import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
+import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
+import com.huawei.cloudsop.genui.core.contract.ComponentPropsSchema;
+import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenerationContract;
+import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
+import com.huawei.cloudsop.genui.core.contract.ToolSpec;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyMetadata;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
+import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
+import com.huawei.cloudsop.genui.core.prompt.PromptAssembler;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -35,10 +46,10 @@ public final class GenerationSdk {
 
   public void register(GenUIGeneration generation) {
     if (generation == null) throw new GenerationSdkException("generation is required");
-    if (generation.generationId() == null || generation.generationId().isBlank()) {
-      throw new GenerationSdkException("generation.generationId is required");
+    if (generation.extensionId() == null || generation.extensionId().isBlank()) {
+      throw new GenerationSdkException("generation.extensionId is required");
     }
-    validateComponents(generation.components(), "generation " + generation.generationId());
+    validateComponents(generation.components(), "generation " + generation.extensionId());
 
     Set<String> baseComponentNames = baseContract.components().keySet();
     Set<String> generationComponentNames = generation.components().keySet();
@@ -49,7 +60,7 @@ public final class GenerationSdk {
 
     LinkedHashSet<String> finalComponentNames = new LinkedHashSet<>(baseComponentNames);
     finalComponentNames.addAll(generationComponentNames);
-    validateComponentGroups(generation.componentGroups(), finalComponentNames, "generation " + generation.generationId());
+    validateComponentGroups(generation.componentGroups(), finalComponentNames, "generation " + generation.extensionId());
 
     Set<String> baseToolNames = toolNames(baseContract.tools());
     Set<String> generationToolNames = toolNames(generation.tools());
@@ -58,14 +69,14 @@ public final class GenerationSdk {
       throw new GenerationSdkException("Tool name collision: " + String.join(", ", toolCollisions));
     }
 
-    generations.put(generation.generationId(), generation);
+    generations.put(generation.extensionId(), generation);
   }
 
   public GenUIPromptAssemblyResult assemblePrompt(GenUIPromptRequest request) {
     GenUIPromptRequest effectiveRequest =
         request == null ? new GenUIPromptRequest(null, null, List.of(), List.of(), null, null, null, null) : request;
     GenUIGeneration generation =
-        effectiveRequest.generationId() == null ? null : generations.get(effectiveRequest.generationId());
+        effectiveRequest.extensionId() == null ? null : generations.get(effectiveRequest.extensionId());
 
     LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
     components.putAll(baseContract.components());
@@ -113,7 +124,7 @@ public final class GenerationSdk {
 
     GenUIPromptAssemblyMetadata metadata =
         new GenUIPromptAssemblyMetadata(
-            effectiveRequest.generationId(),
+            effectiveRequest.extensionId(),
             baseContract.contractVersion(),
             generation == null ? null : generation.version(),
             new ArrayList<>(registeredToolNames),

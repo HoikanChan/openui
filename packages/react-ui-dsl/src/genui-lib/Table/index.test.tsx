@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createParser } from "../../../../lang-core/src";
 import { dslLibrary } from "../dslLibrary";
-import { mapColumnsToAntd } from "./index";
-import { TableView } from "./view";
+import { mapColumnsToAntd } from "./view/antd.js";
+import { TableView } from "./view/antd.js";
 
 function createCol(props: Record<string, unknown>) {
   return {

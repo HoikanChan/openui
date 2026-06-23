@@ -1,10 +1,18 @@
 {
-  "generationId": "noe-biz-components",
+  "extensionId": "noe-biz-components",
   "version": "1.0.0",
   "components": {
     "AlarmBadge": {
-      "signature": "AlarmBadge(severity: \"critical\" | \"major\" | \"minor\", count: number, label?: string)",
-      "description": "告警徽章:按严重级别着色(critical 红、major 橙、minor 黄)展示该级别的告警数量;label 缺省时显示级别名。展示各级别告警数量汇总时,优先使用一行多个 AlarmBadge 而非通用 Tag。"
+      "description": "告警徽章:按严重级别着色(critical 红、major 橙、minor 黄)展示该级别的告警数量;label 缺省时显示级别名。展示各级别告警数量汇总时,优先使用一行多个 AlarmBadge 而非通用 Tag。",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "severity": { "type": "string", "enum": ["critical", "major", "minor"] },
+          "count": { "type": "number" },
+          "label": { "type": "string" }
+        },
+        "required": ["severity", "count"]
+      }
     }
   },
   "componentGroups": [

@@ -11,10 +11,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-final class Json {
+public final class Json {
   private Json() {}
 
-  static Object parse(String json) {
+  public static Object parse(String json) {
     try {
       Object parsed =
           JSON.parse(
@@ -27,26 +27,26 @@ final class Json {
     }
   }
 
-  static String stringify(Object value) {
+  public static String stringify(Object value) {
     return JSON.toJSONString(
         normalizeForSerialization(value), JSONWriter.Feature.WriteNulls);
   }
 
   /** Mirrors {@code JSON.stringify(value, null, 2)} for byte-for-byte prompt parity. */
-  static String stringifyPretty(Object value) {
+  public static String stringifyPretty(Object value) {
     StringBuilder out = new StringBuilder();
     writePretty(out, normalizeForSerialization(value), 0);
     return out.toString();
   }
 
   @SuppressWarnings("unchecked")
-  static Map<String, Object> asObject(Object value, String label) {
+  public static Map<String, Object> asObject(Object value, String label) {
     if (value instanceof Map<?, ?> map) return (Map<String, Object>) map;
     throw new GenerationSdkException(label + " must be a JSON object");
   }
 
   @SuppressWarnings("unchecked")
-  static List<Object> asList(Object value, String label) {
+  public static List<Object> asList(Object value, String label) {
     if (value instanceof List<?> list) return (List<Object>) list;
     throw new GenerationSdkException(label + " must be a JSON array");
   }

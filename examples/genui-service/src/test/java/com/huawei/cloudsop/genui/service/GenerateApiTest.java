@@ -1,10 +1,22 @@
 package com.huawei.cloudsop.genui.service;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
@@ -13,17 +25,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.huawei.cloudsop.genui.service.llm.LlmClient;
 import com.huawei.cloudsop.genui.service.llm.LlmStream;
 import com.huawei.cloudsop.genui.service.llm.LlmUpstreamException;
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
 /** 生成端点行为:流式转发、Prompt Override 旁路、错误尾巴、流前失败 502、空 prompt 400。 */
 @SpringBootTest
@@ -84,11 +85,11 @@ class GenerateApiTest {
   }
 
   @Test
-  void unknownGenerationIdReturns404BeforeStreaming() throws Exception {
+  void unknownextensionIdReturns404BeforeStreaming() throws Exception {
     mvc.perform(
             post("/v1/generate")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"prompt\":\"展示UI\",\"generationId\":\"no-such\"}"))
+                .content("{\"prompt\":\"展示UI\",\"extensionId\":\"no-such\"}"))
         .andExpect(status().isNotFound());
   }
 
