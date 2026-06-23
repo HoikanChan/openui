@@ -7,7 +7,7 @@ genui-java-sdk 目前只是一个纯内存 Java 库，demo 后台的 system prom
 - 新增 `examples/genui-service`：Spring Boot 2.7.18（javax 体系）+ Java 21 的 REST 服务（GenUI Service），完整生成服务边界——Extension Registration、prompt 动态拼装、调 LLM 流式返回 `openui-lang`。
 - API 契约以 Swagger 2.0 描述（`swagger/genui-service.yaml`），contexts / assemble 端点由 swagger-codegen 生成接口（interfaceOnly，产物不入库）；`/generate` 流式端点手写实现，仅在 spec 中作文档声明。
 - 扁平资源风格 API：`GET/PUT /v1/contexts`、`POST /v1/prompts/assemble`、`POST /v1/generate`；contextId 为请求体可选字段，与 SDK `GenUIPromptRequest` 1:1 对齐；名称碰撞返回 409。
-- `/generate` 提供 Prompt Override 调试旁路（整段替换拼装产物，debug-only），与 Request Overlay（仅追加 tools/extraRules）术语严格分离。
+- `/generate` 提供 Prompt Override 调试旁路（整段替换拼装产物，debug-only），与 Request Overlay（仅追加 extraRules）术语严格分离。
 - 服务启动时种子注册多套预制扩展（网络运维主题），并附 `register-extension.http` 展示 REST 注册姿势。
 - 仓库根新增聚合 pom（packaging=pom），一条 `mvn package` 构建 SDK 与服务两个模块。
 - **BREAKING**（仅 demo 范围）：`examples/react-ui-dsl-demo` 的 Express server（`server/`）退役删除，前端直连 Java 服务；prompt tab 默认值改为从 assemble 端点拉取，新增 Context ID 选择。

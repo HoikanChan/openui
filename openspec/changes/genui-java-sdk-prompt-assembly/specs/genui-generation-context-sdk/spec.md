@@ -51,13 +51,8 @@ Java Generation SDK SHALL provide `assemblePrompt(GenUIPromptRequest)` that buil
 - **THEN** the assembled prompt includes a `## Data Model` section for that request
 - **AND** the data model is not persisted into the registered Generation Context
 
-### Requirement: Request overlay shall support dynamic tools and extra rules
-`GenUIPromptRequest` SHALL support request-scoped `tools` and `extraRules`, and these fields SHALL apply only to one prompt assembly call.
-
-#### Scenario: Dynamic tool appears only in current prompt
-- **WHEN** a request for `ctxA` includes dynamic tool `searchTickets`
-- **THEN** the assembled prompt includes `searchTickets`
-- **AND** a later request for `ctxA` without `searchTickets` does not include that tool unless it is registered in the context
+### Requirement: Request overlay shall support extra rules
+`GenUIPromptRequest` SHALL support request-scoped `extraRules`, and this field SHALL apply only to one prompt assembly call.
 
 #### Scenario: Extra rules append only to current prompt
 - **WHEN** a request contains extra rule `Prefer tables over charts for this request`
@@ -70,17 +65,12 @@ Java Generation SDK SHALL provide `assemblePrompt(GenUIPromptRequest)` that buil
 - **AND** the request schema does not expose `extraPrompt`
 
 ### Requirement: Java SDK shall reject name collisions within the final Generation Context
-The SDK SHALL reject component or tool names that collide within the final Generation Context assembled from base contract, registered extension, and request overlay.
+The SDK SHALL reject component or tool names that collide within the final Generation Context assembled from base contract and registered extension.
 
 #### Scenario: Extension component collides with base component
 - **WHEN** DSLEngine base contract contains component `Stack`
 - **AND** a caller registers an extension for `ctxA` that also defines component `Stack`
 - **THEN** registration fails with a name collision error
-
-#### Scenario: Request tool collides with registered tool
-- **WHEN** `ctxA` has registered tool `loadOrders`
-- **AND** a request overlay also includes tool `loadOrders`
-- **THEN** prompt assembly fails with a name collision error
 
 #### Scenario: Independent contexts may use the same extension names
 - **WHEN** `ctxA` registers component `BizCard`

@@ -20,7 +20,7 @@
 
 **Generation ID** - Identifier that selects one isolated Generation Extension for registration and prompt assembly.
 
-**Request Overlay** - Per-generation prompt assembly input that can add dynamic tools or extra rules without changing the registered Generation Extension.
+**Request Overlay** - Per-generation prompt assembly input that can add extra rules without changing the registered Generation Extension.
 
 **Prompt Override** - Debug-only generation input that replaces the entire assembled prompt, bypassing the Generation Extension; not for production callers.
 
@@ -51,7 +51,6 @@
 - An **Extension Registration** contains only downstream extension contracts; the base DSLEngine contract is supplied separately by the Java Generation SDK.
 - A **Request Overlay** applies only to one generation request and is not persisted into the selected **Generation Extension**.
 - A **Prompt Override** is distinct from a **Request Overlay**: an overlay augments prompt assembly, an override discards it entirely.
-- A tool in a **Request Overlay** must not reuse a tool name already present in the selected **Generation Extension**.
 - **Java Generation SDK** supplies the base DSLEngine **Component Contract** by default; callers register only extensions.
 - **Contract Version** identifies which component and tool contracts contributed to a generated prompt.
 - A front-end library extension derives a new **Component Contract** instead of mutating DSLEngine's base contract.

@@ -31,7 +31,7 @@ GenUI Service 的 LLM 调用行为 SHALL 与被替换的 Node 版对齐：通过
 - **THEN** LLM 请求直连，不经过代理
 
 ### Requirement: Prompt Override debug bypass
-`POST /v1/generate` SHALL 接受可选的 Prompt Override 字段：有值时整段替换 SDK 拼装产物直接作为 system prompt（绕过拼装），仅用于调试实验；Swagger 文档 SHALL 标注 debug-only、生产调用方不应使用。Prompt Override SHALL 不影响任何已注册的 Generation Context，且与 Request Overlay（仅追加 tools/extraRules）语义严格区分。
+`POST /v1/generate` SHALL 接受可选的 Prompt Override 字段：有值时整段替换 SDK 拼装产物直接作为 system prompt（绕过拼装），仅用于调试实验；Swagger 文档 SHALL 标注 debug-only、生产调用方不应使用。Prompt Override SHALL 不影响任何已注册的 Generation Context，且与 Request Overlay（仅追加 extraRules）语义严格区分。
 
 #### Scenario: Override 绕过拼装
 - **WHEN** 生成请求携带非空 Prompt Override

@@ -11,7 +11,7 @@
 - Java SDK 默认内置 DSLEngine base contract，并提供 `register(GenUIContextExtension)` 与 `assemblePrompt(GenUIPromptRequest)`；两个 DTO 都携带 `contextId`。
 - `contextId` 是业务上下文隔离边界，重复注册同一个 `contextId` 替换该 context 的扩展 contract。
 - `GenUIContextExtension` 只包含扩展组件、工具、组件分组、examples 和 additional rules，不包含 base contract。
-- `GenUIPromptRequest` 只包含本次 prompt 组装的动态输入：data model、动态 tools、extraRules 和 prompt flags。
+- `GenUIPromptRequest` 只包含本次 prompt 组装的动态输入：data model、extraRules 和 prompt flags。
 - 前端 `Library` 保持不可变，并提供最小 `extend(...)`；generation contract 导出优先复用现有 `toSpec()`/CLI JSON 输出能力。
 - 前端构建阶段生成 DSLEngine base contract JSON，Java SDK 发布包内置该产物，并保留 contract version。
 
@@ -45,13 +45,13 @@
 
 ### D4: 冲突检查发生在最终 Generation Context 内
 
-最终上下文为 base contract + context extension + request overlay。组件和工具同名时失败，不做覆盖。请求级动态 tool 也不能和 base 或已注册 tool 同名。
+最终上下文为 base contract + context extension。组件和工具同名时失败，不做覆盖。
 
 替代方案是同名覆盖。拒绝原因是模型看到的 tool/component contract 与实际执行或渲染实现容易错配，且排查困难。
 
-### D5: Request Overlay 只支持动态 tools 和 extraRules
+### D5: Request Overlay 只支持 extraRules
 
-`GenUIPromptRequest` 通过 `contextId` 选择 Generation Context，并支持本次生成临时 tools 和 `extraRules`，不持久化到该 `contextId`。暂不支持 `extraPrompt`，业务意图仍由调用方作为 user message 传给模型调用层。
+`GenUIPromptRequest` 通过 `contextId` 选择 Generation Context，并支持本次生成临时 `extraRules`，不持久化到该 `contextId`。暂不支持 `extraPrompt`，业务意图仍由调用方作为 user message 传给模型调用层。
 
 替代方案是允许请求直接追加 prompt 文本。拒绝原因是会混淆 system prompt 约束与用户意图，降低 prompt contract 的可审计性。
 
@@ -121,7 +121,6 @@ public record GenUIContextExtension(
 public record GenUIPromptRequest(
     String contextId,
     DataModelSpec dataModel,
-    List<ToolSpec> tools,
     List<String> extraRules,
     Boolean editMode,
     Boolean inlineMode,
@@ -130,7 +129,7 @@ public record GenUIPromptRequest(
 ) {}
 ```
 
-`GenUIPromptRequest` 是单次 prompt 组装的 request overlay，并通过 `contextId` 选择已注册的 Generation Context。`tools` 和 `extraRules` 只对本次 assemble 生效；不包含 `extraPrompt`。
+`GenUIPromptRequest` 是单次 prompt 组装的 request overlay，并通过 `contextId` 选择已注册的 Generation Context。`extraRules` 只对本次 assemble 生效；不包含 `extraPrompt`。
 
 ```java
 public record GenUIPromptAssemblyResult(
@@ -142,8 +141,7 @@ public record GenUIPromptAssemblyMetadata(
     String contextId,
     String baseContractVersion,
     String extensionVersion,
-    List<String> registeredToolNames,
-    List<String> requestToolNames
+    List<String> registeredToolNames
 ) {}
 ```
 
@@ -200,7 +198,6 @@ public record BuiltinSpec(
 - [builtins 注册表演进导致 Java 文档过期] → builtins 来自前端导出的 manifest，注册表变更时 manifest 与 golden 一并 regen，Java 不硬编码 builtin 签名。
 - [只按 contextId 替换导致一个业务内部无法多来源增量注册] → P0 接受该限制；如后续需要，再引入 registrationId。
 - [前端构建产物和 Java SDK 内置 contract 版本不一致] → base contract 必须包含 `contractVersion`，SDK 的 assemble 结果暴露使用到的版本。
-- [request 级 tools 影响 prompt 缓存] → assemble 结果应包含 request overlay 摘要，缓存键至少区分 contextId、contractVersion 和 request tool names。
 - [componentGroups 引用不存在组件] → register 和 front-end export 都必须校验分组引用，失败时给出缺失组件名。
 
 ## Migration Plan

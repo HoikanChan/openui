@@ -40,14 +40,12 @@ Keep Redis/Jedis, Spring wiring, request validation, cache key calculation, and 
 | `apiUrl` | `request.apiUrl` | Preserve only if useful to generation quality. |
 | `apiVersion` | `request.apiVersion` | Preserve only if useful to generation quality. |
 | `suggestion` / extra prompt text | `suggestion` | Appended to SDK `extraRules`. |
-| one-shot tool overlay | `overlayTools` | Request-scoped tools, not registered globally. |
-| one-shot rule overlay | `overlayRules` | Request-scoped rules. |
 | edit/inline/tool-calls/bindings flags | `editMode` / `inlineMode` / `toolCalls` / `bindings` | Passed through to `assemblePrompt`. |
 | `templateId`, `renderPiu`, `iframeUrl`, `iframeTitle`, `scenario`, `source` | service layer only | Do not pass to SDK unless explicitly needed as request context. |
 
 ## Points to verify against `PromptTemplateUtil`
 
-- Whether old `{apiRsp}` content had additional explanatory text that should become `suggestion` or `overlayRules`.
+- Whether old `{apiRsp}` content had additional explanatory text that should become `suggestion` or registered extension `additionalRules`.
 - Whether old `{userInput}` placement materially differs from the SDK system+user message split.
 - Whether `apiReq` / `apiUrl` / `apiVersion` should always be included in request context or only for specific scenarios.
 - Whether streaming endpoints should emit raw text chunks or SSE frames; SDK supports both by combining callback deltas with optional `SseFrames` wrapping.

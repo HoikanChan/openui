@@ -673,7 +673,6 @@ eview 作为目标 UI 组件库，通过 react-ui-dsl 的 view target 机制适�
 |---|---|
 | 注册契约名称碰撞 | 注册接口返回 409，原 Generation Extension 保持不变 |
 | 生成请求 extensionId 未注册 | 拼装前校验失败，返回错误事件，不静默回退仅 base contract |
-| Overlay 工具名与已注册工具碰撞 | 返回错误事件，不产生拼装结果 |
 | Stream IR 生成失败 | SmartCanvasService 捕获异常，返回错误事件或降级 markdown |
 | 语法校验失败 | 通过 Reflection 反馈错误并触发重生成，超过阈值后降级 |
 | 模型超大输出 | 服务侧检查输出 token，超过阈值进入错误处理或降级 |
@@ -780,4 +779,4 @@ SmartCanvas 负责生成侧能力，包括 prompt 组装、大模型调用、Str
 
 **AR-06：扩展组件采用注册式 Generation Extension 管理**
 
-扩展组件与扩展工具通过 Extension Registration 预注册为以 extensionId 隔离的 Generation Extension，生成请求仅携带 extensionId 与一次性 Request Overlay（动态 tools 与 extraRules），不在请求中内嵌组件契约。该模型与 Java Generation SDK（genui-java-sdk）及 GenUI Service 参考实现（examples/genui-service）保持一致，收益包括：每次生成请求节省扩展描述 token（单 extension 上限 30 个组件 × 100 token）；模板固化 key 纳入 extensionId 与 Contract Version，实现确定性命中并取代命中后兼容性校验；契约名称碰撞在注册期即被拒绝，而非生成期才暴露。备选「每次请求内嵌扩展组件描述」被否：请求体膨胀、模板固化需逐次做扩展组件超集校验、且与 SDK/参考实现的契约模型脱节。注册契约由 Redis 持久化并在启动时加载（服务层职责），SDK 保持纯内存语义；未注册 extensionId 的生成请求在服务层报错，不沿用 SDK 内部的静默回退行为。
+扩展组件与扩展工具通过 Extension Registration 预注册为以 extensionId 隔离的 Generation Extension，生成请求仅携带 extensionId 与一次性 Request Overlay（extraRules），不在请求中内嵌组件契约。该模型与 Java Generation SDK（genui-java-sdk）及 GenUI Service 参考实现（examples/genui-service）保持一致，收益包括：每次生成请求节省扩展描述 token（单 extension 上限 30 个组件 × 100 token）；模板固化 key 纳入 extensionId 与 Contract Version，实现确定性命中并取代命中后兼容性校验；契约名称碰撞在注册期即被拒绝，而非生成期才暴露。备选「每次请求内嵌扩展组件描述」被否：请求体膨胀、模板固化需逐次做扩展组件超集校验、且与 SDK/参考实现的契约模型脱节。注册契约由 Redis 持久化并在启动时加载（服务层职责），SDK 保持纯内存语义；未注册 extensionId 的生成请求在服务层报错，不沿用 SDK 内部的静默回退行为。

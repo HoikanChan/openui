@@ -74,7 +74,7 @@ public final class GenerationSdk {
 
   public GenUIPromptAssemblyResult assemblePrompt(GenUIPromptRequest request) {
     GenUIPromptRequest effectiveRequest =
-        request == null ? new GenUIPromptRequest(null, null, List.of(), List.of(), null, null, null, null) : request;
+        request == null ? new GenUIPromptRequest(null, null, List.of(), null, null, null, null) : request;
     GenUIExtension generation =
         effectiveRequest.extensionId() == null ? null : generations.get(effectiveRequest.extensionId());
 
@@ -89,14 +89,6 @@ public final class GenerationSdk {
     ArrayList<ToolSpec> registeredTools = new ArrayList<>(baseContract.tools());
     if (generation != null) registeredTools.addAll(generation.tools());
     Set<String> registeredToolNames = toolNames(registeredTools);
-    Set<String> requestToolNames = toolNames(effectiveRequest.tools());
-    Set<String> requestCollisions = intersection(registeredToolNames, requestToolNames);
-    if (!requestCollisions.isEmpty()) {
-      throw new GenerationSdkException("Tool name collision: " + String.join(", ", requestCollisions));
-    }
-
-    ArrayList<ToolSpec> allTools = new ArrayList<>(registeredTools);
-    allTools.addAll(effectiveRequest.tools());
 
     ArrayList<String> examples = new ArrayList<>(baseContract.examples());
     if (generation != null) examples.addAll(generation.examples());
@@ -113,7 +105,7 @@ public final class GenerationSdk {
                 components,
                 componentGroups,
                 effectiveRequest.dataModel(),
-                allTools,
+                registeredTools,
                 examples,
                 additionalRules,
                 effectiveRequest.editMode(),
@@ -127,8 +119,7 @@ public final class GenerationSdk {
             effectiveRequest.extensionId(),
             baseContract.contractVersion(),
             generation == null ? null : generation.version(),
-            new ArrayList<>(registeredToolNames),
-            new ArrayList<>(requestToolNames));
+            new ArrayList<>(registeredToolNames));
     return new GenUIPromptAssemblyResult(prompt, metadata);
   }
 

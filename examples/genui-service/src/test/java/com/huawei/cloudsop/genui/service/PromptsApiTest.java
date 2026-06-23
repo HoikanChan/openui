@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.GenerationSdk;
 
-/** 拼装端点行为:与 SDK 直接拼装字节一致、Generation 生效、Overlay 工具碰撞 409。 */
+/** 拼装端点行为:与 SDK 直接拼装字节一致、Generation 生效。 */
 @SpringBootTest
 @AutoConfigureMockMvc
 class PromptsApiTest {
@@ -32,7 +32,7 @@ class PromptsApiTest {
     String expected =
         GenerationSdk.create()
             .assemblePrompt(
-                new GenUIPromptRequest(null, null, List.of(), List.of(), null, null, null, null))
+                new GenUIPromptRequest(null, null, List.of(), null, null, null, null))
             .prompt();
     assertEquals(expected, result.get("prompt").asText());
     assertEquals(
@@ -45,14 +45,6 @@ class PromptsApiTest {
     String prompt = result.get("prompt").asText();
     assertTrue(prompt.contains("queryAlarms"), "generation tool must appear in prompt");
     assertEquals("1.0.0", result.get("metadata").get("generationVersion").asText());
-  }
-
-  @Test
-  void overlayToolNameCollisionReturns409() throws Exception {
-    String body =
-        "{\"extensionId\":\"noe-alarm-tools\",\"tools\":[{\"name\":\"queryAlarms\",\"description\":\"dup\"}]}";
-    mvc.perform(post("/v1/prompts/assemble").contentType(MediaType.APPLICATION_JSON).content(body))
-        .andExpect(status().isConflict());
   }
 
   private JsonNode assemble(String body) throws Exception {

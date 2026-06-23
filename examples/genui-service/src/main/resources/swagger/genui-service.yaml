@@ -80,7 +80,7 @@ paths:
         - prompts
       operationId: assemblePrompt
       summary: 拼装 system prompt
-      description: extensionId 缺省时仅使用 base contract。tools 与 extraRules 为 Request Overlay:仅作用于本次拼装,不持久化。
+      description: extensionId 缺省时仅使用 base contract。extraRules 为请求级附加规则:仅作用于本次拼装,不持久化。
       consumes:
         - application/json
       parameters:
@@ -100,10 +100,6 @@ paths:
             $ref: "#/definitions/ErrorResponse"
         404:
           description: extensionId 未注册
-          schema:
-            $ref: "#/definitions/ErrorResponse"
-        409:
-          description: Overlay 工具名与已注册工具碰撞
           schema:
             $ref: "#/definitions/ErrorResponse"
 
@@ -139,10 +135,6 @@ paths:
             $ref: "#/definitions/ErrorResponse"
         404:
           description: extensionId 未注册
-          schema:
-            $ref: "#/definitions/ErrorResponse"
-        409:
-          description: Overlay 工具名碰撞
           schema:
             $ref: "#/definitions/ErrorResponse"
         502:
@@ -303,14 +295,9 @@ definitions:
         description: 缺省时仅使用 base contract
       dataModel:
         $ref: "#/definitions/DataModel"
-      tools:
-        type: array
-        description: Request Overlay 工具,仅本次拼装生效,不持久化
-        items:
-          $ref: "#/definitions/ToolSpec"
       extraRules:
         type: array
-        description: Request Overlay 规则,仅本次拼装生效
+        description: 请求级附加规则,仅本次拼装生效,不持久化
         items:
           type: string
       editMode:
@@ -332,10 +319,6 @@ definitions:
       generationVersion:
         type: string
       registeredToolNames:
-        type: array
-        items:
-          type: string
-      requestToolNames:
         type: array
         items:
           type: string
@@ -362,21 +345,16 @@ definitions:
         type: object
         description: 原始数据模型,等价 DataModel.raw
         additionalProperties: true
-      tools:
-        type: array
-        description: Request Overlay 工具
-        items:
-          $ref: "#/definitions/ToolSpec"
       extraRules:
         type: array
-        description: Request Overlay 规则
+        description: 请求级附加规则,仅本次拼装生效
         items:
           type: string
       promptOverride:
         type: string
         description: |
           Prompt Override(debug-only):有值时整段替换 SDK 拼装产物,绕过 Generation。
-          仅供调试实验,生产调用方不应使用。与 Request Overlay(仅追加)语义严格区分。
+          仅供调试实验,生产调用方不应使用。与请求级 extraRules(仅追加)语义严格区分。
 
   ErrorResponse:
     type: object

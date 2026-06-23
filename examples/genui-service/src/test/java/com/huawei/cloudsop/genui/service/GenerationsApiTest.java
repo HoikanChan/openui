@@ -112,7 +112,7 @@ class GenerationsApiTest {
     sdk.register(sameExtensionViaSdk());
     String viaSdk =
         sdk.assemblePrompt(
-                new GenUIPromptRequest("byte-align-ext", null, List.of(), List.of(), null, null, null, null))
+                new GenUIPromptRequest("byte-align-ext", null, List.of(), null, null, null, null))
             .prompt();
 
     assertEquals(viaSdk, viaRest, "REST-DTO 路径拼装产物必须与 SDK 直注册逐字节一致");
@@ -183,7 +183,7 @@ class GenerationsApiTest {
     sdk.register(propsSchemaExtensionViaSdk());
     String viaSdk =
         sdk.assemblePrompt(
-                new GenUIPromptRequest("props-ext", null, List.of(), List.of(), null, null, null, null))
+                new GenUIPromptRequest("props-ext", null, List.of(), null, null, null, null))
             .prompt();
 
     assertEquals(viaSdk, viaRest, "propsSchema 形 REST 注册拼装产物须与 SDK 直注册逐字节一致");

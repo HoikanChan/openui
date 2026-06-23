@@ -29,7 +29,7 @@ class GenerationSdkTest {
     GenerationSdk sdk = GenerationSdk.builder().baseContract(testBaseContract()).build();
 
     GenUIPromptAssemblyResult result =
-        sdk.assemblePrompt(new GenUIPromptRequest("ctxA", null, List.of(), List.of(), null, null, null, null));
+        sdk.assemblePrompt(new GenUIPromptRequest("ctxA", null, List.of(), null, null, null, null));
 
     assertTrue(result.prompt().contains("Stack(children?: Component[])"));
     assertFalse(result.prompt().contains("BizCard("));
@@ -46,7 +46,7 @@ class GenerationSdkTest {
     sdk.register(generation("genA", "v2", component("BizCard"), List.of(tool("loadOrders"))));
 
     GenUIPromptAssemblyResult result =
-        sdk.assemblePrompt(new GenUIPromptRequest("genA", null, List.of(), List.of(), null, null, null, null));
+        sdk.assemblePrompt(new GenUIPromptRequest("genA", null, List.of(), null, null, null, null));
 
     assertTrue(result.prompt().contains("BizCard(title: string)"));
     assertFalse(result.prompt().contains("OldCard("));
@@ -62,7 +62,7 @@ class GenerationSdkTest {
     sdk.register(generation("genA", "v1", component("AlarmBadge"), List.of()));
 
     GenUIPromptAssemblyResult result =
-        sdk.assemblePrompt(new GenUIPromptRequest("genA", null, List.of(), List.of(), null, null, null, null));
+        sdk.assemblePrompt(new GenUIPromptRequest("genA", null, List.of(), null, null, null, null));
 
     assertTrue(result.prompt().contains("AlarmBadge(severity: \"critical\" | \"major\" | \"minor\", count: number, label?: string)"));
     assertTrue(result.prompt().contains("AlarmBadge description"));
@@ -129,45 +129,25 @@ class GenerationSdkTest {
   }
 
   @Test
-  void requestToolsAndExtraRulesAreRequestScoped() {
+  void requestExtraRulesAreRequestScoped() {
     GenerationSdk sdk = GenerationSdk.builder().baseContract(testBaseContract()).build();
     sdk.register(generation("genA", "v1", component("BizCard"), List.of()));
 
-    GenUIPromptAssemblyResult withOverlay =
+    GenUIPromptAssemblyResult withRequestAdditions =
         sdk.assemblePrompt(
             new GenUIPromptRequest(
                 "genA",
                 null,
-                List.of(tool("searchTickets")),
                 List.of("Prefer tables over charts for this request"),
                 null,
                 null,
                 null,
                 null));
-    GenUIPromptAssemblyResult withoutOverlay =
-        sdk.assemblePrompt(new GenUIPromptRequest("genA", null, List.of(), List.of(), null, null, null, null));
+    GenUIPromptAssemblyResult withoutRequestAdditions =
+        sdk.assemblePrompt(new GenUIPromptRequest("genA", null, List.of(), null, null, null, null));
 
-    assertTrue(withOverlay.prompt().contains("searchTickets"));
-    assertTrue(withOverlay.prompt().contains("Prefer tables over charts for this request"));
-    assertFalse(withoutOverlay.prompt().contains("searchTickets"));
-    assertFalse(withoutOverlay.prompt().contains("Prefer tables over charts for this request"));
-    assertIterableEquals(List.of("searchTickets"), withOverlay.metadata().requestToolNames());
-  }
-
-  @Test
-  void rejectsRequestToolCollisionWithRegisteredTool() {
-    GenerationSdk sdk = GenerationSdk.builder().baseContract(testBaseContract()).build();
-    sdk.register(generation("genA", "v1", component("BizCard"), List.of(tool("loadOrders"))));
-
-    GenerationSdkException error =
-        assertThrows(
-            GenerationSdkException.class,
-            () ->
-                sdk.assemblePrompt(
-                    new GenUIPromptRequest(
-                        "genA", null, List.of(tool("loadOrders")), List.of(), null, null, null, null)));
-
-    assertTrue(error.getMessage().contains("loadOrders"));
+    assertTrue(withRequestAdditions.prompt().contains("Prefer tables over charts for this request"));
+    assertFalse(withoutRequestAdditions.prompt().contains("Prefer tables over charts for this request"));
   }
 
   @Test
@@ -176,9 +156,9 @@ class GenerationSdkTest {
     DataModelSpec dataModel = new DataModelSpec("Ticket data", Map.of("tickets", List.of(Map.of("id", 7))));
 
     GenUIPromptAssemblyResult withData =
-        sdk.assemblePrompt(new GenUIPromptRequest("genA", dataModel, List.of(), List.of(), null, null, null, null));
+        sdk.assemblePrompt(new GenUIPromptRequest("genA", dataModel, List.of(), null, null, null, null));
     GenUIPromptAssemblyResult withoutData =
-        sdk.assemblePrompt(new GenUIPromptRequest("genA", null, List.of(), List.of(), null, null, null, null));
+        sdk.assemblePrompt(new GenUIPromptRequest("genA", null, List.of(), null, null, null, null));
 
     assertTrue(withData.prompt().contains("## Data Model"));
     assertTrue(withData.prompt().contains("Ticket data"));
@@ -195,7 +175,7 @@ class GenerationSdkTest {
     raw.put("status", "mutated");
 
     GenUIPromptAssemblyResult result =
-        sdk.assemblePrompt(new GenUIPromptRequest("genA", dataModel, List.of(), List.of(), null, null, null, null));
+        sdk.assemblePrompt(new GenUIPromptRequest("genA", dataModel, List.of(), null, null, null, null));
 
     assertTrue(result.prompt().contains("\"status\": \"initial\""));
     assertFalse(result.prompt().contains("mutated"));

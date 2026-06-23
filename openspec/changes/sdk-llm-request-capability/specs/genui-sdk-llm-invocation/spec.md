@@ -86,7 +86,7 @@ SDK SHALL 提供 `OpenuiCodeExtractor`，从 LLM 原始输出中抽取 openui-la
 
 ### Requirement: 生成入参对齐 UIRequestDetail 并以 extensionId 选扩展
 
-SDK SHALL 提供生成入参 `UiGenerationRequest`，对齐 `UIRequestDetail` 的生成相关字段（`extensionId`、`userInput`、`request`、`response`、`suggestion`，及一次性 Overlay `tools`/`extraRules` 与 assemble 标志）。门面 SHALL 把 `extensionId` 映射为 `GenUIPromptRequest.extensionId` 选择已注册扩展，把 `response` 作为 `DataModelSpec` 主数据源，把 `userInput` 作为用户消息，把 `suggestion` 追加为 extraRules。`templateId`/`renderPiu`/`iframeUrl`/`scenario`/`source` SHALL NOT 进入 SDK（属服务层）。数据预处理/压缩 SHALL NOT 在 SDK 内进行。
+SDK SHALL 提供生成入参 `UiGenerationRequest`，对齐 `UIRequestDetail` 的生成相关字段（`extensionId`、`userInput`、`request`、`response`、`suggestion` 与 assemble 标志）。门面 SHALL 把 `extensionId` 映射为 `GenUIPromptRequest.extensionId` 选择已注册扩展，把 `response` 作为 `DataModelSpec` 主数据源，把 `userInput` 作为用户消息，把 `suggestion` 追加为 extraRules。`templateId`/`renderPiu`/`iframeUrl`/`scenario`/`source` SHALL NOT 进入 SDK（属服务层）。数据预处理/压缩 SHALL NOT 在 SDK 内进行。
 
 #### Scenario: extensionId 选中已注册扩展
 - **WHEN** `UiGenerationRequest.extensionId` 命中已 `register` 的扩展

@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 
 class PromptAssemblySnippetTest {
   @Test
-  void promptContainsBaseExtensionRequestToolsRulesAndDataModelSections() {
+  void promptContainsBaseExtensionRequestRulesAndDataModelSections() {
     LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
     components.put("Stack", new ComponentPromptSpec("Stack(children?: Component[])", "Layout"));
     GenerationContract base =
@@ -49,13 +49,6 @@ class PromptAssemblySnippetTest {
             new GenUIPromptRequest(
                 "genA",
                 new DataModelSpec("Business data", Map.of("accounts", List.of(Map.of("name", "Acme")))),
-                List.of(
-                    new ToolSpec(
-                        "searchTickets",
-                        "Search tickets",
-                        Map.of("type", "object"),
-                        Map.of("type", "object"),
-                        null)),
                 List.of("Request rule"),
                 null,
                 null,
@@ -64,7 +57,6 @@ class PromptAssemblySnippetTest {
 
     assertTrue(result.prompt().contains("Stack(children?: Component[])"));
     assertTrue(result.prompt().contains("BizCard(title: string)"));
-    assertTrue(result.prompt().contains("searchTickets"));
     assertTrue(result.prompt().contains("Request rule"));
     assertTrue(result.prompt().contains("Generation rule"));
     assertTrue(result.prompt().contains("## Data Model"));

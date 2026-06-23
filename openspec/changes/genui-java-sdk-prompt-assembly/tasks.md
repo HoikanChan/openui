@@ -37,11 +37,9 @@
 
 - [x] 5.1 在 Java SDK 中实现 prompt assembler，镜像 `packages/lang-core/src/parser/prompt.ts` 的核心 section：preamble、syntax rules、component signatures、data model、builtins、tools、streaming rules、examples、additionalRules
 - [x] 5.2 实现 `assemblePrompt(GenUIPromptRequest request)`，按 `request.contextId` 读取 context extension，并与 base contract、request overlay、dataModel 合并生成 system prompt
-- [x] 5.3 实现 request-scoped dynamic tools 合并，且不写回 registered context
-- [x] 5.4 实现 request-scoped extraRules 追加，且不写回 registered context
-- [x] 5.5 拒绝 request tool 与 base 或 registered tool 同名冲突
-- [x] 5.6 `GenUIPromptAssemblyResult` 返回 prompt、base contract version、extension version 和 request tool names
-- [x] 5.7 增加 Java 单元测试覆盖无 extension 组装、有 extension 组装、dataModel request-scoped、dynamic tools request-scoped、extraRules request-scoped、tool 冲突和 metadata
+- [x] 5.3 实现 request-scoped extraRules 追加，且不写回 registered context
+- [x] 5.4 `GenUIPromptAssemblyResult` 返回 prompt、base contract version、extension version 和 registered tool names
+- [x] 5.5 增加 Java 单元测试覆盖无 extension 组装、有 extension 组装、dataModel request-scoped、extraRules request-scoped 和 metadata
 
 ## 6. 对齐与验证
 

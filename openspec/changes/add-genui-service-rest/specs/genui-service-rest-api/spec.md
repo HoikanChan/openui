@@ -36,7 +36,7 @@ GenUI Service SHALL 通过 `PUT /v1/contexts/{contextId}` 接受 Extension Regis
 - **THEN** 返回 409 Contract Name Collision，且该 contextId 未被注册或修改
 
 ### Requirement: Prompt assembly endpoint with Request Overlay
-GenUI Service SHALL 通过 `POST /v1/prompts/assemble` 暴露 SDK 拼装能力：contextId 为可选字段（缺省时仅用 base contract）；请求可携带 Request Overlay（一次性 tools 与 extraRules，不持久化）；响应 SHALL 包含拼装产物 prompt 与 metadata（contextId、baseContractVersion、extensionVersion、registeredToolNames、requestToolNames）。Overlay 工具名与已注册工具碰撞 SHALL 返回 409。
+GenUI Service SHALL 通过 `POST /v1/prompts/assemble` 暴露 SDK 拼装能力：contextId 为可选字段（缺省时仅用 base contract）；请求可携带 Request Overlay（一次性 extraRules，不持久化）；响应 SHALL 包含拼装产物 prompt 与 metadata（contextId、baseContractVersion、extensionVersion、registeredToolNames）。
 
 #### Scenario: 仅 base contract 拼装
 - **WHEN** 调用 assemble 且不带 contextId
@@ -45,10 +45,6 @@ GenUI Service SHALL 通过 `POST /v1/prompts/assemble` 暴露 SDK 拼装能力�
 #### Scenario: 选择扩展 context 拼装
 - **WHEN** 调用 assemble 且 contextId 指向已注册扩展
 - **THEN** 返回的 prompt 含该扩展的组件与工具描述，metadata 标明扩展版本
-
-#### Scenario: Overlay 工具名碰撞
-- **WHEN** assemble 请求的 tools 中包含与已注册工具同名的工具
-- **THEN** 返回 409，且不产生拼装结果
 
 ### Requirement: Preset Generation Contexts seeded at startup
 GenUI Service SHALL 在启动时从打包资源中种子注册多套预制扩展（网络运维主题），保证 demo 开箱即可选择扩展 context；服务重启后种子 SHALL 重新注册（注册不持久化，调用方自行重注册）。

@@ -6,10 +6,8 @@ public record GenUIPromptAssemblyMetadata(
     String extensionId,
     String baseContractVersion,
     String generationVersion,
-    List<String> registeredToolNames,
-    List<String> requestToolNames) {
+    List<String> registeredToolNames) {
   public GenUIPromptAssemblyMetadata {
     registeredToolNames = registeredToolNames == null ? List.of() : List.copyOf(registeredToolNames);
-    requestToolNames = requestToolNames == null ? List.of() : List.copyOf(requestToolNames);
   }
 }

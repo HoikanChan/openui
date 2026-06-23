@@ -16,7 +16,7 @@ OpenUI 的扩展不是只改前端，也不是只改 prompt。一个可用的扩
 | --- | --- | --- |
 | 新组件 | `defineComponent(...)`，再 `createLibrary(...)` 或 `library.extend(...)` | 注册同名 Component Contract，让模型知道签名和用途 |
 | 新 tool | 给 `<Renderer />` 传 `toolProvider`，执行 `Query()` / `Mutation()` | 注册 `ToolSpec`，让模型知道 tool 名、入参、出参和读写语义 |
-| 业务规则 | 在组件描述、`componentGroups.notes`、`PromptOptions.additionalRules` 中表达 | 在 Generation Extension 或 Request Overlay 的 `additionalRules` / `extraRules` 中表达 |
+| 业务规则 | 在组件描述、`componentGroups.notes`、`PromptOptions.additionalRules` 中表达 | 在扩展（GenUIExtension）或 Request Overlay 的 `additionalRules` / `extraRules` 中表达 |
 | 动态数据 | 给 `<Renderer />` 传 `dataModel` 或让 DSL 使用 `Query()` | 在 assemble/generate 请求里传 `dataModel`，或注册可调用 tools |
 
 ## 核心链路
@@ -40,8 +40,7 @@ flowchart LR
 前端组件使用 `defineComponent(...)` 定义，再通过 `createLibrary(...)` 创建新的组件库，或通过现有库的 `extend(...)` 加到内置组件库上。
 
 ```tsx
-import { defineComponent } from "@openuidev/react-lang";
-import { openuiLibrary } from "@openuidev/react-ui/genui-lib";
+import { defineComponent, dslLibrary } from "@openuidev/react-ui-dsl";
 import { z } from "zod";
 
 const BillingCard = defineComponent({
@@ -64,7 +63,7 @@ const BillingCard = defineComponent({
   ),
 });
 
-export const billingLibrary = openuiLibrary.extend({
+export const billingLibrary = dslLibrary.extend({
   components: [BillingCard],
   componentGroups: [
     {
@@ -80,23 +79,12 @@ export const billingLibrary = openuiLibrary.extend({
 然后把扩展后的 library 传给渲染入口：
 
 ```tsx
-import { Renderer } from "@openuidev/react-lang";
+import { Renderer } from "@openuidev/react-ui-dsl";
 import { billingLibrary } from "./billing-library";
 
 export function Preview({ code }: { code: string }) {
   return <Renderer response={code} library={billingLibrary} />;
 }
-```
-
-如果你使用 `@openuidev/react-ui` 的 chat 布局，同样传 `componentLibrary`：
-
-```tsx
-<FullScreen
-  processMessage={processMessage}
-  streamProtocol={openAIAdapter()}
-  componentLibrary={billingLibrary}
-  agentName="Assistant"
-/>
 ```
 
 ### 组件设计建议
@@ -117,7 +105,7 @@ export function Preview({ code }: { code: string }) {
 
 ```ts
 import { writeFileSync } from "node:fs";
-import { generateComponentSpecs } from "@openuidev/react-lang";
+import { generateComponentSpecs } from "@openuidev/react-ui-dsl";
 import { BillingCard } from "./billing-library"; // 记得 export 你定义的组件
 
 // 只传你扩展的组件；返回 { [name]: { description, propsSchema } }
@@ -168,10 +156,10 @@ writeFileSync("billing-extension.json", `${JSON.stringify(extension, null, 2)}\n
 
 ### 通过 REST 注册
 
-当前 GenUI Service 的 REST 参考实现使用 `/v1/generations` 管理扩展。`extensionId` 用来隔离不同业务扩展，重复注册同一个 `extensionId` 会整体替换旧契约。
+当前 GenUI Service 的 REST 参考实现使用 `/v1/extensions` 管理扩展。`extensionId` 用来隔离不同业务扩展，重复注册同一个 `extensionId` 会整体替换旧契约。
 
 ```http
-PUT http://localhost:3001/v1/generations/team-a-billing
+PUT http://localhost:3001/v1/extensions/team-a-billing
 Content-Type: application/json
 
 {
@@ -236,8 +224,8 @@ GenerationSdk sdk = GenerationSdk.create();
 
 // billing-extension.json 即上面 generate-component-spec 的导出产物
 String extensionJson = Files.readString(Path.of("billing-extension.json"));
-GenUIExtension generation = new ObjectMapper().readValue(extensionJson, GenUIExtension.class);
-sdk.register(generation);
+GenUIExtension extension = new ObjectMapper().readValue(extensionJson, GenUIExtension.class);
+sdk.register(extension);
 ```
 
 > 组件务必用 `propsSchema` 描述，不要用旧的 `signature` 形态。`ComponentPromptSpec` 的规范构造器是 `(description, propsSchema)`，Jackson 按它绑定 record；JSON 里的 `signature` 会被当未知字段静默丢掉，导致组件在 prompt 里没有 props。JSON 对象的键顺序即字段顺序，反序列化时会被保留。
@@ -251,10 +239,10 @@ OpenUI 的 tool 也要前后端两侧对齐：
 
 ### 注册 tool 契约
 
-把 tool 放进 Generation Extension：
+把 tool 放进扩展（GenUIExtension）：
 
 ```http
-PUT http://localhost:3001/v1/generations/team-a-billing
+PUT http://localhost:3001/v1/extensions/team-a-billing
 Content-Type: application/json
 
 {
@@ -294,20 +282,12 @@ Content-Type: application/json
 }
 ```
 
-也可以只在单次请求里传 Request Overlay。Overlay 不会持久化，适合“这一次生成才有”的动态 tool：
+也可以只在单次请求里传 Request Overlay。Overlay 不会持久化，适合“这一次生成才有”的附加规则：
 
 ```json
 {
   "extensionId": "team-a-billing",
-  "tools": [
-    {
-      "name": "queryCurrentUserBill",
-      "description": "查询当前登录用户的账单。",
-      "inputSchema": { "type": "object", "properties": {} },
-      "annotations": { "readOnlyHint": true }
-    }
-  ],
-  "extraRules": ["当前用户账单只能使用 queryCurrentUserBill。"]
+  "extraRules": ["账单金额一律按用户所在区域的货币单位展示。"]
 }
 ```
 
@@ -415,7 +395,7 @@ Content-Type: application/json
 上线一个扩展前，逐项检查：
 
 - 前端 `defineComponent.name` 和后端组件名完全一致。
-- 前端 Zod props 顺序和后端 `signature` / `propsSchema.properties` 顺序一致。
+- 前端 Zod props 顺序和后端 `propsSchema.properties` 顺序一致。
 - required 字段在 optional 字段之前。
 - 后端注册的组件都能在前端 library 中渲染。
 - 后端注册的 tool 都能被前端 `toolProvider` 执行。

@@ -1,9 +1,7 @@
 package com.huawei.cloudsop.genui.core.llm;
 
-import com.huawei.cloudsop.genui.core.contract.ToolSpec;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 public record UiGenerationRequest(
@@ -12,8 +10,6 @@ public record UiGenerationRequest(
     Map<String, Object> request,
     Map<String, Object> response,
     String suggestion,
-    List<ToolSpec> overlayTools,
-    List<String> overlayRules,
     Boolean editMode,
     Boolean inlineMode,
     Boolean toolCalls,
@@ -21,8 +17,6 @@ public record UiGenerationRequest(
   public UiGenerationRequest {
     request = immutableOrderedMap(request);
     response = immutableOrderedMap(response);
-    overlayTools = overlayTools == null ? List.of() : List.copyOf(overlayTools);
-    overlayRules = overlayRules == null ? List.of() : List.copyOf(overlayRules);
   }
 
   private static Map<String, Object> immutableOrderedMap(Map<String, Object> value) {
@@ -39,8 +33,6 @@ public record UiGenerationRequest(
     private Map<String, Object> request;
     private Map<String, Object> response;
     private String suggestion;
-    private List<ToolSpec> overlayTools;
-    private List<String> overlayRules;
     private Boolean editMode;
     private Boolean inlineMode;
     private Boolean toolCalls;
@@ -73,16 +65,6 @@ public record UiGenerationRequest(
       return this;
     }
 
-    public Builder overlayTools(List<ToolSpec> overlayTools) {
-      this.overlayTools = overlayTools;
-      return this;
-    }
-
-    public Builder overlayRules(List<String> overlayRules) {
-      this.overlayRules = overlayRules;
-      return this;
-    }
-
     public Builder editMode(Boolean editMode) {
       this.editMode = editMode;
       return this;
@@ -110,8 +92,6 @@ public record UiGenerationRequest(
           request,
           response,
           suggestion,
-          overlayTools,
-          overlayRules,
           editMode,
           inlineMode,
           toolCalls,

@@ -9,7 +9,7 @@
 
 - [ ] 2.1 application 层 GenerationAppService：DTO↔SDK 映射、GenerationSdk @Bean 装配；GenerationSdkException → HTTP 映射（名称碰撞 409，其余非法 400）
 - [ ] 2.2 实现 `GET /v1/contexts`（contextId、version、组件数、工具数摘要）与 `PUT /v1/contexts/{contextId}`（替换语义、碰撞 409），单测覆盖三个碰撞/替换场景
-- [ ] 2.3 实现 `POST /v1/prompts/assemble`（contextId 可选、Request Overlay、metadata 完整返回、overlay 工具碰撞 409），单测对齐 PromptGoldenTest 的拼装产物
+- [ ] 2.3 实现 `POST /v1/prompts/assemble`（contextId 可选、Request Overlay、metadata 完整返回），单测对齐 PromptGoldenTest 的拼装产物
 - [ ] 2.4 预制扩展种子：`resources/seed/*.json`（≥2 套，网络运维主题）+ 启动注册（ApplicationRunner）；重启后种子恢复的集成测试
 - [ ] 2.5 编写 `register-extension.http` REST 注册示例，照抄可成功注册并在 contexts/assemble 中观察到生效
 

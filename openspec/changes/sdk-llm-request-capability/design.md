@@ -191,8 +191,6 @@ public record UiGenerationRequest(
     Map<String,Object> request,      // 上游入参（辅助，如 UI 标题），可空
     Map<String,Object> response,     // 主数据源 → DataModel（{data.*} 绑定来源），生成场景必填
     String suggestion,               // 额外建议/约束 → 追加 extraRules
-    List<ToolSpec> overlayTools,     // 一次性 Request Overlay tools，可空
-    List<String> overlayRules,       // 一次性 Request Overlay rules，可空
     Boolean editMode, Boolean inlineMode, Boolean toolCalls, Boolean bindings) {
     public static Builder builder();
     /* Builder 含上述每字段 setter + build() */
@@ -241,7 +239,7 @@ public final class GenUiGenerator {
 | `request` | 折入 user 消息上下文（辅助，如 UI 标题）；或并入 DataModel 描述 |
 | `userInput` | user 消息（尾部追加 `/no_think`） |
 | `suggestion` | 追加到 `GenUIPromptRequest.extraRules` |
-| `overlayTools` / `overlayRules` | `GenUIPromptRequest.tools` / `extraRules`（一次性 Overlay） |
+| tools / 固定规则 | 不作为 `UiGenerationRequest` 字段传入；通过 registered `GenUIExtension.tools` / `additionalRules` 发布 |
 | `templateId`/`renderPiu`/`iframeUrl`/`scenario`/`source` | **不进 SDK** —— 模板命中/PIU/iframe/场景/缓存键由服务层处理 |
 
 **extensionId 怎么对接**（贯穿注册与生成两端，同一标识符）：

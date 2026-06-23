@@ -62,7 +62,6 @@ final class DtoMapper {
     return new GenUIPromptRequest(
         dto.getExtensionId(),
         toDataModel(dto.getDataModel()),
-        toTools(dto.getTools()),
         dto.getExtraRules(),
         dto.isEditMode(),
         dto.isInlineMode(),
@@ -103,8 +102,7 @@ final class DtoMapper {
                 .extensionId(metadata.extensionId())
                 .baseContractVersion(metadata.baseContractVersion())
                 .generationVersion(metadata.generationVersion())
-                .registeredToolNames(metadata.registeredToolNames())
-                .requestToolNames(metadata.requestToolNames()));
+                .registeredToolNames(metadata.registeredToolNames()));
   }
 
   private static List<com.huawei.cloudsop.genui.core.contract.ComponentGroup> toGroups(

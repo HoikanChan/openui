@@ -86,7 +86,6 @@ public class GenerateController {
         new GenUIPromptRequest(
             body.getExtensionId(),
             dataModel,
-            DtoMapper.toTools(body.getTools()),
             body.getExtraRules(),
             null,
             null,

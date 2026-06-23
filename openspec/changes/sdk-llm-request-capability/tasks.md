@@ -54,13 +54,13 @@
 
 ## 8. 生成入参（UiGenerationRequest）
 
-- [x] 8.1 定义 `UiGenerationRequest`（record：`extensionId`、`userInput`、`request`、`response`、`suggestion`、`overlayTools`、`overlayRules`、`editMode`/`inlineMode`/`toolCalls`/`bindings`）
-- [x] 8.2 加 `Builder` + 必要的 null 归一（集合空列表、map 不可变）
-- [x] 8.3 单测：builder 构造、默认空集合、不可变性
+- [x] 8.1 定义 `UiGenerationRequest`（record：`extensionId`、`userInput`、`request`、`response`、`suggestion`、`editMode`/`inlineMode`/`toolCalls`/`bindings`）
+- [x] 8.2 加 `Builder` + 必要的 null 归一（map 不可变）
+- [x] 8.3 单测：builder 构造、默认空 map、不可变性
 
 ## 9. 编排门面（GenUiGenerator）
 
-- [x] 9.1 实现私有映射：`UiGenerationRequest` → `GenUIPromptRequest`（`extensionId`→`extensionId`、`response`→`DataModelSpec`、`suggestion` 追加 `extraRules`、overlay tools/rules、透传 flags）
+- [x] 9.1 实现私有映射：`UiGenerationRequest` → `GenUIPromptRequest`（`extensionId`→`extensionId`、`response`→`DataModelSpec`、`suggestion` 追加 `extraRules`、不接收 request-level tools/rules、透传 flags）
 - [x] 9.2 实现 `create()` / `create(config)`：内部自持 `GenerationSdk.create()` + `new RestfulLlmTransport(config)`，不对外暴露 `GenerationSdk`
 - [x] 9.3 实现 `withTransport(config, transport)`（高级/测试入口）+ `register(GenUIExtension)`（委托内部 sdk，返回 `this` 链式）
 - [x] 9.4 实现 `generate(UiGenerationRequest)`：映射 → `assemblePrompt` 作 system 消息 + `userInput`(+` /no_think`) 作 user 消息 → `ChatCompletionRequest.of(..., false)` → `post` → `ChatCompletionResponse.firstContent()` → `OpenuiCodeExtractor.extract`；`LlmTransportException` 包装为 `GenerationSdkException`

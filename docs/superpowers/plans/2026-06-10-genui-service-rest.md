@@ -31,14 +31,14 @@ PUT  /contexts/{contextId}                    # Extension Registration(替换语
   → 409 Contract Name Collision(组件名或工具名碰撞)
 
 POST /prompts/assemble
-  body: { contextId?, dataModel?, tools[], extraRules[],     # Request Overlay
+  body: { contextId?, dataModel?, extraRules[],              # Request Overlay
           editMode?, inlineMode?, toolCalls?, bindings? }
   → 200: { prompt, metadata{ contextId, baseContractVersion, extensionVersion,
-                             registeredToolNames[], requestToolNames[] } }
+                             registeredToolNames[] } }
 
 POST /generate                                # 手写流式实现,spec 中仅文档声明
   produces: text/plain; charset=utf-8 (chunked)
-  body: { prompt, contextId?, dataModel?, tools[], extraRules[],
+  body: { prompt, contextId?, dataModel?, extraRules[],
           promptOverride? }                   # debug-only,绕过拼装
   → 200: openui-lang 文本流
 ```

@@ -17,7 +17,6 @@ import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -86,17 +85,16 @@ public final class GenUiGenerator {
   }
 
   private GenUIPromptRequest toPromptRequest(UiGenerationRequest request) {
-    ArrayList<String> extraRules = new ArrayList<>(request.overlayRules());
-    if (request.suggestion() != null && !request.suggestion().isBlank()) {
-      extraRules.add(request.suggestion());
-    }
+    List<String> extraRules =
+        request.suggestion() == null || request.suggestion().isBlank()
+            ? List.of()
+            : List.of(request.suggestion());
 
     DataModelSpec dataModel =
         request.response().isEmpty() ? null : new DataModelSpec("Response data", request.response());
     return new GenUIPromptRequest(
         request.extensionId(),
         dataModel,
-        request.overlayTools(),
         extraRules,
         request.editMode(),
         request.inlineMode(),

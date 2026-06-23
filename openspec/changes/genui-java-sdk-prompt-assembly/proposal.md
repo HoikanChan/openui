@@ -2,7 +2,7 @@
 
 OpenUI 需要从前端实验链路走向通用的生成式 UI 服务：下游业务可以注册自己的扩展组件和工具，后端按 `contextId` 组装稳定的 system prompt，再由 SmartCanvasService 对外提供生成服务。
 
-现有 `prompt.ts` 只解决通用 openui-lang prompt assembly，不承担业务上下文注册、上下文隔离、请求级动态工具和规则叠加，也无法让 Java 服务直接复用前端 DSLEngine 的基础组件契约。
+现有 `prompt.ts` 只解决通用 openui-lang prompt assembly，不承担业务上下文注册、上下文隔离、请求级规则叠加，也无法让 Java 服务直接复用前端 DSLEngine 的基础组件契约。
 
 ## What Changes
 
@@ -11,7 +11,7 @@ OpenUI 需要从前端实验链路走向通用的生成式 UI 服务：下游业
   - 提供 `register(GenUIContextExtension)`，按 payload 内的 `contextId` 注册扩展组件、工具、规则和 examples。
   - 重复注册同一个 `contextId` 时替换该 context 的扩展 contract。
   - 提供 `assemblePrompt(GenUIPromptRequest)`，按 request 内的 `contextId` 读取 context extension，并结合 base contract、request overlay 和 data model 组装 prompt。
-  - 请求级 overlay 支持动态 tools 和 `extraRules`。
+  - 请求级 overlay 支持 `extraRules`。
   - component/tool 同名冲突在同一个最终 Generation Context 内失败，不做覆盖。
   - Java prompt 组装与前端 `generatePrompt()` 对同一份合并输入**逐字节一致**：builtins 文档来自前端导出的 manifest，其余 section 逐字节移植 `prompt.ts`，并以跨语言 golden 测试锁死。prompt 组装后续以 Java SDK 为权威，`prompt.ts` 计划弃用（本 change 不删）。
 - 新增前端 Library 最小扩展能力：

@@ -38,8 +38,6 @@ class GenUiGeneratorTest {
                 .userInput("show alarms")
                 .response(orderedMap("alarms", List.of(orderedMap("id", 7))))
                 .suggestion("Prefer alarm cards")
-                .overlayTools(List.of(tool("lookupTicket")))
-                .overlayRules(List.of("Overlay rule"))
                 .toolCalls(true)
                 .build());
 
@@ -52,10 +50,10 @@ class GenUiGeneratorTest {
     Map<String, Object> user = Json.asObject(messages.get(1), "user");
     String prompt = String.valueOf(system.get("content"));
     assertTrue(prompt.contains("AlarmCard(title: string)"));
-    assertTrue(prompt.contains("lookupTicket"));
+    assertTrue(prompt.contains("lookupAlarm"));
     assertTrue(prompt.contains("\"alarms\""));
     assertTrue(prompt.contains("Prefer alarm cards"));
-    assertTrue(prompt.contains("Overlay rule"));
+    assertTrue(prompt.contains("Use AlarmCard for alarms"));
     assertTrue(String.valueOf(user.get("content")).endsWith(" /no_think"));
   }
 
