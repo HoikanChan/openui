@@ -137,7 +137,7 @@ writeFileSync("billing-extension.json", `${JSON.stringify(extension, null, 2)}\n
 
 > `generateComponentSpecs` 要求每个组件的必填 props 排在可选 props 之前（对应 openui-lang 的位置参数顺序），否则会抛错。
 
-写出的 `billing-extension.json` 就是一个**可直接注册的 `GenUIGeneration` 形 JSON**：顶层带 `extensionId` / `version`，`components` 用 `propsSchema`（JSON Schema）描述，且只含你扩展的组件，不含 base 内置件：
+写出的 `billing-extension.json` 就是一个**可直接注册的 `GenUIExtension` 形 JSON**：顶层带 `extensionId` / `version`，`components` 用 `propsSchema`（JSON Schema）描述，且只含你扩展的组件，不含 base 内置件：
 
 ```json
 {
@@ -164,7 +164,7 @@ writeFileSync("billing-extension.json", `${JSON.stringify(extension, null, 2)}\n
 }
 ```
 
-后端拿到这段 JSON，反序列化成 `GenUIGeneration` 直接注册（见下方「直接嵌入 Java SDK」）。因为前后端出自同一个库定义，`propsSchema.properties` 的字段顺序和前端 Zod props 顺序天然对齐，不用人工核对。
+后端拿到这段 JSON，反序列化成 `GenUIExtension` 直接注册（见下方「直接嵌入 Java SDK」）。因为前后端出自同一个库定义，`propsSchema.properties` 的字段顺序和前端 Zod props 顺序天然对齐，不用人工核对。
 
 ### 通过 REST 注册
 
@@ -223,12 +223,12 @@ Content-Type: application/json
 
 ### 直接嵌入 Java SDK
 
-如果你直接嵌入 Java Generation SDK，注册入口只有一个：`sdk.register(GenUIGeneration)`。扩展契约就是上面 `generate-component-spec` 导出的那段 JSON（也可以来自配置中心、文件或数据库），用你自己的 JSON 库反序列化成 `GenUIGeneration` 后直接注册，不必在 Java 里手搓嵌套 `Map`：
+如果你直接嵌入 Java Generation SDK，注册入口只有一个：`sdk.register(GenUIExtension)`。扩展契约就是上面 `generate-component-spec` 导出的那段 JSON（也可以来自配置中心、文件或数据库），用你自己的 JSON 库反序列化成 `GenUIExtension` 后直接注册，不必在 Java 里手搓嵌套 `Map`：
 
 ```java
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.cloudsop.genui.core.GenerationSdk;
-import com.huawei.cloudsop.genui.core.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -236,7 +236,7 @@ GenerationSdk sdk = GenerationSdk.create();
 
 // billing-extension.json 即上面 generate-component-spec 的导出产物
 String extensionJson = Files.readString(Path.of("billing-extension.json"));
-GenUIGeneration generation = new ObjectMapper().readValue(extensionJson, GenUIGeneration.class);
+GenUIExtension generation = new ObjectMapper().readValue(extensionJson, GenUIExtension.class);
 sdk.register(generation);
 ```
 

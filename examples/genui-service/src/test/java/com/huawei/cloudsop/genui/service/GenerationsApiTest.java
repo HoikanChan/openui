@@ -24,7 +24,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
-import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.GenerationSdk;
 import com.huawei.cloudsop.genui.core.contract.ToolAnnotations;
@@ -118,7 +118,7 @@ class GenerationsApiTest {
     assertEquals(viaSdk, viaRest, "REST-DTO 路径拼装产物必须与 SDK 直注册逐字节一致");
   }
 
-  private static GenUIGeneration sameExtensionViaSdk() {
+  private static GenUIExtension sameExtensionViaSdk() {
     LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
     components.put("BillCard", new ComponentPromptSpec("BillCard(title: string)", "Bill card"));
 
@@ -139,7 +139,7 @@ class GenerationsApiTest {
     outputSchema.put("type", "object");
     outputSchema.put("properties", outputProps);
 
-    return new GenUIGeneration(
+    return new GenUIExtension(
         "byte-align-ext",
         "ba-v1",
         components,
@@ -189,7 +189,7 @@ class GenerationsApiTest {
     assertEquals(viaSdk, viaRest, "propsSchema 形 REST 注册拼装产物须与 SDK 直注册逐字节一致");
   }
 
-  private static GenUIGeneration propsSchemaExtensionViaSdk() {
+  private static GenUIExtension propsSchemaExtensionViaSdk() {
     LinkedHashMap<String, Object> props = new LinkedHashMap<>();
     props.put("severity", Map.of("type", "string"));
     props.put("count", Map.of("type", "number"));
@@ -202,7 +202,7 @@ class GenerationsApiTest {
     LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
     components.put("AlarmBadge", new ComponentPromptSpec("alarm badge", propsSchema));
 
-    return new GenUIGeneration(
+    return new GenUIExtension(
         "props-ext", "ps-v1", components, List.of(), List.of(), List.of(), List.of());
   }
 

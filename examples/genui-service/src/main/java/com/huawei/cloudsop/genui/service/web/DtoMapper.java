@@ -1,7 +1,7 @@
 package com.huawei.cloudsop.genui.service.web;
 
 import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
-import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyMetadata;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
@@ -28,13 +28,13 @@ import java.util.List;
 final class DtoMapper {
   private DtoMapper() {}
 
-  static GenUIGeneration toGeneration(String extensionId, ExtensionRegistration dto) {
+  static GenUIExtension toGeneration(String extensionId, ExtensionRegistration dto) {
     LinkedHashMap<String, com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec> components =
         new LinkedHashMap<>();
     if (dto.getComponents() != null) {
       dto.getComponents().forEach((name, spec) -> components.put(name, toComponent(spec)));
     }
-    return new GenUIGeneration(
+    return new GenUIExtension(
         extensionId,
         dto.getVersion(),
         components,

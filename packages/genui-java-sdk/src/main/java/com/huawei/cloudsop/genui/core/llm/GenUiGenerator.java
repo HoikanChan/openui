@@ -4,7 +4,7 @@ import com.huawei.cloudsop.genui.core.GenerationSdk;
 import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
-import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.llm.extract.OpenuiCodeExtractor;
 import com.huawei.cloudsop.genui.core.llm.protocol.ChatCompletionRequest;
 import com.huawei.cloudsop.genui.core.llm.protocol.ChatCompletionResponse;
@@ -47,7 +47,7 @@ public final class GenUiGenerator {
     return new GenUiGenerator(GenerationSdk.create(), config, transport);
   }
 
-  public GenUiGenerator register(GenUIGeneration extension) {
+  public GenUiGenerator register(GenUIExtension extension) {
     sdk.register(extension);
     return this;
   }

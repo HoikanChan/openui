@@ -4,7 +4,7 @@ import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
-import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.contract.ToolAnnotations;
@@ -35,7 +35,7 @@ class PromptAssemblySnippetTest {
             List.of("Base rule"));
     GenerationSdk sdk = GenerationSdk.builder().baseContract(base).build();
     sdk.register(
-        new GenUIGeneration(
+        new GenUIExtension(
             "genA",
             "gen-v1",
             Map.of("BizCard", new ComponentPromptSpec("BizCard(title: string)", "Business card")),

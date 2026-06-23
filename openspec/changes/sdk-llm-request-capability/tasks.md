@@ -6,13 +6,13 @@
 ## 1. 既有 core 分层重组（前置：先于 llm 实现，使新代码直接 import 最终包）
 
 - [x] 1.1 在 `core/` 下建 `contract/` 与 `prompt/` 子包
-- [x] 1.2 移契约类到 `core/contract/`：`GenerationContract`、`GenerationContractLoader`、`BuiltinSpec`、`ComponentPromptSpec`、`ComponentPropsSchema`、`ComponentGroup`、`DataModelSpec`、`ToolSpec`、`ToolAnnotations`、`GenUIGeneration`（改 package 声明）
+- [x] 1.2 移契约类到 `core/contract/`：`GenerationContract`、`GenerationContractLoader`、`BuiltinSpec`、`ComponentPromptSpec`、`ComponentPropsSchema`、`ComponentGroup`、`DataModelSpec`、`ToolSpec`、`ToolAnnotations`、`GenUIExtension`（改 package 声明）
 - [x] 1.3 移 prompt 类到 `core/prompt/`：`PromptAssembler`、`GenUIPromptRequest`、`GenUIPromptAssemblyResult`、`GenUIPromptAssemblyMetadata`（改 package 声明）
 - [x] 1.4 `GenerationSdk`/`GenerationSdkException` 留 `core` 根；`Json` 留根并按需改 `public` 以供子包复用；调整其余跨包可见性（`ComponentPropsSchema` 等校验工具按需放开）
 - [x] 1.5 更新 SDK 内部全部 import；验证 `GenerationContractLoader` 仍能加载 `/openui/base-contract.json`（classpath 资源路径不随包移动）
 - [x] 1.6 更新既有测试（`PromptGoldenTest`、`GenerationSdkTest`、`JsonTest`、`PromptAssemblySnippetTest`、`SdkPromptMergeTest`、`BaseContractFixtureTest`、`PromptGoldenTest`）的 import 与包；golden 资源不变
 - [x] 1.7 更新 `examples/genui-service` 全部 import（`DtoMapper`、`GenerationAppService`、`GenerationsController`、`GenerationSummaryData`、相关测试）
-- [x] 1.8 术语收敛：`generationId`→`extensionId` 字段重命名 **已完成**（SDK 与 `examples/genui-service` 全仓 `generationId` 0 处）。类型名 `GenUIGeneration` 保留不动（类型级 `GenUIExtension` 重命名不在本次）
+- [x] 1.8 术语收敛：`generationId`→`extensionId` 字段重命名 **已完成**（SDK 与 `examples/genui-service` 全仓 `generationId` 0 处）。类型名已收敛为 `GenUIExtension`
 - [x] 1.9 编译 + 跑既有全部测试，确认重组与重命名**零行为变化**（golden 字节不变）
 
 ## 2. GenUiLlmConfig（配置）
@@ -62,7 +62,7 @@
 
 - [x] 9.1 实现私有映射：`UiGenerationRequest` → `GenUIPromptRequest`（`extensionId`→`extensionId`、`response`→`DataModelSpec`、`suggestion` 追加 `extraRules`、overlay tools/rules、透传 flags）
 - [x] 9.2 实现 `create()` / `create(config)`：内部自持 `GenerationSdk.create()` + `new RestfulLlmTransport(config)`，不对外暴露 `GenerationSdk`
-- [x] 9.3 实现 `withTransport(config, transport)`（高级/测试入口）+ `register(GenUIGeneration)`（委托内部 sdk，返回 `this` 链式）
+- [x] 9.3 实现 `withTransport(config, transport)`（高级/测试入口）+ `register(GenUIExtension)`（委托内部 sdk，返回 `this` 链式）
 - [x] 9.4 实现 `generate(UiGenerationRequest)`：映射 → `assemblePrompt` 作 system 消息 + `userInput`(+` /no_think`) 作 user 消息 → `ChatCompletionRequest.of(..., false)` → `post` → `ChatCompletionResponse.firstContent()` → `OpenuiCodeExtractor.extract`；`LlmTransportException` 包装为 `GenerationSdkException`
 - [x] 9.5 实现 `generateStream(UiGenerationRequest, sink)`：同 9.4 但 `stream=true` → `postStream` → `SseDeltaParser.parse(in, sink)` → 流尾 `extract` 返回；`IOException`/`LlmTransportException` 包装
 - [x] 9.6 单测（fake `LlmTransport`）：同一实例 `register` 后 `generate`、同步/流式端到端、extensionId 选中已注册扩展（system prompt 含其组件/工具）、response 进 DataModel、未注册 extensionId 回落 base contract、endpoint/model 配置生效、默认 `create` 不暴露 `GenerationSdk`/transport

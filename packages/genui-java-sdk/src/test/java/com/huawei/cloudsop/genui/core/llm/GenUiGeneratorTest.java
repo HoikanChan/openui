@@ -3,7 +3,7 @@ package com.huawei.cloudsop.genui.core.llm;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
-import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.contract.ToolSpec;
 import com.huawei.cloudsop.genui.core.llm.stream.SseFrames;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
@@ -131,8 +131,8 @@ class GenUiGeneratorTest {
         + "}}]}\n\n";
   }
 
-  private static GenUIGeneration extension() {
-    return new GenUIGeneration(
+  private static GenUIExtension extension() {
+    return new GenUIExtension(
         "alarm",
         "v1",
         Map.of("AlarmCard", new ComponentPromptSpec("AlarmCard(title: string)", "Alarm card")),

@@ -5,7 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public record GenUIGeneration(
+public record GenUIExtension(
     String extensionId,
     String version,
     Map<String, ComponentPromptSpec> components,
@@ -13,7 +13,7 @@ public record GenUIGeneration(
     List<ToolSpec> tools,
     List<String> examples,
     List<String> additionalRules) {
-  public GenUIGeneration {
+  public GenUIExtension {
     components =
         components == null
             ? Map.of()

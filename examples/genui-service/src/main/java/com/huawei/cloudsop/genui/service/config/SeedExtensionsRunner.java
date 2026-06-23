@@ -1,7 +1,7 @@
 package com.huawei.cloudsop.genui.service.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.service.application.GenerationAppService;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -39,7 +39,7 @@ public class SeedExtensionsRunner implements ApplicationRunner {
     Arrays.sort(resources, Comparator.comparing(Resource::getFilename));
     for (Resource resource : resources) {
       try (InputStream in = resource.getInputStream()) {
-        GenUIGeneration generation = objectMapper.readValue(in, GenUIGeneration.class);
+        GenUIExtension generation = objectMapper.readValue(in, GenUIExtension.class);
         appService.register(generation);
         log.info("[seed] registered preset generation '{}' from {}", generation.extensionId(), resource.getFilename());
       }

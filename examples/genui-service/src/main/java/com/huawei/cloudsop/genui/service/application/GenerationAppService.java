@@ -1,6 +1,6 @@
 package com.huawei.cloudsop.genui.service.application;
 
-import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.GenerationSdk;
@@ -19,13 +19,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class GenerationAppService {
   private final GenerationSdk sdk;
-  private final Map<String, GenUIGeneration> registered = new LinkedHashMap<>();
+  private final Map<String, GenUIExtension> registered = new LinkedHashMap<>();
 
   public GenerationAppService(GenerationSdk sdk) {
     this.sdk = sdk;
   }
 
-  public synchronized GenerationSummaryData register(GenUIGeneration generation) {
+  public synchronized GenerationSummaryData register(GenUIExtension generation) {
     sdk.register(generation);
     registered.put(generation.extensionId(), generation);
     return summarize(generation);
@@ -33,7 +33,7 @@ public class GenerationAppService {
 
   public synchronized List<GenerationSummaryData> listGenerations() {
     List<GenerationSummaryData> summaries = new ArrayList<>();
-    for (GenUIGeneration generation : registered.values()) {
+    for (GenUIExtension generation : registered.values()) {
       summaries.add(summarize(generation));
     }
     return summaries;
@@ -47,7 +47,7 @@ public class GenerationAppService {
     return sdk.assemblePrompt(request);
   }
 
-  private static GenerationSummaryData summarize(GenUIGeneration generation) {
+  private static GenerationSummaryData summarize(GenUIExtension generation) {
     return new GenerationSummaryData(
         generation.extensionId(),
         generation.version(),

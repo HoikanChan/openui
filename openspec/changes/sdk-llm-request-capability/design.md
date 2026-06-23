@@ -216,7 +216,7 @@ public final class GenUiGenerator {
     public static GenUiGenerator withTransport(GenUiLlmConfig config, LlmTransport transport);
 
     /** 注册扩展（同一实例，链式）。extensionId 即 extension.extensionId()。 */
-    public GenUiGenerator register(GenUIGeneration extension);
+    public GenUiGenerator register(GenUIExtension extension);
 
     /** 按 extensionId 选扩展 → assemblePrompt(系统提示) + userInput(用户消息) → post → 解析 → 抽取。 */
     public String generate(UiGenerationRequest request);
@@ -246,7 +246,7 @@ public final class GenUiGenerator {
 
 **extensionId 怎么对接**（贯穿注册与生成两端，同一标识符）：
 
-1. **注册端**（SYSTEM-DESIGN 第 8 节 `GenUIExtension`）：业务把扩展配置注册到**同一个门面实例** —— `genUiGenerator.register(GenUIGeneration)`（内部委托给自持的 `GenerationSdk`），其 `extensionId` 即 `extensionId`（GenUIGeneration 的构造可参考 `DtoMapper.toGeneration(extensionId, dto)`）。组件/工具/示例/规则随之入库。
+1. **注册端**（SYSTEM-DESIGN 第 8 节 `GenUIExtension`）：业务把扩展配置注册到**同一个门面实例** —— `genUiGenerator.register(GenUIExtension)`（内部委托给自持的 `GenerationSdk`），其 `extensionId` 即 `extensionId`（GenUIExtension 的构造可参考 `DtoMapper.toGeneration(extensionId, dto)`）。组件/工具/示例/规则随之入库。
 2. **生成端**（第 7 节 `UIRequestDetail`）：`generate` 把 `request.extensionId` 作为 `extensionId` 传入 `assemblePrompt`，于是该扩展的组件、工具、示例、规则被注入 system prompt（`assemblePrompt` 既有能力）。
 3. **术语**：SDK 内部字段名仍是 `extensionId`，SYSTEM-DESIGN 对外统一为 `extensionId`，二者是同一标识符——门面只做名称映射（与 `DtoMapper` 同一手法），本次不改 SDK 既有记录字段名（避免动 golden 测试与参考服务），术语彻底收敛列入 Open Questions。
 4. **未注册 extensionId**：`assemblePrompt` 按 SDK 语义静默回落 base contract；SYSTEM-DESIGN 6.2.4.6 要求的「未注册即报错、不静默回退」属服务层职责（SDK 无注册枚举能力，见 `GenerationAppService` 注释），门面不在 SDK 内 fail-loud。
@@ -307,7 +307,7 @@ packages/genui-java-sdk/
     │   ├── GenerationContract.java · GenerationContractLoader.java · BuiltinSpec.java
     │   ├── ComponentPromptSpec.java · ComponentPropsSchema.java · ComponentGroup.java
     │   ├── DataModelSpec.java · ToolSpec.java · ToolAnnotations.java
-    │   └── GenUIGeneration.java
+    │   └── GenUIExtension.java
     ├── prompt/                               # ← 既有类重组
     │   ├── PromptAssembler.java · GenUIPromptRequest.java
     │   └── GenUIPromptAssemblyResult.java · GenUIPromptAssemblyMetadata.java
@@ -367,7 +367,7 @@ src/test/java/com/huawei/cloudsop/genui/core/llm/
 ## Open Questions
 
 - **BSP restclient 的 Maven GAV** —— 已确认 `com.huawei.bsp:com.huawei.bsp.commonlib.resetclient:25.590.54`（"resetclient" 拼写实现时核对，疑似 restclient）。
-- **术语收敛 `extensionId` → `extensionId`**：SYSTEM-DESIGN 对外统一 `extensionId`，SDK 既有记录仍叫 `extensionId`。本次门面只做名称映射；是否在后续 change 里把 SDK 记录字段、`GenUIGeneration`、metadata 与参考服务一并重命名为 `extensionId` —— 单列。
+- **术语收敛 `extensionId`**：SYSTEM-DESIGN 对外统一 `extensionId`，SDK 记录字段与类型名已分别收敛到 `extensionId` 和 `GenUIExtension`；如后续还要调整 metadata 与参考服务命名，单列 change。
 - **`request`（上游入参）落点**：折入 user 消息上下文，还是并入 DataModel 描述？需对照真实样例确认对生成质量的影响。
 - `GenUiLlmConfig.endpoint` 当前按 BSP 相对 path 建模（host 由服务发现解析）；若需支持绝对 URL / 非 BSP 环境，是否要让 `LlmTransport` 抽象出 base URL —— 暂列后续。
 - **system vs 单 user 消息**：门面默认 system+user 角色分离；内部端点若对 system 角色行为不一致，是否需可切换的单消息拼接模式。

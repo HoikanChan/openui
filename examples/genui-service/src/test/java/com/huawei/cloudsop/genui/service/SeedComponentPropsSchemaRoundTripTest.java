@@ -12,11 +12,11 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
-import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 
 /**
  * 锁住 SeedExtensionsRunner 的绑定路径:种子经 {@code objectMapper.readValue(in,
- * GenUIGeneration.class)} 走 ComponentPromptSpec 规范构造器 (description, propsSchema)。
+ * GenUIExtension.class)} 走 ComponentPromptSpec 规范构造器 (description, propsSchema)。
  *
  * <p>历史隐患:种子若用旧 {@code signature} 形,该字段是未知属性被 Jackson 静默丢弃,组件在 prompt
  * 里没有 props(渲染成无参 {@code AlarmBadge()})。SeedRecoveryAfterRestartTest 只校验
@@ -31,11 +31,11 @@ class SeedComponentPropsSchemaRoundTripTest {
 
   @Test
   void seedAlarmBadgeRetainsPropsSchemaThroughJacksonBinding() throws Exception {
-    GenUIGeneration generation;
+    GenUIExtension generation;
     try (InputStream in =
         getClass().getResourceAsStream("/seed/noe-biz-components.json")) {
       assertNotNull(in, "种子资源 seed/noe-biz-components.json 缺失");
-      generation = om.readValue(in, GenUIGeneration.class);
+      generation = om.readValue(in, GenUIExtension.class);
     }
 
     ComponentPromptSpec alarmBadge = generation.components().get("AlarmBadge");

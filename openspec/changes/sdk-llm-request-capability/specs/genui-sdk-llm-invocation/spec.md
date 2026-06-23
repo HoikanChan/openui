@@ -102,7 +102,7 @@ SDK SHALL 提供生成入参 `UiGenerationRequest`，对齐 `UIRequestDetail` �
 
 ### Requirement: GenUiGenerator 编排门面
 
-SDK SHALL 提供 `GenUiGenerator`，**自持** `GenerationSdk`、`LlmTransport` 与抽取器，在**同一实例**上提供扩展注册 `register(GenUIGeneration)`（返回 `this`，委托内部 sdk）与生成 `generate(UiGenerationRequest)` / `generateStream(UiGenerationRequest, sink)`。`GenerationSdk` SHALL NOT 出现在默认创建 API 中（调用方不需手动构造或传入）。`generate` SHALL 依次执行 映射入参 → `assemblePrompt` → 构造请求体 → `post` → 响应解析 → 代码抽取，返回最终 openui-lang。`generateStream` SHALL 依次执行 映射入参 → `assemblePrompt` → 构造流式请求体 → `postStream` → SSE 拆帧（逐段回调）→ 代码抽取，返回累积全文经抽取后的最终代码。门面默认内部使用 `RestfulLlmTransport`，调用方零配置即用 `RestfulFactory`；`LlmTransport` 仅经可选高级入口 `withTransport` 注入。
+SDK SHALL 提供 `GenUiGenerator`，**自持** `GenerationSdk`、`LlmTransport` 与抽取器，在**同一实例**上提供扩展注册 `register(GenUIExtension)`（返回 `this`，委托内部 sdk）与生成 `generate(UiGenerationRequest)` / `generateStream(UiGenerationRequest, sink)`。`GenerationSdk` SHALL NOT 出现在默认创建 API 中（调用方不需手动构造或传入）。`generate` SHALL 依次执行 映射入参 → `assemblePrompt` → 构造请求体 → `post` → 响应解析 → 代码抽取，返回最终 openui-lang。`generateStream` SHALL 依次执行 映射入参 → `assemblePrompt` → 构造流式请求体 → `postStream` → SSE 拆帧（逐段回调）→ 代码抽取，返回累积全文经抽取后的最终代码。门面默认内部使用 `RestfulLlmTransport`，调用方零配置即用 `RestfulFactory`；`LlmTransport` 仅经可选高级入口 `withTransport` 注入。
 
 #### Scenario: 同步生成端到端
 - **WHEN** 以合法 `UiGenerationRequest` 调用 `generate`

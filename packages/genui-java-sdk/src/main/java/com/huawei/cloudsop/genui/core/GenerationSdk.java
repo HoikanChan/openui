@@ -3,7 +3,7 @@ package com.huawei.cloudsop.genui.core;
 import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentPropsSchema;
-import com.huawei.cloudsop.genui.core.contract.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.contract.ToolSpec;
@@ -20,7 +20,7 @@ import java.util.Set;
 
 public final class GenerationSdk {
   private final GenerationContract baseContract;
-  private final Map<String, GenUIGeneration> generations = new LinkedHashMap<>();
+  private final Map<String, GenUIExtension> generations = new LinkedHashMap<>();
 
   private GenerationSdk(GenerationContract baseContract) {
     if (baseContract == null) throw new GenerationSdkException("baseContract is required");
@@ -44,7 +44,7 @@ public final class GenerationSdk {
     return baseContract;
   }
 
-  public void register(GenUIGeneration generation) {
+  public void register(GenUIExtension generation) {
     if (generation == null) throw new GenerationSdkException("generation is required");
     if (generation.extensionId() == null || generation.extensionId().isBlank()) {
       throw new GenerationSdkException("generation.extensionId is required");
@@ -75,7 +75,7 @@ public final class GenerationSdk {
   public GenUIPromptAssemblyResult assemblePrompt(GenUIPromptRequest request) {
     GenUIPromptRequest effectiveRequest =
         request == null ? new GenUIPromptRequest(null, null, List.of(), List.of(), null, null, null, null) : request;
-    GenUIGeneration generation =
+    GenUIExtension generation =
         effectiveRequest.extensionId() == null ? null : generations.get(effectiveRequest.extensionId());
 
     LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();

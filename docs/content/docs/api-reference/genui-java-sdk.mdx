@@ -80,7 +80,7 @@ Register your business generation contract at startup:
 ```java
 import com.huawei.cloudsop.genui.core.ComponentGroup;
 import com.huawei.cloudsop.genui.core.ComponentPromptSpec;
-import com.huawei.cloudsop.genui.core.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.ToolAnnotations;
 import com.huawei.cloudsop.genui.core.ToolSpec;
 import java.util.LinkedHashMap;
@@ -88,7 +88,7 @@ import java.util.List;
 import java.util.Map;
 
 public final class BillingGeneration {
-  public static GenUIGeneration create() {
+  public static GenUIExtension create() {
     LinkedHashMap<String, Object> billProps = new LinkedHashMap<>();
     billProps.put("title", Map.of("type", "string"));
     billProps.put("amount", Map.of("type", "number"));
@@ -111,7 +111,7 @@ public final class BillingGeneration {
     inputSchema.put("properties", toolProps);
     inputSchema.put("required", List.of("period"));
 
-    return new GenUIGeneration(
+    return new GenUIExtension(
         "billing",
         "1.0.0",
         components,
@@ -166,7 +166,7 @@ Send `systemPrompt` as the system message when calling your LLM. The SDK does no
 A production service usually wraps the SDK in an application service. This wrapper lets you list registrations, fail fast on unknown `extensionId`, and log prompt metadata next to each LLM call.
 
 ```java
-import com.huawei.cloudsop.genui.core.GenUIGeneration;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.GenUIPromptAssemblyResult;
 import com.huawei.cloudsop.genui.core.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.GenerationSdk;
@@ -177,13 +177,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class GenuiPromptService {
   private final GenerationSdk sdk;
-  private final Map<String, GenUIGeneration> registered = new LinkedHashMap<>();
+  private final Map<String, GenUIExtension> registered = new LinkedHashMap<>();
 
   public GenuiPromptService(GenerationSdk sdk) {
     this.sdk = sdk;
   }
 
-  public synchronized void register(GenUIGeneration generation) {
+  public synchronized void register(GenUIExtension generation) {
     sdk.register(generation);
     registered.put(generation.extensionId(), generation);
   }
