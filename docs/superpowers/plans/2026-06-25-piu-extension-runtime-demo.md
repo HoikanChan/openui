@@ -15,11 +15,11 @@
 - Modify `packages/react-ui-dsl/src/context/piu.ts`
   - Add the `window.Prel` type so runtime initialization is typed.
 
-- Create `packages/react-ui-dsl/src/context/initPiuRuntime.ts`
-  - Minimal Piu listener initializer for `smart-canvas:extend`.
+- Modify `packages/react-ui-dsl/src/context/StreamDSLContext.tsx`
+  - Reuse and repair the existing `init()` Piu listener for `smart-canvas:extend`.
 
 - Modify `packages/react-ui-dsl/src/index.ts`
-  - Export `DSLRenderer` and `initPiuRuntime`.
+  - Export `DSLRenderer` and the existing `StreamDSLContext.init` as `initPiuRuntime`.
 
 - Create `examples/react-ui-dsl-demo/src/piu-extension-demo/AlarmExtension.tsx`
   - Define the business component, runtime extension, model-visible generation extension, default prompt, and demo data model.
@@ -41,11 +41,11 @@
 
 ---
 
-### Task 1: Export a Minimal Piu Runtime Initializer
+### Task 1: Repair and Export the Existing Piu Runtime Initializer
 
 **Files:**
 - Modify: `packages/react-ui-dsl/src/context/piu.ts`
-- Create: `packages/react-ui-dsl/src/context/initPiuRuntime.ts`
+- Modify: `packages/react-ui-dsl/src/context/StreamDSLContext.tsx`
 - Modify: `packages/react-ui-dsl/src/index.ts`
 
 - [ ] **Step 1: Add a typed `Prel` shape to `piu.ts`**
@@ -83,34 +83,53 @@ declare global {
 
 Keep the existing `flushCallbacks`, `initializePiu`, and `createPiu` logic unchanged.
 
-- [ ] **Step 2: Create `initPiuRuntime.ts`**
+- [ ] **Step 2: Repair `StreamDSLContext.tsx` imports and `init()`**
 
-Create `packages/react-ui-dsl/src/context/initPiuRuntime.ts`:
+In `packages/react-ui-dsl/src/context/StreamDSLContext.tsx`, replace the import block with:
 
-```ts
+```tsx
+// @ts-nocheck
+import { createContext, useContext, type PropsWithChildren } from "react";
+import { createParser } from "@openuidev/react-lang";
+import { CanvasStoreProvider } from "../canvas/CanvasStoreContext";
 import { canvasStore, type GenUIExtension } from "../canvas/canvasStore";
+import { dslLibrary } from "../genui-lib/dslLibrary";
 import { createPiu } from "./piu";
+```
 
-type PiuRuntimeSocket = {
-  attach?: (
-    thisObj: unknown,
-    handlers: Record<string, (...args: unknown[]) => void>,
-  ) => unknown;
-};
+Then replace the existing `init()` with this idempotent implementation:
 
+```tsx
 let initPromise: Promise<void> | null = null;
 
-export function initPiuRuntime(): Promise<void> {
+export async function init() {
   if (initPromise) {
     return initPromise;
   }
 
   initPromise = new Promise((resolve) => {
     createPiu((piu) => {
-      const socket = piu as PiuRuntimeSocket;
-      socket.attach?.(socket, {
+      piu.attach(piu, {
         "smart-canvas:extend": (extension: GenUIExtension) => {
           canvasStore.addExtension(extension);
+        },
+        "smart-canvas:addCards": (list: unknown) => {
+          const cards = list as AddCardItem[];
+          cards.forEach(({ data, title, id }) => {
+            canvasStore.addPreviewCard(
+              { title, children: parseDslToChildren(String(data)) },
+              id,
+            );
+          });
+        },
+        "smart-canvas:conversation": () => {
+          // Conversation forwarding is owned by host integrations.
+        },
+        "smart-canvas:removeCards": (list: unknown) => {
+          const ids = list as string[];
+          ids.forEach((id) => {
+            canvasStore.removePreviewTab(id);
+          });
         },
       });
       resolve();
@@ -121,13 +140,15 @@ export function initPiuRuntime(): Promise<void> {
 }
 ```
 
+This keeps the existing `init()` API, fixes the stale imports, removes the missing `ExpandPanel` dependency, and avoids referencing `StreamDSLContext` component props from outside the component scope.
+
 - [ ] **Step 3: Export the demo-facing APIs**
 
 Append these exports to `packages/react-ui-dsl/src/index.ts`:
 
 ```ts
 export { default as DSLRenderer } from "./DSLRenderer";
-export { initPiuRuntime } from "./context/initPiuRuntime";
+export { init as initPiuRuntime } from "./context/StreamDSLContext";
 ```
 
 - [ ] **Step 4: Run a type-oriented smoke command**
@@ -143,7 +164,7 @@ Expected: it may surface pre-existing unrelated errors in the current Piu branch
 - [ ] **Step 5: Commit task 1**
 
 ```bash
-git add packages/react-ui-dsl/src/context/piu.ts packages/react-ui-dsl/src/context/initPiuRuntime.ts packages/react-ui-dsl/src/index.ts
+git add packages/react-ui-dsl/src/context/piu.ts packages/react-ui-dsl/src/context/StreamDSLContext.tsx packages/react-ui-dsl/src/index.ts
 git commit -m "feat: expose piu runtime extension initializer"
 ```
 
