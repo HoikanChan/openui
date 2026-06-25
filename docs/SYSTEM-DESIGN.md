@@ -169,7 +169,7 @@ apiDoc：api文档，可选。
 | --- | --- | --- |
 | 1 定义拓展能力 | 业务方前端 | 用 defineComponent 写清组件名、参数、说明和渲染代码；按 MCP Tool 兼容结构写清工具名、说明和输入输出 schema（见 6.2.4.5） |
 | 2 注册前端组件和工具 | 业务方前端Piu | 给DSLEngine传入待拉起的业务piu，进行自动拉起。业务piu待拉起后，通过piu事件给DSLEngine注册前端组件和工具 |
-| 3 导出组件规格 | 前端工具链 | 调用 DSLEngine 暴露的 `generateComponentSpecs`，从多个前端组件定义生成 `components` JSON 片段（见 6.2.4.5） |
+| 3 导出 Extension JSON | 前端工具链 | 用 CLI（`@openuidev/cli`）的 `generate-extension` 命令，从扩展定义文件编译生成可注册 Extension JSON（见 6.2.4.5） |
 | 4 注册扩展配置 | 业务方 | 业务方维护完整扩展配置 JSON，并把组件规格导出结果填入 `components` 后，通过 `/extensions` POST 接口注册（业务方直连，不经 AICOService） |
 | 5 发起生成 | Skill / AICOService | 生成请求带上 extensionId 选好扩展配置，需要时再临时附带一次性工具或规则 |
 | 6 渲染 | DSLEngine | 按组件名和工具名，找到对应注册好的拓展内容 |
@@ -274,16 +274,19 @@ type RenderStreamPayload =
 
 Extension 注册接口用于注册 UI 生成扩展配置。业务方可以通过 `extensionId` 把组件、工具、Extension Template、示例和规则登记为一组可复用的生成扩展配置，后续 UI 生成请求只需携带该 `extensionId` 即可使用这些拓展能力。
 
-MVP 阶段，`GenUIExtension` 注册 JSON 由业务方维护。DSLEngine 侧仅提供 `generateComponentSpecs`，用于从前端组件定义导出 `components` 字段所需的组件规格 JSON，避免业务方手写组件名、组件说明和 props 约束。`extensionId`、`version`、`sourcePiu`、`templates`、`componentGroups`、`tools`、`examples` 和 `additionalRules` 仍由业务方按业务场景声明式填写。
+MVP 阶段，`GenUIExtension` 注册 JSON 由业务方维护。DSLEngine 工具链通过 CLI（`@openuidev/cli`）的 `generate-extension` 命令，从扩展定义文件编译导出可注册 Extension JSON：其中 `components` 由前端组件定义编译而来，避免业务方手写组件名、组件说明和 props 约束。`extensionId`、`version`、`sourcePiu`、`templates`、`componentGroups`、`tools`、`examples` 和 `additionalRules` 由业务方在扩展定义对象中按业务场景声明式填写，CLI 原样透传。
 
-`sourcePiu` 可牵引 DSLEngine 拉起业务 PIU；业务 PIU 拉起后通过 PIU 事件向 DSLEngine 注册拓展组件和工具的前端实现。业务方可将同一批前端组件定义传给 `generateComponentSpecs`，生成多个组件组成的 `components` JSON 片段，并填入 Extension 注册接口请求体。
+`sourcePiu` 可牵引 DSLEngine 拉起业务 PIU；业务 PIU 拉起后通过 PIU 事件向 DSLEngine 注册拓展组件和工具的前端实现。业务方把扩展定义对象（含同一批前端组件定义）用 `generate-extension` 编译成 Extension JSON，直接作为 Extension 注册接口请求体。
 
 注册体中的 `templates` 表示业务手写的 Extension Template，不表示 SmartCanvasService 在线固化的 Generated Template Cache。Extension Template 是业务配置，Generated Template Cache 是运行期缓存产物，两者使用不同存储空间和失效策略。
 
-**拓展组件规格导出方式（generateComponentSpecs）**：
+**拓展组件规格导出方式（CLI `generate-extension`）**：
+
+业务方把扩展写成一个完整 extension 定义文件，再用 CLI 把其中的真实组件编译成 Extension JSON：
 
 ```ts
-import { defineComponent, generateComponentSpecs } from "@openuidev/react-ui-dsl";
+// alarm-extension.ts
+import { defineComponent } from "@openuidev/react-ui-dsl";
 import { z } from "zod";
 
 const AlarmSeverityTag = defineComponent({
@@ -307,13 +310,18 @@ const AlarmStatusCard = defineComponent({
   component: AlarmStatusCardView
 });
 
-export const alarmComponentSpecs = generateComponentSpecs([
-  AlarmSeverityTag,
-  AlarmStatusCard
-]);
+export const alarmExtension = {
+  extensionId: "alarm",
+  version: "1.0.0",
+  components: [AlarmSeverityTag, AlarmStatusCard]
+};
 ```
 
-`generateComponentSpecs` 的输出是一个以组件名为 key 的 JSON 对象，可直接作为 `GenUIExtension.components` 字段值使用。输出内容只包含模型生成和服务侧校验所需的组件规格，不包含 React 渲染实现。
+```bash
+npx @openuidev/cli@latest generate-extension ./alarm-extension.ts --out alarm-extension.json
+```
+
+`generate-extension` 输出一个可直接注册的 Extension JSON。其中 `components` 是以组件名为 key 的对象，由真实组件编译而来，只包含模型生成和服务侧校验所需的组件规格，不包含 React 渲染实现：
 
 ```json
 {
@@ -346,7 +354,7 @@ export const alarmComponentSpecs = generateComponentSpecs([
 }
 ```
 
-`generateComponentSpecs` 支持一次导出多个组件。生成时应校验组件名重复、props schema 可序列化和组件描述是否为空；校验失败时导出失败，业务方修复组件定义后重新导出。
+`generate-extension` 一次编译扩展定义对象里的多个组件。导出时应校验组件名重复、props schema 可序列化和组件描述是否为空；校验失败时导出失败，业务方修复组件定义后重新导出。
 
 Component Contract 统一由组件说明和 `propsSchema` 表达，不再以 prompt-only `signature` 作为核心契约。`propsSchema` 是 OpenUI 受控 JSON Schema 子集，用于注册期基础校验和生成后组件 props 校验，不要求支持完整 JSON Schema。Stream IR 组件调用仍采用位置参数；`propsSchema.properties` 的声明顺序即位置参数顺序，所有 required 参数必须排在 optional 参数之前。注册期应拒绝不满足该顺序约束的组件契约。
 
@@ -356,7 +364,7 @@ Component Contract 统一由组件说明和 `propsSchema` 表达，不再以 pro
 |---|---|
 | 接口名称 | `POST /rest/smartcanvas/v1/extensions` |
 | 功能 | 注册或覆盖 UI 生成扩展配置 |
-| 请求体 | `GenUIExtension`，业务方维护；其中 `components` 可由 DSLEngine 的 `generateComponentSpecs` 导出 |
+| 请求体 | `GenUIExtension`，业务方维护；其中 `components` 由 CLI `generate-extension` 编译导出 |
 | 调用方 | 业务方或发布流水线直连，不经 AICOService |
 | 生效方式 | 注册成功后，生成请求通过 `extensionId` 选择该扩展配置 |
 | 返回类型 | JSON 注册摘要 |
@@ -369,7 +377,7 @@ Component Contract 统一由组件说明和 `propsSchema` 表达，不再以 pro
 | `version` | 必选 | 扩展配置版本。组件、工具、模板、示例或规则发生变化时需要更新。 | string，长度 1-64；可使用字母、数字、`.`、`-`、`_`；示例：`1.0.0`、`2026.06.1`。 |
 | `sourcePiu` | 可选 | 需要拉起的业务 PIU 列表。DSLEngine 根据该列表拉起业务 PIU；业务 PIU 通过 PIU 事件注册拓展对应的前端实现。 | array，元素为 string；建议不超过 30 个。 |
 | `templates` | 可选 | 可复用 UI 模板集合。key 为模板 ID，对应生成接口的 `templateId`；value 为模板内容，通常是 Stream IR 模板文本。没有模板沉淀时可不传。 | object，JSON 对象；key 为 string；value 为 string；建议不超过 256 KB。 |
-| `components` | 可选 | 拓展组件描述，包含组件说明和 props 约束。MVP 阶段由 DSLEngine `generateComponentSpecs` 从多个前端组件定义导出，见上文“拓展组件规格导出方式”。没有拓展组件时可不传。 | object，JSON 对象；key 为组件名；建议不超过 30 个组件。 |
+| `components` | 可选 | 拓展组件描述，包含组件说明和 props 约束。MVP 阶段由 CLI `generate-extension` 从扩展定义文件编译导出，见上文“拓展组件规格导出方式”。没有拓展组件时可不传。 | object，JSON 对象；key 为组件名；建议不超过 30 个组件。 |
 | `componentGroups` | 可选 | 组件分组和使用说明，用于提示词组织；没有分组诉求时可不传。 | array，数组项为 JSON 对象。 |
 | `tools` | 可选 | 拓展工具描述，供 Query/Mutation 或 Action 调用；采用 MCP Tool 兼容结构，见上文“拓展工具定义”。没有拓展工具时可不传。 | array，数组项为 JSON 对象；建议不超过 30 个工具。 |
 | `examples` | 可选 | 生成示例，用于牵引模型稳定使用拓展组件和工具；没有示例时可不传。 | array，元素为 string；单条建议不超过 4096 字符。 |
@@ -633,10 +641,11 @@ react-ui-dsl 负责向生成侧和渲染侧提供一致的组件能力，包括�
 
 后续扩展组件通过组件描述和实现注册进入组件库，供 prompt 注入、类型校验和运行时渲染使用。
 
-组件定义采用 `defineComponent` 描述组件名称、props schema、组件说明和 React 渲染实现；内置组件集合通过 `createLibrary` 汇总后提供给 Renderer 和 prompt 生成流程。扩展配置不要求业务方先创建完整 `Library`，MVP 阶段由 `generateComponentSpecs` 从多个拓展组件定义中导出 `components` JSON 片段，其他注册字段由业务方维护。示例如下：
+组件定义采用 `defineComponent` 描述组件名称、props schema、组件说明和 React 渲染实现；内置组件集合通过 `createLibrary` 汇总后提供给 Renderer 和 prompt 生成流程。扩展配置不要求业务方先创建完整 `Library`，MVP 阶段把扩展写成一个完整 extension 定义对象，由 CLI `generate-extension` 编译导出 Extension JSON，其余注册字段在该对象中声明、由 CLI 透传。示例如下：
 
 ```ts
-import { createLibrary, defineComponent, generateComponentSpecs } from "@openuidev/react-ui-dsl";
+// button-extension.ts
+import { defineComponent } from "@openuidev/react-ui-dsl";
 import { z } from "zod";
 
 const Button = defineComponent({
@@ -649,17 +658,21 @@ const Button = defineComponent({
   component: ({ props }) => <ButtonView text={props.text} type={props.type} />
 });
 
-export const library = createLibrary({
-  root: "VLayout",
+// 同一个对象可传给 dslLibrary.extend(buttonExtension) 用于前端渲染
+export const buttonExtension = {
+  extensionId: "button-pack",
+  version: "1.0.0",
   components: [Button]
-});
-
-export const componentSpecs = generateComponentSpecs([Button]);
+};
 ```
 
-`library` 是 Renderer 的运行时组件库，也是生成 prompt 和 JSON Schema 的来源。`componentSpecs` 是可填入 `GenUIExtension.components` 的组件规格 JSON，不包含 React 渲染实现。SmartCanvasService 在拼装 prompt 时应使用与前端组件定义同源的组件描述；前端 Renderer 在渲染时根据 Stream IR 中的组件名查找 library 或 PIU 注册的组件实现。
+```bash
+npx @openuidev/cli@latest generate-extension ./button-extension.ts --out button-extension.json
+```
 
-MVP 阶段仅 `components` schema 由 DSLEngine 提供的 `generateComponentSpecs` 导出：从 `defineComponent` 的 props（zod）推导组件约束和模型可见描述，序列化为组件名到组件规格的 JSON 对象。`tools`、`templates`、`componentGroups`、`examples` 和 `additionalRules` 由业务方在 `GenUIExtension` 注册 JSON 中维护；其中 `tools` 采用 MCP Tool 兼容结构，便于后续映射到 MCP `tools/call` 或现有 PIU/toolProvider 执行通道。业务方把 `components` 导出结果填入注册 JSON 后，通过 `POST /rest/smartcanvas/v1/extensions` 注册。
+同一个 `buttonExtension` 对象既可传给 `dslLibrary.extend(...)` 得到 Renderer 的运行时组件库（也是生成 prompt 和 JSON Schema 的来源），又可用 CLI 编译成可注册的 Extension JSON，其 `components` 不包含 React 渲染实现。SmartCanvasService 在拼装 prompt 时应使用与前端组件定义同源的组件描述；前端 Renderer 在渲染时根据 Stream IR 中的组件名查找 library 或 PIU 注册的组件实现。
+
+MVP 阶段仅 `components` schema 由 CLI `generate-extension` 编译导出：从 `defineComponent` 的 props（zod）推导组件约束和模型可见描述，序列化为组件名到组件规格的 JSON 对象。`tools`、`templates`、`componentGroups`、`examples` 和 `additionalRules` 在扩展定义对象中声明、由 CLI 原样透传；其中 `tools` 采用 MCP Tool 兼容结构，便于后续映射到 MCP `tools/call` 或现有 PIU/toolProvider 执行通道。业务方把导出的 Extension JSON 通过 `POST /rest/smartcanvas/v1/extensions` 注册。
 
 **3. eview 适配**
 

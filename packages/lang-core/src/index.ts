@@ -1,5 +1,5 @@
 // ── Library (framework-generic) ──
-export { createLibrary, defineComponent, generateComponentSpecs } from "./library";
+export { createLibrary, defineComponent } from "./library";
 export type {
   ComponentGroup,
   ComponentRenderProps,

@@ -1,7 +1,6 @@
 import {
   createLibrary as coreCreateLibrary,
   defineComponent as coreDefineComponent,
-  generateComponentSpecs,
   type DefinedComponent as CoreDefinedComponent,
   type Library as CoreLibrary,
   type LibraryDefinition as CoreLibraryDefinition,
@@ -22,8 +21,6 @@ export type {
   SubComponentOf,
   ToolDescriptor,
 } from "@openuidev/lang-core";
-
-export { generateComponentSpecs };
 
 // ─── React-specific types ───────────────────────────────────────────────────
 

@@ -82,11 +82,11 @@ export async function queryOrderSummary(args: Record<string, unknown>) {
 ### 第 3 步：组装"两半"
 
 把组件、工具拼成两个对象：`runtimeExtension`（前端运行时）和
-`generationExtension`（模型可见契约）。注意 `generateComponentSpecs` 会自动把组件
-转成模型可读的契约，你不用手写 props 描述。
+`generationExtension`（模型可见契约）。注意 `createLibrary(...).toSpec().components`
+会自动把组件转成模型可读的契约，你不用手写 props 描述。
 
 ```ts
-import { generateComponentSpecs } from "@openuidev/react-ui-dsl";
+import { createLibrary } from "@openuidev/react-ui-dsl";
 
 export const ORDER_EXTENSION_ID = "order-runtime-demo"; // 全局唯一 id
 
@@ -113,7 +113,7 @@ export const runtimeExtension = {
 export const generationExtension = {
   extensionId: ORDER_EXTENSION_ID,
   version: "1.0.0",
-  components: generateComponentSpecs([OrderSummaryCard]),
+  components: createLibrary({ components: [OrderSummaryCard] }).toSpec().components,
   tools: runtimeExtension.tools,
   examples: [
     'orderData = Query("queryOrderSummary", {region: "全国"}, {total: 0, today: 0})\n' +

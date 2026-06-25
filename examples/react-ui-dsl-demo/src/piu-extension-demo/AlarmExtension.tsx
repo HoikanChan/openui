@@ -1,4 +1,4 @@
-import { defineComponent, generateComponentSpecs } from "@openuidev/react-ui-dsl";
+import { createLibrary, defineComponent } from "@openuidev/react-ui-dsl";
 import { z } from "zod";
 
 export const ALARM_EXTENSION_ID = "piu-alarm-runtime-demo";
@@ -123,7 +123,7 @@ export const runtimeExtension = {
 export const generationExtension = {
   extensionId: ALARM_EXTENSION_ID,
   version: "1.0.0",
-  components: generateComponentSpecs([AlarmSummaryCard]),
+  components: createLibrary({ components: [AlarmSummaryCard] }).toSpec().components,
   componentGroups: [
     {
       name: "Alarm Operations",
