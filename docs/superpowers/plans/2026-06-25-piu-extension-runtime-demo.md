@@ -19,7 +19,7 @@
   - Reuse and repair the existing `init()` Piu listener for `smart-canvas:extend`.
 
 - Modify `packages/react-ui-dsl/src/index.ts`
-  - Export `DSLRenderer` and the existing `StreamDSLContext.init` as `initPiuRuntime`.
+  - Export `DSLRenderer` and the existing `StreamDSLContext.init` as `initDslPiu`.
 
 - Create `examples/react-ui-dsl-demo/src/piu-extension-demo/AlarmExtension.tsx`
   - Define the business component, runtime extension, model-visible generation extension, default prompt, and demo data model.
@@ -148,7 +148,7 @@ Append these exports to `packages/react-ui-dsl/src/index.ts`:
 
 ```ts
 export { default as DSLRenderer } from "./DSLRenderer";
-export { init as initPiuRuntime } from "./context/StreamDSLContext";
+export { init as initDslPiu } from "./context/StreamDSLContext";
 ```
 
 - [ ] **Step 4: Run a type-oriented smoke command**
@@ -159,7 +159,7 @@ Run:
 pnpm --filter @openuidev/react-ui-dsl typecheck
 ```
 
-Expected: it may surface pre-existing unrelated errors in the current Piu branch, but it must not report missing exports for `DSLRenderer` or `initPiuRuntime`.
+Expected: it may surface pre-existing unrelated errors in the current Piu branch, but it must not report missing exports for `DSLRenderer` or `initDslPiu`.
 
 - [ ] **Step 5: Commit task 1**
 
@@ -431,7 +431,7 @@ Create `examples/react-ui-dsl-demo/src/PiuExtensionDemo.tsx`:
 
 ```tsx
 import Prel from "../../../mock/febs/prel-mock.mjs";
-import { DSLRenderer, canvasStore, initPiuRuntime } from "@openuidev/react-ui-dsl";
+import { DSLRenderer, canvasStore, initDslPiu } from "@openuidev/react-ui-dsl";
 import { useEffect, useMemo, useState } from "react";
 import { GENERATE_URL, registerGeneration } from "./genuiService";
 import {
@@ -488,7 +488,7 @@ async function bootPiuRuntime() {
     },
   });
 
-  await initPiuRuntime();
+  await initDslPiu();
 
   Prel.define({
     "alarm-business-piu": {

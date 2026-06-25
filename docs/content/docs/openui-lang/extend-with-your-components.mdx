@@ -1,0 +1,314 @@
+---
+title: 用你自己的组件扩展 OpenUI
+description: 从零教 OpenUI 用上你自己写的组件和数据，照着做就能完成一次完整扩展。
+---
+
+OpenUI 内置了一套通用组件，但真实业务里你总有自己的卡片、图表、表单。这篇文档教你把**你自己的组件**交给 OpenUI：让模型在生成界面时会用它，让页面真的能把它画出来，还能填上真实数据。
+
+读完你能独立完成一次扩展，不需要理解 OpenUI 的内部实现。
+
+## 成品长什么样
+
+我们全程用一个例子：一张「区域告警概览卡片」`AlarmSummaryCard`，配一个能拉取实时告警数量的取数动作 `queryAlarmSummary`。最终效果是——你在输入框写「看下华东一区最近 1 小时的告警」，模型生成的界面里就出现这张卡片，并显示真实的告警数字。
+
+## 核心思路：一个扩展，要注册两次
+
+这是整篇文档最重要的一句话。你的组件要在**两个地方**登记，而且两边用的名字必须完全一致：
+
+1. **后端注册**——让模型*知道*这个组件和取数动作存在。不注册，模型根本不会生成它。
+2. **前端注册**——让 `Renderer` 真的*画得出来*，让 `toolProvider` 真的*跑得起来*。不注册，模型生成了也只是白屏。
+
+```text
+你的组件 + toolProvider
+        │
+        ├──► 后端注册 ──► 写进 System Prompt ──► 模型知道「可以用 AlarmSummaryCard」
+        │
+        └──► 前端注册 ──► 交给 Renderer 的 Library / toolProvider ──► 页面画得出、数据填得上
+```
+
+下面六步走完，两侧就都注册好了。
+
+## 开始之前
+
+你需要：
+
+- 一个已经接入 OpenUI 的前端项目（页面里用 `Renderer` 渲染模型返回的内容）。
+- 一个能调用大模型的后端服务（接收用户输入、返回生成结果）。
+- 本机有 Node 和 `npx`。
+
+你**不需要**：手写任何配置文件、读懂后端怎么拼 prompt——这些都有命令帮你做。
+
+## 第一步：写你的组件
+
+用 `defineComponent` 定义组件：给它起个**名字**、写一句**说明**、声明它接收哪些**参数**。
+
+```tsx
+import { defineComponent } from "@openuidev/react-ui-dsl";
+import { z } from "zod";
+
+export const AlarmSummaryCard = defineComponent({
+  name: "AlarmSummaryCard",
+  // 这句说明会被模型读到，要写清楚「什么时候该用它」
+  description: "告警汇总卡片，用于展示一个区域内的总告警数和 critical/major/minor 三类告警数量。",
+  props: z.object({
+    title: z.string(),
+    total: z.number(),
+    critical: z.number(),
+    major: z.number(),
+    minor: z.number(),
+  }),
+  component: ({ props }) => (
+    <section style={{ border: "1px solid #d9e2ec", borderRadius: 8, padding: 18, background: "#fff" }}>
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <h2 style={{ margin: 0, fontSize: 20 }}>{props.title}</h2>
+        <strong style={{ fontSize: 34 }}>{props.total}</strong>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginTop: 16 }}>
+        <div style={{ color: "#cf1322" }}>Critical {props.critical}</div>
+        <div style={{ color: "#d46b08" }}>Major {props.major}</div>
+        <div style={{ color: "#ad8b00" }}>Minor {props.minor}</div>
+      </div>
+    </section>
+  ),
+});
+```
+
+写组件时记住三条，它们直接影响模型用得对不对：
+
+- **名字要固定。** 前后端两次注册、模型输出都靠这个名字对齐，定了就别改。
+- **必填参数放前面，可选参数放后面。** 模型是按顺序填参数的，顺序错了画面就错。
+- **说明写给模型看。** 不要只写「告警卡片」，要写清楚「在什么场景下用它」。
+
+## 第二步（可选）：加一个取数动作
+
+如果你的组件需要真实数据，就写一个取数动作——本质上就是一个返回数据的异步函数。这里我们模拟查询某个区域的告警数量：
+
+```ts
+export async function queryAlarmSummary(args: Record<string, unknown>) {
+  const region = typeof args.region === "string" ? args.region : "华东一区";
+  const window = typeof args.window === "string" ? args.window : "1h";
+
+  // 真实项目里这里换成你的后端查询
+  return { region, window, total: 42, critical: 7, major: 15, minor: 20 };
+}
+```
+
+这个函数稍后会通过 `toolProvider` 交给前端，模型在生成里需要数据时就会调用它。
+
+## 第三步：导出扩展配置
+
+把组件和取数动作的「说明」整理成一个对象——这就是要给后端用的**扩展配置**。注意 `components` 里直接放你**真实的组件**，命令会自动把它转成模型能读懂的描述，你不用手写参数表。
+
+```ts
+// alarm-extension.ts
+import { AlarmSummaryCard, queryAlarmSummary } from "./alarm";
+
+export const alarmExtension = {
+  extensionId: "alarm",     // 这套扩展的唯一标识，后端和前端要用同一个值
+  version: "1.0.0",
+  components: [AlarmSummaryCard],
+  componentGroups: [
+    {
+      name: "Alarm",
+      components: ["AlarmSummaryCard"],
+      notes: ["告警概览场景优先使用 AlarmSummaryCard。"],
+    },
+  ],
+  tools: [
+    {
+      name: "queryAlarmSummary",
+      description: "查询指定区域和时间窗口内的告警汇总数量。",
+      inputSchema: {
+        type: "object",
+        properties: { region: { type: "string" }, window: { type: "string" } },
+        required: ["region", "window"],
+      },
+      annotations: { readOnlyHint: true },
+    },
+  ],
+  examples: [
+    'alarmData = Query("queryAlarmSummary", {region: "华东一区", window: "1h"}, {total: 0, critical: 0, major: 0, minor: 0})\nroot = AlarmSummaryCard("华东一区告警概览", alarmData.total, alarmData.critical, alarmData.major, alarmData.minor)',
+  ],
+};
+```
+
+然后用 CLI 把它导出成一份 JSON：
+
+```bash
+npx @openuidev/cli@latest generate-extension ./alarm-extension.ts --out alarm-extension.json
+```
+
+命令会做两件事：
+
+- 把 `components` 里的真实组件**自动编译**成模型能读懂的参数说明（字段顺序和你写的 Zod 参数完全一致，不用人工核对）。
+- 校验「必填参数排在可选参数前面」，不通过会直接报错——这能帮你在上线前发现参数顺序问题。
+
+导出的 `alarm-extension.json` 大致长这样，它就是下一步要交给后端的东西：
+
+```json
+{
+  "extensionId": "alarm",
+  "version": "1.0.0",
+  "components": {
+    "AlarmSummaryCard": {
+      "description": "告警汇总卡片，用于展示一个区域内的总告警数和 critical/major/minor 三类告警数量。",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "total": { "type": "number" },
+          "critical": { "type": "number" },
+          "major": { "type": "number" },
+          "minor": { "type": "number" }
+        },
+        "required": ["title", "total", "critical", "major", "minor"]
+      }
+    }
+  },
+  "componentGroups": [
+    { "name": "Alarm", "components": ["AlarmSummaryCard"], "notes": ["告警概览场景优先使用 AlarmSummaryCard。"] }
+  ],
+  "tools": [
+    {
+      "name": "queryAlarmSummary",
+      "description": "查询指定区域和时间窗口内的告警汇总数量。",
+      "inputSchema": {
+        "type": "object",
+        "properties": { "region": { "type": "string" }, "window": { "type": "string" } },
+        "required": ["region", "window"]
+      },
+      "annotations": { "readOnlyHint": true }
+    }
+  ],
+  "examples": [
+    "alarmData = Query(\"queryAlarmSummary\", {region: \"华东一区\", window: \"1h\"}, {total: 0, critical: 0, major: 0, minor: 0})\nroot = AlarmSummaryCard(\"华东一区告警概览\", alarmData.total, alarmData.critical, alarmData.major, alarmData.minor)"
+  ]
+}
+```
+
+> 把这份 JSON 当成产物管理就好——它可以放进配置中心、文件或数据库，每次组件或取数动作变化时重新导出一次。
+
+## 第四步：后端注册（让模型知道）
+
+OpenUI 的后端能力来自 GenUI SDK。推荐做法是：**你自己用 SDK 封装一个服务**，对外提供一个「注册接口」，把上一步的 JSON 喂进去；之后每次生成时带上 `extensionId`，模型就会用上你的组件。
+
+注册接口的核心只有一行——把 JSON 读出来交给 SDK：
+
+```java
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
+import com.huawei.cloudsop.genui.core.llm.GenUiGenerator;
+
+// generator 是你服务里的单例
+public void register(String extensionJson) throws Exception {
+  GenUIExtension extension = new ObjectMapper().readValue(extensionJson, GenUIExtension.class);
+  generator.register(extension);
+}
+```
+
+注册一次之后，生成时带上同一个 `extensionId`：
+
+```java
+import com.huawei.cloudsop.genui.core.llm.UiGenerationRequest;
+
+UiGenerationRequest request =
+    UiGenerationRequest.builder()
+        .extensionId("alarm")
+        .userInput("看下华东一区最近 1 小时的告警")
+        .build();
+
+String openuiLang = generator.generate(request);
+```
+
+把这个 `register` 包成一个 HTTP 接口（比如 `PUT /extensions/{id}`），你的发布流程就能在服务启动时把 `alarm-extension.json` 注册进去。怎么从零搭这个服务（引依赖、建 `GenUiGenerator` 单例、流式返回等），见《GenUI Java SDK 集成指南》，这里不再展开。
+
+到这一步，模型已经「知道」有 `AlarmSummaryCard` 这个组件和 `queryAlarmSummary` 这个动作了。但页面还画不出来——因为前端还没注册。
+
+## 第五步：前端注册（让页面画得出来）
+
+前端这边，你要把**组件的真实实现**和**取数动作的真实函数**交给 `Renderer`。OpenUI 通过 Piu 来做这件事：你的业务 Piu 启动后，发一个 `smart-canvas:extend` 事件，把扩展实现登记给 `Renderer` 用的 `Library` 和 `toolProvider`。
+
+先准备好要登记的内容——注意 `extensionId` 和组件名必须和后端那份**一模一样**：
+
+```ts
+import { AlarmSummaryCard, queryAlarmSummary } from "./alarm";
+
+export const alarmRuntime = {
+  extensionId: "alarm",
+  components: [AlarmSummaryCard],   // 真实组件实现
+  toolProvider: { queryAlarmSummary }, // 真实取数函数，键名 = tool 名
+};
+```
+
+在你的业务 Piu 里把它发出去：
+
+```js
+// alarm-business-piu.js —— 你的业务 Piu
+Prel.start("alarm-business-piu", "1.0.0", ["session", "locale"], function (socket) {
+  socket.emit("smart-canvas:extend", alarmRuntime);
+});
+```
+
+承载页面这边只做两件事：启动一次 OpenUI 的运行时（它会监听上面的 `smart-canvas:extend`），然后用 `DSLRenderer` 渲染模型返回的内容。`DSLRenderer` 会自动把登记进来的组件并进 `Library`、把取数函数接到 `toolProvider`：
+
+```tsx
+import { DSLRenderer, initDslPiu } from "@openuidev/react-ui-dsl";
+import { useEffect, useState } from "react";
+
+export function Preview({ dsl }: { dsl: string }) {
+  const [ready, setReady] = useState(false);
+
+  // 整个页面生命周期内只启动一次
+  useEffect(() => {
+    initDslPiu().then(() => setReady(true));
+  }, []);
+
+  if (!ready) return <div>初始化中…</div>;
+  return <DSLRenderer response={dsl} />;
+}
+```
+
+现在两侧都注册好了，名字也对齐了。
+
+## 第六步：跑起来看效果
+
+把流程串起来：用户输入 → 后端带 `extensionId="alarm"` 生成 → 前端 `DSLRenderer` 渲染。模型生成的内容大致会是：
+
+```text
+alarmData = Query("queryAlarmSummary", {region: "华东一区", window: "1h"}, {total: 0, critical: 0, major: 0, minor: 0})
+root = AlarmSummaryCard("华东一区告警概览", alarmData.total, alarmData.critical, alarmData.major, alarmData.minor)
+```
+
+页面上就会出现你的 `AlarmSummaryCard`，并显示 `total 42 / critical 7 / major 15 / minor 20`——这些数字来自前端真实跑了一次 `queryAlarmSummary`，证明取数动作也接通了。
+
+## 让模型更听话的几个小技巧
+
+模型会不会用、用得对不对，很大程度取决于你给的说明。几个实用做法：
+
+- **说明写「何时用」。** 组件的 `description` 别只写它是什么，要写它适合什么场景。
+- **用 `componentGroups.notes` 立规矩。** 比如「告警场景优先用 AlarmSummaryCard，不要用通用卡片拼」。
+- **给 1~2 个 `examples`。** 尤其是「取数 + 组件」的组合示例，模型会照着学。
+- **必要时加 `additionalRules` 约束生成。** 这些规则会进入 System Prompt。下面两条来自真实调试，能有效避免常见错误：
+
+```ts
+additionalRules: [
+  "每个变量名只能定义一次：Query 的结果变量（如 alarmData）必须与 AlarmSummaryCard 的变量名不同，严禁用同一个标识符既接收 Query 结果又赋值组件。",
+  "只有一个 AlarmSummaryCard 时，直接把它赋给 root（root = AlarmSummaryCard(...)），不要用 Stack 等容器包裹。",
+]
+```
+
+把 `additionalRules` 加进第三步的扩展对象里，重新导出、重新注册即可生效。
+
+## 遇到问题怎么办
+
+| 现象 | 多半是哪里没对齐 |
+| --- | --- |
+| 模型根本不用你的组件 | 说明/示例不够明确；或后端没注册成功（漏了第四步） |
+| 模型生成了，但页面白屏 | 前端没注册（漏了第五步），或两侧组件名不一致 |
+| 数据没填上 / 报找不到动作 | 取数动作的名字三处要一致：扩展配置里的 `tools[].name`、模型写的 `Query("...")`、前端 `toolProvider` 的键名 |
+| 导出命令报错 | 多半是必填参数没排在可选参数前面，按提示调整 Zod 参数顺序 |
+| 改了扩展但生成结果没变 | 后端是否用新 JSON 重新注册了？请求是否带了正确的 `extensionId`？ |
+
+## 下一步
+
+这篇覆盖了一次完整扩展的最短路径。如果你要管理多套扩展、做版本演进，或想深入后端集成与流式生成，参考进阶文档《Extending OpenUI》和《GenUI Java SDK 集成指南》。

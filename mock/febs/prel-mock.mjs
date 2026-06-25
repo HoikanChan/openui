@@ -27,6 +27,10 @@ function emitGlobalStateChange(name, newValue, oldValue) {
   Object.values(startedPius).forEach((piu) => piu._fireStateChange(name, newValue, oldValue));
 }
 
+function emitGlobalEvent(moduleName, eventName, params) {
+  Object.values(startedPius).forEach((piu) => piu._fireEvent(moduleName, eventName, params));
+}
+
 function resolveStateReady(name) {
   (stateReadyWaiters[name] || []).forEach((fn) => fn());
   stateReadyWaiters[name] = [];
@@ -82,14 +86,9 @@ function createPiu(name, version) {
         [eventName, ...params] = args;
       }
 
-      for (const { events } of bindings.values()) {
-        if (moduleName) {
-          const mod = events[moduleName];
-          if (mod && typeof mod[eventName] === 'function') mod[eventName](...params);
-        } else if (typeof events[eventName] === 'function') {
-          events[eventName](...params);
-        }
-      }
+      // 事件是全局的：任何 piu emit 都会派发给所有 piu 的绑定，
+      // 与 $stateChange 的全局语义一致（piu 之间通过事件通信）。
+      emitGlobalEvent(moduleName, eventName, params);
       return piu;
     },
 
@@ -134,6 +133,18 @@ function createPiu(name, version) {
             })
         )
       ).then(() => snapshotState());
+    },
+
+    // ---- 内部：分发事件到本 piu 的绑定 ----
+    _fireEvent(moduleName, eventName, params) {
+      for (const { events } of bindings.values()) {
+        if (moduleName) {
+          const mod = events[moduleName];
+          if (mod && typeof mod[eventName] === 'function') mod[eventName](...params);
+        } else if (typeof events[eventName] === 'function') {
+          events[eventName](...params);
+        }
+      }
     },
 
     // ---- 内部：分发状态变更 ----

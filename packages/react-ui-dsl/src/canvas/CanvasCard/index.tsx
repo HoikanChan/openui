@@ -21,27 +21,23 @@ export const CanvasCard = defineComponent({
 
     useEffect(() => {
       const prevCardId = cardIdRef.current;
-      const tab = props.tab ?? "Dashboard";
       if (prevCardId) {
-        canvasStore.removeDashboardCard(tab, prevCardId);
+        canvasStore.removeCanvasCard(prevCardId);
       }
-      const cardId = canvasStore.addDashboardCard(
-        {
-          title: props.title,
-          children: props.children,
-          size: props.size,
-        },
-        tab
-      );
+      const cardId = canvasStore.addCanvasCard({
+        title: props.title,
+        children: props.children,
+        size: props.size,
+      }, props.cardId);
       cardIdRef.current = cardId;
 
       return () => {
         if (cardIdRef.current) {
-          canvasStore.removeDashboardCard(tab, cardIdRef.current);
+          canvasStore.removeCanvasCard(cardIdRef.current);
           cardIdRef.current = null;
         }
       };
-    }, [props.title, props.tab, props.children, props.size]);
+    }, [props.title, props.children, props.size,  props.cardId]);
 
     return null;
   },

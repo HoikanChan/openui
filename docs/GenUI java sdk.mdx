@@ -1,0 +1,268 @@
+# GenUI Java SDK 集成指南
+
+这篇文档面向接入方：你的 Java 服务想把自然语言、业务数据和业务组件契约交给模型，最后得到可渲染的 OpenUI Lang。
+
+## 1. 准备依赖
+
+要求：
+
+- Java 21+
+- Maven
+- `com.huawei.cloudsop:smartcanvas.genui.core:0.1.0`
+
+接入方服务通常和 SDK 不在同一个 Maven reactor / 仓库里，需要通过 jar 包引入，按以下两种方式之一获取依赖。
+
+### 方式一：内部 Maven 仓库拉取（未ready）
+
+在 `pom.xml` 或 `settings.xml` 里确认仓库地址已配置，然后正常声明依赖即可：
+
+```xml
+<dependency>
+  <groupId>com.huawei.cloudsop</groupId>
+  <artifactId>smartcanvas.genui.core</artifactId>
+  <version>0.1.0</version>
+</dependency>
+```
+
+Maven 会按配置的仓库顺序解析坐标并下载 jar，用法和普通三方依赖一致。
+
+### 方式二：本地 jar 文件手动安装
+
+如果只拿到一份本地 jar 文件（没有发布到任何仓库），先用 `install:install-file` 把它装进本机 `.m2` 本地仓库：
+
+```powershell
+mvn install:install-file `
+  -Dfile=path\to\smartcanvas.genui.core-0.1.0.jar `
+  -DgroupId=com.huawei.cloudsop `
+  -DartifactId=smartcanvas.genui.core `
+  -Dversion=0.1.0 `
+  -Dpackaging=jar
+```
+
+装完之后，在你的服务 `pom.xml` 里正常声明依赖即可：
+
+```xml
+<dependency>
+  <groupId>com.huawei.cloudsop</groupId>
+  <artifactId>smartcanvas.genui.core</artifactId>
+  <version>0.1.0</version>
+</dependency>
+```
+
+注意：
+
+- `install:install-file` 只把 jar 装进当前机器的本地仓库，不会推送到任何远程/共享仓库；CI 环境或其他开发机要各自重复这一步，或者改用方式一。
+- 如果 jar 包里没有自带 `pom.xml`，上面命令足够；如果未来该 jar 发布了对应的 pom，可以加 `-DpomFile=path\to\pom.xml` 一起装入，避免依赖元数据缺失。
+
+## 2. 创建 GenUiGenerator 单例
+
+先不考虑业务 Extension。只要你的服务能访问 LLM endpoint，就可以创建一个 `GenUiGenerator`，让 SDK 使用内置 base contract 生成基础 OpenUI Lang。
+
+生产服务建议把 `GenUiGenerator` 做成单例，后续所有生成请求复用同一个实例。
+
+```java
+import com.huawei.cloudsop.genui.core.llm.GenUiGenerator;
+import com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig;
+
+GenUiLlmConfig config =
+    GenUiLlmConfig.builder()
+        .endpoint("/rest/netrsn/v1/chat/completions")
+        .defaultModel("qwen3.6-27b")
+        .temperature(0)
+        .enableThinking(false)
+        .jsonObjectResponse(true)
+        .putHeader("X-Tenant-Id", tenantId)
+        .build();
+
+GenUiGenerator generator =
+    GenUiGenerator.create(config);
+```
+
+默认配置：
+
+|配置项|默认值|
+|---|---|
+|`endpoint`|`/rest/netrsn/v1/chat/completions`|
+|`defaultModel`|`qwen3.6-27b`|
+|`temperature`|`0`|
+|`enableThinking`|`false`|
+|`jsonObjectResponse`|`true`|
+|`extraHeaders`|空|
+
+`GenUiGenerator.create(config)` 默认使用 `RestfulLlmTransport`，内部通过 BSP `RestfulFactory` 发送请求。
+
+## 3. 发起一次基本生成
+
+一次生成请求用 `UiGenerationRequest` 表达：
+
+```java
+import com.huawei.cloudsop.genui.core.llm.UiGenerationRequest;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+LinkedHashMap<String, Object> response = new LinkedHashMap<>();
+response.put(
+    "alarms",
+    List.of(
+        Map.of("id", "A-1", "severity", "critical", "title", "CPU overload"),
+        Map.of("id", "A-2", "severity", "major", "title", "Disk usage high")));
+
+UiGenerationRequest request =
+    UiGenerationRequest.builder()
+        .userInput("生成一个告警概览页面，先展示统计，再展示告警列表")
+        .request(Map.of("pageTitle", "告警中心"))
+        .response(response)
+        .suggestion("先用基础组件完成页面，不要编造未注册的业务组件")
+        .build();
+
+String openuiLang = generator.generate(request);
+```
+
+没有传 `extensionId` 时，SDK 只使用内置 base contract。这个阶段适合先打通“请求进来 -> 组装 prompt -> 调 LLM -> 返回 OpenUI Lang”的主链路。
+
+`generate(...)` 返回的是抽取后的 OpenUI Lang，不是模型原始文本。SDK 会优先抽取 Markdown 中标记为 `openui`、`openui-lang` 或 `text` 的代码块；如果没有这些代码块，会尝试抽取包含 `root = Stack(` 的代码块；最后才回退为原文。
+
+字段如何进入 SDK：
+
+|`UiGenerationRequest` 字段|用途|
+|---|---|
+|`extensionId`|可选。为空时只使用 base contract；有值时选择已注册的 `GenUIExtension`|
+|`userInput`|用户输入的自然语言，用于Prompt组装|
+|`request`|可选，UiGenerationRequest|
+|`response`|作为 主数据源写入 system prompt，是生成 UI 可绑定的数据来源|
+|`suggestion`|可选，追加为本次请求的一次性规则|
+
+经验上，能被 UI 绑定或展示的数据放 `response`；只帮助模型理解上下文、但不希望成为数据模型的数据放 `request`。
+
+## 4. 流式生成
+
+如果你的接口要把模型输出流式返回给前端，使用 `generateStream(...)`：
+
+```java
+import java.nio.charset.StandardCharsets;
+
+String finalDsl =
+    generator.generateStream(
+        request,
+        delta -> {
+          out.write(delta.getBytes(StandardCharsets.UTF_8));
+          out.flush();
+        });
+```
+
+回调里的 `delta` 是模型返回的增量文本片段，不包含额外封装。宿主服务如果对外使用 `text/plain`、SSE 或其他流式协议，按自己的接口契约写出这段文本即可。
+
+`generateStream(...)` 的返回值是最终 OpenUI Lang：SDK 会把所有 `delta` 累计起来，再按和同步生成相同的规则抽取 `openui` / `openui-lang` / `text` 代码块。这个返回值通常用于缓存、日志或后置校验；前端实时看到的内容来自回调里逐段写出的 `delta`。
+
+## 5. 自定义拓展
+
+基本生成跑通后，再接入业务拓展Extension。Extension 的职责是把“模型可以使用哪些业务组件、工具、示例和规则”发布给 SDK。
+
+在真实服务里，Extension 通常不是手写 Java 构造出来的，而是由服务发布一段 JSON。服务收到 JSON 后反序列化成 `GenUIExtension`，再注册到同一个 `GenUiGenerator` 实例上。
+
+一个最小 Extension JSON 如下：
+
+```json
+{
+  "extensionId": "alarm",
+  "version": "1.0.0",
+  "components": {
+    "AlarmBadge": {
+      "description": "告警徽章：按严重级别展示该级别的告警数量。",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "severity": { "type": "string", "enum": ["critical", "major", "minor"] },
+          "count": { "type": "number" },
+          "label": { "type": "string" }
+        },
+        "required": ["severity", "count"]
+      }
+    }
+  },
+  "componentGroups": [
+    {
+      "name": "Alarm",
+      "components": ["AlarmBadge"],
+      "notes": ["告警数量汇总场景优先使用 AlarmBadge。"]
+    }
+  ],
+  "tools": [
+    {
+      "name": "lookupAlarm",
+      "description": "按告警 ID 查询告警详情。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "alarmId": { "type": "string" }
+        },
+        "required": ["alarmId"]
+      },
+      "outputSchema": { "type": "object" },
+      "annotations": { "readOnlyHint": true }
+    }
+  ],
+  "examples": [
+    "root = Stack([AlarmBadge(severity: \"critical\", count: 3)])"
+  ],
+  "additionalRules": [
+    "展示告警汇总时，先用 AlarmBadge 展示各严重级别数量。"
+  ]
+}
+```
+
+用服务自己的 JSON 库读取并注册。Spring Boot 服务可以直接用 Jackson：
+
+```java
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
+import com.huawei.cloudsop.genui.core.llm.GenUiGenerator;
+import java.io.IOException;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+public final class ExtensionRegistry {
+  private final GenUiGenerator generator;
+  private final ObjectMapper objectMapper;
+  private final Set<String> registeredExtensionIds = ConcurrentHashMap.newKeySet();
+
+  public ExtensionRegistry(GenUiGenerator generator, ObjectMapper objectMapper) {
+    this.generator = generator;
+    this.objectMapper = objectMapper;
+  }
+
+  public synchronized void registerJson(String extensionJson) throws IOException {
+    GenUIExtension extension = objectMapper.readValue(extensionJson, GenUIExtension.class);
+    generator.register(extension);
+    registeredExtensionIds.add(extension.extensionId());
+  }
+
+  public boolean contains(String extensionId) {
+    return registeredExtensionIds.contains(extensionId);
+  }
+}
+```
+
+注册后，在生成请求中传 `extensionId`：
+
+```java
+UiGenerationRequest request =
+    UiGenerationRequest.builder()
+        .extensionId("alarm")
+        .userInput("生成告警概览，用业务徽章展示各严重级别数量")
+        .response(response)
+        .build();
+
+String openuiLang = generator.generate(request);
+```
+
+注意：
+
+- `extensionId` 是扩展唯一标识。发布端和生成请求必须使用同一个值。
+- 组件名不能和 base contract 或同 Extension 内其他组件重名。
+- 工具名不能和 base contract、已注册 Extension 工具或请求级工具重名。
+- `propsSchema.properties` 的字段顺序会影响 prompt 中的组件签名顺序，发布 JSON 时要保持稳定顺序。
+- 必填 props 必须排在可选 props 前面，否则 SDK 会抛 `GenerationSdkException`。
+- 后端注册了业务组件后，前端 Renderer 也要注册同名组件，否则模型生成出来也无法渲染。
+- SDK 自身对未知 `extensionId` 会回落到 base contract；生产服务通常应该在服务层主动报错。

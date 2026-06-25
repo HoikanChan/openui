@@ -1,5 +1,5 @@
 import Prel from "../../../mock/febs/prel-mock.mjs";
-import { DSLRenderer, canvasStore, initPiuRuntime } from "@openuidev/react-ui-dsl";
+import { DSLRenderer, canvasStore, initDslPiu } from "@openuidev/react-ui-dsl";
 import { useEffect, useMemo, useState } from "react";
 import { GENERATE_URL, registerGeneration } from "./genuiService";
 import {
@@ -56,7 +56,7 @@ async function bootPiuRuntime() {
     },
   });
 
-  await initPiuRuntime();
+  await initDslPiu();
 
   Prel.define({
     "alarm-business-piu": {
@@ -68,6 +68,24 @@ async function bootPiuRuntime() {
 
   await Prel.autoLoad("alarm-business-piu", { fresh: true });
   await waitForRuntimeExtension(ALARM_EXTENSION_ID);
+}
+
+// Boot must run exactly once. React StrictMode double-invokes effects in dev,
+// and a second bootPiuRuntime() would call Prel.__reset() — wiping the
+// dsl-engine piu out of the Prel registry while initDslPiu() stays cached
+// and never re-registers it. The business piu's cross-piu emit then has no
+// dsl-engine in the registry to dispatch to. Caching the boot promise keeps the
+// dsl-engine piu registered for the lifetime of the page.
+let bootPromise: Promise<void> | null = null;
+
+function ensurePiuRuntimeBooted(): Promise<void> {
+  if (!bootPromise) {
+    bootPromise = bootPiuRuntime().catch((err) => {
+      bootPromise = null; // allow a later mount to retry a failed boot
+      throw err;
+    });
+  }
+  return bootPromise;
 }
 
 async function generateDsl(prompt: string, dataModel: Record<string, unknown>) {
@@ -112,7 +130,7 @@ export function PiuExtensionDemo() {
 
     async function boot() {
       try {
-        await bootPiuRuntime();
+        await ensurePiuRuntimeBooted();
         const summary = await registerGeneration(ALARM_EXTENSION_ID, generationExtension);
         if (cancelled) return;
         setRegistrationSummary(

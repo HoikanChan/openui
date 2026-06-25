@@ -66,3 +66,6 @@ packages/react-ui-dsl/src/__tests__/e2e/fuzz-snapshots/*.dsl
 packages/react-ui-dsl/src/__tests__/e2e/benchmark-snapshots/*.dsl
 packages/react-ui-dsl/src/__tests__/e2e/eval/runs/
 examples/canvas-demo/node_modules
+
+vendor/
+generated/

@@ -4,7 +4,7 @@ export const CanvasCardSchema = z
   .object({
     children: z.array(z.any()),
     title: z.string().optional(),
-    tab: z.string().optional().default("Dashboard"),
+    cardId: z.string().optional(),
     size: z
       .object({
         w: z.number().int().min(1).max(12).optional().default(6),

@@ -72,5 +72,5 @@ export { CanvasDemo } from "./canvas/CanvasDemo";
 export type { CanvasDemoProps } from "./canvas/CanvasDemo";
 
 export { default as DSLRenderer } from "./DSLRenderer";
-export { init as initPiuRuntime } from "./context/StreamDSLContext";
+export { init as initDslPiu } from "./context/StreamDSLContext";
 

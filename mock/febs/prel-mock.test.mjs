@@ -139,6 +139,24 @@ test('detach 解绑后不再触发', () => {
   assert.equal(count, 1);
 });
 
+test('跨 piu 的事件能被另一个 piu 监听（emit 全局派发）', () => {
+  const a = Prel.start('a', '1.0.0', [], () => {});
+  const b = Prel.start('b', '1.0.0', [], () => {});
+  let got = null;
+  a.attach(a, { ping: (x) => { got = x; } });
+  b.emit('ping', 42); // 由另一个 piu 触发
+  assert.equal(got, 42);
+});
+
+test('跨 piu 的事件模块也能被另一个 piu 监听', () => {
+  const a = Prel.start('a', '1.0.0', [], () => {});
+  const b = Prel.start('b', '1.0.0', [], () => {});
+  let got = null;
+  a.attach(a, { modA: { ev: (x) => { got = x; } } });
+  b.emit('modA', 'ev', 7);
+  assert.equal(got, 7);
+});
+
 // ---------------- attach 的怪异覆盖行为 ----------------
 test('怪异行为：同一绑定对象二次 attach 覆盖上次全部绑定', () => {
   const piu = Prel.start('p', '1.0.0', [], () => {});
