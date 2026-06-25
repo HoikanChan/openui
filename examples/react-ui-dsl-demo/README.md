@@ -44,6 +44,27 @@ pnpm dev
 
 The first `mvn` run downloads dependencies and generates the API interfaces from `examples/genui-service/src/main/resources/swagger/genui-service.yaml` (Swagger 2.0, codegen at build time).
 
+## Piu Extension Runtime Demo
+
+The compact extension demo keeps the main demo untouched and is available at:
+
+```text
+http://localhost:5173/?demo=piu-extension
+```
+
+It uses `mock/febs/prel-mock.mjs` in the browser:
+
+- DSLEngine starts a `dsl-engine` Piu and listens for `smart-canvas:extend`.
+- The demo host sets the required `session` and `locale` states.
+- `Prel.autoLoad("alarm-business-piu")` loads `public/piu/alarm-business-piu.js`.
+- The business Piu emits `smart-canvas:extend` with the runtime component and tool provider.
+- The page registers the matching generation extension with GenUI Service and sends `extensionId` to `/v1/generate`.
+- The generated DSL is rendered by `DSLRenderer`, so the custom component and tool are resolved from the Piu runtime store.
+
+A deterministic Playwright e2e (`e2e/piu-extension.spec.ts`) mocks the GenUI Service
+endpoints so the full Piu runtime + `DSLRenderer` + front-end `toolProvider` flow can be
+verified without the Java service or an LLM. Run it with `pnpm test:e2e`.
+
 ## How it works
 
 - **Client** (`src/App.tsx`): imports `dslLibrary` from `@openuidev/react-ui-dsl` and passes it to the `<Renderer>` from `@openuidev/react-lang`. Vite resolves the package to TypeScript source via the alias in `vite.config.ts`.
