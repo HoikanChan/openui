@@ -99,33 +99,33 @@ export function Preview({ code }: { code: string }) {
 
 后端组件契约只描述“模型可以生成什么”，不包含 React 实现。React 实现仍然由前端 `Library` 提供。
 
-### 从前端库导出组件 spec
+### 用 CLI 导出 Extension JSON
 
-后端契约不用手写——前端用 `generateComponentSpecs(...)` 从组件定义直接生成 renderer-free 的组件契约（只含 `description` + `propsSchema`，不含 React 实现），再包成扩展对象写出 JSON。组件名和 `propsSchema.properties` 顺序天然和前端 Zod props 一致：
+后端契约不用手写——把你的扩展写成一个**完整 extension 对象**（`extensionId` / `version`，加上你传给 `dslLibrary.extend(...)` 的 `components` / `componentGroups` 等），再用 CLI `openui generate-extension` 把其中的真实组件编译成 renderer-free 的组件契约（只含 `description` + `propsSchema`，不含 React 实现）。组件名和 `propsSchema.properties` 顺序天然和前端 Zod props 一致：
 
 ```ts
-import { writeFileSync } from "node:fs";
-import { generateComponentSpecs } from "@openuidev/react-ui-dsl";
-import { BillingCard } from "./billing-library"; // 记得 export 你定义的组件
+// billing-extension.ts
+import { BillingCard } from "./billing-library"; // 你定义并 export 的组件
 
-// 只传你扩展的组件；返回 { [name]: { description, propsSchema } }
-const components = generateComponentSpecs([BillingCard]);
-
-const extension = {
+// 完整 extension 对象：同一个对象也可传给 dslLibrary.extend(billingExtension) 用于前端渲染
+export const billingExtension = {
   extensionId: "team-a-billing",
   version: "1.0.0",
-  components,
+  components: [BillingCard],
   componentGroups: [
     { name: "Billing", components: ["BillingCard"], notes: ["账单场景优先使用 BillingCard。"] },
   ],
 };
-
-writeFileSync("billing-extension.json", `${JSON.stringify(extension, null, 2)}\n`);
 ```
 
-> `generateComponentSpecs` 要求每个组件的必填 props 排在可选 props 之前（对应 openui-lang 的位置参数顺序），否则会抛错。
+```bash
+npx @openuidev/cli@latest generate-extension ./billing-extension.ts --out billing-extension.json
+```
 
-写出的 `billing-extension.json` 就是一个**可直接注册的 `GenUIExtension` 形 JSON**：顶层带 `extensionId` / `version`，`components` 用 `propsSchema`（JSON Schema）描述，且只含你扩展的组件，不含 base 内置件：
+> CLI 会校验每个组件的必填 props 排在可选 props 之前（对应 openui-lang 的位置参数顺序），否则导出失败。
+> `extensionId` / `version` 默认取自对象，可用 `--extension-id` / `--version` 覆盖（便于 CI 注入版本）。`components` 之外的 `componentGroups` / `tools` / `examples` / `additionalRules` 有就原样透传。
+
+写出的 `billing-extension.json` 就是一个**可直接注册的 `GenUIExtension` 形 JSON**：顶层带 `extensionId` / `version`，`components` 由真实组件编译成 `propsSchema`（JSON Schema）描述，且只含你扩展的组件，不含 base 内置件：
 
 ```json
 {
@@ -152,7 +152,7 @@ writeFileSync("billing-extension.json", `${JSON.stringify(extension, null, 2)}\n
 }
 ```
 
-后端拿到这段 JSON，反序列化成 `GenUIExtension` 直接注册（见下方「直接嵌入 Java SDK」）。因为前后端出自同一个库定义，`propsSchema.properties` 的字段顺序和前端 Zod props 顺序天然对齐，不用人工核对。
+后端拿到这段 JSON，反序列化成 `GenUIExtension` 直接注册（见下方「直接嵌入 Java SDK」）。因为 `components` 由前端组件定义直接编译，`propsSchema.properties` 的字段顺序和前端 Zod props 顺序天然对齐，不用人工核对。
 
 ### 通过 REST 注册
 
@@ -211,7 +211,7 @@ Content-Type: application/json
 
 ### 直接嵌入 Java SDK
 
-如果你直接嵌入 Java Generation SDK，注册入口只有一个：`sdk.register(GenUIExtension)`。扩展契约就是上面 `generate-component-spec` 导出的那段 JSON（也可以来自配置中心、文件或数据库），用你自己的 JSON 库反序列化成 `GenUIExtension` 后直接注册，不必在 Java 里手搓嵌套 `Map`：
+如果你直接嵌入 Java Generation SDK，注册入口只有一个：`sdk.register(GenUIExtension)`。扩展契约就是上面 `generate-extension` 导出的那段 JSON（也可以来自配置中心、文件或数据库），用你自己的 JSON 库反序列化成 `GenUIExtension` 后直接注册，不必在 Java 里手搓嵌套 `Map`：
 
 ```java
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -222,7 +222,7 @@ import java.nio.file.Path;
 
 GenerationSdk sdk = GenerationSdk.create();
 
-// billing-extension.json 即上面 generate-component-spec 的导出产物
+// billing-extension.json 即上面 generate-extension 的导出产物
 String extensionJson = Files.readString(Path.of("billing-extension.json"));
 GenUIExtension extension = new ObjectMapper().readValue(extensionJson, GenUIExtension.class);
 sdk.register(extension);

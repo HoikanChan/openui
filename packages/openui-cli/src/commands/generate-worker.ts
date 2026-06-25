@@ -1,10 +1,12 @@
 /**
- * Worker script that bundles a user's library file and outputs the system
- * prompt or JSON schema. Asset imports are stubbed during bundling so React
- * component modules can be evaluated without CSS/image/font loaders.
+ * Worker script that bundles a user's library or extension file and outputs the
+ * system prompt, JSON schema, or a registerable Extension JSON. Asset imports
+ * are stubbed during bundling so React component modules can be evaluated
+ * without CSS/image/font loaders.
  *
- * argv: [entryPath, exportName?, "--json-schema"?, "--prompt-options", name?]
- * stdout: the prompt string or JSON schema
+ * argv (library modes): [entryPath, exportName?, "--json-schema"?, "--prompt-options", name?]
+ * argv (extension mode): [entryPath, exportName?, "--extension", "--extension-id", id?, "--version", ver?]
+ * stdout: the prompt string, JSON schema, or Extension JSON
  */
 
 import * as fs from "fs";
@@ -119,35 +121,87 @@ function findPromptOptions(
   return undefined;
 }
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  const entryPath = args[0];
-  if (!entryPath) {
-    console.error(
-      "Usage: generate-worker <entryPath> [exportName] [--json-schema] [--prompt-options <name>]",
-    );
-    process.exit(1);
+// ── Extension definition object ──
+
+const STUB_CREATE_LIBRARY = "__openuiCreateLibrary";
+
+interface DefinedComponentLike {
+  name: string;
+  props: unknown;
+}
+
+interface ExtensionObject {
+  extensionId?: string;
+  version?: string;
+  components: DefinedComponentLike[];
+  componentGroups?: unknown[];
+  tools?: unknown[];
+  examples?: unknown[];
+  additionalRules?: unknown[];
+}
+
+interface GenerationContractLike {
+  components: Record<string, unknown>;
+  componentGroups?: unknown[];
+  tools?: unknown[];
+  examples?: unknown[];
+  additionalRules?: unknown[];
+}
+
+type CreateLibraryFn = (input: {
+  components: unknown[];
+  componentGroups?: unknown[];
+  tools?: unknown[];
+  examples?: unknown[];
+  additionalRules?: unknown[];
+}) => { toSpec(): GenerationContractLike };
+
+/**
+ * An extension object exposes `components` as a `DefinedComponent[]` (each with
+ * a `name` and a zod `props`). A built `Library` exposes `components` as a
+ * record, so libraries are excluded here.
+ */
+function isExtensionObject(value: unknown): value is ExtensionObject {
+  if (typeof value !== "object" || value === null) return false;
+  const comps = (value as Record<string, unknown>)["components"];
+  if (!Array.isArray(comps) || comps.length === 0) return false;
+  return comps.every((c) => {
+    if (typeof c !== "object" || c === null) return false;
+    const comp = c as Record<string, unknown>;
+    return typeof comp["name"] === "string" && comp["props"] != null;
+  });
+}
+
+function findExtensionObject(
+  mod: Record<string, unknown>,
+  exportName?: string,
+): { ext?: ExtensionObject; candidates: string[] } {
+  if (exportName) {
+    const val = mod[exportName];
+    return { ext: isExtensionObject(val) ? val : undefined, candidates: [] };
   }
 
-  const jsonSchema = args.includes("--json-schema");
-  const promptOptionsIdx = args.indexOf("--prompt-options");
-  const promptOptionsName = promptOptionsIdx !== -1 ? args[promptOptionsIdx + 1] : undefined;
-  const reserved = new Set(["--json-schema", "--prompt-options"]);
-  if (promptOptionsName) reserved.add(promptOptionsName);
-  const exportName = args.find(
-    (a, i) => a !== entryPath && !reserved.has(a) && !(i > 0 && args[i - 1] === "--prompt-options"),
-  );
+  const candidates: string[] = [];
+  let ext: ExtensionObject | undefined;
+  for (const [key, val] of Object.entries(mod)) {
+    if (key === STUB_CREATE_LIBRARY) continue;
+    if (isExtensionObject(val)) {
+      candidates.push(key);
+      ext = val;
+    }
+  }
+  return { ext: candidates.length === 1 ? ext : undefined, candidates };
+}
 
+// ── Bundling ──
+
+async function bundleModule(options: esbuild.BuildOptions): Promise<Record<string, unknown>> {
   const bundleDir = fs.mkdtempSync(path.join(os.tmpdir(), "openui-generate-"));
   const bundlePath = path.join(bundleDir, "entry.cjs");
-
-  let mod: Record<string, unknown> | undefined;
-  let importError: unknown;
   try {
     await esbuild.build({
       absWorkingDir: process.cwd(),
       bundle: true,
-      entryPoints: [entryPath],
       format: "cjs",
       outfile: bundlePath,
       platform: "node",
@@ -155,23 +209,144 @@ async function main(): Promise<void> {
       sourcemap: "inline",
       target: "node18",
       write: true,
+      ...options,
     });
-
-    mod = require(bundlePath) as Record<string, unknown>;
-  } catch (err) {
-    importError = err;
+    return require(bundlePath) as Record<string, unknown>;
   } finally {
     fs.rmSync(bundleDir, { force: true, recursive: true });
   }
+}
 
-  if (!mod) {
+// ── Modes ──
+
+function getFlagValue(args: string[], flag: string): string | undefined {
+  const i = args.indexOf(flag);
+  return i !== -1 ? args[i + 1] : undefined;
+}
+
+function resolveExportName(args: string[], valueFlags: string[], booleanFlags: string[]): string {
+  const reserved = new Set<string>([...valueFlags, ...booleanFlags]);
+  for (const vf of valueFlags) {
+    const v = getFlagValue(args, vf);
+    if (v) reserved.add(v);
+  }
+  return args.find(
+    (a, i) => i > 0 && !reserved.has(a) && !valueFlags.includes(args[i - 1] ?? ""),
+  ) as string;
+}
+
+/**
+ * Bundle the user entry together with `createLibrary` from
+ * `@openuidev/react-lang` so the user's components and `createLibrary` share a
+ * single bundled zod instance (cross-instance zod introspection is fragile).
+ * Compile `components` via `createLibrary(...).toSpec()` and emit Extension JSON.
+ */
+async function runExtensionMode(entryPath: string, args: string[]): Promise<void> {
+  const exportName = resolveExportName(args, ["--extension-id", "--version"], ["--extension"]);
+  const extensionIdFlag = getFlagValue(args, "--extension-id");
+  const versionFlag = getFlagValue(args, "--version");
+
+  const entryImport = entryPath.replace(/\\/g, "/");
+  const stub =
+    `export * from ${JSON.stringify(entryImport)};\n` +
+    `export { createLibrary as ${STUB_CREATE_LIBRARY} } from "@openuidev/react-lang";\n`;
+
+  let mod: Record<string, unknown>;
+  try {
+    mod = await bundleModule({
+      stdin: {
+        contents: stub,
+        resolveDir: process.cwd(),
+        loader: "ts",
+        sourcefile: "openui-extension-stub.ts",
+      },
+    });
+  } catch (err) {
     console.error(`Error: Failed to import ${entryPath}`);
-    console.error(importError instanceof Error ? importError.message : importError);
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  }
+
+  const { ext, candidates } = findExtensionObject(mod, exportName);
+  if (!ext) {
+    const exports = Object.keys(mod)
+      .filter((k) => k !== STUB_CREATE_LIBRARY)
+      .join(", ");
+    if (candidates.length > 1) {
+      console.error(
+        `Error: Multiple extension objects found: ${candidates.join(", ")}.\n` +
+          `Use --export <name> to choose one.`,
+      );
+    } else {
+      console.error(
+        `Error: No extension object found.\n` +
+          `Found exports: ${exports || "(none)"}\n` +
+          `Export an object with a 'components' array (DefinedComponent[]), or use --export <name>.`,
+      );
+    }
+    process.exit(1);
+  }
+
+  const createLibrary = mod[STUB_CREATE_LIBRARY] as CreateLibraryFn | undefined;
+  if (typeof createLibrary !== "function") {
+    console.error(
+      "Error: Could not load createLibrary from @openuidev/react-lang.\n" +
+        "Run this command inside a project that has OpenUI installed.",
+    );
+    process.exit(1);
+  }
+
+  let spec: GenerationContractLike;
+  try {
+    spec = createLibrary({
+      components: ext.components,
+      componentGroups: ext.componentGroups,
+      tools: ext.tools,
+      examples: ext.examples,
+      additionalRules: ext.additionalRules,
+    }).toSpec();
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
+
+  const extensionId = extensionIdFlag ?? ext.extensionId;
+  if (!extensionId) {
+    console.error(
+      "Error: extensionId is required. Set it in the extension object or pass --extension-id <id>.",
+    );
+    process.exit(1);
+  }
+  const version = versionFlag ?? ext.version ?? "";
+
+  const out: Record<string, unknown> = {
+    extensionId,
+    version,
+    components: spec.components,
+  };
+  if (spec.componentGroups?.length) out["componentGroups"] = spec.componentGroups;
+  if (spec.tools?.length) out["tools"] = spec.tools;
+  if (spec.examples?.length) out["examples"] = spec.examples;
+  if (spec.additionalRules?.length) out["additionalRules"] = spec.additionalRules;
+
+  process.stdout.write(JSON.stringify(out, null, 2));
+}
+
+async function runLibraryMode(entryPath: string, args: string[]): Promise<void> {
+  const jsonSchema = args.includes("--json-schema");
+  const promptOptionsName = getFlagValue(args, "--prompt-options");
+  const exportName = resolveExportName(args, ["--prompt-options"], ["--json-schema"]);
+
+  let mod: Record<string, unknown>;
+  try {
+    mod = await bundleModule({ entryPoints: [entryPath] });
+  } catch (err) {
+    console.error(`Error: Failed to import ${entryPath}`);
+    console.error(err instanceof Error ? err.message : err);
     process.exit(1);
   }
 
   const library = findLibrary(mod, exportName);
-
   if (!library) {
     const exports = Object.keys(mod).join(", ");
     console.error(
@@ -192,6 +367,24 @@ async function main(): Promise<void> {
   }
 
   process.stdout.write(output);
+}
+
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  const entryPath = args[0];
+  if (!entryPath) {
+    console.error(
+      "Usage: generate-worker <entryPath> [exportName] " +
+        "[--json-schema | --prompt-options <name> | --extension [--extension-id <id>] [--version <ver>]]",
+    );
+    process.exit(1);
+  }
+
+  if (args.includes("--extension")) {
+    await runExtensionMode(entryPath, args);
+  } else {
+    await runLibraryMode(entryPath, args);
+  }
 }
 
 main();

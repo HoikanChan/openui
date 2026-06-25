@@ -4,11 +4,14 @@ import { Command } from "commander";
 
 import { runCreateChatApp } from "./commands/create-chat-app";
 import { runGenerate } from "./commands/generate";
+import { runGenerateExtension } from "./commands/generate-extension";
 import { resolveArgs } from "./lib/resolve-args";
 
 const program = new Command();
 
-program.name("openui").description("CLI for OpenUI").version("0.0.6");
+// Use `-V, --cli-version` for the tool version so subcommands are free to take a
+// `--version` value option (e.g. `generate-extension --version <ver>`).
+program.name("openui").description("CLI for OpenUI").version("0.0.6", "-V, --cli-version");
 
 program
   .command("create")
@@ -64,6 +67,42 @@ program
       );
 
       await runGenerate((args as { entry: string }).entry, options);
+    },
+  );
+
+program
+  .command("generate-extension")
+  .description("Generate a registerable Extension JSON from an extension object")
+  .argument("[entry]", "Path to a file that exports an extension object")
+  .option("-o, --out <file>", "Write output to a file instead of stdout")
+  .option("--extension-id <id>", "Extension id (overrides the value in the extension object)")
+  .option("--version <version>", "Extension version (overrides the value in the extension object)")
+  .option("--export <name>", "Name of the export to use (auto-detected by default)")
+  .option("--no-interactive", "Fail with error if required args are missing")
+  .action(
+    async (
+      entry: string | undefined,
+      options: {
+        out?: string;
+        extensionId?: string;
+        version?: string;
+        export?: string;
+        interactive: boolean;
+      },
+    ) => {
+      const args = await resolveArgs(
+        {
+          entry: entry
+            ? { value: entry }
+            : {
+                prompt: { type: "input", message: "Entry file path?" },
+                required: true,
+              },
+        },
+        options.interactive,
+      );
+
+      await runGenerateExtension((args as { entry: string }).entry, options);
     },
   );
 
