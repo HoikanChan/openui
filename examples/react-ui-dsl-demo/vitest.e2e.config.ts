@@ -1,6 +1,8 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
+// Dedicated config for the Playwright-driven browser e2e. Kept separate from the
+// unit vitest config so `pnpm test` stays fast and headless-browser-free.
 export default defineConfig({
   resolve: {
     alias: {
@@ -11,6 +13,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    exclude: ["dist/**", "node_modules/**", "e2e/**"],
+    include: ["e2e/**/*.e2e.test.ts"],
+    testTimeout: 60000,
+    hookTimeout: 120000,
+    fileParallelism: false,
   },
 });
