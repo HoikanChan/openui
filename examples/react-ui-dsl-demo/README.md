@@ -61,9 +61,12 @@ It uses `mock/febs/prel-mock.mjs` in the browser:
 - The page registers the matching generation extension with GenUI Service and sends `extensionId` to `/v1/generate`.
 - The generated DSL is rendered by `DSLRenderer`, so the custom component and tool are resolved from the Piu runtime store.
 
-A deterministic Playwright e2e (`e2e/piu-extension.spec.ts`) mocks the GenUI Service
+A deterministic Playwright e2e (`e2e/piu-extension.e2e.test.ts`) mocks the GenUI Service
 endpoints so the full Piu runtime + `DSLRenderer` + front-end `toolProvider` flow can be
 verified without the Java service or an LLM. Run it with `pnpm test:e2e`.
+
+**想加你自己的组件 + 工具扩展？** 看 [`docs/extension-guide.md`](docs/extension-guide.md) ——
+一份照着做就能跑通的扩展开发指南（含真实联调踩过的坑）。
 
 ## How it works
 
