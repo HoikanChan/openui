@@ -61,3 +61,29 @@ export const serviceToolProvider = {
     return { content: [], structuredContent: (await res.json()) as unknown };
   },
 };
+
+export interface GenerationRegistrationSummary {
+  extensionId: string;
+  version?: string;
+  componentCount?: number;
+  toolCount?: number;
+}
+
+export async function registerGeneration(
+  extensionId: string,
+  registration: Record<string, unknown>,
+): Promise<GenerationRegistrationSummary> {
+  const { extensionId: _extensionId, ...body } = registration;
+  const res = await fetch(`${API_BASE}/generations/${encodeURIComponent(extensionId)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+
+  return (await res.json()) as GenerationRegistrationSummary;
+}
