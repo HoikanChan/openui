@@ -136,11 +136,13 @@ export const generationExtension = {
   ],
   tools: runtimeExtension.tools,
   examples: [
-    'summary = Query("queryAlarmSummary", {region: "华东一区", window: "1h"}, {total: 0, critical: 0, major: 0, minor: 0})\nroot = AlarmSummaryCard("华东一区告警概览", summary.total, summary.critical, summary.major, summary.minor)',
+    'alarmData = Query("queryAlarmSummary", {region: "华东一区", window: "1h"}, {total: 0, critical: 0, major: 0, minor: 0})\nroot = AlarmSummaryCard("华东一区告警概览", alarmData.total, alarmData.critical, alarmData.major, alarmData.minor)',
   ],
   additionalRules: [
     "如果用户要求告警概览，必须先调用 queryAlarmSummary，再使用 AlarmSummaryCard 渲染结果。",
     "AlarmSummaryCard 的参数顺序是 title, total, critical, major, minor。",
+    "每个变量名只能定义一次：Query 的结果变量（如 alarmData）必须与 AlarmSummaryCard 的变量名不同，严禁用同一个标识符既接收 Query 结果又赋值组件。",
+    "只有一个 AlarmSummaryCard 时，直接把它赋给 root（root = AlarmSummaryCard(...)），不要用 Stack 等容器包裹。",
   ],
 };
 
