@@ -66,9 +66,11 @@ export { canvasStore } from "./canvas/canvasStore";
 export type {
   CanvasStore,
   CanvasStoreState,
-  DashboardCardData,
   PreviewTabData,
 } from "./canvas/canvasStore";
 export { CanvasDemo } from "./canvas/CanvasDemo";
 export type { CanvasDemoProps } from "./canvas/CanvasDemo";
+
+export { default as DSLRenderer } from "./DSLRenderer";
+export { init as initPiuRuntime } from "./context/StreamDSLContext";
 
