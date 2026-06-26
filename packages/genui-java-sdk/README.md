@@ -9,7 +9,49 @@ Java 21 SDK for assembling GenUI system prompts from:
 It also provides `GenUiGenerator` for services that want the SDK to assemble the
 prompt, invoke an LLM, parse sync or streaming responses, and extract OpenUI Lang.
 
-For a user-facing integration walkthrough, see [INTEGRATION.md](INTEGRATION.md).
+## Generation output
+
+Both entrypoints return a render-ready result rather than a bare DSL string, so
+callers can hand both the DSL and its data straight to a renderer.
+
+### Synchronous: `GenUiGenerationResult generate(UiGenerationRequest)`
+
+```java
+public record GenUiGenerationResult(String dsl, Map<String, Object> dataModel) {}
+```
+
+- `dsl` — the extracted `openui-lang` (markdown fences stripped by `OpenuiCodeExtractor`).
+- `dataModel` — a defensive, immutable copy of `request.response()`; an empty map
+  when the request carries no response data.
+
+### Streaming: `GenUiGenerationResult generateStream(UiGenerationRequest, Consumer<RenderStreamEnvelope>)`
+
+The callback (`sink`) receives a fixed sequence of envelopes:
+
+```java
+public record RenderStreamEnvelope(String type, int seq, Object content) {}
+```
+
+| order | `type` | `seq` | `content` |
+| --- | --- | --- | --- |
+| first | `dataModel` | `0` | `request.response()` or `{}` |
+| each model chunk | `dsl` | `1,2,3…` | delta text (`String`) |
+| on failure | `error` | next | `{code, message, retryable}` |
+| terminal | `done` | next | `null` |
+
+Rules:
+
+- The first envelope is **always** `dataModel` (`seq=0`); model chunks start at `seq=1`.
+- A normal stream ends with `done` (its `content` is `null` — serializers should
+  omit the field).
+- If the stream fails **after** the first frame, the SDK does **not** throw to the
+  caller: it emits an `error` envelope (`{code:"LLM_STREAM_FAILED", message, retryable:true}`)
+  followed by `done`.
+- The returned `GenUiGenerationResult` always carries the accumulated extracted
+  `dsl` (partial on failure) and the same `dataModel`.
+
+Synchronous generation still throws `GenerationSdkException` when the LLM call
+fails before a result is produced.
 
 OpenUI generation expects the model content to be openui-lang text, so the
 default request body does not force `response_format.type=json_object`. If an

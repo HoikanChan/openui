@@ -9,9 +9,9 @@ This note is for the internal service repository that currently owns LLM request
 1. Compute the existing cache key with the current sha256 inputs.
 2. Read Redis/cache and return cached OpenUI code on hit.
 3. Map the request into `UiGenerationRequest`.
-4. Call `GenUiGenerator.generate(...)` for sync generation or `generateStream(..., sink)` for streaming generation.
-5. Store the final extracted OpenUI code in cache.
-6. For `text/event-stream`, wrap each callback delta with `SseFrames.of(delta)` and emit `SseFrames.done()` at the end if the endpoint contract needs an explicit done frame.
+4. Call `GenUiGenerator.generate(...)` (returns `GenUiGenerationResult`) for sync generation, or `generateStream(..., sink)` (callback receives `RenderStreamEnvelope`) for streaming.
+5. Store the final extracted OpenUI code (`result.dsl()`) in cache.
+6. For `text/event-stream`, serialize each `RenderStreamEnvelope` to a JSON `data:` frame; the first `dataModel` envelope carries the render data and the terminal `done` envelope marks completion (its `null` `content` should be omitted on serialize). See README "Generation output".
 
 The delegate should delete its local chat/completions request body construction, response DTO parsing, SSE frame parsing, and OpenUI code extraction after the SDK is adopted.
 
@@ -27,8 +27,8 @@ The following internal classes are replaced by SDK classes:
 | --- | --- |
 | `LLMService` | `GenUiGenerator` + default `RestfulLlmTransport` |
 | `ChatCompletionsRsp` | `ChatCompletionResponse` |
-| Delegate SSE chunk parser | `SseDeltaParser` |
-| Delegate SSE frame writer | `SseFrames` |
+| Delegate SSE chunk parser | `SseDeltaParser` (driven internally by `generateStream`) |
+| Delegate streaming output | `RenderStreamEnvelope` sequence emitted to the callback |
 | Delegate `extractOpenuiCode` / markdown extraction | `OpenuiCodeExtractor` |
 
 Keep Redis/Jedis, Spring wiring, request validation, cache key calculation, and service-specific fail-loud checks in the service layer.
@@ -52,7 +52,7 @@ Keep Redis/Jedis, Spring wiring, request validation, cache key calculation, and 
 - Whether old `{apiRsp}` content had additional explanatory text that should become `suggestion` or registered extension `additionalRules`.
 - Whether old `{userInput}` placement materially differs from the SDK system+user message split.
 - Whether `apiReq` / `apiUrl` / `apiVersion` should always be included in request context or only for specific scenarios.
-- Whether streaming endpoints should emit raw text chunks or SSE frames; SDK supports both by combining callback deltas with optional `SseFrames` wrapping.
+- How the endpoint serializes the `RenderStreamEnvelope` sequence onto the wire (e.g. one JSON `data:` frame per envelope for `text/event-stream`); the SDK owns the frame ordering and error/done semantics, the service only serializes.
 
 ## BSP dependency note
 
