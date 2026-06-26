@@ -18,6 +18,7 @@ import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -51,42 +52,54 @@ public final class GenUiGenerator {
     return this;
   }
 
-  public String generate(UiGenerationRequest request) {
+  public GenUiGenerationResult generate(UiGenerationRequest request) {
+    UiGenerationRequest effectiveRequest =
+        request == null ? UiGenerationRequest.builder().build() : request;
     try {
-      String body = buildRequestBody(request, false);
-      LlmDebugLog.log("sync.request", () -> body);
+      String body = buildRequestBody(effectiveRequest, false);
       String response = transport.post(body);
-      LlmDebugLog.log("sync.response.raw", () -> response);
       String content = ChatCompletionResponse.parse(response).firstContent();
-      LlmDebugLog.log("sync.response.content", () -> content);
       String extracted = OpenuiCodeExtractor.extract(content);
-      LlmDebugLog.log("sync.response.extracted", () -> extracted);
-      return extracted;
+      return new GenUiGenerationResult(extracted, effectiveRequest.response());
     } catch (LlmTransportException error) {
       throw new GenerationSdkException("Failed to invoke LLM: " + error.getMessage(), error);
     }
   }
 
-  public String generateStream(UiGenerationRequest request, Consumer<String> sink) {
+  /**
+   * 流式生成。首帧固定发出 {@code dataModel} envelope(seq=0),随后每个模型 delta 发出
+   * {@code dsl} envelope(seq 递增),正常结束发 {@code done}。首帧发出后若流读取/传输失败,SDK 不
+   * 向调用方抛出该异常,而是发出 {@code error} 再发 {@code done},并返回已累计内容的提取结果。
+   */
+  public GenUiGenerationResult generateStream(
+      UiGenerationRequest request, Consumer<RenderStreamEnvelope> sink) {
     Objects.requireNonNull(sink, "sink must not be null");
-    String body = buildRequestBody(request, true);
-    LlmDebugLog.log("stream.request", () -> body);
+    UiGenerationRequest effectiveRequest =
+        request == null ? UiGenerationRequest.builder().build() : request;
+    Map<String, Object> dataModel = effectiveRequest.response();
+
+    // 首帧:dataModel,seq=0。一旦发出,后续 LLM 流错误改为 error envelope 而不再抛给调用方。
+    sink.accept(RenderStreamEnvelope.dataModel(dataModel));
+    int[] nextSeq = {1};
+
+    String body = buildRequestBody(effectiveRequest, true);
+    StringBuilder accumulated = new StringBuilder();
     try (InputStream stream = transport.postStream(body)) {
-      String accumulated =
-          SseDeltaParser.parse(
-              stream,
-              delta -> {
-                LlmDebugLog.log("stream.delta", () -> delta);
-                sink.accept(delta);
-              });
-      LlmDebugLog.log("stream.response.accumulated", () -> accumulated);
-      String extracted = OpenuiCodeExtractor.extract(accumulated);
-      LlmDebugLog.log("stream.response.extracted", () -> extracted);
-      return extracted;
-    } catch (LlmTransportException error) {
-      throw new GenerationSdkException("Failed to invoke LLM stream: " + error.getMessage(), error);
-    } catch (IOException error) {
-      throw new GenerationSdkException("Failed to read LLM stream: " + error.getMessage(), error);
+      SseDeltaParser.parse(
+          stream,
+          delta -> {
+            accumulated.append(delta);
+            sink.accept(RenderStreamEnvelope.dsl(nextSeq[0]++, delta));
+          });
+      String extracted = OpenuiCodeExtractor.extract(accumulated.toString());
+      sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
+      return new GenUiGenerationResult(extracted, dataModel);
+    } catch (LlmTransportException | IOException error) {
+      sink.accept(
+          RenderStreamEnvelope.error(nextSeq[0]++, "LLM_STREAM_FAILED", error.getMessage(), true));
+      sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
+      String extracted = OpenuiCodeExtractor.extract(accumulated.toString());
+      return new GenUiGenerationResult(extracted, dataModel);
     }
   }
 
