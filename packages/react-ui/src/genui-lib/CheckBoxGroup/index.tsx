@@ -7,7 +7,7 @@ import {
   useIsStreaming,
   useStateField,
   type SubComponentOf,
-} from "@openuidev/react-lang";
+} from "@cloudsop/openui-react-lang";
 import React from "react";
 import { CheckBoxGroup as OpenUICheckBoxGroup } from "../../components/CheckBoxGroup";
 import { CheckBoxItem as OpenUICheckBoxItem } from "../../components/CheckBoxItem";

@@ -15,6 +15,17 @@ This note is for the internal service repository that currently owns LLM request
 
 The delegate should delete its local chat/completions request body construction, response DTO parsing, SSE frame parsing, and OpenUI code extraction after the SDK is adopted.
 
+For temporary LLM boundary diagnostics, run with `-Dgenui.llm.debug=true` or
+`GENUI_LLM_DEBUG=true`. The SDK logs the actual chat/completions request body,
+raw sync response/content, stream deltas, accumulated stream content, and
+extracted OpenUI code with the `[genui-llm-debug]` prefix. Use
+`genui.llm.debug.maxChars` or `GENUI_LLM_DEBUG_MAX_CHARS` to raise the default
+16000-character cap.
+
+The SDK defaults `jsonObjectResponse` to `false` so the model can return
+openui-lang text. If a legacy gateway still requires `response_format` with
+`{"type":"json_object"}`, configure `GenUiLlmConfig.builder().jsonObjectResponse(true)`.
+
 ## Internal classes to delete after migration
 
 The following internal classes are replaced by SDK classes:

@@ -23,8 +23,8 @@ export default defineConfig({
   plugins: [reactUiDslViewTargetPlugin()].filter(Boolean),
   resolve: {
     alias: {
-      "@openuidev/lang-core": path.resolve(__dirname, "../lang-core/src/index.ts"),
-      "@openuidev/react-lang": path.resolve(__dirname, "../react-lang/src/index.ts"),
+      "@cloudsop/openui-lang-core": path.resolve(__dirname, "../lang-core/src/index.ts"),
+      "@cloudsop/openui-react-lang": path.resolve(__dirname, "../react-lang/src/index.ts"),
     },
   },
   test: {

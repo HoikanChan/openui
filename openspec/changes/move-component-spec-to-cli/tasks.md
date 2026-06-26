@@ -2,7 +2,7 @@
 
 - [x] 1.1 在 [generate-worker.ts](packages/openui-cli/src/commands/generate-worker.ts) 解析 `--extension`、`--extension-id <id>`、`--version <ver>` 参数（与现有 `--export` 解析共存）
 - [x] 1.2 新增 extension 对象识别：在打包后的模块导出里查找含数组型 `components`（元素具备 `name` + `props`）的对象，支持 `--export <name>` 显式选择；未命中或多候选时报错并列出可用导出名、提示用 `--export`
-- [x] 1.3 通过 esbuild stub 取得 `createLibrary`：把用户入口与 `export { createLibrary } from "@openuidev/react-lang"` 一起打包，使组件与 `createLibrary` 共享同一个 bundled zod 实例（避免跨实例 zod introspection 出错）；解析失败时报清晰错误，提示在含 OpenUI 依赖的项目内运行
+- [x] 1.3 通过 esbuild stub 取得 `createLibrary`：把用户入口与 `export { createLibrary } from "@cloudsop/openui-react-lang"` 一起打包，使组件与 `createLibrary` 共享同一个 bundled zod 实例（避免跨实例 zod introspection 出错）；解析失败时报清晰错误，提示在含 OpenUI 依赖的项目内运行
 - [x] 1.4 编译并组装输出：对 extension 对象执行 `createLibrary({ components, componentGroups, tools, examples, additionalRules }).toSpec()` 得到编译后的 `components` 与透传字段；`extensionId = flag ?? 对象`、`version = flag ?? 对象 ?? ""`；`componentGroups`/`tools`/`examples`/`additionalRules` 仅在非空时输出；`extensionId` 两处都缺失时报错退出
 - [x] 1.5 `createLibrary` 抛出的「必填先于可选」校验错误原样透传，使命令以非零状态码失败并指明组件与属性
 

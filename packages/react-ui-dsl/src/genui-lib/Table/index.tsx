@@ -4,7 +4,7 @@ import {
   type ComponentRenderProps,
   defineComponent,
   type SubComponentOf,
-} from "@openuidev/react-lang";
+} from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 import { ColSchema, TableSchema } from "./schema";
 import { type ColViewProps, TableView } from "./view";

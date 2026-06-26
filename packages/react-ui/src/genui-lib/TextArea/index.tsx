@@ -6,7 +6,7 @@ import {
   useFormValidation,
   useIsStreaming,
   useStateField,
-} from "@openuidev/react-lang";
+} from "@cloudsop/openui-react-lang";
 import React from "react";
 import { TextArea as OpenUITextArea } from "../../components/TextArea";
 import { TextAreaSchema } from "./schema";

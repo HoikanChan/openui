@@ -6,7 +6,7 @@
 
 **Architecture:** Four new files alongside the existing e2e infrastructure — a pure prompt-inference helper (`fuzz-loader.ts`), its unit tests, the fuzz test runner (`dsl-fuzz.test.tsx`), and two new directories (`fuzz-data/` for input JSON, `fuzz-snapshots/` for generated DSL). The existing `loadOrGenerate` in `llm.ts` gains an optional `snapshotDir` parameter so the fuzz suite can redirect snapshots without duplicating logic.
 
-**Tech Stack:** Vitest 4, React Testing Library, `@openuidev/lang-core` parser, `@openuidev/react-lang` Renderer, same OpenAI-compatible client already used by `llm.ts`.
+**Tech Stack:** Vitest 4, React Testing Library, `@cloudsop/openui-lang-core` parser, `@cloudsop/openui-react-lang` Renderer, same OpenAI-compatible client already used by `llm.ts`.
 
 ---
 
@@ -254,8 +254,8 @@ import { cleanup, render } from "@testing-library/react";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as echarts from "echarts";
-import { createParser } from "@openuidev/lang-core";
-import { Renderer } from "@openuidev/react-lang";
+import { createParser } from "@cloudsop/openui-lang-core";
+import { Renderer } from "@cloudsop/openui-react-lang";
 import { dslLibrary } from "../../genui-lib/dslLibrary";
 import { loadOrGenerate } from "./llm";
 import { inferFuzzPrompt } from "./fuzz-loader";

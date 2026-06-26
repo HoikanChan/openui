@@ -6,7 +6,7 @@ import {
   defineComponent,
   type ElementNode,
   type SubComponentOf,
-} from "@openuidev/react-lang";
+} from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 import {
   DescFieldSchema,

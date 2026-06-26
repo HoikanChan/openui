@@ -5,7 +5,7 @@ import {
   useIsStreaming,
   useStateField,
   type SubComponentOf,
-} from "@openuidev/react-lang";
+} from "@cloudsop/openui-react-lang";
 import React from "react";
 import { SwitchGroup as OpenUISwitchGroup } from "../../components/SwitchGroup";
 import { SwitchItem as OpenUISwitchItem } from "../../components/SwitchItem";

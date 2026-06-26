@@ -1,6 +1,6 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Buttons as OpenUIButtons, type ButtonsProps } from "../../components/Buttons";
 import { ButtonsSchema } from "./schema";
 

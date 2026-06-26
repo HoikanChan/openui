@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getBuiltinsManifest } from "@openuidev/react-lang";
+import { getBuiltinsManifest } from "@cloudsop/openui-react-lang";
 import { dslLibrary } from "../src/genui-lib/dslLibrary";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));

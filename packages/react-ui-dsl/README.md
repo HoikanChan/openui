@@ -1,4 +1,4 @@
-# `@openuidev/react-ui-dsl`
+# `@cloudsop/openui-react-ui-dsl`
 
 DSL component library for OpenUI built on React, Ant Design v5, and ECharts.
 
@@ -100,7 +100,7 @@ The eval loop measures and iterates on rendering quality. It gives each fixture 
 
 ```bash
 # Install browser binaries (once per machine)
-pnpm --filter @openuidev/react-ui-dsl exec playwright install chromium
+pnpm --filter @cloudsop/openui-react-ui-dsl exec playwright install chromium
 ```
 
 The eval loop needs a multimodal VLM for judging. Pick a runner in `.env`:

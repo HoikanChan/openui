@@ -1,6 +1,6 @@
 "use client";
 
-import { defineComponent, useIsStreaming } from "@openuidev/react-lang";
+import { defineComponent, useIsStreaming } from "@cloudsop/openui-react-lang";
 import React from "react";
 import { z } from "zod";
 import {

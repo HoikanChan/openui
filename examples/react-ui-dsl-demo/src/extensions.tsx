@@ -2,8 +2,8 @@
 // 后端 seed 提供模型可见的 Component Contract(进 prompt),这里用
 // dslLibrary.extend() 注册对应的 React 渲染实现(进 Renderer/parser)。
 // 两侧的组件名与 props 必须一致,否则模型生成的组件前端渲染不出来。
-import { defineComponent, type Library } from "@openuidev/react-lang";
-import { dslLibrary } from "@openuidev/react-ui-dsl";
+import { defineComponent, type Library } from "@cloudsop/openui-react-lang";
+import { dslLibrary } from "@cloudsop/openui-react-ui-dsl";
 import { z } from "zod";
 
 const AlarmBadgeSchema = z.object({

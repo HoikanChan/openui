@@ -20,7 +20,7 @@ async function importPlaywright(): Promise<typeof import("playwright")> {
     return await import("playwright");
   } catch {
     throw new Error(
-      "Playwright is not installed. Run: pnpm --filter @openuidev/react-ui-dsl add -D playwright && pnpm exec playwright install chromium",
+      "Playwright is not installed. Run: pnpm --filter @cloudsop/openui-react-ui-dsl add -D playwright && pnpm exec playwright install chromium",
     );
   }
 }

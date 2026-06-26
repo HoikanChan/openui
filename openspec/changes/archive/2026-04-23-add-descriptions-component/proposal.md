@@ -47,7 +47,7 @@ None.
   - `packages/react-ui-dsl/src/index.ts`
   - related tests and examples
 - APIs:
-  - `@openuidev/react-ui-dsl` gains `Descriptions`, `DescGroup`, and `DescField` in its LLM-facing component surface
+  - `@cloudsop/openui-react-ui-dsl` gains `Descriptions`, `DescGroup`, and `DescField` in its LLM-facing component surface
 - Prompt surface:
   - object-detail UIs can be generated with fewer component references and less custom render ceremony than equivalent `Stack`/`TextContent` compositions
 - Dependencies:

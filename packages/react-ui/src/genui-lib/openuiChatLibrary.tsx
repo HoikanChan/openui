@@ -1,7 +1,7 @@
 "use client";
 
-import type { ComponentGroup, PromptOptions } from "@openuidev/react-lang";
-import { createLibrary, defineComponent } from "@openuidev/react-lang";
+import type { ComponentGroup, PromptOptions } from "@cloudsop/openui-react-lang";
+import { createLibrary, defineComponent } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 import { Card as OpenUICard } from "../components/Card";
 

@@ -1,5 +1,5 @@
 {
-  "name": "@openuidev/lang-core",
+  "name": "@cloudsop/openui-lang-core",
   "version": "0.2.1",
   "description": "Framework-agnostic core for OpenUI Lang: parser, prompt generation, validation, and type definitions",
   "license": "MIT",

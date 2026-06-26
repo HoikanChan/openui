@@ -6,7 +6,7 @@
 
 **Architecture:** The demo keeps the existing full demo untouched and adds a `?demo=piu-extension` entry. GenUI Service receives a model-visible `generationExtension`; the browser loads a classic-script business Piu through `Prel.define`/`Prel.autoLoad`; that Piu emits `smart-canvas:extend` to the DSLEngine Piu socket; `DSLRenderer` consumes the registered component and tool through the runtime store.
 
-**Tech Stack:** React 19, Vite, TypeScript, `@openuidev/react-ui-dsl`, `@openuidev/react-lang`, Zod, GenUI Service REST API, `mock/febs/prel-mock.mjs`.
+**Tech Stack:** React 19, Vite, TypeScript, `@cloudsop/openui-react-ui-dsl`, `@cloudsop/openui-react-lang`, Zod, GenUI Service REST API, `mock/febs/prel-mock.mjs`.
 
 ---
 
@@ -90,7 +90,7 @@ In `packages/react-ui-dsl/src/context/StreamDSLContext.tsx`, replace the import 
 ```tsx
 // @ts-nocheck
 import { createContext, useContext, type PropsWithChildren } from "react";
-import { createParser } from "@openuidev/react-lang";
+import { createParser } from "@cloudsop/openui-react-lang";
 import { CanvasStoreProvider } from "../canvas/CanvasStoreContext";
 import { canvasStore, type GenUIExtension } from "../canvas/canvasStore";
 import { dslLibrary } from "../genui-lib/dslLibrary";
@@ -156,7 +156,7 @@ export { init as initDslPiu } from "./context/StreamDSLContext";
 Run:
 
 ```bash
-pnpm --filter @openuidev/react-ui-dsl typecheck
+pnpm --filter @cloudsop/openui-react-ui-dsl typecheck
 ```
 
 Expected: it may surface pre-existing unrelated errors in the current Piu branch, but it must not report missing exports for `DSLRenderer` or `initDslPiu`.
@@ -181,7 +181,7 @@ git commit -m "feat: expose piu runtime extension initializer"
 Create `examples/react-ui-dsl-demo/src/piu-extension-demo/AlarmExtension.tsx`:
 
 ```tsx
-import { defineComponent, generateComponentSpecs } from "@openuidev/react-ui-dsl";
+import { defineComponent, generateComponentSpecs } from "@cloudsop/openui-react-ui-dsl";
 import { z } from "zod";
 
 export const ALARM_EXTENSION_ID = "piu-alarm-runtime-demo";
@@ -431,7 +431,7 @@ Create `examples/react-ui-dsl-demo/src/PiuExtensionDemo.tsx`:
 
 ```tsx
 import Prel from "../../../mock/febs/prel-mock.mjs";
-import { DSLRenderer, canvasStore, initDslPiu } from "@openuidev/react-ui-dsl";
+import { DSLRenderer, canvasStore, initDslPiu } from "@cloudsop/openui-react-ui-dsl";
 import { useEffect, useMemo, useState } from "react";
 import { GENERATE_URL, registerGeneration } from "./genuiService";
 import {
@@ -783,7 +783,7 @@ pnpm --dir examples/react-ui-dsl-demo test
 pnpm --dir examples/react-ui-dsl-demo build
 ```
 
-Expected: both commands pass. If existing tests mock `@openuidev/react-ui-dsl`, update the mock to include `DSLRenderer` only if the new route import causes module evaluation in tests.
+Expected: both commands pass. If existing tests mock `@cloudsop/openui-react-ui-dsl`, update the mock to include `DSLRenderer` only if the new route import causes module evaluation in tests.
 
 - [ ] **Step 3: Run the service**
 

@@ -8,11 +8,11 @@ Use this package for LLM-driven email template generation with 44 email building
 ## Install
 
 ```bash tab="npm"
-npm install @openuidev/react-email @openuidev/react-lang @react-email/render
+npm install @openuidev/react-email @cloudsop/openui-react-lang @react-email/render
 ```
 
 ```bash tab="pnpm"
-pnpm add @openuidev/react-email @openuidev/react-lang @react-email/render
+pnpm add @openuidev/react-email @cloudsop/openui-react-lang @react-email/render
 ```
 
 ## `emailLibrary`
@@ -40,7 +40,7 @@ Pre-built `PromptOptions` containing 10 complete email template examples and 30+
 Convert the rendered output to an email-safe HTML string with [`@react-email/render`](https://www.npmjs.com/package/@react-email/render):
 
 ```tsx
-import { Renderer } from "@openuidev/react-lang";
+import { Renderer } from "@cloudsop/openui-react-lang";
 import { emailLibrary } from "@openuidev/react-email";
 import { render } from "@react-email/render";
 

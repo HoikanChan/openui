@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
-import { Renderer, createParser } from "@openuidev/react-lang";
-import { CanvasTabs, dslLibrary, canvasStore } from "@openuidev/react-ui-dsl";
+import { Renderer, createParser } from "@cloudsop/openui-react-lang";
+import { CanvasTabs, dslLibrary, canvasStore } from "@cloudsop/openui-react-ui-dsl";
 import { ConfigProvider } from "antd";
 
 const EXAMPLE_DSL = `

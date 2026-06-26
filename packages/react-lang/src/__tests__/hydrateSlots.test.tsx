@@ -1,4 +1,4 @@
-import type { ASTNode, ElementNode, EvaluationContext } from "@openuidev/lang-core";
+import type { ASTNode, ElementNode, EvaluationContext } from "@cloudsop/openui-lang-core";
 import { describe, expect, it } from "vitest";
 
 import { hydrateSlots } from "../hydrateSlots";

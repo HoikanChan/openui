@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 import { PreviewCardSchema } from "./schema";
 import { canvasStore } from "../canvasStore";

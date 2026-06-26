@@ -43,6 +43,6 @@
 
 ## 8. 验证
 
-- [ ] 8.1 执行 `pnpm --filter @openuidev/react-ui-dsl run test` 确认所有单元测试通过
-- [ ] 8.2 执行 `pnpm --filter @openuidev/react-ui-dsl run build` 确认构建无报错
-- [ ] 8.3 （可选）执行 `pnpm --filter @openuidev/react-ui-dsl run ci` 确认 lint 和 format 通过
+- [ ] 8.1 执行 `pnpm --filter @cloudsop/openui-react-ui-dsl run test` 确认所有单元测试通过
+- [ ] 8.2 执行 `pnpm --filter @cloudsop/openui-react-ui-dsl run build` 确认构建无报错
+- [ ] 8.3 （可选）执行 `pnpm --filter @cloudsop/openui-react-ui-dsl run ci` 确认 lint 和 format 通过

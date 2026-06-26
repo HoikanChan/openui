@@ -5,7 +5,7 @@ const isPublishBuild = process.env["REACT_UI_DSL_BUILD_MODE"] === "publish";
 
 // In publish mode we inline workspace deps so the published artifact
 // has no @openuidev/* runtime references. See scripts/publish-eview.mts.
-const bundledWorkspacePackages = ["@openuidev/react-lang", "@openuidev/lang-core"];
+const bundledWorkspacePackages = ["@cloudsop/openui-react-lang", "@cloudsop/openui-lang-core"];
 
 const shared = {
   alias: createViewTargetAliases(),

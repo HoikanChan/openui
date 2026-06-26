@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { Card, ConfigProvider, Space, Typography } from "antd";
 import React from "react";
-import { Renderer } from "@openuidev/react-lang";
+import { Renderer } from "@cloudsop/openui-react-lang";
 import { dslLibrary } from "../genui-lib/dslLibrary";
 
 const { Paragraph, Text, Title } = Typography;
@@ -28,7 +28,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Standalone Storybook smoke test for `@openuidev/react-ui-dsl`. It renders one openui-lang response with the local `dslLibrary` so the package can be validated without the `react-ui` Storybook.",
+          "Standalone Storybook smoke test for `@cloudsop/openui-react-ui-dsl`. It renders one openui-lang response with the local `dslLibrary` so the package can be validated without the `react-ui` Storybook.",
       },
     },
   },

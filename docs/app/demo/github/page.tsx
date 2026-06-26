@@ -1,6 +1,6 @@
 "use client";
 
-import { mergeStatements } from "@openuidev/react-lang";
+import { mergeStatements } from "@cloudsop/openui-react-lang";
 import { Button } from "@openuidev/react-ui";
 import { encode } from "gpt-tokenizer";
 import {

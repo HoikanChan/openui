@@ -1,7 +1,7 @@
 "use client";
 
 import { useArtifact } from "@openuidev/react-headless";
-import type { ComponentRenderer } from "@openuidev/react-lang";
+import type { ComponentRenderer } from "@cloudsop/openui-react-lang";
 import { useId, type ReactNode } from "react";
 import { ArtifactPanel, type ArtifactPanelProps } from "../components/_shared/artifact";
 

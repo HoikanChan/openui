@@ -1,6 +1,6 @@
 # react-ui-dsl-demo
 
-A Vite + React demo that generates UI from a text prompt. Rendering uses `@openuidev/react-ui-dsl`; prompt assembly and LLM generation are served by **GenUI Service** (`examples/genui-service`, Java) — the REST reference implementation of the Java Generation SDK.
+A Vite + React demo that generates UI from a text prompt. Rendering uses `@cloudsop/openui-react-ui-dsl`; prompt assembly and LLM generation are served by **GenUI Service** (`examples/genui-service`, Java) — the REST reference implementation of the Java Generation SDK.
 
 ## Prerequisites
 
@@ -11,8 +11,8 @@ Build the workspace packages before starting the demo if lang-core or react-lang
 
 ```bash
 # From the monorepo root (only needed after source changes to these packages)
-pnpm --filter @openuidev/lang-core build
-pnpm --filter @openuidev/react-lang build
+pnpm --filter @cloudsop/openui-lang-core build
+pnpm --filter @cloudsop/openui-react-lang build
 ```
 
 ## Setup
@@ -70,7 +70,7 @@ verified without the Java service or an LLM. Run it with `pnpm test:e2e`.
 
 ## How it works
 
-- **Client** (`src/App.tsx`): imports `dslLibrary` from `@openuidev/react-ui-dsl` and passes it to the `<Renderer>` from `@openuidev/react-lang`. Vite resolves the package to TypeScript source via the alias in `vite.config.ts`.
+- **Client** (`src/App.tsx`): imports `dslLibrary` from `@cloudsop/openui-react-ui-dsl` and passes it to the `<Renderer>` from `@cloudsop/openui-react-lang`. Vite resolves the package to TypeScript source via the alias in `vite.config.ts`.
 - **GenUI Service** (`examples/genui-service`): wraps the Java Generation SDK. The prompt tab shows the prompt assembled by `POST /v1/prompts/assemble` (byte-aligned with the TypeScript `dslLibrary.prompt()`); `POST /v1/generate` assembles the prompt, calls the LLM, and streams `openui-lang` back as plain text.
 - **Context selector**: the sidebar dropdown lists Generation Contexts from `GET /v1/contexts`. The service seeds three presets at startup (`noe-alarm-tools` tools, `noe-ops-rules` rules, `noe-biz-components` custom components); selecting one adds its contracts to the assembled prompt. Registrations are in-memory — restart restores only the seeds.
 - **Tool execution**: `Query`/`Mutation` nodes in generated DSL are executed through `POST /v1/tools/{toolName}/execute` (the client wires `Renderer`'s `toolProvider` to it). The reference service ships mock executors for the seed tools; replace `SeedToolExecutors` with your real tool channel when adapting it in-house.
@@ -84,7 +84,7 @@ Component extensions need both sides: the backend contract (model-visible, goes 
 
 ## Peer dependencies
 
-`@openuidev/react-ui-dsl` requires the following peers (already listed in `package.json`):
+`@cloudsop/openui-react-ui-dsl` requires the following peers (already listed in `package.json`):
 
 - `antd ^5` — component styling via CSS-in-JS, no stylesheet import needed
 - `echarts ^5` — chart rendering

@@ -1,6 +1,6 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import React from "react";
 import { z } from "zod";

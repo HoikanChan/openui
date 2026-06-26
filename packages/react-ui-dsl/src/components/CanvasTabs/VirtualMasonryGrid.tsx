@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Library } from "@openuidev/react-lang";
-import { renderElementNode } from "@openuidev/react-lang";
+import type { Library } from "@cloudsop/openui-react-lang";
+import { renderElementNode } from "@cloudsop/openui-react-lang";
 import { Card } from "antd";
 import type { DashboardCardData } from "../../canvas/canvasStore";
 

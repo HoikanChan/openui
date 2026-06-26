@@ -9,7 +9,7 @@
   - flag：`--extension-id`、`--version`（均为对象值的**可选 override**，便于 CI 注入版本）、`--export <name>`、`-o/--out`。
   - `extensionId` 在对象与 flag 中都缺失时报错；`version` 都缺失时输出 `""`。
   - 实现复用公开 API：worker 对 extension 对象跑 `createLibrary(...).toSpec()` 完成组件编译，无需公开 `generateComponentSpecs`。
-- **BREAKING**：从 `@openuidev/react-lang` 和 `@openuidev/lang-core` 的对外 barrel 移除 `generateComponentSpecs` 导出。该函数仅保留为 lang-core 包内部实现（继续供 `Library.toSpec()` 使用）。
+- **BREAKING**：从 `@cloudsop/openui-react-lang` 和 `@cloudsop/openui-lang-core` 的对外 barrel 移除 `generateComponentSpecs` 导出。该函数仅保留为 lang-core 包内部实现（继续供 `Library.toSpec()` 使用）。
 - 文档同步：
   - [extending-openui.mdx](docs/content/docs/openui-lang/extending-openui.mdx) 的「从前端库导出组件 spec」小节由脚本写法改为 CLI 写法。
   - [docs/SYSTEM-DESIGN.md](docs/SYSTEM-DESIGN.md) 多处「DSLEngine 提供 `generateComponentSpecs`」改为「CLI 生成 Extension JSON」。
@@ -29,7 +29,7 @@
   - `packages/openui-cli/src/commands/generate-extension.ts`（由现有半成品 `generate-component-spec.ts` 改名而来：接线、flag 改名、向 worker 传参）
   - `packages/openui-cli/src/commands/generate-worker.ts`（新增 `--extension` 分支：识别 extension 对象、`createLibrary(...).toSpec()` 编译组件、组装输出）
   - `packages/react-lang/src/index.ts`、`packages/lang-core/src/index.ts`（移除 `generateComponentSpecs` 导出）
-- 受影响 API/契约：`@openuidev/react-lang`、`@openuidev/react-ui-dsl`（barrel 透传）不再导出 `generateComponentSpecs`，属 **BREAKING**。
+- 受影响 API/契约：`@cloudsop/openui-react-lang`、`@cloudsop/openui-react-ui-dsl`（barrel 透传）不再导出 `generateComponentSpecs`，属 **BREAKING**。
 - 受影响运行时消费者：PIU 扩展 demo 在浏览器里动态注册生成契约时用过 `generateComponentSpecs`，迁移到等价公开 API `createLibrary({ components }).toSpec().components`（输出一致、运行时安全）：
   - `examples/react-ui-dsl-demo/src/piu-extension-demo/AlarmExtension.tsx`
   - `examples/react-ui-dsl-demo/docs/extension-guide.md`

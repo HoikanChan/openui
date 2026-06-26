@@ -1,4 +1,4 @@
-import { Renderer, RendererProps } from '@openuidev/react-lang';
+import { Renderer, RendererProps } from '@cloudsop/openui-react-lang';
 import { useLibrary, useToolProvider } from './context/useDslRuntime';
 
 interface DSLRendererProps extends Omit<RendererProps, 'toolProvider'> {

@@ -22,4 +22,4 @@
 
 ## 6. Verification
 
-- [ ] 6.1 Run `pnpm --filter @openuidev/lang-core run test` and confirm all tests pass
+- [ ] 6.1 Run `pnpm --filter @cloudsop/openui-lang-core run test` and confirm all tests pass

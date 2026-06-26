@@ -1,5 +1,5 @@
 import Prel from "../../../mock/febs/prel-mock.mjs";
-import { DSLRenderer, canvasStore, initDslPiu } from "@openuidev/react-ui-dsl";
+import { DSLRenderer, canvasStore, initDslPiu } from "@cloudsop/openui-react-ui-dsl";
 import { useEffect, useMemo, useState } from "react";
 import { GENERATE_URL, registerGeneration } from "./genuiService";
 import {

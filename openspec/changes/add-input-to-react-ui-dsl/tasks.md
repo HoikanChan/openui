@@ -30,5 +30,5 @@
 ## 7. 验证
 
 - [x] 7.1 运行 `pnpm test` 确认所有单元测试通过（8 个失败项均为变更前已存在的 Stack/Separator/prompt-artifact 测试，与本变更无关；本变更新增的 Input/Form 测试全部通过）
-- [x] 7.2 运行 `pnpm --filter @openuidev/react-ui-dsl run build` 确认 TypeScript 编译无报错
+- [x] 7.2 运行 `pnpm --filter @cloudsop/openui-react-ui-dsl run build` 确认 TypeScript 编译无报错
 - [ ] 7.3 在 Storybook 中目视检查所有 Input stories 与含 Input 的 Form story 渲染正常（需用户手动执行 `pnpm storybook`）

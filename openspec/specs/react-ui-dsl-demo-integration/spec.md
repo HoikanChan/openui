@@ -1,11 +1,11 @@
 ## ADDED Requirements
 
 ### Requirement: Demo renders with the real React UI DSL library
-The `examples/react-ui-dsl-demo` application SHALL use `dslLibrary` from `@openuidev/react-ui-dsl` as the renderer library instead of maintaining a local placeholder component registry.
+The `examples/react-ui-dsl-demo` application SHALL use `dslLibrary` from `@cloudsop/openui-react-ui-dsl` as the renderer library instead of maintaining a local placeholder component registry.
 
 #### Scenario: Client renderer uses workspace package
 - **WHEN** the demo application starts in the monorepo
-- **THEN** the preview renderer imports `dslLibrary` from `@openuidev/react-ui-dsl`
+- **THEN** the preview renderer imports `dslLibrary` from `@cloudsop/openui-react-ui-dsl`
 - **AND** the demo does not depend on `src/lib/placeholderLibrary.ts` for runtime rendering
 
 ### Requirement: Demo generates through GenUI Service
@@ -54,10 +54,10 @@ demo 的 Renderer SHALL 配置 toolProvider,把生成 DSL 中 Query/Mutation 节
 - **THEN** AlarmBadge 不再渲染(基础库不认识该组件)
 
 ### Requirement: Demo setup documents real-library prerequisites
-The demo documentation SHALL describe the dependency, build, and runtime prerequisites required to run the example against `@openuidev/react-ui-dsl` inside the workspace, including the GenUI Service backend (JDK ≥ 21, Maven) and the startup order between the Java service and the front-end dev server.
+The demo documentation SHALL describe the dependency, build, and runtime prerequisites required to run the example against `@cloudsop/openui-react-ui-dsl` inside the workspace, including the GenUI Service backend (JDK ≥ 21, Maven) and the startup order between the Java service and the front-end dev server.
 
 #### Scenario: Contributor follows documented setup
 - **WHEN** a contributor reads `examples/react-ui-dsl-demo/README.md`
-- **THEN** the README lists the required workspace dependency and any build or peer dependency prerequisites for `@openuidev/react-ui-dsl`
+- **THEN** the README lists the required workspace dependency and any build or peer dependency prerequisites for `@cloudsop/openui-react-ui-dsl`
 - **AND** the README states the JDK ≥ 21 and Maven prerequisites for `examples/genui-service`
 - **AND** the instructions describe the startup order: start GenUI Service first, then the front-end dev server

@@ -4,7 +4,7 @@ import {
   type ASTNode,
   type ElementNode,
   type EvaluationContext,
-} from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
 import type { ReactNode } from "react";
 
 function isActionPlan(value: unknown): value is { steps: unknown[] } {

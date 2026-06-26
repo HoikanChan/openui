@@ -138,14 +138,14 @@ export const ButtonSchema = z.object({
 
 ## Component Wrapper Pattern
 
-Each `genui-lib` wrapper uses `defineComponent` from `@openuidev/react-lang` and imports antd (or chart components) directly:
+Each `genui-lib` wrapper uses `defineComponent` from `@cloudsop/openui-react-lang` and imports antd (or chart components) directly:
 
 ```tsx
 // genui-lib/Button/index.tsx
 "use client"
 
 import { Button as AntButton } from "antd"
-import { defineComponent } from "@openuidev/react-lang"
+import { defineComponent } from "@cloudsop/openui-react-lang"
 import { ButtonSchema } from "./schema"
 
 export const Button = defineComponent({
@@ -178,7 +178,7 @@ Chart genui-lib wrappers import from `src/components/chart/`:
 // genui-lib/Charts/PieChart/index.tsx
 "use client"
 
-import { defineComponent } from "@openuidev/react-lang"
+import { defineComponent } from "@cloudsop/openui-react-lang"
 import { PieChart as PieChartComponent } from "../../components/chart"
 import { PieChartSchema } from "./schema"
 
@@ -200,7 +200,7 @@ The chart component in `src/components/chart/PieChart.tsx` handles ECharts initi
 // genui-lib/dslLibrary.tsx
 "use client"
 
-import { createLibrary } from "@openuidev/react-lang"
+import { createLibrary } from "@cloudsop/openui-react-lang"
 import { VLayout } from "./VLayout"
 import { HLayout } from "./HLayout"
 import { Text } from "./Text"
@@ -242,10 +242,10 @@ export const dslLibrary = createLibrary({
 
 ```json
 {
-  "name": "@openuidev/react-ui-dsl",
+  "name": "@cloudsop/openui-react-ui-dsl",
   "type": "module",
   "peerDependencies": {
-    "@openuidev/react-lang": "workspace:^",
+    "@cloudsop/openui-react-lang": "workspace:^",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0",
     "antd": "^5.0.0",

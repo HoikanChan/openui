@@ -64,7 +64,7 @@ public final class GenUiLlmConfig {
     private String defaultModel;
     private double temperature;
     private boolean enableThinking;
-    private boolean jsonObjectResponse = true;
+    private boolean jsonObjectResponse;
     private final LinkedHashMap<String, String> extraHeaders = new LinkedHashMap<>();
 
     private Builder() {}

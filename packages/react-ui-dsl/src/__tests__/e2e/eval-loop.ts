@@ -147,9 +147,9 @@ async function buildReportApp(reportDir: string): Promise<void> {
     root: reportAppRoot,
     resolve: {
       alias: {
-        "@openuidev/lang-core": resolve(workspaceRoot, "packages/lang-core/src/index"),
-        "@openuidev/react-lang": resolve(workspaceRoot, "packages/react-lang/src/index"),
-        "@openuidev/react-ui-dsl": resolve(packageRoot, "src/index"),
+        "@cloudsop/openui-lang-core": resolve(workspaceRoot, "packages/lang-core/src/index"),
+        "@cloudsop/openui-react-lang": resolve(workspaceRoot, "packages/react-lang/src/index"),
+        "@cloudsop/openui-react-ui-dsl": resolve(packageRoot, "src/index"),
       },
     },
     build: { emptyOutDir: false, outDir: reportDir },

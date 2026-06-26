@@ -58,15 +58,15 @@ Auto-repair (see [REFERENCE.md](REFERENCE.md#repair-levels)):
 Default (β):
 
 ```bash
-pnpm --filter @openuidev/lang-core build && pnpm --filter @openuidev/lang-core test
+pnpm --filter @cloudsop/openui-lang-core build && pnpm --filter @cloudsop/openui-lang-core test
 pnpm --filter @openuidev/react-headless build && pnpm --filter @openuidev/react-headless test
-pnpm --filter @openuidev/react-ui-dsl build
+pnpm --filter @cloudsop/openui-react-ui-dsl build
 ```
 
 If any theme has `[x] verify-e2e`, additionally:
 
 ```bash
-pnpm --filter @openuidev/react-ui-dsl test:e2e
+pnpm --filter @cloudsop/openui-react-ui-dsl test:e2e
 ```
 
 **NEVER run `:regen` during sync verification.** Committed `.dsl` snapshots are the frozen baseline — `regen` would launder real regressions into new baselines. If e2e fails, treat as a sync regression signal, not a snapshot staleness signal.

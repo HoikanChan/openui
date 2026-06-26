@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentGroup } from "@openuidev/react-lang";
+import type { ComponentGroup } from "@cloudsop/openui-react-lang";
 import { openuiLibrary } from "@openuidev/react-ui";
 import { ChevronLeft, ChevronRight, LayoutList } from "lucide-react";
 import { useState } from "react";

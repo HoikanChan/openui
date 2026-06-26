@@ -193,9 +193,9 @@ async function buildReportApp(reportDir, reportDataPath) {
     plugins: [reactUiDslViewTargetPlugin(packageRoot)].filter(Boolean),
     resolve: {
       alias: {
-        "@openuidev/lang-core": resolve(workspaceRoot, "packages/lang-core/src/index.ts"),
-        "@openuidev/react-lang": resolve(workspaceRoot, "packages/react-lang/src/index.ts"),
-        "@openuidev/react-ui-dsl": resolve(packageRoot, "src/index.ts"),
+        "@cloudsop/openui-lang-core": resolve(workspaceRoot, "packages/lang-core/src/index.ts"),
+        "@cloudsop/openui-react-lang": resolve(workspaceRoot, "packages/react-lang/src/index.ts"),
+        "@cloudsop/openui-react-ui-dsl": resolve(packageRoot, "src/index.ts"),
       },
     },
     build: {

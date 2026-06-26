@@ -1,5 +1,5 @@
 {
-  "contractVersion": "@openuidev/react-ui-dsl@0.1.0",
+  "contractVersion": "@cloudsop/openui-react-ui-dsl@0.1.0",
   "root": "Stack",
   "components": {
     "Stack": {
@@ -404,7 +404,7 @@
           "title": {
             "type": "string"
           },
-          "tab": {
+          "cardId": {
             "type": "string"
           },
           "size": {

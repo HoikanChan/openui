@@ -11,9 +11,9 @@
     "rootDir": "./src",
     "skipLibCheck": true,
     "paths": {
-      "@openuidev/react-ui-dsl": ["./src/index.ts"],
-      "@openuidev/react-lang": ["../react-lang/src/index.ts"],
-      "@openuidev/lang-core": ["../lang-core/src/index.ts"]
+      "@cloudsop/openui-react-ui-dsl": ["./src/index.ts"],
+      "@cloudsop/openui-react-lang": ["../react-lang/src/index.ts"],
+      "@cloudsop/openui-lang-core": ["../lang-core/src/index.ts"]
     }
   }
 }

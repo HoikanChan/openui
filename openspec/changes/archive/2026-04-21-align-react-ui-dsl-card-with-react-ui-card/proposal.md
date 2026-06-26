@@ -21,5 +21,5 @@
 ## Impact
 
 - Affected code: `packages/react-ui-dsl/src/genui-lib/Card/*`, new `packages/react-ui-dsl/src/genui-lib/CardHeader/*`, `packages/react-ui-dsl/src/genui-lib/dslLibrary.tsx`, and related stories/tests.
-- APIs: `@openuidev/react-ui-dsl` `Card` schema changes incompatibly by removing `header` and `width`; `CardHeader` becomes a new public DSL component.
+- APIs: `@cloudsop/openui-react-ui-dsl` `Card` schema changes incompatibly by removing `header` and `width`; `CardHeader` becomes a new public DSL component.
 - Tests and prompt metadata: Storybook args, unit tests, `dslLibrary.toSpec()`, and `dslLibrary.toJSONSchema()` outputs will change to reflect the new component contracts.

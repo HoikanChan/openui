@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { createParser } from "@openuidev/lang-core";
-import { Renderer } from "@openuidev/react-lang";
+import { createParser } from "@cloudsop/openui-lang-core";
+import { Renderer } from "@cloudsop/openui-react-lang";
 import { cleanup, render } from "@testing-library/react";
 import * as echarts from "echarts";
 import { existsSync } from "node:fs";

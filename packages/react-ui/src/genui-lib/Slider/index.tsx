@@ -6,7 +6,7 @@ import {
   useFormValidation,
   useIsStreaming,
   useStateField,
-} from "@openuidev/react-lang";
+} from "@cloudsop/openui-react-lang";
 import React from "react";
 import { SliderBlock as OpenUISliderBlock } from "../../components/Slider";
 import { SliderSchema } from "./schema";

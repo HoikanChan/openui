@@ -5,7 +5,7 @@ import {
   FormNameContext,
   FormValidationContext,
   useCreateFormValidation,
-} from "@openuidev/react-lang";
+} from "@cloudsop/openui-react-lang";
 import { FormSchema } from "./schema";
 
 export { FormSchema } from "./schema";

@@ -2,11 +2,11 @@
 
 ## Product Purpose
 
-`@openuidev/lang-core` is the framework-agnostic core library of the OpenUI Lang ecosystem. It enables LLMs to generate structured, interactive UI declaratively via a custom DSL (OpenUI Lang). The library handles the full pipeline: parsing LLM-generated text into a typed element tree, generating system prompts from component specs, evaluating reactive expressions at runtime, and merging incremental LLM edits into existing programs.
+`@cloudsop/openui-lang-core` is the framework-agnostic core library of the OpenUI Lang ecosystem. It enables LLMs to generate structured, interactive UI declaratively via a custom DSL (OpenUI Lang). The library handles the full pipeline: parsing LLM-generated text into a typed element tree, generating system prompts from component specs, evaluating reactive expressions at runtime, and merging incremental LLM edits into existing programs.
 
 ## Target Users
 
-1. **Framework adapter authors** — building `@openuidev/react-lang`, `@openuidev/vue-lang`, `@openuidev/svelte-lang`. They import `lang-core` for the parser, runtime, and type definitions, then add framework-specific rendering on top.
+1. **Framework adapter authors** — building `@cloudsop/openui-react-lang`, `@openuidev/vue-lang`, `@openuidev/svelte-lang`. They import `lang-core` for the parser, runtime, and type definitions, then add framework-specific rendering on top.
 2. **App developers** building LLM-powered generative UI products who want direct access to the parsing/runtime pipeline without a framework adapter.
 
 This package has no React or other framework dependencies — it is a pure TypeScript library.

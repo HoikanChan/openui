@@ -21,7 +21,7 @@ export { Renderer } from "./Renderer";
 export type { RendererProps } from "./Renderer";
 
 // openui-lang action types
-export { ACTION_STEPS, BuiltinActionType, isElementNode } from "@openuidev/lang-core";
+export { ACTION_STEPS, BuiltinActionType, isElementNode } from "@cloudsop/openui-lang-core";
 export type {
   ActionEvent,
   ActionPlan,
@@ -29,23 +29,23 @@ export type {
   ElementNode,
   OpenUIError,
   ParseResult,
-} from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
 
 // openui-lang parser (server-side use)
-export { createParser, createStreamingParser } from "@openuidev/lang-core";
+export { createParser, createStreamingParser } from "@cloudsop/openui-lang-core";
 
 // Standalone prompt generation (no Zod deps — usable on backend)
-export { generatePrompt, getBuiltinsManifest } from "@openuidev/lang-core";
+export { generatePrompt, getBuiltinsManifest } from "@cloudsop/openui-lang-core";
 export type {
   BuiltinManifestEntry,
   ComponentPromptSpec,
   DataModelSpec,
   PromptSpec,
   ToolSpec,
-} from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
 
 // openui-lang edit/merge
-export { mergeStatements } from "@openuidev/lang-core";
+export { mergeStatements } from "@cloudsop/openui-lang-core";
 
 // renderElementNode for canvas rendering
 export { renderElementNode } from "./renderElementNode";
@@ -63,14 +63,14 @@ export {
 } from "./context";
 
 // Runtime — reactive bindings, store, evaluator, query manager, field binding
-export { ToolNotFoundError, extractToolResult, isReactiveAssign } from "@openuidev/lang-core";
+export { ToolNotFoundError, extractToolResult, isReactiveAssign } from "@cloudsop/openui-lang-core";
 export type {
   EvaluationContext,
   McpClientLike,
   ReactiveAssign,
   StateField,
   ToolProvider,
-} from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
 export { reactive } from "./runtime";
 
 // Unified field state hook — component authors use this
@@ -89,5 +89,5 @@ export {
   parseRules,
   parseStructuredRules,
   validate,
-} from "@openuidev/lang-core";
-export type { ParsedRule, ValidatorFn } from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
+export type { ParsedRule, ValidatorFn } from "@cloudsop/openui-lang-core";

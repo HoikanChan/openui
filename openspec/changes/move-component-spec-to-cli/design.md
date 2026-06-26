@@ -30,7 +30,7 @@
 ### 决策 2：worker 用 `createLibrary(...).toSpec()` 编译组件，不公开 `generateComponentSpecs`
 worker 的 `--extension` 分支：识别 extension 对象 → `createLibrary({ components, componentGroups, tools, examples, additionalRules })` → `.toSpec()` 得到编译后的 `components` 与透传字段 → 再叠加 `extensionId`/`version` 组装最终 JSON。
 - **理由**：`toSpec()` 内部本就调用 `generateComponentSpecs`，产出的 specs 与手写脚本完全一致；这样能安全撤掉公开导出且**零逻辑重复**。`createLibrary`/`toSpec` 是稳定公开 API。注意 `extensionId`/`version` 是 extension 级字段、`createLibrary` 不感知，直接从对象/flag 取。
-- **解析来源**：worker 用 esbuild 把用户入口与 `export { createLibrary } from "@openuidev/react-lang"` 一起 bundle（stdin stub），使组件的 `defineComponent` 与 `createLibrary` 共享**同一个 bundled zod 实例**——跨实例 zod introspection 易碎，故不另行 `require.resolve` 外部 react-lang。与现有 worker 在用户 cwd 下打包/求值的方式一致。
+- **解析来源**：worker 用 esbuild 把用户入口与 `export { createLibrary } from "@cloudsop/openui-react-lang"` 一起 bundle（stdin stub），使组件的 `defineComponent` 与 `createLibrary` 共享**同一个 bundled zod 实例**——跨实例 zod introspection 易碎，故不另行 `require.resolve` 外部 react-lang。与现有 worker 在用户 cwd 下打包/求值的方式一致。
 - **备选**：worker 自行重写 props→propsSchema 转换 —— 逻辑重复、易与 lang-core 漂移，否决。
 
 ### 决策 3：入口识别启发式 + `--export`
@@ -51,7 +51,7 @@ worker 的 `--extension` 分支：识别 extension 对象 → `createLibrary({ c
 ## Risks / Trade-offs
 
 - [移除公开导出是 BREAKING，外部脚本/消费者会编译失败] → 在 proposal 与 changelog 标注 BREAKING；文档同步给出 CLI 等价用法；现仓内消费者仅文档与包内单测（走相对路径），影响可控。
-- [worker 从用户项目解析 `@openuidev/react-lang` 失败（未安装/路径异常）] → 求解析失败时报清晰错误，提示在含 OpenUI 依赖的项目内运行。
+- [worker 从用户项目解析 `@cloudsop/openui-react-lang` 失败（未安装/路径异常）] → 求解析失败时报清晰错误，提示在含 OpenUI 依赖的项目内运行。
 - [入口识别启发式误判，多个候选导出] → 命中多个或零个时报错并提示 `--export`；文档示例统一用具名导出。
 - [对象与 flag 同时给 id/version 时来源歧义] → 明确「flag 覆盖对象」并在 `--help` 与文档写清。
 - [子命令 `--version` 与 commander 内置 `program.version()` 冲突,导致打印 CLI 版本号而非执行] → 把全局工具版本改用 `-V, --cli-version`(短旗 `-V` 保留),腾出 `--version` 给 `generate-extension` 的扩展版本 override。已用真实 CLI 运行回归验证。

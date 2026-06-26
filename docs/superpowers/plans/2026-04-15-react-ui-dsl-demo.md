@@ -4,9 +4,9 @@
 
 **Goal:** Create `examples/react-ui-dsl-demo/` — a Vite + React frontend with a Node.js Express backend that takes a user prompt, calls OpenAI, streams DSL back, and renders it live using `react-lang`'s `<Renderer>`.
 
-**Architecture:** Two-process dev setup (`concurrently`). Express server on port 3001 with CORS enabled; Vite app on port 5173 fetches the server directly. Frontend has a two-column layout: left column split between a live DSL code viewer (top) and the `<Renderer>` preview (bottom); right column has prompt input, dataModel JSON input, and a Generate button. A local placeholder library (`src/lib/placeholderLibrary.ts`) using `@openuidev/react-ui`'s `openuiLibrary` stands in for `@openuidev/react-ui-dsl` until that package is built.
+**Architecture:** Two-process dev setup (`concurrently`). Express server on port 3001 with CORS enabled; Vite app on port 5173 fetches the server directly. Frontend has a two-column layout: left column split between a live DSL code viewer (top) and the `<Renderer>` preview (bottom); right column has prompt input, dataModel JSON input, and a Generate button. A local placeholder library (`src/lib/placeholderLibrary.ts`) using `@openuidev/react-ui`'s `openuiLibrary` stands in for `@cloudsop/openui-react-ui-dsl` until that package is built.
 
-**Tech Stack:** Vite 6, React 19, TypeScript, Express 5, `cors`, `openai` SDK (streaming), `@openuidev/react-lang` (Renderer), `@openuidev/react-ui` (stand-in library), `concurrently`, `tsx`.
+**Tech Stack:** Vite 6, React 19, TypeScript, Express 5, `cors`, `openai` SDK (streaming), `@cloudsop/openui-react-lang` (Renderer), `@openuidev/react-ui` (stand-in library), `concurrently`, `tsx`.
 
 ---
 
@@ -50,7 +50,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@openuidev/react-lang": "workspace:*",
+    "@cloudsop/openui-react-lang": "workspace:*",
     "@openuidev/react-ui": "workspace:*",
     "react": "19.2.3",
     "react-dom": "19.2.3"
@@ -157,7 +157,7 @@ This file imports the stand-in library and generates the OpenUI system prompt. W
 ```ts
 import { openuiLibrary } from "@openuidev/react-ui";
 
-// TODO: swap this import to dslLibrary from @openuidev/react-ui-dsl when available
+// TODO: swap this import to dslLibrary from @cloudsop/openui-react-ui-dsl when available
 export const systemPrompt = openuiLibrary.prompt();
 ```
 
@@ -255,17 +255,17 @@ git commit -m "feat(react-ui-dsl-demo): add Express streaming server"
 **Files:**
 - Create: `examples/react-ui-dsl-demo/src/lib/placeholderLibrary.ts`
 
-This file is the single swap point. When `@openuidev/react-ui-dsl` is ready, replace its contents with an import from that package.
+This file is the single swap point. When `@cloudsop/openui-react-ui-dsl` is ready, replace its contents with an import from that package.
 
 - [ ] **Step 1: Create `src/lib/placeholderLibrary.ts`**
 
 ```ts
-// TODO: replace with the real dslLibrary once @openuidev/react-ui-dsl is published
-// import { dslLibrary } from "@openuidev/react-ui-dsl";
+// TODO: replace with the real dslLibrary once @cloudsop/openui-react-ui-dsl is published
+// import { dslLibrary } from "@cloudsop/openui-react-ui-dsl";
 // export { dslLibrary };
 
 import { openuiLibrary } from "@openuidev/react-ui";
-import type { Library } from "@openuidev/react-lang";
+import type { Library } from "@cloudsop/openui-react-lang";
 
 export const dslLibrary: Library = openuiLibrary as unknown as Library;
 ```
@@ -383,7 +383,7 @@ createRoot(document.getElementById("root")!).render(
 - [ ] **Step 2: Create `src/App.tsx`**
 
 ```tsx
-import { Renderer } from "@openuidev/react-lang";
+import { Renderer } from "@cloudsop/openui-react-lang";
 import { useState } from "react";
 import { dslLibrary } from "./lib/placeholderLibrary";
 import { useGenerate } from "./useGenerate";
@@ -511,14 +511,14 @@ git commit -m "feat(react-ui-dsl-demo): add App UI and main entry"
 
 ## Swapping in the Real Library (Future Step)
 
-When `@openuidev/react-ui-dsl` is built:
+When `@cloudsop/openui-react-ui-dsl` is built:
 
-1. Add it to `package.json` dependencies: `"@openuidev/react-ui-dsl": "workspace:*"`
+1. Add it to `package.json` dependencies: `"@cloudsop/openui-react-ui-dsl": "workspace:*"`
 2. Run `pnpm install` from the monorepo root
 3. Replace `src/lib/placeholderLibrary.ts` with:
 
 ```ts
-import { dslLibrary } from "@openuidev/react-ui-dsl";
+import { dslLibrary } from "@cloudsop/openui-react-ui-dsl";
 export { dslLibrary };
 ```
 

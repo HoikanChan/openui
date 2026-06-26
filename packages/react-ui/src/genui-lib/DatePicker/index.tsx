@@ -6,7 +6,7 @@ import {
   useFormValidation,
   useIsStreaming,
   useStateField,
-} from "@openuidev/react-lang";
+} from "@cloudsop/openui-react-lang";
 import React from "react";
 import { DatePicker as OpenUIDatePicker } from "../../components/DatePicker";
 import { DatePickerSchema } from "./schema";

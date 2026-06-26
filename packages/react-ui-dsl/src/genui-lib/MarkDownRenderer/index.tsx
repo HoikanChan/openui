@@ -1,6 +1,6 @@
 "use client";
 
-import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 import { MarkdownView } from "../../components/MarkdownView";
 import { MarkDownRendererSchema } from "./schema";

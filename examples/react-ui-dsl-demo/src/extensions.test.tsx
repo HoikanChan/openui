@@ -1,4 +1,4 @@
-import { dslLibrary } from "@openuidev/react-ui-dsl";
+import { dslLibrary } from "@cloudsop/openui-react-ui-dsl";
 import { describe, expect, it } from "vitest";
 import { libraryForContext } from "./extensions";
 

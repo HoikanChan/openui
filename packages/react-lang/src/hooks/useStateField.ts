@@ -2,7 +2,7 @@ import {
   resolveStateField,
   type InferStateFieldValue,
   type StateField,
-} from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
 import { useFormName, useOpenUI } from "../context";
 
 export function useStateField<T = unknown>(

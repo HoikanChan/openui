@@ -1,6 +1,6 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Card as OpenUICard } from "../../components/Card";
 import { CardSchema } from "./schema";
 

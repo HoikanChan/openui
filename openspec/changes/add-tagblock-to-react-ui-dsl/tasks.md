@@ -18,4 +18,4 @@
 ## 5. 验证
 
 - [ ] 5.1 运行 `pnpm test` 确认所有单元测试通过
-- [ ] 5.2 确认 TypeScript 编译无报错（`pnpm --filter @openuidev/react-ui-dsl run build`）
+- [ ] 5.2 确认 TypeScript 编译无报错（`pnpm --filter @cloudsop/openui-react-ui-dsl run build`）

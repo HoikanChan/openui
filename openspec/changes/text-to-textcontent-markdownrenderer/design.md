@@ -1,6 +1,6 @@
 ## Context
 
-`react-ui-dsl` 是独立于 `react-ui` 的 Generative UI 包，两者共享同一套 DSL 语言基础（`@openuidev/react-lang`），但各自维护独立的组件库。当前 `Text` 组件是 react-ui-dsl 中唯一的文字渲染组件，其内部 `TextView` 支持 `default/markdown/html` 三种模式，但 DSL schema 只暴露 `text` 和 `size`，LLM 无法感知 markdown 能力。`react-ui` 已将文字组件拆分为 `TextContent`（带 `size` 控制）和 `MarkDownRenderer`（带 `variant` 容器样式），两者均始终以 markdown 渲染。本次变更对齐这一设计。
+`react-ui-dsl` 是独立于 `react-ui` 的 Generative UI 包，两者共享同一套 DSL 语言基础（`@cloudsop/openui-react-lang`），但各自维护独立的组件库。当前 `Text` 组件是 react-ui-dsl 中唯一的文字渲染组件，其内部 `TextView` 支持 `default/markdown/html` 三种模式，但 DSL schema 只暴露 `text` 和 `size`，LLM 无法感知 markdown 能力。`react-ui` 已将文字组件拆分为 `TextContent`（带 `size` 控制）和 `MarkDownRenderer`（带 `variant` 容器样式），两者均始终以 markdown 渲染。本次变更对齐这一设计。
 
 ## Goals / Non-Goals
 

@@ -3,7 +3,7 @@ import React from "react";
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { createParser } from "../../../../lang-core/src";
-import { Renderer } from "@openuidev/react-lang";
+import { Renderer } from "@cloudsop/openui-react-lang";
 import { dslLibrary } from "../dslLibrary";
 import { resolveAutoSpan, resolveDescriptionFieldValue } from "./index";
 

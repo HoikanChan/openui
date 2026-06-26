@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the technical architecture for rewriting the **complete** `@openuidev/lang-core` package in Java 21. The scope covers every exported symbol in the TypeScript package:
+This document describes the technical architecture for rewriting the **complete** `@cloudsop/openui-lang-core` package in Java 21. The scope covers every exported symbol in the TypeScript package:
 
 | TypeScript module | Java package |
 |---|---|

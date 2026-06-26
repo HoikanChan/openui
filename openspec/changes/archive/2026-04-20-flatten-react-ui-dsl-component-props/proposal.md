@@ -20,5 +20,5 @@
 ## Impact
 
 - Affected code: `packages/react-ui-dsl/src/genui-lib/*`, `packages/react-ui-dsl/src/stories/*`, `packages/react-ui-dsl/src/__tests__/e2e/*`, and any prompt metadata derived from `dslLibrary`.
-- APIs: the public DSL schema for affected `@openuidev/react-ui-dsl` components changes to a flattened top-level prop model with no `style` or `actions`.
+- APIs: the public DSL schema for affected `@cloudsop/openui-react-ui-dsl` components changes to a flattened top-level prop model with no `style` or `actions`.
 - Systems: impacts prompt generation, JSON Schema export, parser validation, story examples, and e2e snapshot baselines that currently use the nested shape.

@@ -1,6 +1,6 @@
 "use client";
 
-import { defineComponent, useFormValidation } from "@openuidev/react-lang";
+import { defineComponent, useFormValidation } from "@cloudsop/openui-react-lang";
 import { AlertCircle } from "lucide-react";
 import { FormControl as OpenUIFormControl } from "../../components/FormControl";
 import { Hint as OpenUIHint } from "../../components/FormControl/Hint";

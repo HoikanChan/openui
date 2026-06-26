@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 class ChatCompletionRequestTest {
   @Test
-  void synchronousBodyUsesDefaultsAndJsonObjectResponse() {
+  void synchronousBodyUsesDefaultsWithoutJsonObjectResponse() {
     Map<String, Object> body =
         body(
             ChatCompletionRequest.of(
@@ -23,7 +23,7 @@ class ChatCompletionRequestTest {
     assertEquals(false, body.get("stream"));
     assertEquals(0.0, ((Number) body.get("temperature")).doubleValue());
     assertEquals(false, body.get("enable_thinking"));
-    assertEquals("json_object", Json.asObject(body.get("response_format"), "response_format").get("type"));
+    assertFalse(body.containsKey("response_format"));
   }
 
   @Test
@@ -65,6 +65,16 @@ class ChatCompletionRequestTest {
 
     assertEquals(0.3, body.get("temperature"));
     assertFalse(body.containsKey("response_format"));
+  }
+
+  @Test
+  void enabledJsonObjectResponseIsReflected() {
+    GenUiLlmConfig config = GenUiLlmConfig.builder().jsonObjectResponse(true).build();
+
+    Map<String, Object> body =
+        body(ChatCompletionRequest.of(config, "model-a", List.of(), false).toJson());
+
+    assertEquals("json_object", Json.asObject(body.get("response_format"), "response_format").get("type"));
   }
 
   @Test

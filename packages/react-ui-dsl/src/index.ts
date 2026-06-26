@@ -1,4 +1,4 @@
-export * from "@openuidev/react-lang";
+export * from "@cloudsop/openui-react-lang";
 
 export {
   DEFAULT_PROMPT_ADDITIONAL_RULES,
@@ -61,7 +61,7 @@ export type {
   PreviewContentProps,
   VirtualMasonryGridProps,
 } from "./components/CanvasTabs";
-export type { ParseResult } from "@openuidev/react-lang";
+export type { ParseResult } from "@cloudsop/openui-react-lang";
 export { canvasStore } from "./canvas/canvasStore";
 export type {
   CanvasStore,

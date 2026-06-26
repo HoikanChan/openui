@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { render } from "@testing-library/react";
-import { Renderer } from "@openuidev/react-lang";
+import { Renderer } from "@cloudsop/openui-react-lang";
 import { describe, expect, it } from "vitest";
 import { dslLibrary } from "../dslLibrary";
 

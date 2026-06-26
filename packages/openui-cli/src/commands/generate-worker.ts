@@ -237,7 +237,7 @@ function resolveExportName(args: string[], valueFlags: string[], booleanFlags: s
 
 /**
  * Bundle the user entry together with `createLibrary` from
- * `@openuidev/react-lang` so the user's components and `createLibrary` share a
+ * `@cloudsop/openui-react-lang` so the user's components and `createLibrary` share a
  * single bundled zod instance (cross-instance zod introspection is fragile).
  * Compile `components` via `createLibrary(...).toSpec()` and emit Extension JSON.
  */
@@ -249,7 +249,7 @@ async function runExtensionMode(entryPath: string, args: string[]): Promise<void
   const entryImport = entryPath.replace(/\\/g, "/");
   const stub =
     `export * from ${JSON.stringify(entryImport)};\n` +
-    `export { createLibrary as ${STUB_CREATE_LIBRARY} } from "@openuidev/react-lang";\n`;
+    `export { createLibrary as ${STUB_CREATE_LIBRARY} } from "@cloudsop/openui-react-lang";\n`;
 
   let mod: Record<string, unknown>;
   try {
@@ -290,7 +290,7 @@ async function runExtensionMode(entryPath: string, args: string[]): Promise<void
   const createLibrary = mod[STUB_CREATE_LIBRARY] as CreateLibraryFn | undefined;
   if (typeof createLibrary !== "function") {
     console.error(
-      "Error: Could not load createLibrary from @openuidev/react-lang.\n" +
+      "Error: Could not load createLibrary from @cloudsop/openui-react-lang.\n" +
         "Run this command inside a project that has OpenUI installed.",
     );
     process.exit(1);

@@ -75,7 +75,7 @@ import {
   CanvasTabs,
   dslLibrary,
   CanvasItem,
-} from "@openuidev/react-ui-dsl";
+} from "@cloudsop/openui-react-ui-dsl";
 
 function MyApp() {
   const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);

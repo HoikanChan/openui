@@ -1,6 +1,6 @@
 ## Why
 
-`@openuidev/react-ui-dsl` e2e tests currently tell contributors whether fixtures pass, but they do not provide a single place to inspect the rendered output of every fixture. Debugging requires hopping between test output, DSL snapshots, and ad hoc local rendering, while the default verification command should stay free of extra report artifacts.
+`@cloudsop/openui-react-ui-dsl` e2e tests currently tell contributors whether fixtures pass, but they do not provide a single place to inspect the rendered output of every fixture. Debugging requires hopping between test output, DSL snapshots, and ad hoc local rendering, while the default verification command should stay free of extra report artifacts.
 
 ## What Changes
 

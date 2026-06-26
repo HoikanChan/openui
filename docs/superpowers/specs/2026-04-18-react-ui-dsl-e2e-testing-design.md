@@ -1,4 +1,4 @@
-# E2E Testing Design for `@openuidev/react-ui-dsl`
+# E2E Testing Design for `@cloudsop/openui-react-ui-dsl`
 
 **Date:** 2026-04-18  
 **Scope:** Table + Chart components (PieChart, LineChart, BarChart, GaugeChart)  
@@ -184,7 +184,7 @@ The system prompt includes:
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import OpenAI from "openai";
-import type { PromptSpec } from "@openuidev/lang-core";
+import type { PromptSpec } from "@cloudsop/openui-lang-core";
 
 const SNAPSHOT_DIR = resolve(__dirname, "snapshots");
 
@@ -247,8 +247,8 @@ Rules:
 import { render, screen } from "@testing-library/react";
 import React from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { createParser } from "@openuidev/lang-core";
-import { Renderer } from "@openuidev/react-lang";
+import { createParser } from "@cloudsop/openui-lang-core";
+import { Renderer } from "@cloudsop/openui-react-lang";
 import { dslLibrary } from "../../genui-lib/dslLibrary";
 import { fixtures } from "./fixtures";
 import { loadOrGenerate } from "./llm";

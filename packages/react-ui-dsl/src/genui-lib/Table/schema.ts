@@ -1,4 +1,4 @@
-import type { ElementNode } from "@openuidev/react-lang";
+import type { ElementNode } from "@cloudsop/openui-react-lang";
 import type { ReactNode } from "react";
 import { z } from "zod";
 

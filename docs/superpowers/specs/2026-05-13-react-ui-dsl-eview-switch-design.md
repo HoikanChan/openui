@@ -81,7 +81,7 @@ These should not be part of the first migration wave unless a real internal requ
 
 ## Goals
 
-- Keep the package name unchanged: `@openuidev/react-ui-dsl`
+- Keep the package name unchanged: `@cloudsop/openui-react-ui-dsl`
 - Keep the public DSL component API unchanged for consumers
 - Let intranet builds replace `antd` runtime views with `eview`
 - Keep external builds on the current `antd` behavior

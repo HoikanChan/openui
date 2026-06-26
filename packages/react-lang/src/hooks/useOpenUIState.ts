@@ -17,7 +17,7 @@ import {
   type QuerySnapshot,
   type Store,
   type ToolProvider,
-} from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import type { OpenUIContextValue } from "../context";

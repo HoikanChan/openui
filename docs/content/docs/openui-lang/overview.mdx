@@ -25,7 +25,7 @@ Root component is `Stack`. Includes the full component suite with flexible layou
 
 ```ts
 import { openuiLibrary, openuiPromptOptions } from "@openuidev/react-ui/genui-lib";
-import { Renderer } from "@openuidev/react-lang";
+import { Renderer } from "@cloudsop/openui-react-lang";
 
 // Generate system prompt
 const systemPrompt = openuiLibrary.prompt(openuiPromptOptions);
@@ -55,7 +55,7 @@ Both libraries expose a `.prompt()` method to generate the system prompt your LL
 ### Extend a built-in library
 
 ```ts
-import { createLibrary, defineComponent } from "@openuidev/react-lang";
+import { createLibrary, defineComponent } from "@cloudsop/openui-react-lang";
 import { openuiLibrary } from "@openuidev/react-ui/genui-lib";
 import { z } from "zod";
 

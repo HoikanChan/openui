@@ -5,8 +5,8 @@ import type {
   OpenUIError,
   ParseResult,
   ToolProvider,
-} from "@openuidev/lang-core";
-import { ToolNotFoundError, extractToolResult } from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
+import { ToolNotFoundError, extractToolResult } from "@cloudsop/openui-lang-core";
 import React, { Component, Fragment, useEffect, useInsertionEffect, useMemo, useRef } from "react";
 import { OpenUIContext, useOpenUI, useRenderNode } from "./context";
 import { hydrateSlots } from "./hydrateSlots";

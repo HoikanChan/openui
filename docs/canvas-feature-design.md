@@ -344,7 +344,7 @@ HtmlTab (iframe):
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                            组件层                                        │
 │  ┌───────────────────────────────────────────────────────────────────┐  │
-│  │                    @openuidev/react-ui-dsl                         │  │
+│  │                    @cloudsop/openui-react-ui-dsl                         │  │
 │  │                                                                     │  │
 │  │  ┌─────────────────┐ ┌──────────────┐ ┌──────────────────────────┐ │  │
 │  │  │  DashboardCard  │ │ PreviewCard  │ │        HtmlTab           │ │  │
@@ -365,7 +365,7 @@ HtmlTab (iframe):
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           渲染层                                         │
 │  ┌───────────────────────────────────────────────────────────────────┐  │
-│  │                    @openuidev/react-lang                           │  │
+│  │                    @cloudsop/openui-react-lang                           │  │
 │  │                                                                     │  │
 │  │  ┌─────────────────────────────────────────────────────────────┐   │  │
 │  │  │                    Renderer                                  │   │  │
@@ -388,7 +388,7 @@ HtmlTab (iframe):
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           解析层                                         │
 │  ┌───────────────────────────────────────────────────────────────────┐  │
-│  │                    @openuidev/lang-core                            │  │
+│  │                    @cloudsop/openui-lang-core                            │  │
 │  │                                                                     │  │
 │  │  ┌─────────────────────────────────────────────────────────────┐   │  │
 │  │  │                    Parser                                     │   │  │
@@ -429,15 +429,15 @@ HtmlTab (iframe):
 
 | 层级 | 模块 | 职责 | 包名 |
 |------|------|------|------|
-| DSL层 | Canvas组件定义 | 定义DashboardCard/PreviewCard/HtmlTab schema和组件 | @openuidev/react-ui-dsl |
-| 解析层 | Parser扩展 | 提取Canvas组件，剔除LUI树 | @openuidev/lang-core |
-| 解析层 | 类型定义 | CanvasItem类型及类型守卫 | @openuidev/lang-core |
-| 渲染层 | Renderer扩展 | onCanvasItems回调，renderElementNode导出 | @openuidev/react-lang |
-| 组件层 | CanvasTabs | Tab容器，管理多Tab渲染 | @openuidev/react-ui-dsl |
-| 组件层 | DashboardGrid | 12列网格布局 | @openuidev/react-ui-dsl |
-| 组件层 | PreviewContent | 整页内容渲染 | @openuidev/react-ui-dsl |
-| 组件层 | HtmlEmbed | iframe嵌入 | @openuidev/react-ui-dsl |
-| Prompt层 | Prompt生成 | Canvas组件签名生成 | @openuidev/react-ui-dsl |
+| DSL层 | Canvas组件定义 | 定义DashboardCard/PreviewCard/HtmlTab schema和组件 | @cloudsop/openui-react-ui-dsl |
+| 解析层 | Parser扩展 | 提取Canvas组件，剔除LUI树 | @cloudsop/openui-lang-core |
+| 解析层 | 类型定义 | CanvasItem类型及类型守卫 | @cloudsop/openui-lang-core |
+| 渲染层 | Renderer扩展 | onCanvasItems回调，renderElementNode导出 | @cloudsop/openui-react-lang |
+| 组件层 | CanvasTabs | Tab容器，管理多Tab渲染 | @cloudsop/openui-react-ui-dsl |
+| 组件层 | DashboardGrid | 12列网格布局 | @cloudsop/openui-react-ui-dsl |
+| 组件层 | PreviewContent | 整页内容渲染 | @cloudsop/openui-react-ui-dsl |
+| 组件层 | HtmlEmbed | iframe嵌入 | @cloudsop/openui-react-ui-dsl |
+| Prompt层 | Prompt生成 | Canvas组件签名生成 | @cloudsop/openui-react-ui-dsl |
 
 ## 2.2 数据流设计
 

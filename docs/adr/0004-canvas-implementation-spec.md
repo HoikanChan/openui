@@ -81,7 +81,7 @@ export const DashboardCardSchema = z.object({
 ```typescript
 "use client";
 
-import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 import { DashboardCardSchema } from "./schema";
 
@@ -128,7 +128,7 @@ export const PreviewCardSchema = z.object({
 ```typescript
 "use client";
 
-import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 import { PreviewCardSchema } from "./schema";
 
@@ -171,7 +171,7 @@ export const HtmlTabSchema = z.object({
 ```typescript
 "use client";
 
-import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 import { HtmlTabSchema } from "./schema";
 
@@ -438,7 +438,7 @@ export function createStreamingParser(schema: LibraryJSONSchema): StreamingParse
 **路径**: `packages/react-lang/src/Renderer.tsx`
 
 ```typescript
-import type { CanvasItem } from "@openuidev/lang-core";
+import type { CanvasItem } from "@cloudsop/openui-lang-core";
 
 export interface RendererProps {
   // ... existing props
@@ -493,7 +493,7 @@ export function Renderer({
 
 新增文件：
 ```typescript
-import type { ElementNode, Library } from "@openuidev/lang-core";
+import type { ElementNode, Library } from "@cloudsop/openui-lang-core";
 import type { ComponentRenderProps } from "./library";
 import React, { Fragment } from "react";
 import { useOpenUI, useRenderNode } from "./context";
@@ -550,7 +550,7 @@ function isElementNode(value: unknown): value is ElementNode {
 新增导出：
 ```typescript
 export { renderElementNode } from "./renderElementNode";
-export type { CanvasItem, DashboardCardNode, PreviewCardNode, HtmlTabNode } from "@openuidev/lang-core";
+export type { CanvasItem, DashboardCardNode, PreviewCardNode, HtmlTabNode } from "@cloudsop/openui-lang-core";
 ```
 
 ---
@@ -566,8 +566,8 @@ export type { CanvasItem, DashboardCardNode, PreviewCardNode, HtmlTabNode } from
 "use client";
 
 import React, { useMemo, useState } from "react";
-import type { CanvasItem, Library, DashboardCardNode, PreviewCardNode, HtmlTabNode } from "@openuidev/react-lang";
-import { isDashboardCardNode, isPreviewCardNode, isHtmlTabNode, renderElementNode } from "@openuidev/react-lang";
+import type { CanvasItem, Library, DashboardCardNode, PreviewCardNode, HtmlTabNode } from "@cloudsop/openui-react-lang";
+import { isDashboardCardNode, isPreviewCardNode, isHtmlTabNode, renderElementNode } from "@cloudsop/openui-react-lang";
 import { Tabs } from "antd";
 
 export interface CanvasTabsProps {
@@ -691,8 +691,8 @@ export function CanvasTabs({
 
 ```typescript
 import React from "react";
-import type { DashboardCardNode, Library } from "@openuidev/react-lang";
-import { renderElementNode } from "@openuidev/react-lang";
+import type { DashboardCardNode, Library } from "@cloudsop/openui-react-lang";
+import { renderElementNode } from "@cloudsop/openui-react-lang";
 import { Card } from "antd";
 
 export interface DashboardGridProps {
@@ -769,8 +769,8 @@ export function DashboardGrid({ cards, library, dataModel }: DashboardGridProps)
 
 ```typescript
 import React from "react";
-import type { Library } from "@openuidev/react-lang";
-import { renderElementNode } from "@openuidev/react-lang";
+import type { Library } from "@cloudsop/openui-react-lang";
+import { renderElementNode } from "@cloudsop/openui-react-lang";
 
 export interface PreviewContentProps {
   content: unknown[];
@@ -883,7 +883,7 @@ externalDashboard = HtmlTab("https://grafana.example.com/d/abc123", "Grafana Das
 
 ```typescript
 import { useState } from "react";
-import { Renderer, CanvasTabs, dslLibrary, CanvasItem } from "@openuidev/react-ui-dsl";
+import { Renderer, CanvasTabs, dslLibrary, CanvasItem } from "@cloudsop/openui-react-ui-dsl";
 
 function ChatPage() {
   const [dslResponse, setDslResponse] = useState<string>("");

@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document specifies the complete behavioral contract of `@openuidev/lang-core` — the framework-agnostic parser, runtime, and prompt-generation core of the OpenUI Lang ecosystem. The goal is to serve as an authoritative, implementation-level reference that:
+This document specifies the complete behavioral contract of `@cloudsop/openui-lang-core` — the framework-agnostic parser, runtime, and prompt-generation core of the OpenUI Lang ecosystem. The goal is to serve as an authoritative, implementation-level reference that:
 
 1. Defines the OpenUI Lang grammar and token rules
 2. Documents the parser's output contract (ParseResult structure)

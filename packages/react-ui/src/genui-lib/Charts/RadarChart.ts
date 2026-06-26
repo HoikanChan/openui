@@ -1,6 +1,6 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import React from "react";
 import { z } from "zod";
 import { RadarChart as RadarChartComponent } from "../../components/Charts";

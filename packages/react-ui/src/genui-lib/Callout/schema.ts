@@ -1,4 +1,4 @@
-import { reactive } from "@openuidev/react-lang";
+import { reactive } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 
 export const CalloutSchema = z.object({

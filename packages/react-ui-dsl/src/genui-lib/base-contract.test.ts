@@ -1,4 +1,4 @@
-import { getBuiltinsManifest } from "@openuidev/react-lang";
+import { getBuiltinsManifest } from "@cloudsop/openui-react-lang";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DSL_BASE_CONTRACT_VERSION, dslComponentGroups, dslLibrary } from "./dslLibrary";

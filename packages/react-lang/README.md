@@ -1,24 +1,24 @@
-# @openuidev/react-lang
+# @cloudsop/openui-react-lang
 
 Core runtime for [OpenUI](https://openui.com) — define component libraries, generate model prompts, and render structured UI from streaming LLM output.
 
-[![npm](https://img.shields.io/npm/v/@openuidev/react-lang)](https://www.npmjs.com/package/@openuidev/react-lang)
-[![npm downloads](https://img.shields.io/npm/dm/@openuidev/react-lang)](https://www.npmjs.com/package/@openuidev/react-lang)
+[![npm](https://img.shields.io/npm/v/@cloudsop/openui-react-lang)](https://www.npmjs.com/package/@cloudsop/openui-react-lang)
+[![npm downloads](https://img.shields.io/npm/dm/@cloudsop/openui-react-lang)](https://www.npmjs.com/package/@cloudsop/openui-react-lang)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/thesysdev/openui/blob/main/LICENSE)
 
 ## Install
 
 ```bash
-npm install @openuidev/react-lang
+npm install @cloudsop/openui-react-lang
 # or
-pnpm add @openuidev/react-lang
+pnpm add @cloudsop/openui-react-lang
 ```
 
 **Peer dependencies:** `react >=19.0.0`
 
 ## Overview
 
-`@openuidev/react-lang` provides three core capabilities:
+`@cloudsop/openui-react-lang` provides three core capabilities:
 
 1. **Define components** — Use `defineComponent` and `createLibrary` to declare what the model is allowed to generate, with typed props via Zod schemas.
 2. **Generate prompts** — Call `library.prompt()` to produce a system prompt that instructs the model how to emit OpenUI Lang output.
@@ -29,7 +29,7 @@ pnpm add @openuidev/react-lang
 ### 1. Define a component
 
 ```tsx
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 
 const Greeting = defineComponent({
@@ -50,7 +50,7 @@ const Greeting = defineComponent({
 ### 2. Create a library
 
 ```ts
-import { createLibrary } from "@openuidev/react-lang";
+import { createLibrary } from "@cloudsop/openui-react-lang";
 
 const library = createLibrary({
   components: [Greeting, Card, Table /* ... */],
@@ -71,7 +71,7 @@ const systemPrompt = library.prompt({
 ### 4. Render streamed output
 
 ```tsx
-import { Renderer } from "@openuidev/react-lang";
+import { Renderer } from "@cloudsop/openui-react-lang";
 
 function AssistantMessage({ response, isStreaming }) {
   return (
@@ -197,7 +197,7 @@ import type {
   OpenUIError,
   ValidationErrorCode,
   LibraryJSONSchema,
-} from "@openuidev/react-lang";
+} from "@cloudsop/openui-react-lang";
 ```
 
 ## JSON Schema Output

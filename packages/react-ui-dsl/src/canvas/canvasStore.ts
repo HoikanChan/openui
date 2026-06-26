@@ -1,4 +1,4 @@
-import { LibraryExtensionDefinition } from '@openuidev/lang-core';
+import { LibraryExtensionDefinition } from '@cloudsop/openui-lang-core';
 
 export interface CanvasCardData {
   title?: string;

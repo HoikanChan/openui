@@ -6,7 +6,7 @@
 
 **Architecture:** New isolated package with two layers — `src/components/` (company React component placeholders, to be replaced with actual source) and `src/genui-lib/` (DSL adapter layer using `defineComponent` + Zod). The `react-lang` runtime (`defineComponent`, `createLibrary`, `useRenderNode`) is kept as-is. `actions` on components are passed through transparently — no integration with `useTriggerAction` in this iteration.
 
-**Tech Stack:** React 19, TypeScript, Zod v4, `@openuidev/react-lang` (workspace), ECharts (for chart components), tsdown (build), pnpm workspaces.
+**Tech Stack:** React 19, TypeScript, Zod v4, `@cloudsop/openui-react-lang` (workspace), ECharts (for chart components), tsdown (build), pnpm workspaces.
 
 ---
 
@@ -118,7 +118,7 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@openuidev/react-lang": "workspace:^",
+    "@cloudsop/openui-react-lang": "workspace:^",
     "echarts": "^5.0.0",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0"
@@ -390,7 +390,7 @@ export const HLayoutSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { HLayout as HLayoutComponent } from "../../components/HLayout";
 import { HLayoutSchema } from "./schema";
 
@@ -437,7 +437,7 @@ export const VLayoutSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { VLayout as VLayoutComponent } from "../../components/VLayout";
 import { VLayoutSchema } from "./schema";
 
@@ -486,7 +486,7 @@ export const GridLayoutSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { GridLayout as GridLayoutComponent } from "../../components/GridLayout";
 import { GridLayoutSchema } from "./schema";
 
@@ -649,7 +649,7 @@ export const TextSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Text as TextComponent } from "../../components/Text";
 import { TextSchema } from "./schema";
 
@@ -690,7 +690,7 @@ export const ImageSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Image as ImageComponent } from "../../components/Image";
 import { ImageSchema } from "./schema";
 
@@ -734,7 +734,7 @@ export const LinkSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Link as LinkComponent } from "../../components/Link";
 import { LinkSchema } from "./schema";
 
@@ -830,7 +830,7 @@ export const ButtonSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Button as ButtonComponent } from "../../components/Button";
 import { ButtonSchema } from "./schema";
 
@@ -952,7 +952,7 @@ export const CardSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Card as CardComponent } from "../../components/Card";
 import { CardSchema } from "./schema";
 
@@ -998,7 +998,7 @@ export const ListSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { List as ListComponent } from "../../components/List";
 import { ListSchema } from "./schema";
 
@@ -1095,7 +1095,7 @@ export const SelectSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Select as SelectComponent } from "../../components/Select";
 import { SelectSchema } from "./schema";
 
@@ -1204,7 +1204,7 @@ export const FormSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Form as FormComponent } from "../../components/Form";
 import { FormSchema } from "./schema";
 
@@ -1336,7 +1336,7 @@ export const TableSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Table as TableComponent } from "../../components/Table";
 import { TableSchema } from "./schema";
 
@@ -1546,7 +1546,7 @@ export const GaugeChartSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { PieChart as PieChartComponent } from "../../components/Charts/PieChart";
 import { LineChart as LineChartComponent } from "../../components/Charts/LineChart";
 import { BarChart as BarChartComponent } from "../../components/Charts/BarChart";
@@ -1716,7 +1716,7 @@ export const TimeLineSchema = z.object({
 "use client";
 
 import React from "react";
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { TimeLine as TimeLineComponent } from "../../components/TimeLine";
 import { TimeLineSchema } from "./schema";
 
@@ -1771,7 +1771,7 @@ git commit -m "feat(react-ui-dsl): add TimeLine component"
 ```tsx
 "use client";
 
-import { createLibrary } from "@openuidev/react-lang";
+import { createLibrary } from "@cloudsop/openui-react-lang";
 
 import { HLayout } from "./HLayout";
 import { VLayout } from "./VLayout";
@@ -1931,7 +1931,7 @@ For each `src/components/<Name>/index.tsx`, replace the placeholder implementati
 **Consuming the library:**
 ```tsx
 import { dslLibrary } from "@company/react-ui-dsl/genui-lib";
-import { Renderer } from "@openuidev/react-lang";
+import { Renderer } from "@cloudsop/openui-react-lang";
 
 <Renderer library={dslLibrary} value={dslNode} />
 ```

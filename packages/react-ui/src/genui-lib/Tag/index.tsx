@@ -1,6 +1,6 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Tag as OpenUITag } from "../../components/Tag";
 import { TagSchema } from "./schema";
 

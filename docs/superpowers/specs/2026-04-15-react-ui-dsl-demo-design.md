@@ -58,7 +58,7 @@ examples/react-ui-dsl-demo/
 
 - **Frontend**: Vite + React 19 + TypeScript
 - **Backend**: Express + `cors` + `openai` SDK (streaming)
-- **DSL rendering**: `@openuidev/react-lang` Renderer + `@openuidev/react-ui-dsl` dslLibrary
+- **DSL rendering**: `@cloudsop/openui-react-lang` Renderer + `@cloudsop/openui-react-ui-dsl` dslLibrary
 - **Dev runner**: `concurrently` — one `pnpm dev` starts both
 
 ## Data Flow

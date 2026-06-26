@@ -1,4 +1,4 @@
-import { reactive } from "@openuidev/react-lang";
+import { reactive } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 
 type RefComponent = { ref: z.ZodTypeAny };

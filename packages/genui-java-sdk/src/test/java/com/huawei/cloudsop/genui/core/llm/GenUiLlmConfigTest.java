@@ -17,7 +17,7 @@ class GenUiLlmConfigTest {
     assertEquals(GenUiLlmConfig.DEFAULT_MODEL, config.defaultModel());
     assertEquals(0.0, config.temperature());
     assertFalse(config.enableThinking());
-    assertTrue(config.jsonObjectResponse());
+    assertFalse(config.jsonObjectResponse());
     assertTrue(config.extraHeaders().isEmpty());
   }
 

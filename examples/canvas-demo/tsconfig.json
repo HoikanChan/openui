@@ -16,9 +16,9 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@openuidev/lang-core": ["../../packages/lang-core/src"],
-      "@openuidev/react-lang": ["../../packages/react-lang/src"],
-      "@openuidev/react-ui-dsl": ["../../packages/react-ui-dsl/src"]
+      "@cloudsop/openui-lang-core": ["../../packages/lang-core/src"],
+      "@cloudsop/openui-react-lang": ["../../packages/react-lang/src"],
+      "@cloudsop/openui-react-ui-dsl": ["../../packages/react-ui-dsl/src"]
     }
   },
   "include": ["src"]

@@ -30,11 +30,11 @@ demo SHALL 提供 Context ID 选择控件，选项来自 `GET /v1/contexts`（�
 ## MODIFIED Requirements
 
 ### Requirement: Demo setup documents real-library prerequisites
-The demo documentation SHALL describe the dependency, build, and runtime prerequisites required to run the example against `@openuidev/react-ui-dsl` inside the workspace, including the GenUI Service backend (JDK ≥ 21, Maven) and the startup order between the Java service and the front-end dev server.
+The demo documentation SHALL describe the dependency, build, and runtime prerequisites required to run the example against `@cloudsop/openui-react-ui-dsl` inside the workspace, including the GenUI Service backend (JDK ≥ 21, Maven) and the startup order between the Java service and the front-end dev server.
 
 #### Scenario: Contributor follows documented setup
 - **WHEN** a contributor reads `examples/react-ui-dsl-demo/README.md`
-- **THEN** the README lists the required workspace dependency and any build or peer dependency prerequisites for `@openuidev/react-ui-dsl`
+- **THEN** the README lists the required workspace dependency and any build or peer dependency prerequisites for `@cloudsop/openui-react-ui-dsl`
 - **AND** the README states the JDK ≥ 21 and Maven prerequisites for `examples/genui-service`
 - **AND** the instructions describe the startup order: start GenUI Service first, then the front-end dev server
 

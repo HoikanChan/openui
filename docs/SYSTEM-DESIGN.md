@@ -286,7 +286,7 @@ MVP 阶段，`GenUIExtension` 注册 JSON 由业务方维护。DSLEngine 工具�
 
 ```ts
 // alarm-extension.ts
-import { defineComponent } from "@openuidev/react-ui-dsl";
+import { defineComponent } from "@cloudsop/openui-react-ui-dsl";
 import { z } from "zod";
 
 const AlarmSeverityTag = defineComponent({
@@ -645,7 +645,7 @@ react-ui-dsl 负责向生成侧和渲染侧提供一致的组件能力，包括�
 
 ```ts
 // button-extension.ts
-import { defineComponent } from "@openuidev/react-ui-dsl";
+import { defineComponent } from "@cloudsop/openui-react-ui-dsl";
 import { z } from "zod";
 
 const Button = defineComponent({

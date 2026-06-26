@@ -12,13 +12,13 @@ const { mockParse, mockSchema, mockCreateParser } = vi.hoisted(() => {
   };
 });
 
-vi.mock("@openuidev/react-lang", () => ({
+vi.mock("@cloudsop/openui-react-lang", () => ({
   Renderer: () => <div>rendered</div>,
   createParser: mockCreateParser,
   defineComponent: (config: unknown) => config,
 }));
 
-vi.mock("@openuidev/react-ui-dsl", () => ({
+vi.mock("@cloudsop/openui-react-ui-dsl", () => ({
   dslLibrary: {
     toJSONSchema: () => mockSchema,
     // extensions.tsx 在模块加载时构建扩展库

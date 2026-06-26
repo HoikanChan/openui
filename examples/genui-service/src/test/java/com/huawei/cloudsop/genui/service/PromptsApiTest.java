@@ -36,7 +36,7 @@ class PromptsApiTest {
             .prompt();
     assertEquals(expected, result.get("prompt").asText());
     assertEquals(
-        "@openuidev/react-ui-dsl@0.1.0", result.get("metadata").get("baseContractVersion").asText());
+        "@cloudsop/openui-react-ui-dsl@0.1.0", result.get("metadata").get("baseContractVersion").asText());
   }
 
   @Test

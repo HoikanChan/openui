@@ -4,7 +4,7 @@
 
 ## Why
 
-`@openuidev/react-ui-dsl` 的 system prompt 是历经多轮在 deepseek-v3 上调优堆出来的：800-1000 行的 grammar/builtins/components 描述 + 46 条 `additionalRules` + 19 条静态 few-shot examples，全部无差别地喂给所有模型。
+`@cloudsop/openui-react-ui-dsl` 的 system prompt 是历经多轮在 deepseek-v3 上调优堆出来的：800-1000 行的 grammar/builtins/components 描述 + 46 条 `additionalRules` + 19 条静态 few-shot examples，全部无差别地喂给所有模型。
 
 切换到生产要求的 `qwen3-30b-a3b-instruct-2507` 后，这种"single-prompt-for-all-models"的形态立刻暴露问题：
 

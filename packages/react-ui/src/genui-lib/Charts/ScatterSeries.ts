@@ -1,4 +1,4 @@
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 import { PointSchema } from "./Point";
 

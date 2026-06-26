@@ -9,7 +9,7 @@ import {
   TabsTrigger,
 } from "@/components/overview-components";
 import { genuiOutput } from "@/components/overview-components/genui";
-import { Renderer } from "@openuidev/react-lang";
+import { Renderer } from "@cloudsop/openui-react-lang";
 import { openuiLibrary } from "@openuidev/react-ui";
 
 const renderableOutput = `root = Stack([welcomeCard])
@@ -48,7 +48,7 @@ export const LangExample = () => {
           <CodeBlock
             className="h-full"
             title="Component Library Definition"
-            code={`import { defineComponent, createLibrary } from '@openuidev/react-lang';
+            code={`import { defineComponent, createLibrary } from '@cloudsop/openui-react-lang';
 import { z } from 'zod';
 
 const MyCard = defineComponent({
@@ -70,7 +70,7 @@ export const myLibrary = createLibrary({
         <TabsContent value="render-code" className="mt-3 flex-1">
           <CodeBlock
             title="Rendering Code"
-            code={`import { Renderer } from '@openuidev/react-lang';
+            code={`import { Renderer } from '@cloudsop/openui-react-lang';
 import { myLibrary } from './library';
 
 // Inside your Chat Message component

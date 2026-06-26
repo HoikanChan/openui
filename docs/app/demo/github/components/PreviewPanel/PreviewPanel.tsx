@@ -1,5 +1,5 @@
-import type { ActionEvent, ParseResult } from "@openuidev/react-lang";
-import { Renderer } from "@openuidev/react-lang";
+import type { ActionEvent, ParseResult } from "@cloudsop/openui-react-lang";
+import { Renderer } from "@cloudsop/openui-react-lang";
 import { IconButton, openuiLibrary, ThemeProvider } from "@openuidev/react-ui";
 import { Loader2, Maximize2, Monitor } from "lucide-react";
 import { useCallback, useState } from "react";

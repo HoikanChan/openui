@@ -76,7 +76,7 @@ When you need detail on a specific topic, fetch the relevant page from the allow
 
 | Package                     | Purpose                                                                 | When to use               |
 | --------------------------- | ----------------------------------------------------------------------- | ------------------------- |
-| `@openuidev/react-lang`     | Core: defineComponent, createLibrary, Renderer, parser                  | Every OpenUI project      |
+| `@cloudsop/openui-react-lang`     | Core: defineComponent, createLibrary, Renderer, parser                  | Every OpenUI project      |
 | `@openuidev/react-headless` | Chat state: ChatProvider, hooks, streaming adapters (OpenAI, AG-UI)     | Custom chat UI            |
 | `@openuidev/react-ui`       | Prebuilt layouts (Copilot, FullScreen, BottomTray) + built-in libraries | Fast path to working chat |
 

@@ -25,5 +25,5 @@
 ## Impact
 
 - Affected code: `packages/react-ui-dsl/src/genui-lib/Card/schema.ts`、`packages/react-ui-dsl/src/genui-lib/Card/index.tsx`、`packages/react-ui-dsl/src/genui-lib/dslLibrary.tsx`。
-- APIs: `@openuidev/react-ui-dsl` 的 `Card` 组件 schema 变化，旧的 `tag` / `headerAlign` 字段失效。
+- APIs: `@cloudsop/openui-react-ui-dsl` 的 `Card` 组件 schema 变化，旧的 `tag` / `headerAlign` 字段失效。
 - Systems: 影响 LLM prompt 生成和 DSL 运行时渲染，不涉及其他组件。

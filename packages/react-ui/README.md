@@ -9,12 +9,12 @@ React UI components, chat layouts, and component libraries for [OpenUI](https://
 ## Install
 
 ```bash
-npm install @openuidev/react-ui @openuidev/react-lang @openuidev/react-headless
+npm install @openuidev/react-ui @cloudsop/openui-react-lang @openuidev/react-headless
 # or
-pnpm add @openuidev/react-ui @openuidev/react-lang @openuidev/react-headless
+pnpm add @openuidev/react-ui @cloudsop/openui-react-lang @openuidev/react-headless
 ```
 
-**Peer dependencies:** `react >=19.0.0`, `react-dom >=19.0.0`, `zustand ^4.5.5`, `@openuidev/react-lang`, `@openuidev/react-headless`
+**Peer dependencies:** `react >=19.0.0`, `react-dom >=19.0.0`, `zustand ^4.5.5`, `@cloudsop/openui-react-lang`, `@openuidev/react-headless`
 
 Don't forget to import the component styles:
 
@@ -85,7 +85,7 @@ The package ships with two preconfigured OpenUI Lang libraries:
 Use them directly when building custom chat experiences:
 
 ```tsx
-import { Renderer } from "@openuidev/react-lang";
+import { Renderer } from "@cloudsop/openui-react-lang";
 import { openuiLibrary } from "@openuidev/react-ui";
 
 function AssistantMessage({ content, isStreaming }) {

@@ -29,7 +29,7 @@ The CLI auto-detects exported `PromptOptions` (examples, rules) alongside your l
 
 ## 2. `generatePrompt` (programmatic)
 
-For backends that need dynamic prompts - different tools, preambles, or feature flags per request - use `generatePrompt` from `@openuidev/lang-core`. This has no React dependency, so it works in any Node/Edge/serverless backend.
+For backends that need dynamic prompts - different tools, preambles, or feature flags per request - use `generatePrompt` from `@cloudsop/openui-lang-core`. This has no React dependency, so it works in any Node/Edge/serverless backend.
 
 First, generate the component spec JSON via the CLI:
 
@@ -40,7 +40,7 @@ npx @openuidev/cli generate ./src/library.ts --json-schema --out generated/compo
 Then build the prompt at runtime:
 
 ```ts
-import { generatePrompt, type PromptSpec } from "@openuidev/lang-core";
+import { generatePrompt, type PromptSpec } from "@cloudsop/openui-lang-core";
 import componentSpec from "./generated/component-spec.json";
 
 const systemPrompt = generatePrompt({
@@ -104,7 +104,7 @@ The generated prompt includes:
 
 ```ts
 import OpenAI from "openai";
-import { generatePrompt, type PromptSpec } from "@openuidev/lang-core";
+import { generatePrompt, type PromptSpec } from "@cloudsop/openui-lang-core";
 import componentSpec from "./generated/component-spec.json";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });

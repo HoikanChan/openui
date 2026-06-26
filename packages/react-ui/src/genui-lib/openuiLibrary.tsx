@@ -1,7 +1,7 @@
 "use client";
 
-import type { ComponentGroup, PromptOptions } from "@openuidev/react-lang";
-import { createLibrary } from "@openuidev/react-lang";
+import type { ComponentGroup, PromptOptions } from "@cloudsop/openui-react-lang";
+import { createLibrary } from "@cloudsop/openui-react-lang";
 
 // Content
 import { Callout } from "./Callout";

@@ -1,6 +1,6 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Image as OpenUIImage } from "../../components/Image";
 import { ImageSchema } from "./schema";
 

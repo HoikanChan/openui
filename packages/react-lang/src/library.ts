@@ -5,7 +5,7 @@ import {
   type Library as CoreLibrary,
   type LibraryDefinition as CoreLibraryDefinition,
   type ComponentRenderProps as CoreRenderProps,
-} from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
 import type { ReactNode } from "react";
 import { z } from "zod";
 
@@ -20,7 +20,7 @@ export type {
   PromptOptions,
   SubComponentOf,
   ToolDescriptor,
-} from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
 
 // ─── React-specific types ───────────────────────────────────────────────────
 

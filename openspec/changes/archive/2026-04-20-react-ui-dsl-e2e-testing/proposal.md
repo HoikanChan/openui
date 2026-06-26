@@ -1,6 +1,6 @@
 ## Why
 
-`@openuidev/react-ui-dsl` has no test that covers the full `openui-lang DSL → parse → render` pipeline with realistic input. The existing Table unit test validates `mapColumnsToAntd` logic in isolation; it does not exercise the parser, the Renderer, or the component tree together. As a result, both parse errors (LLM output fails schema validation) and render errors (components crash or produce wrong output) go undetected until the demo or a downstream consumer breaks.
+`@cloudsop/openui-react-ui-dsl` has no test that covers the full `openui-lang DSL → parse → render` pipeline with realistic input. The existing Table unit test validates `mapColumnsToAntd` logic in isolation; it does not exercise the parser, the Renderer, or the component tree together. As a result, both parse errors (LLM output fails schema validation) and render errors (components crash or produce wrong output) go undetected until the demo or a downstream consumer breaks.
 
 ## What Changes
 

@@ -6,7 +6,7 @@
 
 **Architecture:** Extend the parser with a generic `externalRefs` option so unresolved names such as `data` can lower to `RuntimeRef` instead of `Ph`. Reuse the existing evaluator `resolveRef()` path to supply the runtime object from `react-lang`, and keep prompt support separate via `PromptSpec.dataModel` metadata.
 
-**Tech Stack:** TypeScript, Vitest, React 19, `@openuidev/lang-core`, `@openuidev/react-lang`
+**Tech Stack:** TypeScript, Vitest, React 19, `@cloudsop/openui-lang-core`, `@cloudsop/openui-react-lang`
 
 ---
 
@@ -109,7 +109,7 @@ it("streaming parser preserves configured external refs", () => {
 Run:
 
 ```bash
-pnpm --filter @openuidev/lang-core test -- src/parser/__tests__/parser.test.ts
+pnpm --filter @cloudsop/openui-lang-core test -- src/parser/__tests__/parser.test.ts
 ```
 
 Expected: FAIL with TypeScript or runtime errors because `parse()` and `createStreamParser()` do not accept an `externalRefs` option and `RuntimeRef.refType` does not include `"data"`.
@@ -230,7 +230,7 @@ export function createStreamingParser(
 Run:
 
 ```bash
-pnpm --filter @openuidev/lang-core test -- src/parser/__tests__/parser.test.ts
+pnpm --filter @cloudsop/openui-lang-core test -- src/parser/__tests__/parser.test.ts
 ```
 
 Expected: PASS with the new `externalRefs` coverage green and existing parser behavior unchanged.
@@ -305,7 +305,7 @@ describe("generatePrompt dataModel support", () => {
 Run:
 
 ```bash
-pnpm --filter @openuidev/lang-core test -- src/parser/__tests__/prompt.test.ts
+pnpm --filter @cloudsop/openui-lang-core test -- src/parser/__tests__/prompt.test.ts
 ```
 
 Expected: FAIL because `PromptSpec` does not yet have a `dataModel` field and `generatePrompt()` does not render the new section.
@@ -405,8 +405,8 @@ export type {
 Run:
 
 ```bash
-pnpm --filter @openuidev/lang-core test -- src/parser/__tests__/parser.test.ts src/parser/__tests__/prompt.test.ts
-pnpm --filter @openuidev/lang-core typecheck
+pnpm --filter @cloudsop/openui-lang-core test -- src/parser/__tests__/parser.test.ts src/parser/__tests__/prompt.test.ts
+pnpm --filter @cloudsop/openui-lang-core typecheck
 ```
 
 Expected: PASS for both test files and a clean TypeScript build for the package.
@@ -493,7 +493,7 @@ Update `packages/react-lang/package.json` dev dependencies:
 Run:
 
 ```bash
-pnpm --filter @openuidev/react-lang test -- src/__tests__/Renderer.dataModel.test.tsx
+pnpm --filter @cloudsop/openui-react-lang test -- src/__tests__/Renderer.dataModel.test.tsx
 ```
 
 Expected: FAIL because `RendererProps` and `useOpenUIState()` do not yet accept `dataModel`, and parser creation does not enable the `data` external ref.
@@ -605,7 +605,7 @@ export type {
   DataModelSpec,
   PromptSpec,
   ToolSpec,
-} from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
 ```
 
 - [ ] **Step 4: Run the React package tests and typecheck**
@@ -613,8 +613,8 @@ export type {
 Run:
 
 ```bash
-pnpm --filter @openuidev/react-lang test -- src/__tests__/Renderer.dataModel.test.tsx
-pnpm --filter @openuidev/react-lang typecheck
+pnpm --filter @cloudsop/openui-react-lang test -- src/__tests__/Renderer.dataModel.test.tsx
+pnpm --filter @cloudsop/openui-react-lang typecheck
 ```
 
 Expected: PASS with the SSR test rendering `Alice` and TypeScript accepting the new prop and exports.
@@ -639,8 +639,8 @@ git commit -m "feat(react-lang): add host dataModel support"
 Run:
 
 ```bash
-pnpm --filter @openuidev/lang-core test -- src/parser/__tests__/parser.test.ts src/parser/__tests__/prompt.test.ts
-pnpm --filter @openuidev/react-lang test -- src/__tests__/Renderer.dataModel.test.tsx
+pnpm --filter @cloudsop/openui-lang-core test -- src/parser/__tests__/parser.test.ts src/parser/__tests__/prompt.test.ts
+pnpm --filter @cloudsop/openui-react-lang test -- src/__tests__/Renderer.dataModel.test.tsx
 ```
 
 Expected: PASS across all focused tests with no unresolved `data` regressions.
@@ -650,8 +650,8 @@ Expected: PASS across all focused tests with no unresolved `data` regressions.
 Run:
 
 ```bash
-pnpm --filter @openuidev/lang-core typecheck
-pnpm --filter @openuidev/react-lang typecheck
+pnpm --filter @cloudsop/openui-lang-core typecheck
+pnpm --filter @cloudsop/openui-react-lang typecheck
 ```
 
 Expected: PASS with exported `ParserOptions`, `DataModelSpec`, and React prop types all aligned.
@@ -661,8 +661,8 @@ Expected: PASS with exported `ParserOptions`, `DataModelSpec`, and React prop ty
 Run:
 
 ```bash
-pnpm --filter @openuidev/lang-core build
-pnpm --filter @openuidev/react-lang build
+pnpm --filter @cloudsop/openui-lang-core build
+pnpm --filter @cloudsop/openui-react-lang build
 ```
 
 Expected: PASS and emit updated package bundles/types with no export errors.

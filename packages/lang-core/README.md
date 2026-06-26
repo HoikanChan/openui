@@ -1,35 +1,35 @@
-# @openuidev/lang-core
+# @cloudsop/openui-lang-core
 
 Framework-agnostic core for [OpenUI Lang](https://openui.com): parser, prompt generation, runtime evaluator, and type definitions.
 
-[![npm](https://img.shields.io/npm/v/@openuidev/lang-core)](https://www.npmjs.com/package/@openuidev/lang-core)
+[![npm](https://img.shields.io/npm/v/@cloudsop/openui-lang-core)](https://www.npmjs.com/package/@cloudsop/openui-lang-core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/thesysdev/openui/blob/main/LICENSE)
 
 ## Install
 
 ```bash
-npm install @openuidev/lang-core
+npm install @cloudsop/openui-lang-core
 # or
-pnpm add @openuidev/lang-core
+pnpm add @cloudsop/openui-lang-core
 ```
 
 ## What this package does
 
-`@openuidev/lang-core` is the framework-agnostic foundation that powers OpenUI Lang. It has no React or other framework dependencies. Use it when you need to:
+`@cloudsop/openui-lang-core` is the framework-agnostic foundation that powers OpenUI Lang. It has no React or other framework dependencies. Use it when you need to:
 
 - **Parse** OpenUI Lang text into a typed element tree (one-shot or streaming)
 - **Generate system prompts** from a component spec + tool definitions
 - **Evaluate** reactive expressions, `$variables`, and query results at runtime
 - **Merge** incremental edits into existing programs
 
-If you're building a framework-specific app, use `@openuidev/react-lang`, `@openuidev/vue-lang` or `@openuidev/svelte-lang` instead. It re-exports everything from this package plus framework-specific components and hooks.
+If you're building a framework-specific app, use `@cloudsop/openui-react-lang`, `@openuidev/vue-lang` or `@openuidev/svelte-lang` instead. It re-exports everything from this package plus framework-specific components and hooks.
 
 ## Quick Start
 
 ### Parse OpenUI Lang
 
 ```ts
-import { createParser } from "@openuidev/lang-core";
+import { createParser } from "@cloudsop/openui-lang-core";
 
 const parser = createParser(libraryJsonSchema);
 const result = parser.parse(`
@@ -45,7 +45,7 @@ console.log(result.meta);       // { incomplete, unresolved, statementCount, val
 ### Streaming parser
 
 ```ts
-import { createStreamingParser } from "@openuidev/lang-core";
+import { createStreamingParser } from "@cloudsop/openui-lang-core";
 
 const sp = createStreamingParser(libraryJsonSchema);
 
@@ -58,7 +58,7 @@ const result2 = sp.set("root = Stack([header])\nheader = CardHeader(\"Hello\")\n
 ### Generate a system prompt
 
 ```ts
-import { generatePrompt, type PromptSpec } from "@openuidev/lang-core";
+import { generatePrompt, type PromptSpec } from "@cloudsop/openui-lang-core";
 import componentSpec from "./generated/component-spec.json";
 
 const prompt = generatePrompt({
@@ -74,7 +74,7 @@ const prompt = generatePrompt({
 ### Merge incremental edits
 
 ```ts
-import { mergeStatements } from "@openuidev/lang-core";
+import { mergeStatements } from "@cloudsop/openui-lang-core";
 
 const original = `root = Stack([header, tbl])\nheader = CardHeader("Tickets")\ntbl = Table([...])`;
 const patch = `root = Stack([header, chart, tbl])\nchart = PieChart(...)`;
@@ -126,7 +126,7 @@ import type {
   QueryManager,
   Store,
   OpenUIError,
-} from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
 ```
 
 ## Documentation

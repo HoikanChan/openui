@@ -54,8 +54,14 @@ public final class GenUiGenerator {
   public String generate(UiGenerationRequest request) {
     try {
       String body = buildRequestBody(request, false);
+      LlmDebugLog.log("sync.request", () -> body);
       String response = transport.post(body);
-      return OpenuiCodeExtractor.extract(ChatCompletionResponse.parse(response).firstContent());
+      LlmDebugLog.log("sync.response.raw", () -> response);
+      String content = ChatCompletionResponse.parse(response).firstContent();
+      LlmDebugLog.log("sync.response.content", () -> content);
+      String extracted = OpenuiCodeExtractor.extract(content);
+      LlmDebugLog.log("sync.response.extracted", () -> extracted);
+      return extracted;
     } catch (LlmTransportException error) {
       throw new GenerationSdkException("Failed to invoke LLM: " + error.getMessage(), error);
     }
@@ -63,9 +69,20 @@ public final class GenUiGenerator {
 
   public String generateStream(UiGenerationRequest request, Consumer<String> sink) {
     Objects.requireNonNull(sink, "sink must not be null");
-    try (InputStream stream = transport.postStream(buildRequestBody(request, true))) {
-      String accumulated = SseDeltaParser.parse(stream, sink);
-      return OpenuiCodeExtractor.extract(accumulated);
+    String body = buildRequestBody(request, true);
+    LlmDebugLog.log("stream.request", () -> body);
+    try (InputStream stream = transport.postStream(body)) {
+      String accumulated =
+          SseDeltaParser.parse(
+              stream,
+              delta -> {
+                LlmDebugLog.log("stream.delta", () -> delta);
+                sink.accept(delta);
+              });
+      LlmDebugLog.log("stream.response.accumulated", () -> accumulated);
+      String extracted = OpenuiCodeExtractor.extract(accumulated);
+      LlmDebugLog.log("stream.response.extracted", () -> extracted);
+      return extracted;
     } catch (LlmTransportException error) {
       throw new GenerationSdkException("Failed to invoke LLM stream: " + error.getMessage(), error);
     } catch (IOException error) {

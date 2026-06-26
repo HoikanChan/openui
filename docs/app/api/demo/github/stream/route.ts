@@ -1,5 +1,5 @@
 import { BASE_URL } from "@/lib/source";
-import { generatePrompt, type PromptSpec } from "@openuidev/lang-core";
+import { generatePrompt, type PromptSpec } from "@cloudsop/openui-lang-core";
 import { readFileSync } from "fs";
 import { type NextRequest } from "next/server";
 import { join } from "path";

@@ -87,4 +87,4 @@
 - [x] 10.3 模拟超时：在 judge 阶段 kill → 再次 `pnpm eval judge <run-id>` → 期望只判剩余 fixture
 - [x] 10.4 跑一次完整 verify（小规模 claimed 列表）→ 期望耗时显著低于 baseline 全量耗时
 - [x] 10.5 浏览器打开最终 `index.html`，确认 judge feedback、四维分、issue chips、overall 分数与 delta 全部可见且无需点击
-- [x] 10.6 跑现有 unit test 套件（`pnpm --filter @openuidev/react-ui-dsl test`），确认无回归
+- [x] 10.6 跑现有 unit test 套件（`pnpm --filter @cloudsop/openui-react-ui-dsl test`），确认无回归

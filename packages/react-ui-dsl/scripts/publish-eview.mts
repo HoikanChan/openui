@@ -31,7 +31,7 @@ const PUBLISHED_DESCRIPTION = "DSL engine for web rendering";
 // peer deps in the source package.json that must NOT appear in the published
 // artifact: react-lang is bundled in; antd is unreachable from the eview entry
 // graph after Input/view/eview.tsx lands.
-const PEERS_TO_DROP = new Set(["@openuidev/react-lang", "antd"]);
+const PEERS_TO_DROP = new Set(["@cloudsop/openui-react-lang", "antd"]);
 
 function info(msg: string): void {
   console.log(`\n[publish-eview] ${msg}`);

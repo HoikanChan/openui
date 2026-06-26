@@ -1,6 +1,6 @@
 "use client";
 
-import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@cloudsop/openui-react-lang";
 import type { CSSProperties } from "react";
 import { z } from "zod";
 

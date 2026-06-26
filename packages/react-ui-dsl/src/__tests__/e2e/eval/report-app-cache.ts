@@ -38,9 +38,9 @@ export function computeReportAppCacheKey(reportAppRoot: string, packageRoot: str
       "react",
       "react-dom",
       "vite",
-      "@openuidev/lang-core",
-      "@openuidev/react-lang",
-      "@openuidev/react-ui-dsl",
+      "@cloudsop/openui-lang-core",
+      "@cloudsop/openui-react-lang",
+      "@cloudsop/openui-react-ui-dsl",
     ];
 
     const depVersions: string[] = [];

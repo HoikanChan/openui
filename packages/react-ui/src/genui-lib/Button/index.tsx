@@ -1,6 +1,6 @@
 "use client";
 
-import type { ActionPlan } from "@openuidev/react-lang";
+import type { ActionPlan } from "@cloudsop/openui-react-lang";
 import {
   ACTION_STEPS,
   defineComponent,
@@ -8,7 +8,7 @@ import {
   useFormValidation,
   useIsStreaming,
   useTriggerAction,
-} from "@openuidev/react-lang";
+} from "@cloudsop/openui-react-lang";
 import { Button as OpenUIButton } from "../../components/Button";
 import { ButtonSchema } from "./schema";
 

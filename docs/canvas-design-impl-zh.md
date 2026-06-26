@@ -77,7 +77,7 @@ OpenUI智能画布的设计遵循**分离渲染目标**原则，将LLM生成的D
 │                            组件层                                        │
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │              @openuidev/react-ui-dsl                              │   │
+│  │              @cloudsop/openui-react-ui-dsl                              │   │
 │  │                                                                   │   │
 │  │  ┌─────────────────┐  ┌─────────────────────────────────────┐   │   │
 │  │  │  Canvas组件定义  │  │         Canvas渲染组件              │   │   │
@@ -106,7 +106,7 @@ OpenUI智能画布的设计遵循**分离渲染目标**原则，将LLM生成的D
 │                            渲染层                                        │
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │              @openuidev/react-lang                                │   │
+│  │              @cloudsop/openui-react-lang                                │   │
 │  │                                                                   │   │
 │  │  ┌────────────────────────────────────────────────────────────┐ │   │
 │  │  │                      Renderer                                │ │   │
@@ -143,7 +143,7 @@ OpenUI智能画布的设计遵循**分离渲染目标**原则，将LLM生成的D
 │                            解析层                                        │
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │              @openuidev/lang-core                                 │   │
+│  │              @cloudsop/openui-lang-core                                 │   │
 │  │                                                                   │   │
 │  │  ┌────────────────────────────────────────────────────────────┐ │   │
 │  │  │                      Parser                                  │ │   │
@@ -1057,11 +1057,11 @@ import {
   Renderer,
   CanvasItem,
   ParseResult,
-} from "@openuidev/react-lang";
+} from "@cloudsop/openui-react-lang";
 import {
   CanvasTabs,
   dslLibrary,
-} from "@openuidev/react-ui-dsl";
+} from "@cloudsop/openui-react-ui-dsl";
 
 function ChatPage() {
   const [dslResponse, setDslResponse] = useState<string>("");

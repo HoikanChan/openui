@@ -43,7 +43,7 @@ OpenUI 内置了一套通用组件，但真实业务里你总有自己的卡片�
 用 `defineComponent` 定义组件：给它起个**名字**、写一句**说明**、声明它接收哪些**参数**。
 
 ```tsx
-import { defineComponent } from "@openuidev/react-ui-dsl";
+import { defineComponent } from "@cloudsop/openui-react-ui-dsl";
 import { z } from "zod";
 
 export const AlarmSummaryCard = defineComponent({
@@ -252,7 +252,7 @@ Prel.start("alarm-business-piu", "1.0.0", ["session", "locale"], function (socke
 承载页面这边只做两件事：启动一次 OpenUI 的运行时（它会监听上面的 `smart-canvas:extend`），然后用 `DSLRenderer` 渲染模型返回的内容。`DSLRenderer` 会自动把登记进来的组件并进 `Library`、把取数函数接到 `toolProvider`：
 
 ```tsx
-import { DSLRenderer, initDslPiu } from "@openuidev/react-ui-dsl";
+import { DSLRenderer, initDslPiu } from "@cloudsop/openui-react-ui-dsl";
 import { useEffect, useState } from "react";
 
 export function Preview({ dsl }: { dsl: string }) {

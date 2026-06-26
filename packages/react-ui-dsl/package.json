@@ -1,5 +1,5 @@
 {
-  "name": "@openuidev/react-ui-dsl",
+  "name": "@cloudsop/openui-react-ui-dsl",
   "version": "0.1.0",
   "type": "module",
   "description": "DSL component library built on Ant Design v5 and ECharts",
@@ -98,7 +98,7 @@
     "xss": "1.0.15"
   },  
   "peerDependencies": {
-    "@openuidev/react-lang": "workspace:^",
+    "@cloudsop/openui-react-lang": "workspace:^",
     "antd": "^5.0.0",
     "react": ">=19.0.0",
     "react-dom": ">=19.0.0",
@@ -110,7 +110,7 @@
     }
   },
   "devDependencies": {
-    "@openuidev/react-lang": "workspace:^",
+    "@cloudsop/openui-react-lang": "workspace:^",
     "@storybook/addon-essentials": "^8.5.3",
     "@storybook/addon-interactions": "^8.5.3",
     "@storybook/blocks": "^8.5.3",

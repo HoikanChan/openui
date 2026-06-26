@@ -15,6 +15,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -45,6 +48,7 @@ class GenUiGeneratorTest {
     Map<String, Object> body = Json.asObject(Json.parse(transport.lastBody), "request");
     assertEquals(false, body.get("stream"));
     assertEquals(GenUiLlmConfig.DEFAULT_MODEL, body.get("model"));
+    assertFalse(body.containsKey("response_format"));
     List<Object> messages = Json.asList(body.get("messages"), "messages");
     Map<String, Object> system = Json.asObject(messages.get(0), "system");
     Map<String, Object> user = Json.asObject(messages.get(1), "user");
@@ -89,6 +93,52 @@ class GenUiGeneratorTest {
     assertEquals("root = Stack([])", result);
     Map<String, Object> body = Json.asObject(Json.parse(transport.lastBody), "request");
     assertEquals(true, body.get("stream"));
+  }
+
+  @Test
+  void debugLoggingIncludesActualStreamRequestBodyAndModelOutput() {
+    FakeTransport transport = FakeTransport.stream(frame("root = Stack([])"), SseFrames.done());
+    ArrayList<String> logs = new ArrayList<>();
+    Logger logger = Logger.getLogger("com.huawei.cloudsop.genui.core.llm");
+    Handler handler =
+        new Handler() {
+          @Override
+          public void publish(LogRecord record) {
+            logs.add(record.getMessage());
+          }
+
+          @Override
+          public void flush() {}
+
+          @Override
+          public void close() {}
+        };
+
+    String previous = System.getProperty("genui.llm.debug");
+    boolean previousParentHandlers = logger.getUseParentHandlers();
+    logger.addHandler(handler);
+    try {
+      System.setProperty("genui.llm.debug", "true");
+      logger.setUseParentHandlers(false);
+
+      String result =
+          GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+              .generateStream(UiGenerationRequest.builder().userInput("stream").build(), ignored -> {});
+
+      assertEquals("root = Stack([])", result);
+    } finally {
+      logger.removeHandler(handler);
+      logger.setUseParentHandlers(previousParentHandlers);
+      if (previous == null) {
+        System.clearProperty("genui.llm.debug");
+      } else {
+        System.setProperty("genui.llm.debug", previous);
+      }
+    }
+
+    assertTrue(logs.stream().anyMatch(log -> log.contains("stream.request") && log.contains("\"messages\"")));
+    assertTrue(logs.stream().anyMatch(log -> log.contains("stream.delta") && log.contains("root = Stack([])")));
+    assertTrue(logs.stream().anyMatch(log -> log.contains("stream.response.extracted") && log.contains("root = Stack([])")));
   }
 
   @Test

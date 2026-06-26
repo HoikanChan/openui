@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { createParser } from "@openuidev/lang-core";
-import type { Library } from "@openuidev/react-lang";
+import { createParser } from "@cloudsop/openui-lang-core";
+import type { Library } from "@cloudsop/openui-react-lang";
 import { canvasStore } from "./canvasStore";
 import { CanvasTabs } from "../components/CanvasTabs/CanvasTabs";
 

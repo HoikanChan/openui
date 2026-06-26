@@ -22,5 +22,5 @@ None.
 ## Impact
 
 - Affected code: `packages/react-ui-dsl/src/genui-lib/Table/*`、`packages/react-ui-dsl/src/genui-lib/dslLibrary.tsx`，以及相关示例、测试和 prompt 元数据。
-- APIs: `@openuidev/react-ui-dsl` 的 `Table` 组件 schema 和推荐调用方式会变化，但底层仍然渲染到 antd `Table`。
+- APIs: `@cloudsop/openui-react-ui-dsl` 的 `Table` 组件 schema 和推荐调用方式会变化，但底层仍然渲染到 antd `Table`。
 - Systems: 主要影响 LLM prompt 生成、DSL 解析输入，以及 table schema 到 antd columns 的转换逻辑。

@@ -4,7 +4,7 @@ const hotelPlazaImg = "/images/home/706ccb488b69a5bdb06bdd002656a2fdfb017071.png
 
 const LIBRARY_CODE = `import { z } from "zod"
 import { Carousel, CarouselCard } from "components/Carousel"
-import { defineComponent, createLibrary } from "@openuidev/react-lang"
+import { defineComponent, createLibrary } from "@cloudsop/openui-react-lang"
 
 const CarouselCard = defineComponent({
   name: "CarouselCard",

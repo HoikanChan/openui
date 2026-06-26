@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import type { Library } from "@openuidev/react-lang";
-import { renderElementNode } from "@openuidev/react-lang";
+import type { Library } from "@cloudsop/openui-react-lang";
+import { renderElementNode } from "@cloudsop/openui-react-lang";
 import { Tabs } from "antd";
 import { canvasStore, type CanvasStoreState } from "../../canvas/canvasStore";
 import { DashboardGrid } from "./DashboardGrid";

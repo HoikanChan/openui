@@ -1,5 +1,5 @@
-import type { ElementNode, EvaluationContext, Library } from "@openuidev/lang-core";
-import { evaluateElementProps, isElementNode } from "@openuidev/lang-core";
+import type { ElementNode, EvaluationContext, Library } from "@cloudsop/openui-lang-core";
+import { evaluateElementProps, isElementNode } from "@cloudsop/openui-lang-core";
 import React from "react";
 import type { ComponentRenderProps } from "./library";
 

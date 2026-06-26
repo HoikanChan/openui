@@ -1,4 +1,4 @@
-import type { ToolSpec } from "@openuidev/lang-core";
+import type { ToolSpec } from "@cloudsop/openui-lang-core";
 
 // ── Transformed GitHub data interfaces ────────────────────────────────────
 

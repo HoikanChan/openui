@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { createContext, useContext, type PropsWithChildren } from "react";
-import { createParser } from "@openuidev/react-lang";
+import { createParser } from "@cloudsop/openui-react-lang";
 import { CanvasStoreProvider } from "../canvas/CanvasStoreContext";
 import { canvasStore, type GenUIExtension } from "../canvas/canvasStore";
 import { dslLibrary } from "../genui-lib/dslLibrary";

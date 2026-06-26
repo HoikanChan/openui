@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build `packages/react-ui-dsl` — a 15-component DSL adapter library using Ant Design v5 and ECharts, compatible with the `@openuidev/react-lang` runtime.
+**Goal:** Build `packages/react-ui-dsl` — a 15-component DSL adapter library using Ant Design v5 and ECharts, compatible with the `@cloudsop/openui-react-lang` runtime.
 
 **Architecture:** Non-chart `genui-lib` wrappers import Ant Design v5 directly. ECharts chart components are self-encapsulated in `src/components/chart/`, applying the existing theme from `src/components/chart/theme/`. All 15 components register in `dslLibrary.tsx` via `createLibrary`. No intermediate component layer for non-chart components.
 
-**Tech Stack:** React 19, Ant Design v5 (default theme), ECharts 5, Zod 4, `@openuidev/react-lang`, TypeScript, react-markdown
+**Tech Stack:** React 19, Ant Design v5 (default theme), ECharts 5, Zod 4, `@cloudsop/openui-react-lang`, TypeScript, react-markdown
 
 ---
 
@@ -76,7 +76,7 @@ packages/react-ui-dsl/
 
 ```json
 {
-  "name": "@openuidev/react-ui-dsl",
+  "name": "@cloudsop/openui-react-ui-dsl",
   "version": "0.1.0",
   "type": "module",
   "description": "DSL component library built on Ant Design v5 and ECharts",
@@ -101,7 +101,7 @@ packages/react-ui-dsl/
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "@openuidev/react-lang": "workspace:^",
+    "@cloudsop/openui-react-lang": "workspace:^",
     "antd": "^5.0.0",
     "echarts": "^5.0.0",
     "react": ">=19.0.0",
@@ -380,7 +380,7 @@ export const VLayoutSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/VLayout/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Flex } from "antd";
 import { VLayoutSchema } from "./schema";
 
@@ -422,7 +422,7 @@ export const HLayoutSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/HLayout/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Flex } from "antd";
 import { HLayoutSchema } from "./schema";
 
@@ -484,7 +484,7 @@ export const TextSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/Text/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import ReactMarkdown from "react-markdown";
 import { TextSchema } from "./schema";
 
@@ -532,7 +532,7 @@ export const ImageSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/Image/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { ImageSchema } from "./schema";
 
 export const Image = defineComponent({
@@ -576,7 +576,7 @@ export const LinkSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/Link/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Typography } from "antd";
 import { LinkSchema } from "./schema";
 
@@ -646,7 +646,7 @@ export const ButtonSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/Button/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Button as AntButton } from "antd";
 import { ButtonSchema } from "./schema";
 
@@ -699,7 +699,7 @@ export const SelectSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/Select/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Select as AntSelect } from "antd";
 import { SelectSchema } from "./schema";
 
@@ -763,7 +763,7 @@ export const CardSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/Card/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Card as AntCard } from "antd";
 import { CardSchema } from "./schema";
 
@@ -807,7 +807,7 @@ export const ListSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/List/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { ListSchema } from "./schema";
 
 export const List = defineComponent({
@@ -877,7 +877,7 @@ export const FormSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/Form/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Form as AntForm } from "antd";
 import { FormSchema } from "./schema";
 
@@ -957,7 +957,7 @@ export const TableSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/Table/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Table as AntTable, Tooltip } from "antd";
 import type { ColumnType } from "antd/es/table";
 import { TableSchema } from "./schema";
@@ -1069,7 +1069,7 @@ export const TimeLineSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/TimeLine/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Timeline } from "antd";
 import { TimeLineSchema } from "./schema";
 
@@ -1148,7 +1148,7 @@ export const PieChartSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/Charts/PieChart/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { PieChart as PieChartComponent } from "../../../components/chart";
 import { PieChartSchema } from "./schema";
 
@@ -1185,7 +1185,7 @@ export const LineChartSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/Charts/LineChart/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { LineChart as LineChartComponent } from "../../../components/chart";
 import { LineChartSchema } from "./schema";
 
@@ -1221,7 +1221,7 @@ export const BarChartSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/Charts/BarChart/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { BarChart as BarChartComponent } from "../../../components/chart";
 import { BarChartSchema } from "./schema";
 
@@ -1257,7 +1257,7 @@ export const GaugeChartSchema = z.object({
 // packages/react-ui-dsl/src/genui-lib/Charts/GaugeChart/index.tsx
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { GaugeChart as GaugeChartComponent } from "../../../components/chart";
 import { GaugeChartSchema } from "./schema";
 
@@ -1306,7 +1306,7 @@ git commit -m "feat(react-ui-dsl): add chart DSL wrappers (PieChart, LineChart, 
 // packages/react-ui-dsl/src/genui-lib/dslLibrary.tsx
 "use client";
 
-import { createLibrary } from "@openuidev/react-lang";
+import { createLibrary } from "@cloudsop/openui-react-lang";
 import { BarChart, GaugeChart, LineChart, PieChart } from "./Charts";
 import { Button } from "./Button";
 import { Card } from "./Card";

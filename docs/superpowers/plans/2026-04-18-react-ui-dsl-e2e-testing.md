@@ -6,7 +6,7 @@
 
 **Architecture:** Each test fixture stores a prompt, a realistic `dataModel`, and render assertions. On the first run, `loadOrGenerate()` calls the OpenAI API and saves the response as a `.dsl` file; subsequent runs read that file directly. Tests run with `@testing-library/react` in jsdom so `useEffect` hooks execute; ECharts is mocked at the module level.
 
-**Tech Stack:** vitest, @testing-library/react, openai SDK, react-dom, @openuidev/lang-core createParser, @openuidev/react-lang Renderer
+**Tech Stack:** vitest, @testing-library/react, openai SDK, react-dom, @cloudsop/openui-lang-core createParser, @cloudsop/openui-react-lang Renderer
 
 ---
 
@@ -108,8 +108,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     alias: {
-      "@openuidev/lang-core": path.resolve(__dirname, "../lang-core/src/index.ts"),
-      "@openuidev/react-lang": path.resolve(__dirname, "../react-lang/src/index.ts"),
+      "@cloudsop/openui-lang-core": path.resolve(__dirname, "../lang-core/src/index.ts"),
+      "@cloudsop/openui-react-lang": path.resolve(__dirname, "../react-lang/src/index.ts"),
     },
   },
   test: {
@@ -456,8 +456,8 @@ Create `packages/react-ui-dsl/src/__tests__/e2e/dsl-e2e.test.tsx`:
 import { render } from "@testing-library/react";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { createParser } from "@openuidev/lang-core";
-import { Renderer } from "@openuidev/react-lang";
+import { createParser } from "@cloudsop/openui-lang-core";
+import { Renderer } from "@cloudsop/openui-react-lang";
 import { dslLibrary } from "../../genui-lib/dslLibrary";
 import { fixtures } from "./fixtures";
 import { loadOrGenerate } from "./llm";

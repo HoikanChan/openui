@@ -89,13 +89,13 @@ Try it yourself in the [Playground](https://www.openui.com/playground) — gener
 
 | Package | Description |
 | :--- | :--- |
-| [`@openuidev/react-lang`](./packages/react-lang) | Core runtime — component definitions, parser, renderer, prompt generation |
+| [`@cloudsop/openui-react-lang`](./packages/react-lang) | Core runtime — component definitions, parser, renderer, prompt generation |
 | [`@openuidev/react-headless`](./packages/react-headless) | Headless chat state, streaming adapters, message format converters |
 | [`@openuidev/react-ui`](./packages/react-ui) | Prebuilt chat layouts and two built-in component libraries |
 | [`@openuidev/cli`](./packages/openui-cli) | CLI for scaffolding apps and generating system prompts |
 
 ```bash
-npm install @openuidev/react-lang @openuidev/react-ui
+npm install @cloudsop/openui-react-lang @openuidev/react-ui
 ```
 
 ## Why OpenUI Lang
@@ -153,7 +153,7 @@ Good places to start:
 
 ## `react-ui-dsl` e2e workflow
 
-The `@openuidev/react-ui-dsl` package keeps committed `.dsl` snapshots under [`packages/react-ui-dsl/src/__tests__/e2e/snapshots`](./packages/react-ui-dsl/src/__tests__/e2e/snapshots) and runs fixture-based e2e coverage with Vitest.
+The `@cloudsop/openui-react-ui-dsl` package keeps committed `.dsl` snapshots under [`packages/react-ui-dsl/src/__tests__/e2e/snapshots`](./packages/react-ui-dsl/src/__tests__/e2e/snapshots) and runs fixture-based e2e coverage with Vitest.
 
 Common commands:
 

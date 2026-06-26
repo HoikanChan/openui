@@ -11,8 +11,8 @@
     "test:e2e": "vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
-    "@openuidev/react-lang": "workspace:*",
-    "@openuidev/react-ui-dsl": "workspace:*",
+    "@cloudsop/openui-react-lang": "workspace:*",
+    "@cloudsop/openui-react-ui-dsl": "workspace:*",
     "antd": "^5.0.0",
     "echarts": "^5.0.0",
     "node-fetch": "^3.3.2",

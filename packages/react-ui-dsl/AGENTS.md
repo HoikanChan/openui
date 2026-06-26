@@ -4,9 +4,9 @@
 
 ```bash
 # From monorepo root:
-pnpm --filter @openuidev/react-ui-dsl run build
-pnpm --filter @openuidev/react-ui-dsl run test
-pnpm --filter @openuidev/react-ui-dsl run ci       # lint:check + format:check
+pnpm --filter @cloudsop/openui-react-ui-dsl run build
+pnpm --filter @cloudsop/openui-react-ui-dsl run test
+pnpm --filter @cloudsop/openui-react-ui-dsl run ci       # lint:check + format:check
 
 # Or from this directory:
 pnpm build && pnpm test

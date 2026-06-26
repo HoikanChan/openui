@@ -30,5 +30,5 @@
 ## 7. 验证
 
 - [ ] 7.1 运行 `pnpm test` 确认所有单元测试通过
-- [ ] 7.2 运行 `pnpm --filter @openuidev/react-ui-dsl run build` 确认 TypeScript 编译无报错
+- [ ] 7.2 运行 `pnpm --filter @cloudsop/openui-react-ui-dsl run build` 确认 TypeScript 编译无报错
 - [ ] 7.3 在 Storybook 中目视检查所有 Input stories 与含 Input 的 Form story 渲染正常

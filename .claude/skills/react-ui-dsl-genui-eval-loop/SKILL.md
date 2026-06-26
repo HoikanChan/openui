@@ -11,7 +11,7 @@ Measures rendering quality of LLM-generated DSL fixtures, produces a scored task
 
 ```bash
 # Install browser binaries (once per machine)
-pnpm --filter @openuidev/react-ui-dsl exec playwright install chromium
+pnpm --filter @cloudsop/openui-react-ui-dsl exec playwright install chromium
 ```
 
 Configure a judge in `packages/react-ui-dsl/.env` — pick one:

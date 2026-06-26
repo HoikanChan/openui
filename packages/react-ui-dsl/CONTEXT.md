@@ -1,8 +1,8 @@
 # react-ui-dsl 术语表
 
-`@openuidev/react-ui-dsl` — 基于 **Ant Design v5** + **ECharts** 实现的 OpenUI Lang 组件库。与 [react-ui](../react-ui/CONTEXT.md) 平级,定位不同:react-ui 是自带样式的开箱壳层,本包是接入 Ant Design 生态、面向内部业务(如 NOE Mate / eview)的 DSL 库。
+`@cloudsop/openui-react-ui-dsl` — 基于 **Ant Design v5** + **ECharts** 实现的 OpenUI Lang 组件库。与 [react-ui](../react-ui/CONTEXT.md) 平级,定位不同:react-ui 是自带样式的开箱壳层,本包是接入 Ant Design 生态、面向内部业务(如 NOE Mate / eview)的 DSL 库。
 
-整包 `export * from "@openuidev/react-lang"`,所以下游只装本包即可拿到 [Renderer 等运行时](../react-lang/CONTEXT.md)。
+整包 `export * from "@cloudsop/openui-react-lang"`,所以下游只装本包即可拿到 [Renderer 等运行时](../react-lang/CONTEXT.md)。
 
 ---
 

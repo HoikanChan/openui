@@ -44,7 +44,7 @@
 props 从 `props` 里取。
 
 ```tsx
-import { defineComponent } from "@openuidev/react-ui-dsl";
+import { defineComponent } from "@cloudsop/openui-react-ui-dsl";
 import { z } from "zod";
 
 export const OrderSummaryCard = defineComponent({
@@ -86,7 +86,7 @@ export async function queryOrderSummary(args: Record<string, unknown>) {
 会自动把组件转成模型可读的契约，你不用手写 props 描述。
 
 ```ts
-import { createLibrary } from "@openuidev/react-ui-dsl";
+import { createLibrary } from "@cloudsop/openui-react-ui-dsl";
 
 export const ORDER_EXTENSION_ID = "order-runtime-demo"; // 全局唯一 id
 

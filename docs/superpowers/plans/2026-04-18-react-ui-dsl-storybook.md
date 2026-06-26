@@ -4,9 +4,9 @@
 
 **Goal:** Add a standalone Storybook setup under `packages/react-ui-dsl` with one overview story that proves the DSL library can render independently.
 
-**Architecture:** Copy the existing `packages/react-ui/.storybook` setup into `packages/react-ui-dsl/.storybook`, then trim it to the dependencies and styling that `react-ui-dsl` actually needs. Add one story file that renders a representative DSL schema through `@openuidev/react-lang` using the local `dslLibrary`.
+**Architecture:** Copy the existing `packages/react-ui/.storybook` setup into `packages/react-ui-dsl/.storybook`, then trim it to the dependencies and styling that `react-ui-dsl` actually needs. Add one story file that renders a representative DSL schema through `@cloudsop/openui-react-lang` using the local `dslLibrary`.
 
-**Tech Stack:** Storybook 8, Vite, React 19, TypeScript, Ant Design, ECharts, `@openuidev/react-lang`
+**Tech Stack:** Storybook 8, Vite, React 19, TypeScript, Ant Design, ECharts, `@cloudsop/openui-react-lang`
 
 ---
 
@@ -53,11 +53,11 @@ const config: StorybookConfig = {
     mergeConfig(config, {
       resolve: {
         alias: {
-          "@openuidev/react-lang": path.resolve(__dirname, "../../react-lang/src/index.ts"),
+          "@cloudsop/openui-react-lang": path.resolve(__dirname, "../../react-lang/src/index.ts"),
         },
       },
       optimizeDeps: {
-        exclude: ["@openuidev/react-lang"],
+        exclude: ["@cloudsop/openui-react-lang"],
         include: ["react", "react-dom", "antd", "echarts"],
       },
     }),
@@ -90,7 +90,7 @@ export default preview;
 
 - [ ] **Step 4: Run targeted typecheck for the package**
 
-Run: `pnpm --filter @openuidev/react-ui-dsl typecheck`
+Run: `pnpm --filter @cloudsop/openui-react-ui-dsl typecheck`
 Expected: PASS with no TypeScript errors from the new Storybook config files.
 
 ### Task 2: Add one overview story that renders the DSL library
@@ -118,7 +118,7 @@ export type Story = StoryObj<typeof meta>;
 - [ ] **Step 2: Render a representative schema using the local `dslLibrary`**
 
 ```tsx
-import { createRenderer } from "@openuidev/react-lang";
+import { createRenderer } from "@cloudsop/openui-react-lang";
 import { Card, ConfigProvider } from "antd";
 import { dslLibrary } from "../genui-lib/dslLibrary";
 
@@ -167,7 +167,7 @@ export const Overview: Story = {
 
 - [ ] **Step 4: Run Storybook build for the package**
 
-Run: `pnpm --filter @openuidev/react-ui-dsl build:storybook`
+Run: `pnpm --filter @cloudsop/openui-react-ui-dsl build:storybook`
 Expected: PASS with a generated static Storybook output and the `DSL/Overview` story in the index.
 
 ### Task 3: Verify developer workflow in the isolated package
@@ -179,7 +179,7 @@ Expected: PASS with a generated static Storybook output and the `DSL/Overview` s
 
 - [ ] **Step 1: Start Storybook locally to verify the package can boot independently**
 
-Run: `pnpm --filter @openuidev/react-ui-dsl storybook -- --ci`
+Run: `pnpm --filter @cloudsop/openui-react-ui-dsl storybook -- --ci`
 Expected: Storybook starts on port `6007` without requiring the `react-ui` package Storybook.
 
 - [ ] **Step 2: Check that the story renders the intended standalone surface**

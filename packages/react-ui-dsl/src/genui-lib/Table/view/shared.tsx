@@ -1,6 +1,6 @@
 "use client";
 
-import type { ElementNode } from "@openuidev/react-lang";
+import type { ElementNode } from "@cloudsop/openui-react-lang";
 import type { ReactNode } from "react";
 import type { ExpandRowRenderer } from "../schema";
 import type { ColumnValue, ColViewProps, TableRow } from "./types";

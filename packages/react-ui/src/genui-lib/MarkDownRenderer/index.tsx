@@ -1,6 +1,6 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { MarkDownRenderer as OpenUIMarkDownRenderer } from "../../components/MarkDownRenderer";
 import { MarkDownRendererSchema } from "./schema";
 

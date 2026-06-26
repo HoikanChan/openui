@@ -1,7 +1,7 @@
 "use client";
 
-import { createLibrary } from "@openuidev/react-lang";
-import type { ComponentGroup, Library } from "@openuidev/react-lang";
+import { createLibrary } from "@cloudsop/openui-react-lang";
+import type { ComponentGroup, Library } from "@cloudsop/openui-react-lang";
 import {
   AreaChart,
   BarChart,

@@ -1,6 +1,6 @@
 ## Context
 
-`examples/react-ui-dsl-demo` currently proves the rendering loop with a local placeholder library in `src/lib/placeholderLibrary.ts` and a handwritten prompt string in `server/systemPrompt.ts`. That keeps the demo runnable before `@openuidev/react-ui-dsl` is wired in, but it also means the example is no longer validating the real package contract exported from `packages/react-ui-dsl/src/index.ts`.
+`examples/react-ui-dsl-demo` currently proves the rendering loop with a local placeholder library in `src/lib/placeholderLibrary.ts` and a handwritten prompt string in `server/systemPrompt.ts`. That keeps the demo runnable before `@cloudsop/openui-react-ui-dsl` is wired in, but it also means the example is no longer validating the real package contract exported from `packages/react-ui-dsl/src/index.ts`.
 
 The integration touches multiple boundaries:
 
@@ -13,7 +13,7 @@ The integration touches multiple boundaries:
 
 **Goals:**
 
-- Make the demo import `dslLibrary` from `@openuidev/react-ui-dsl` instead of a local placeholder implementation.
+- Make the demo import `dslLibrary` from `@cloudsop/openui-react-ui-dsl` instead of a local placeholder implementation.
 - Make the server derive the system prompt from the same library used by the renderer.
 - Define a repeatable local development path for workspace consumption, including dependency, alias, and build prerequisites.
 - Keep the demo as the canonical integration example for the package.
@@ -21,14 +21,14 @@ The integration touches multiple boundaries:
 **Non-Goals:**
 
 - Redesign the demo UI or request/response streaming flow.
-- Add new DSL components or change `@openuidev/react-ui-dsl` component semantics.
+- Add new DSL components or change `@cloudsop/openui-react-ui-dsl` component semantics.
 - Publish the package externally or solve general package distribution concerns outside the monorepo.
 
 ## Decisions
 
 ### Consume the real library from the demo package
 
-The demo will depend on `@openuidev/react-ui-dsl` through a workspace dependency and import `dslLibrary` directly on both client and server. This removes duplicated component registration and prevents the prompt schema from drifting away from the renderer.
+The demo will depend on `@cloudsop/openui-react-ui-dsl` through a workspace dependency and import `dslLibrary` directly on both client and server. This removes duplicated component registration and prevents the prompt schema from drifting away from the renderer.
 
 Alternative considered: keep the placeholder library and only align it manually.
 Rejected because the placeholder already lags the real package surface and duplicates prompt behavior in two files.
@@ -57,7 +57,7 @@ Rejected because server and client load modules differently, and undocumented as
 ## Migration Plan
 
 1. Add the real package dependency and any missing peers to `examples/react-ui-dsl-demo`.
-2. Replace placeholder imports in the client and server with imports from `@openuidev/react-ui-dsl`.
+2. Replace placeholder imports in the client and server with imports from `@cloudsop/openui-react-ui-dsl`.
 3. Update bundler or server resolution as needed so both environments can load the same library entrypoint.
 4. Update the demo README with the final setup, build, and run instructions.
 5. Verify the demo can stream a generated response and render it with the real library.
@@ -66,6 +66,6 @@ Rollback is straightforward: restore the placeholder library import path and har
 
 ## Open Questions
 
-- Should the demo import `@openuidev/react-ui-dsl` from built `dist` output only, or is direct source consumption a supported monorepo pattern for this package?
+- Should the demo import `@cloudsop/openui-react-ui-dsl` from built `dist` output only, or is direct source consumption a supported monorepo pattern for this package?
 - Does the demo need to import Ant Design or ECharts styles explicitly once the real library is used?
 - Is Node version support for the demo expected to move upward to match the package build tooling, or should the integration preserve the current lightweight server workflow?

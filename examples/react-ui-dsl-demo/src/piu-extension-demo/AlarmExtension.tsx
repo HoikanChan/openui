@@ -1,4 +1,4 @@
-import { createLibrary, defineComponent } from "@openuidev/react-ui-dsl";
+import { createLibrary, defineComponent } from "@cloudsop/openui-react-ui-dsl";
 import { z } from "zod";
 
 export const ALARM_EXTENSION_ID = "piu-alarm-runtime-demo";

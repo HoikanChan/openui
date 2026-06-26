@@ -6,7 +6,7 @@ description: Add side-panel content that opens from inline previews in chat.
 Artifacts let a component render a compact inline preview inside the chat message and expand into a full side panel when clicked. Use them for code viewers, document previews, embedded frames, or any content that benefits from a larger canvas.
 
 ```tsx
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Artifact } from "@openuidev/react-ui";
 import { z } from "zod";
 
@@ -128,7 +128,7 @@ Both hooks require a `ChatProvider` ancestor in the component tree.
 If `Artifact()` does not fit your use case, wire the pieces directly. This is the escape hatch for full control.
 
 ```tsx
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { ArtifactPanel } from "@openuidev/react-ui";
 import { useArtifact } from "@openuidev/react-headless";
 import { useId } from "react";

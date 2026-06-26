@@ -9,8 +9,8 @@
     "skipLibCheck": true,
     "noEmit": true,
     "paths": {
-      "@openuidev/lang-core": ["../../packages/lang-core/src/index.ts"],
-      "@openuidev/react-lang": ["../../packages/react-lang/src/index.ts"]
+      "@cloudsop/openui-lang-core": ["../../packages/lang-core/src/index.ts"],
+      "@cloudsop/openui-react-lang": ["../../packages/react-lang/src/index.ts"]
     }
   },
   "include": ["src", "vite.config.ts"]

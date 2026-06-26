@@ -1,6 +1,6 @@
 "use client";
 
-import type { Library } from "@openuidev/react-lang";
+import type { Library } from "@cloudsop/openui-react-lang";
 import type { DashboardCardData } from "../../canvas/canvasStore";
 import { VirtualMasonryGrid } from "./VirtualMasonryGrid";
 

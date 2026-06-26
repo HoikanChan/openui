@@ -1,4 +1,4 @@
-import { Renderer, createParser } from "@openuidev/react-lang";
+import { Renderer, createParser } from "@cloudsop/openui-react-lang";
 import type { KeyboardEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { libraryForContext } from "./extensions";

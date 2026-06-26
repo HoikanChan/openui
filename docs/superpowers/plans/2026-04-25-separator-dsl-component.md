@@ -6,7 +6,7 @@
 
 **Architecture:** `react-ui-dsl` will define a thin `defineComponent` wrapper and a matching zod schema, both aligned with `react-ui`. Rendering delegates to the shared `@openuidev/react-ui` `Separator`, while `dslLibrary` and package exports expose the new component to prompt generation and runtime parsing.
 
-**Tech Stack:** React, `@openuidev/react-lang`, `@openuidev/react-ui`, zod, Vitest, Testing Library
+**Tech Stack:** React, `@cloudsop/openui-react-lang`, `@openuidev/react-ui`, zod, Vitest, Testing Library
 
 ---
 
@@ -48,7 +48,7 @@ it("includes Separator in spec and json schema output", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @openuidev/react-ui-dsl test -- src/genui-lib/dslLibrary.test.ts`
+Run: `pnpm --filter @cloudsop/openui-react-ui-dsl test -- src/genui-lib/dslLibrary.test.ts`
 Expected: FAIL because `Separator` is not registered yet.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -57,7 +57,7 @@ Register and export `Separator` after the render test exists.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm --filter @openuidev/react-ui-dsl test -- src/genui-lib/dslLibrary.test.ts`
+Run: `pnpm --filter @cloudsop/openui-react-ui-dsl test -- src/genui-lib/dslLibrary.test.ts`
 Expected: PASS
 
 ---
@@ -71,7 +71,7 @@ Expected: PASS
 
 ```tsx
 import { render } from "@testing-library/react";
-import { Renderer } from "@openuidev/react-lang";
+import { Renderer } from "@cloudsop/openui-react-lang";
 import { describe, expect, it } from "vitest";
 import { dslLibrary } from "../dslLibrary";
 
@@ -96,7 +96,7 @@ describe("Separator DSL component", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `pnpm --filter @openuidev/react-ui-dsl test -- src/genui-lib/Separator/index.test.tsx`
+Run: `pnpm --filter @cloudsop/openui-react-ui-dsl test -- src/genui-lib/Separator/index.test.tsx`
 Expected: FAIL because the component files do not exist yet.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -105,7 +105,7 @@ Create `schema.ts` and `index.tsx` as a thin wrapper over `@openuidev/react-ui`.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `pnpm --filter @openuidev/react-ui-dsl test -- src/genui-lib/Separator/index.test.tsx`
+Run: `pnpm --filter @cloudsop/openui-react-ui-dsl test -- src/genui-lib/Separator/index.test.tsx`
 Expected: PASS
 
 ---
@@ -132,7 +132,7 @@ to `src/index.ts`.
 
 - [ ] **Step 2: Run focused tests**
 
-Run: `pnpm --filter @openuidev/react-ui-dsl test -- src/genui-lib/dslLibrary.test.ts src/genui-lib/Separator/index.test.tsx`
+Run: `pnpm --filter @cloudsop/openui-react-ui-dsl test -- src/genui-lib/dslLibrary.test.ts src/genui-lib/Separator/index.test.tsx`
 Expected: PASS
 
 ---
@@ -145,10 +145,10 @@ Expected: PASS
 
 - [ ] **Step 1: Run package-level verification**
 
-Run: `pnpm --filter @openuidev/react-ui-dsl test -- src/genui-lib/dslLibrary.test.ts src/genui-lib/Separator/index.test.tsx`
+Run: `pnpm --filter @cloudsop/openui-react-ui-dsl test -- src/genui-lib/dslLibrary.test.ts src/genui-lib/Separator/index.test.tsx`
 Expected: PASS
 
 - [ ] **Step 2: Run CI-shaped verification for the package if time permits**
 
-Run: `pnpm --filter @openuidev/react-ui-dsl run test`
+Run: `pnpm --filter @cloudsop/openui-react-ui-dsl run test`
 Expected: PASS without regressions in existing DSL components.

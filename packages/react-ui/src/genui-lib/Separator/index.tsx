@@ -1,6 +1,6 @@
 "use client";
 
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { Separator as OpenUISeparator } from "../../components/Separator";
 import { SeparatorSchema } from "./schema";
 

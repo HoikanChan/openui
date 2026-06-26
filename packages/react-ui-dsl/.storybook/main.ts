@@ -24,12 +24,12 @@ const config: StorybookConfig = {
       },
       resolve: {
         alias: {
-          "@openuidev/react-lang": path.resolve(__dirname, "../../react-lang/src/index.ts"),
-          "@openuidev/lang-core": path.resolve(__dirname, "../../lang-core/src/index.ts"),
+          "@cloudsop/openui-react-lang": path.resolve(__dirname, "../../react-lang/src/index.ts"),
+          "@cloudsop/openui-lang-core": path.resolve(__dirname, "../../lang-core/src/index.ts"),
         },
       },
       optimizeDeps: {
-        exclude: ["@openuidev/react-lang", "@openuidev/lang-core"],
+        exclude: ["@cloudsop/openui-react-lang", "@cloudsop/openui-lang-core"],
         include:
           process.env.REACT_UI_DSL_VIEW_TARGET === "eview"
             ? ["react", "react-dom", "echarts", "react-markdown"]

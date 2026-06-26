@@ -1,4 +1,4 @@
-import type { ActionPlan, EvaluationContext, OpenUIError, Store } from "@openuidev/lang-core";
+import type { ActionPlan, EvaluationContext, OpenUIError, Store } from "@cloudsop/openui-lang-core";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect } from "react";
 import type { Library } from "./library";

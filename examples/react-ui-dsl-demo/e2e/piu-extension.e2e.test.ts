@@ -16,7 +16,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const demoRoot = resolve(here, "..");
 const require = createRequire(import.meta.url);
 
-// `playwright` is a devDependency of @openuidev/react-ui-dsl (with browsers
+// `playwright` is a devDependency of @cloudsop/openui-react-ui-dsl (with browsers
 // already installed via its postinstall), so resolve it through that package.
 const playwrightEntry = require.resolve("playwright", {
   paths: [resolve(demoRoot, "../../packages/react-ui-dsl"), demoRoot],

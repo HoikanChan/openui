@@ -40,7 +40,7 @@ flowchart LR
 前端组件使用 `defineComponent(...)` 定义，再通过 `createLibrary(...)` 创建新的组件库，或通过现有库的 `extend(...)` 加到内置组件库上。
 
 ```tsx
-import { defineComponent, dslLibrary } from "@openuidev/react-ui-dsl";
+import { defineComponent, dslLibrary } from "@cloudsop/openui-react-ui-dsl";
 import { z } from "zod";
 
 const BillingCard = defineComponent({
@@ -79,7 +79,7 @@ export const billingLibrary = dslLibrary.extend({
 然后把扩展后的 library 传给渲染入口：
 
 ```tsx
-import { Renderer } from "@openuidev/react-ui-dsl";
+import { Renderer } from "@cloudsop/openui-react-ui-dsl";
 import { billingLibrary } from "./billing-library";
 
 export function Preview({ code }: { code: string }) {

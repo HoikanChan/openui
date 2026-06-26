@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Library } from "@openuidev/lang-core";
+import type { Library } from "@cloudsop/openui-lang-core";
 import { dslLibrary } from "../genui-lib/dslLibrary.js";
 import {
   canvasStore,

@@ -8,7 +8,7 @@ Use `defineComponent(...)` to register each component and `createLibrary(...)` t
 ## Core API
 
 ```tsx
-import { defineComponent, createLibrary } from "@openuidev/react-lang";
+import { defineComponent, createLibrary } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 
 const StatCard = defineComponent({
@@ -42,7 +42,7 @@ export const myLibrary = createLibrary({
 ## Nesting pattern with `.ref`
 
 ```tsx
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 
 const Item = defineComponent({
@@ -67,7 +67,7 @@ const List = defineComponent({
 To define container components that accepts multiple child components, you can use the `z.union` function to define the child components.
 
 ```tsx
-import { defineComponent } from "@openuidev/react-lang";
+import { defineComponent } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
 
 const TextBlock = defineComponent({
@@ -171,7 +171,7 @@ FormControl(label: string, field: Input | TextArea | Select) — Single field
 When generating the system prompt, you can pass `PromptOptions` to customize the output further:
 
 ```ts
-import type { PromptOptions } from "@openuidev/react-lang";
+import type { PromptOptions } from "@cloudsop/openui-react-lang";
 
 const options: PromptOptions = {
   preamble: "You are an assistant that outputs only OpenUI Lang.",

@@ -6,7 +6,7 @@
 
 **Architecture:** View layer (`view/index.tsx`) is a stateless antd `<Tabs>` renderer receiving controlled props. All streaming logic (auto tab-switching, skeleton detection) lives in `index.tsx` via `defineComponent`. Schema is in `schema.ts`.
 
-**Tech Stack:** React, antd `<Tabs>` + `<Skeleton>`, zod, `@openuidev/react-lang` `defineComponent`, Storybook, Vitest
+**Tech Stack:** React, antd `<Tabs>` + `<Skeleton>`, zod, `@cloudsop/openui-react-lang` `defineComponent`, Storybook, Vitest
 
 ---
 
@@ -122,7 +122,7 @@ git commit -m "feat(react-ui-dsl): add TabView with antd Tabs and skeleton"
 ```tsx
 "use client";
 
-import { type ComponentRenderProps, defineComponent } from "@openuidev/react-lang";
+import { type ComponentRenderProps, defineComponent } from "@cloudsop/openui-react-lang";
 import React from "react";
 import { z } from "zod";
 import { TabsSchema } from "./schema";

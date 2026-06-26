@@ -21,5 +21,5 @@ None.
 ## Impact
 
 - Affected code: `packages/react-ui-dsl/src/genui-lib/Tag/*`, `packages/react-ui-dsl/src/genui-lib/dslLibrary.tsx`, and related tests and Storybook files.
-- APIs: `@openuidev/react-ui-dsl` gains a new public `Tag` component in its prompt surface and JSON schema output.
+- APIs: `@cloudsop/openui-react-ui-dsl` gains a new public `Tag` component in its prompt surface and JSON schema output.
 - Dependencies: no new package dependency is expected because `antd` is already the rendering backend for `packages/react-ui-dsl`.

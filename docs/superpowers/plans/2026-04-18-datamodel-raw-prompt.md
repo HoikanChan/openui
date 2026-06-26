@@ -6,7 +6,7 @@
 
 **Architecture:** All prompt-generation logic lives in `lang-core/src/parser/prompt.ts`. The `raw` field on `DataModelSpec` is the only new public surface. The demo server calls `dslLibrary.prompt({ dataModel: { raw } })` per request — no new abstraction layers.
 
-**Tech Stack:** TypeScript, Vitest (tests), Express (demo server), `@openuidev/lang-core`, `@openuidev/react-ui-dsl`
+**Tech Stack:** TypeScript, Vitest (tests), Express (demo server), `@cloudsop/openui-lang-core`, `@cloudsop/openui-react-ui-dsl`
 
 ---
 
@@ -288,7 +288,7 @@ export type {
   DataModelSpec,
   PromptSpec,
   ToolSpec,
-} from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
 
 // After:
 export type {
@@ -296,7 +296,7 @@ export type {
   DataModelSpec,
   PromptSpec,
   ToolSpec,
-} from "@openuidev/lang-core";
+} from "@cloudsop/openui-lang-core";
 ```
 
 - [ ] **Step 4: Run typecheck across both packages**
@@ -329,7 +329,7 @@ git commit -m "chore: remove DataModelFieldSpec re-exports"
 Replace the entire contents of `examples/react-ui-dsl-demo/server/systemPrompt.ts` with:
 
 ```ts
-import { dslLibrary } from "@openuidev/react-ui-dsl";
+import { dslLibrary } from "@cloudsop/openui-react-ui-dsl";
 
 export function buildSystemPrompt(dataModel?: Record<string, unknown>): string {
   if (!dataModel || Object.keys(dataModel).length === 0) {
