@@ -116,12 +116,23 @@ UiGenerationRequest request =
         .suggestion("先用基础组件完成页面，不要编造未注册的业务组件")
         .build();
 
-String openuiLang = generator.generate(request);
+GenUiGenerationResult result = generator.generate(request);
+String openuiLang = result.dsl();          // 抽取后的 OpenUI Lang
+Map<String, Object> dataModel = result.dataModel(); // 回传的可渲染数据
 ```
 
-没有传 `extensionId` 时，SDK 只使用内置 base contract。这个阶段适合先打通“请求进来 -> 组装 prompt -> 调 LLM -> 返回 OpenUI Lang”的主链路。
+没有传 `extensionId` 时，SDK 只使用内置 base contract。这个阶段适合先打通“请求进来 -> 组装 prompt -> 调 LLM -> 返回可渲染结果”的主链路。
 
-`generate(...)` 返回的是抽取后的 OpenUI Lang，不是模型原始文本。SDK 会优先抽取 Markdown 中标记为 `openui`、`openui-lang` 或 `text` 的代码块；如果没有这些代码块，会尝试抽取包含 `root = Stack(` 的代码块；最后才回退为原文。
+### 返回值：`GenUiGenerationResult`
+
+`generate(...)` 返回的不是一段字符串，而是一份「可渲染结果」——同时带回 DSL 和它要用的数据，你可以直接转交前端 Renderer：
+
+|方法|类型|说明|
+|---|---|---|
+|`result.dsl()`|`String`|抽取后的 OpenUI Lang，可直接作为 Renderer 的 `response`|
+|`result.dataModel()`|`Map<String, Object>`|渲染该 DSL 要用的数据，等于你请求里传的 `response`；没传时是空 map `{}`|
+
+把 `result.dsl()` 当 DSL、`result.dataModel()` 当数据一起交给前端 Renderer，就能渲染出页面——不必再自己保存一份请求里的 `response`。
 
 字段如何进入 SDK：
 
@@ -137,23 +148,63 @@ String openuiLang = generator.generate(request);
 
 ## 4. 流式生成
 
-如果你的接口要把模型输出流式返回给前端，使用 `generateStream(...)`：
+如果你的接口要把模型输出流式返回给前端，使用 `generateStream(...)`。回调收到的不是裸文本，而是一帧帧统一的 `RenderStreamEnvelope`，你只要把每一帧写到自己的流式协议上（比如 SSE 的一行 `data: <json>`）：
 
 ```java
-import java.nio.charset.StandardCharsets;
+import com.huawei.cloudsop.genui.core.llm.RenderStreamEnvelope;
 
-String finalDsl =
+GenUiGenerationResult result =
     generator.generateStream(
         request,
-        delta -> {
-          out.write(delta.getBytes(StandardCharsets.UTF_8));
+        envelope -> {
+          // 每收到一帧就写出去，前端边收边渲染
+          out.write(("data: " + toJson(envelope) + "\n\n").getBytes(StandardCharsets.UTF_8));
           out.flush();
         });
 ```
 
-回调里的 `delta` 是模型返回的增量文本片段，不包含额外封装。宿主服务如果对外使用 `text/plain`、SSE 或其他流式协议，按自己的接口契约写出这段文本即可。
+### 回调与返回值
 
-`generateStream(...)` 的返回值是最终 OpenUI Lang：SDK 会把所有 `delta` 累计起来，再按和同步生成相同的规则抽取 `openui` / `openui-lang` / `text` 代码块。这个返回值通常用于缓存、日志或后置校验；前端实时看到的内容来自回调里逐段写出的 `delta`。
+|位置|类型|说明|
+|---|---|---|
+|回调参数|`RenderStreamEnvelope`|流式过程中的每一帧，按 `type` 分发|
+|返回值|`GenUiGenerationResult`|流结束后的最终结果，带累计的 `dsl` 与 `dataModel`，可用于缓存/日志/后置校验|
+
+### 帧：`RenderStreamEnvelope`
+
+每帧有 `type`、`seq`、`content` 三个字段，帧序固定：
+
+|顺序|`type`|`seq`|`content`|
+|---|---|---|---|
+|首帧|`dataModel`|`0`|请求的 `response`，没传时为空 map `{}`|
+|模型增量|`dsl`|`1,2,3…`|这一段增量 DSL 文本（`String`）|
+|失败时|`error`|递增|`{ code, message, retryable }`|
+|结束帧|`done`|递增|`null`|
+
+一次**正常**生成，写到 SSE 上大致是这样：
+
+```text
+data: {"type":"dataModel","seq":0,"content":{"alarms":[{"id":"A-1","severity":"critical"}]}}
+
+data: {"type":"dsl","seq":1,"content":"root = Stack(["}
+
+data: {"type":"dsl","seq":2,"content":"AlarmList(rows: $.alarms)])"}
+
+data: {"type":"done","seq":3}
+```
+
+### 前端怎么消费
+
+前端拿到每帧后按 `type` 分发：
+
+|`type`|前端动作|
+|---|---|
+|`dataModel`|设到 Renderer 的 `dataModel`|
+|`dsl`|把 `content` 逐段拼进 Renderer 的 `response`|
+|`error`|展示错误（`retryable` 为 `true` 可提示重试）|
+|`done`|结束本次 streaming|
+
+要点：首帧**一定**是 `dataModel`（`seq=0`），DSL 从 `seq=1` 开始；`done` 只表示流结束、不代表成功——是否成功看有没有收到过 `error` 帧。
 
 ## 5. 自定义拓展
 
@@ -254,7 +305,7 @@ UiGenerationRequest request =
         .response(response)
         .build();
 
-String openuiLang = generator.generate(request);
+GenUiGenerationResult result = generator.generate(request);
 ```
 
 注意：
