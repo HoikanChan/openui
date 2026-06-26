@@ -17,9 +17,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Handler;
-import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -205,53 +202,6 @@ class GenUiGeneratorTest {
 
     // 返回结果包含已累计内容的提取结果
     assertEquals("root = Stack([])", result.dsl());
-  }
-
-  @Test
-  void debugLoggingIncludesActualStreamRequestBodyAndModelOutput() {
-    FakeTransport transport = FakeTransport.stream(frame("root = Stack([])"), SseFrames.done());
-    ArrayList<String> logs = new ArrayList<>();
-    Logger logger = Logger.getLogger("com.huawei.cloudsop.genui.core.llm");
-    Handler handler =
-        new Handler() {
-          @Override
-          public void publish(LogRecord record) {
-            logs.add(record.getMessage());
-          }
-
-          @Override
-          public void flush() {}
-
-          @Override
-          public void close() {}
-        };
-
-    String previous = System.getProperty("genui.llm.debug");
-    boolean previousParentHandlers = logger.getUseParentHandlers();
-    logger.addHandler(handler);
-    try {
-      System.setProperty("genui.llm.debug", "true");
-      logger.setUseParentHandlers(false);
-
-      GenUiGenerationResult result =
-          GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-              .generateStream(
-                  UiGenerationRequest.builder().userInput("stream").build(), ignored -> {});
-
-      assertEquals("root = Stack([])", result.dsl());
-    } finally {
-      logger.removeHandler(handler);
-      logger.setUseParentHandlers(previousParentHandlers);
-      if (previous == null) {
-        System.clearProperty("genui.llm.debug");
-      } else {
-        System.setProperty("genui.llm.debug", previous);
-      }
-    }
-
-    assertTrue(logs.stream().anyMatch(log -> log.contains("stream.request") && log.contains("\"messages\"")));
-    assertTrue(logs.stream().anyMatch(log -> log.contains("stream.delta") && log.contains("root = Stack([])")));
-    assertTrue(logs.stream().anyMatch(log -> log.contains("stream.response.extracted") && log.contains("root = Stack([])")));
   }
 
   @Test

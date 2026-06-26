@@ -57,13 +57,9 @@ public final class GenUiGenerator {
         request == null ? UiGenerationRequest.builder().build() : request;
     try {
       String body = buildRequestBody(effectiveRequest, false);
-      LlmDebugLog.log("sync.request", () -> body);
       String response = transport.post(body);
-      LlmDebugLog.log("sync.response.raw", () -> response);
       String content = ChatCompletionResponse.parse(response).firstContent();
-      LlmDebugLog.log("sync.response.content", () -> content);
       String extracted = OpenuiCodeExtractor.extract(content);
-      LlmDebugLog.log("sync.response.extracted", () -> extracted);
       return new GenUiGenerationResult(
           extracted, effectiveRequest.response(), effectiveRequest.traceId());
     } catch (LlmTransportException error) {
@@ -89,22 +85,18 @@ public final class GenUiGenerator {
     int[] nextSeq = {1};
 
     String body = buildRequestBody(effectiveRequest, true);
-    LlmDebugLog.log("stream.request", () -> body);
     StringBuilder accumulated = new StringBuilder();
     try (InputStream stream = transport.postStream(body)) {
       SseDeltaParser.parse(
           stream,
           delta -> {
-            LlmDebugLog.log("stream.delta", () -> delta);
             accumulated.append(delta);
             sink.accept(RenderStreamEnvelope.dsl(nextSeq[0]++, traceId, delta));
           });
       String extracted = OpenuiCodeExtractor.extract(accumulated.toString());
-      LlmDebugLog.log("stream.response.extracted", () -> extracted);
       sink.accept(RenderStreamEnvelope.done(nextSeq[0]++, traceId));
       return new GenUiGenerationResult(extracted, dataModel, traceId);
     } catch (LlmTransportException | IOException error) {
-      LlmDebugLog.log("stream.error", error::getMessage);
       sink.accept(
           RenderStreamEnvelope.error(
               nextSeq[0]++, traceId, "LLM_STREAM_FAILED", error.getMessage(), true));

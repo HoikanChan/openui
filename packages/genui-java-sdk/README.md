@@ -11,20 +11,6 @@ prompt, invoke an LLM, parse sync or streaming responses, and extract OpenUI Lan
 
 For a user-facing integration walkthrough, see [INTEGRATION.md](INTEGRATION.md).
 
-## LLM request/response diagnostics
-
-`GenUiGenerator` logs LLM input/output only when explicitly enabled because the
-payloads can contain user prompts and API response data:
-
-```bash
-java -Dgenui.llm.debug=true -Dgenui.llm.debug.maxChars=32000 ...
-```
-
-or set `GENUI_LLM_DEBUG=true` and optionally `GENUI_LLM_DEBUG_MAX_CHARS=32000`.
-The debug prefix is `[genui-llm-debug]`. It covers the actual chat/completions
-request body, raw sync response, extracted sync content, stream deltas,
-accumulated stream content, and the final extracted OpenUI code.
-
 OpenUI generation expects the model content to be openui-lang text, so the
 default request body does not force `response_format.type=json_object`. If an
 older gateway still requires JSON-object mode, opt in explicitly with
