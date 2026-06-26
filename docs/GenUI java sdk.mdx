@@ -123,16 +123,36 @@ Map<String, Object> dataModel = result.dataModel(); // 回传的可渲染数据
 
 没有传 `extensionId` 时，SDK 只使用内置 base contract。这个阶段适合先打通“请求进来 -> 组装 prompt -> 调 LLM -> 返回可渲染结果”的主链路。
 
-`generate(...)` 返回结构化的 `GenUiGenerationResult`，而不是裸字符串，这样调用方可以把 DSL 和它的数据一起交给前端 Renderer：
+### 返回值：`GenUiGenerationResult`
+
+`generate(...)` 返回的不是一段字符串，而是一份「可渲染结果」——同时带回 DSL 和它要用的数据，你可以直接转交前端 Renderer：
+
+|方法|类型|说明|
+|---|---|---|
+|`result.dsl()`|`String`|抽取后的 OpenUI Lang，可直接作为 Renderer 的 `response`|
+|`result.dataModel()`|`Map<String, Object>`|渲染该 DSL 要用的数据，等于你请求里传的 `response`；没传时是空 map `{}`|
+
+上面的请求大致会返回：
 
 ```java
-public record GenUiGenerationResult(String dsl, Map<String, Object> dataModel) {}
+result.dsl();
+// root = Stack([
+//   AlarmStat(critical: 1, major: 1),
+//   AlarmList(rows: $.alarms)
+// ])
+
+result.dataModel();
+// { "alarms": [
+//     { "id": "A-1", "severity": "critical", "title": "CPU overload" },
+//     { "id": "A-2", "severity": "major",    "title": "Disk usage high" }
+//   ] }
 ```
 
-- `dsl`：抽取后的 OpenUI Lang，不是模型原始文本。SDK 会优先抽取 Markdown 中标记为 `openui`、`openui-lang` 或 `text` 的代码块；如果没有这些代码块，会尝试抽取包含 `root = Stack(` 的代码块；最后才回退为原文。
-- `dataModel`：请求里 `response` 的防御性不可变拷贝，未提供 `response` 时为空 map。它就是前端 Renderer 渲染该 DSL 时应使用的 `dataModel`，所以 SDK 直接回传，免得调用方再自己保存一份请求数据。
+把 `result.dsl()` 当 DSL、`result.dataModel()` 当数据一起交给前端 Renderer，就能渲染出页面——不必再自己保存一份请求里的 `response`。
 
-LLM 调用在产出结果前失败时，同步生成抛 `GenerationSdkException`。
+> **DSL 抽取规则**：SDK 优先抽取 Markdown 中标记为 `openui` / `openui-lang` / `text` 的代码块；没有这些代码块时，尝试抽取包含 `root = Stack(` 的代码块；最后才回退为模型原文。
+>
+> **失败处理**：LLM 调用在产出结果前失败时，`generate(...)` 抛 `GenerationSdkException`。
 
 字段如何进入 SDK：
 
@@ -148,7 +168,7 @@ LLM 调用在产出结果前失败时，同步生成抛 `GenerationSdkException`
 
 ## 4. 流式生成
 
-如果你的接口要把模型输出流式返回给前端，使用 `generateStream(...)`。回调收到的不是裸文本，而是统一的 `RenderStreamEnvelope` 帧，调用方按 `type` 分发即可：
+如果你的接口要把模型输出流式返回给前端，使用 `generateStream(...)`。回调收到的不是裸文本，而是一帧帧统一的 `RenderStreamEnvelope`，你只要把每一帧写到自己的流式协议上（比如 SSE 的一行 `data: <json>`）：
 
 ```java
 import com.huawei.cloudsop.genui.core.llm.RenderStreamEnvelope;
@@ -157,33 +177,66 @@ GenUiGenerationResult result =
     generator.generateStream(
         request,
         envelope -> {
-          // envelope: { type, seq, content }
-          // 宿主服务把每个 envelope 序列化成自己的流式协议帧（如 SSE 的一行 data: <json>）写出
-          writeFrame(out, envelope);
+          // 每收到一帧就写出去，前端边收边渲染
+          out.write(("data: " + toJson(envelope) + "\n\n").getBytes(StandardCharsets.UTF_8));
+          out.flush();
         });
 ```
 
-`RenderStreamEnvelope` 的结构和帧序是固定的：
+### 回调与返回值
 
-```java
-public record RenderStreamEnvelope(String type, int seq, Object content) {}
-```
+|位置|类型|说明|
+|---|---|---|
+|回调参数|`RenderStreamEnvelope`|流式过程中的每一帧，按 `type` 分发|
+|返回值|`GenUiGenerationResult`|流结束后的最终结果，带累计的 `dsl` 与 `dataModel`，可用于缓存/日志/后置校验|
+
+### 帧：`RenderStreamEnvelope`
+
+每帧有 `type`、`seq`、`content` 三个字段，帧序固定：
 
 |顺序|`type`|`seq`|`content`|
 |---|---|---|---|
-|首帧|`dataModel`|`0`|请求的 `response` 或空 map `{}`|
-|每个模型增量|`dsl`|`1,2,3…`|该段增量文本（`String`）|
-|失败时|`error`|递增|`{code, message, retryable}`|
+|首帧|`dataModel`|`0`|请求的 `response`，没传时为空 map `{}`|
+|模型增量|`dsl`|`1,2,3…`|这一段增量 DSL 文本（`String`）|
+|失败时|`error`|递增|`{ code, message, retryable }`|
 |结束帧|`done`|递增|`null`|
 
-要点：
+一次**正常**生成，写到 SSE 上大致是这样：
 
-- 首帧**一定**是 `dataModel`（`seq=0`），承载前端 Renderer 要用的数据；DSL 增量从 `seq=1` 开始。
-- 正常结束发 `done`，其 `content` 为 `null`（序列化时应省略该字段）。
-- 首帧发出后若流读取/传输失败，SDK **不**向调用方抛异常，而是先发 `error`（`{code:"LLM_STREAM_FAILED", message, retryable:true}`）再发 `done`；调用方据是否收到 `error` 帧判断结果状态。
-- 返回值 `GenUiGenerationResult` 始终带累计抽取出的 `dsl`（失败时为已累计部分）和同一份 `dataModel`，通常用于缓存、日志或后置校验。
+```text
+data: {"type":"dataModel","seq":0,"content":{"alarms":[{"id":"A-1","severity":"critical"}]}}
 
-前端按 envelope `type` 分发：`dataModel` 设到 Renderer 的 `dataModel`，`dsl` 逐段拼进 Renderer 的 `response`，`error` 展示错误，`done` 结束 streaming。
+data: {"type":"dsl","seq":1,"content":"root = Stack(["}
+
+data: {"type":"dsl","seq":2,"content":"AlarmList(rows: $.alarms)])"}
+
+data: {"type":"done","seq":3}
+```
+
+如果**流中途失败**，SDK 不会抛异常打断你的响应，而是补一帧 `error` 再补一帧 `done`：
+
+```text
+data: {"type":"dataModel","seq":0,"content":{}}
+
+data: {"type":"dsl","seq":1,"content":"root = Stack(["}
+
+data: {"type":"error","seq":2,"content":{"code":"LLM_STREAM_FAILED","message":"connection dropped","retryable":true}}
+
+data: {"type":"done","seq":3}
+```
+
+### 前端怎么消费
+
+前端拿到每帧后按 `type` 分发：
+
+|`type`|前端动作|
+|---|---|
+|`dataModel`|设到 Renderer 的 `dataModel`|
+|`dsl`|把 `content` 逐段拼进 Renderer 的 `response`|
+|`error`|展示错误（`retryable` 为 `true` 可提示重试）|
+|`done`|结束本次 streaming|
+
+要点：首帧**一定**是 `dataModel`（`seq=0`），DSL 从 `seq=1` 开始；`done` 只表示流结束、不代表成功——是否成功看有没有收到过 `error` 帧。
 
 ## 5. 自定义拓展
 
