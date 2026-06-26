@@ -18,6 +18,7 @@ import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -51,9 +52,11 @@ public final class GenUiGenerator {
     return this;
   }
 
-  public String generate(UiGenerationRequest request) {
+  public GenUiGenerationResult generate(UiGenerationRequest request) {
+    UiGenerationRequest effectiveRequest =
+        request == null ? UiGenerationRequest.builder().build() : request;
     try {
-      String body = buildRequestBody(request, false);
+      String body = buildRequestBody(effectiveRequest, false);
       LlmDebugLog.log("sync.request", () -> body);
       String response = transport.post(body);
       LlmDebugLog.log("sync.response.raw", () -> response);
@@ -61,32 +64,53 @@ public final class GenUiGenerator {
       LlmDebugLog.log("sync.response.content", () -> content);
       String extracted = OpenuiCodeExtractor.extract(content);
       LlmDebugLog.log("sync.response.extracted", () -> extracted);
-      return extracted;
+      return new GenUiGenerationResult(
+          extracted, effectiveRequest.response(), effectiveRequest.traceId());
     } catch (LlmTransportException error) {
       throw new GenerationSdkException("Failed to invoke LLM: " + error.getMessage(), error);
     }
   }
 
-  public String generateStream(UiGenerationRequest request, Consumer<String> sink) {
+  /**
+   * 流式生成。首帧固定发出 {@code dataModel} envelope(seq=0),随后每个模型 delta 发出
+   * {@code dsl} envelope(seq 递增),正常结束发 {@code done}。首帧发出后若流读取/传输失败,SDK 不
+   * 向调用方抛出该异常,而是发出 {@code error} 再发 {@code done},并返回已累计内容的提取结果。
+   */
+  public GenUiGenerationResult generateStream(
+      UiGenerationRequest request, Consumer<RenderStreamEnvelope> sink) {
     Objects.requireNonNull(sink, "sink must not be null");
-    String body = buildRequestBody(request, true);
+    UiGenerationRequest effectiveRequest =
+        request == null ? UiGenerationRequest.builder().build() : request;
+    String traceId = effectiveRequest.traceId();
+    Map<String, Object> dataModel = effectiveRequest.response();
+
+    // 首帧:dataModel,seq=0。一旦发出,后续 LLM 流错误改为 error envelope 而不再抛给调用方。
+    sink.accept(RenderStreamEnvelope.dataModel(traceId, dataModel));
+    int[] nextSeq = {1};
+
+    String body = buildRequestBody(effectiveRequest, true);
     LlmDebugLog.log("stream.request", () -> body);
+    StringBuilder accumulated = new StringBuilder();
     try (InputStream stream = transport.postStream(body)) {
-      String accumulated =
-          SseDeltaParser.parse(
-              stream,
-              delta -> {
-                LlmDebugLog.log("stream.delta", () -> delta);
-                sink.accept(delta);
-              });
-      LlmDebugLog.log("stream.response.accumulated", () -> accumulated);
-      String extracted = OpenuiCodeExtractor.extract(accumulated);
+      SseDeltaParser.parse(
+          stream,
+          delta -> {
+            LlmDebugLog.log("stream.delta", () -> delta);
+            accumulated.append(delta);
+            sink.accept(RenderStreamEnvelope.dsl(nextSeq[0]++, traceId, delta));
+          });
+      String extracted = OpenuiCodeExtractor.extract(accumulated.toString());
       LlmDebugLog.log("stream.response.extracted", () -> extracted);
-      return extracted;
-    } catch (LlmTransportException error) {
-      throw new GenerationSdkException("Failed to invoke LLM stream: " + error.getMessage(), error);
-    } catch (IOException error) {
-      throw new GenerationSdkException("Failed to read LLM stream: " + error.getMessage(), error);
+      sink.accept(RenderStreamEnvelope.done(nextSeq[0]++, traceId));
+      return new GenUiGenerationResult(extracted, dataModel, traceId);
+    } catch (LlmTransportException | IOException error) {
+      LlmDebugLog.log("stream.error", error::getMessage);
+      sink.accept(
+          RenderStreamEnvelope.error(
+              nextSeq[0]++, traceId, "LLM_STREAM_FAILED", error.getMessage(), true));
+      sink.accept(RenderStreamEnvelope.done(nextSeq[0]++, traceId));
+      String extracted = OpenuiCodeExtractor.extract(accumulated.toString());
+      return new GenUiGenerationResult(extracted, dataModel, traceId);
     }
   }
 
