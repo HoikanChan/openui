@@ -116,12 +116,23 @@ UiGenerationRequest request =
         .suggestion("先用基础组件完成页面，不要编造未注册的业务组件")
         .build();
 
-String openuiLang = generator.generate(request);
+GenUiGenerationResult result = generator.generate(request);
+String openuiLang = result.dsl();          // 抽取后的 OpenUI Lang
+Map<String, Object> dataModel = result.dataModel(); // 回传的可渲染数据
 ```
 
-没有传 `extensionId` 时，SDK 只使用内置 base contract。这个阶段适合先打通“请求进来 -> 组装 prompt -> 调 LLM -> 返回 OpenUI Lang”的主链路。
+没有传 `extensionId` 时，SDK 只使用内置 base contract。这个阶段适合先打通“请求进来 -> 组装 prompt -> 调 LLM -> 返回可渲染结果”的主链路。
 
-`generate(...)` 返回的是抽取后的 OpenUI Lang，不是模型原始文本。SDK 会优先抽取 Markdown 中标记为 `openui`、`openui-lang` 或 `text` 的代码块；如果没有这些代码块，会尝试抽取包含 `root = Stack(` 的代码块；最后才回退为原文。
+`generate(...)` 返回结构化的 `GenUiGenerationResult`，而不是裸字符串，这样调用方可以把 DSL 和它的数据一起交给前端 Renderer：
+
+```java
+public record GenUiGenerationResult(String dsl, Map<String, Object> dataModel) {}
+```
+
+- `dsl`：抽取后的 OpenUI Lang，不是模型原始文本。SDK 会优先抽取 Markdown 中标记为 `openui`、`openui-lang` 或 `text` 的代码块；如果没有这些代码块，会尝试抽取包含 `root = Stack(` 的代码块；最后才回退为原文。
+- `dataModel`：请求里 `response` 的防御性不可变拷贝，未提供 `response` 时为空 map。它就是前端 Renderer 渲染该 DSL 时应使用的 `dataModel`，所以 SDK 直接回传，免得调用方再自己保存一份请求数据。
+
+LLM 调用在产出结果前失败时，同步生成抛 `GenerationSdkException`。
 
 字段如何进入 SDK：
 
@@ -137,23 +148,42 @@ String openuiLang = generator.generate(request);
 
 ## 4. 流式生成
 
-如果你的接口要把模型输出流式返回给前端，使用 `generateStream(...)`：
+如果你的接口要把模型输出流式返回给前端，使用 `generateStream(...)`。回调收到的不是裸文本，而是统一的 `RenderStreamEnvelope` 帧，调用方按 `type` 分发即可：
 
 ```java
-import java.nio.charset.StandardCharsets;
+import com.huawei.cloudsop.genui.core.llm.RenderStreamEnvelope;
 
-String finalDsl =
+GenUiGenerationResult result =
     generator.generateStream(
         request,
-        delta -> {
-          out.write(delta.getBytes(StandardCharsets.UTF_8));
-          out.flush();
+        envelope -> {
+          // envelope: { type, seq, content }
+          // 宿主服务把每个 envelope 序列化成自己的流式协议帧（如 SSE 的一行 data: <json>）写出
+          writeFrame(out, envelope);
         });
 ```
 
-回调里的 `delta` 是模型返回的增量文本片段，不包含额外封装。宿主服务如果对外使用 `text/plain`、SSE 或其他流式协议，按自己的接口契约写出这段文本即可。
+`RenderStreamEnvelope` 的结构和帧序是固定的：
 
-`generateStream(...)` 的返回值是最终 OpenUI Lang：SDK 会把所有 `delta` 累计起来，再按和同步生成相同的规则抽取 `openui` / `openui-lang` / `text` 代码块。这个返回值通常用于缓存、日志或后置校验；前端实时看到的内容来自回调里逐段写出的 `delta`。
+```java
+public record RenderStreamEnvelope(String type, int seq, Object content) {}
+```
+
+|顺序|`type`|`seq`|`content`|
+|---|---|---|---|
+|首帧|`dataModel`|`0`|请求的 `response` 或空 map `{}`|
+|每个模型增量|`dsl`|`1,2,3…`|该段增量文本（`String`）|
+|失败时|`error`|递增|`{code, message, retryable}`|
+|结束帧|`done`|递增|`null`|
+
+要点：
+
+- 首帧**一定**是 `dataModel`（`seq=0`），承载前端 Renderer 要用的数据；DSL 增量从 `seq=1` 开始。
+- 正常结束发 `done`，其 `content` 为 `null`（序列化时应省略该字段）。
+- 首帧发出后若流读取/传输失败，SDK **不**向调用方抛异常，而是先发 `error`（`{code:"LLM_STREAM_FAILED", message, retryable:true}`）再发 `done`；调用方据是否收到 `error` 帧判断结果状态。
+- 返回值 `GenUiGenerationResult` 始终带累计抽取出的 `dsl`（失败时为已累计部分）和同一份 `dataModel`，通常用于缓存、日志或后置校验。
+
+前端按 envelope `type` 分发：`dataModel` 设到 Renderer 的 `dataModel`，`dsl` 逐段拼进 Renderer 的 `response`，`error` 展示错误，`done` 结束 streaming。
 
 ## 5. 自定义拓展
 
@@ -254,7 +284,7 @@ UiGenerationRequest request =
         .response(response)
         .build();
 
-String openuiLang = generator.generate(request);
+GenUiGenerationResult result = generator.generate(request);
 ```
 
 注意：
