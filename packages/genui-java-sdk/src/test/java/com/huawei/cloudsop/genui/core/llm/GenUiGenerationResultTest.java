@@ -14,7 +14,7 @@ class GenUiGenerationResultTest {
     LinkedHashMap<String, Object> source = new LinkedHashMap<>();
     source.put("count", 1);
 
-    GenUiGenerationResult result = new GenUiGenerationResult("root = Stack([])", source, "t-1");
+    GenUiGenerationResult result = new GenUiGenerationResult("root = Stack([])", source);
 
     source.put("extra", true);
 
@@ -24,7 +24,7 @@ class GenUiGenerationResultTest {
 
   @Test
   void nullDataModelBecomesEmptyMap() {
-    GenUiGenerationResult result = new GenUiGenerationResult("root = Stack([])", null, null);
+    GenUiGenerationResult result = new GenUiGenerationResult("root = Stack([])", null);
 
     assertTrue(result.dataModel().isEmpty());
   }

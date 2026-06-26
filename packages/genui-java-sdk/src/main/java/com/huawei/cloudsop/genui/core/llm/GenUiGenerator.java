@@ -60,8 +60,7 @@ public final class GenUiGenerator {
       String response = transport.post(body);
       String content = ChatCompletionResponse.parse(response).firstContent();
       String extracted = OpenuiCodeExtractor.extract(content);
-      return new GenUiGenerationResult(
-          extracted, effectiveRequest.response(), effectiveRequest.traceId());
+      return new GenUiGenerationResult(extracted, effectiveRequest.response());
     } catch (LlmTransportException error) {
       throw new GenerationSdkException("Failed to invoke LLM: " + error.getMessage(), error);
     }
@@ -77,11 +76,10 @@ public final class GenUiGenerator {
     Objects.requireNonNull(sink, "sink must not be null");
     UiGenerationRequest effectiveRequest =
         request == null ? UiGenerationRequest.builder().build() : request;
-    String traceId = effectiveRequest.traceId();
     Map<String, Object> dataModel = effectiveRequest.response();
 
     // 首帧:dataModel,seq=0。一旦发出,后续 LLM 流错误改为 error envelope 而不再抛给调用方。
-    sink.accept(RenderStreamEnvelope.dataModel(traceId, dataModel));
+    sink.accept(RenderStreamEnvelope.dataModel(dataModel));
     int[] nextSeq = {1};
 
     String body = buildRequestBody(effectiveRequest, true);
@@ -91,18 +89,17 @@ public final class GenUiGenerator {
           stream,
           delta -> {
             accumulated.append(delta);
-            sink.accept(RenderStreamEnvelope.dsl(nextSeq[0]++, traceId, delta));
+            sink.accept(RenderStreamEnvelope.dsl(nextSeq[0]++, delta));
           });
       String extracted = OpenuiCodeExtractor.extract(accumulated.toString());
-      sink.accept(RenderStreamEnvelope.done(nextSeq[0]++, traceId));
-      return new GenUiGenerationResult(extracted, dataModel, traceId);
+      sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
+      return new GenUiGenerationResult(extracted, dataModel);
     } catch (LlmTransportException | IOException error) {
       sink.accept(
-          RenderStreamEnvelope.error(
-              nextSeq[0]++, traceId, "LLM_STREAM_FAILED", error.getMessage(), true));
-      sink.accept(RenderStreamEnvelope.done(nextSeq[0]++, traceId));
+          RenderStreamEnvelope.error(nextSeq[0]++, "LLM_STREAM_FAILED", error.getMessage(), true));
+      sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
       String extracted = OpenuiCodeExtractor.extract(accumulated.toString());
-      return new GenUiGenerationResult(extracted, dataModel, traceId);
+      return new GenUiGenerationResult(extracted, dataModel);
     }
   }
 

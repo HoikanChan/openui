@@ -13,8 +13,7 @@ public record UiGenerationRequest(
     Boolean editMode,
     Boolean inlineMode,
     Boolean toolCalls,
-    Boolean bindings,
-    String traceId) {
+    Boolean bindings) {
   public UiGenerationRequest {
     request = immutableOrderedMap(request);
     response = immutableOrderedMap(response);
@@ -38,7 +37,6 @@ public record UiGenerationRequest(
     private Boolean inlineMode;
     private Boolean toolCalls;
     private Boolean bindings;
-    private String traceId;
 
     private Builder() {}
 
@@ -87,11 +85,6 @@ public record UiGenerationRequest(
       return this;
     }
 
-    public Builder traceId(String traceId) {
-      this.traceId = traceId;
-      return this;
-    }
-
     public UiGenerationRequest build() {
       return new UiGenerationRequest(
           extensionId,
@@ -102,8 +95,7 @@ public record UiGenerationRequest(
           editMode,
           inlineMode,
           toolCalls,
-          bindings,
-          traceId);
+          bindings);
     }
   }
 }

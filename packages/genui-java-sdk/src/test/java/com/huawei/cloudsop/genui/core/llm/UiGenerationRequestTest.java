@@ -45,7 +45,6 @@ class UiGenerationRequestTest {
             .inlineMode(false)
             .toolCalls(true)
             .bindings(false)
-            .traceId("trace-1")
             .build();
 
     assertEquals("extension-a", request.extensionId());
@@ -57,7 +56,6 @@ class UiGenerationRequestTest {
     assertEquals(false, request.inlineMode());
     assertEquals(true, request.toolCalls());
     assertEquals(false, request.bindings());
-    assertEquals("trace-1", request.traceId());
   }
 
   @Test
@@ -66,7 +64,6 @@ class UiGenerationRequestTest {
 
     assertNull(request.extensionId());
     assertNull(request.userInput());
-    assertNull(request.traceId());
     assertTrue(request.request().isEmpty());
     assertTrue(request.response().isEmpty());
   }

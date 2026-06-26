@@ -4,9 +4,8 @@
 
 ## What Changes
 
-- **BREAKING**: `genui-java-sdk` 的同步生成接口从返回 `String` 改为返回结构化 `GenUiGenerationResult`，包含 `dsl`、`dataModel`、可选 `traceId`。
+- **BREAKING**: `genui-java-sdk` 的同步生成接口从返回 `String` 改为返回结构化 `GenUiGenerationResult`，包含 `dsl`、`dataModel`。
 - **BREAKING**: `genui-java-sdk` 的流式生成回调从裸 DSL delta 改为 `RenderStreamEnvelope`，首帧固定返回 `type=dataModel`，后续 DSL chunk 使用 `type=dsl`，结束帧使用 `type=done`。
-- `UiGenerationRequest` 增加可选 `traceId`，SDK 只透传，不自行生成。
 - `dataModel` 始终来自 `UiGenerationRequest.response` 的防御性拷贝；请求未提供数据时返回空 map / `{}`。
 - 流式中途失败时 SDK 发出 `type=error` envelope，再发 `type=done` envelope，不向调用方抛出流中途异常。
 - GenUI Service `/v1/generate` 的流式响应从 `text/plain` 裸文本升级为 `text/event-stream`，每个 `data:` 行承载一个 JSON envelope。

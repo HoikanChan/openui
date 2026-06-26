@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Synchronous generation returns render result
-Java Generation SDK SHALL expose synchronous generation as a structured render result containing generated DSL, response data as `dataModel`, and optional `traceId`. The SDK SHALL populate `dsl` with extracted `openui-lang`, SHALL populate `dataModel` from `UiGenerationRequest.response`, and SHALL use an empty map when the request has no response data.
+Java Generation SDK SHALL expose synchronous generation as a structured render result containing generated DSL and response data as `dataModel`. The SDK SHALL populate `dsl` with extracted `openui-lang`, SHALL populate `dataModel` from `UiGenerationRequest.response`, and SHALL use an empty map when the request has no response data.
 
 #### Scenario: 同步生成返回 DSL 与 dataModel
 - **WHEN** 调用 SDK 同步生成接口且请求包含 `response` 数据
@@ -11,10 +11,6 @@ Java Generation SDK SHALL expose synchronous generation as a structured render r
 #### Scenario: 同步生成空数据返回空 map
 - **WHEN** 调用 SDK 同步生成接口且请求未包含 `response` 数据
 - **THEN** 返回结果的 `dataModel` 是空 map
-
-#### Scenario: 同步生成透传 traceId
-- **WHEN** 调用 SDK 同步生成接口且请求包含 `traceId`
-- **THEN** 返回结果包含同一个 `traceId`
 
 ### Requirement: Streaming generation emits render stream envelopes
 Java Generation SDK SHALL expose streaming generation as `RenderStreamEnvelope` callbacks. The first callback SHALL always be `type=dataModel` with `seq=0` and content equal to `UiGenerationRequest.response` or an empty map. Model output chunks SHALL be emitted as `type=dsl` envelopes with string content and increasing `seq`. A terminal `type=done` envelope SHALL be emitted when streaming ends.
@@ -49,14 +45,3 @@ Java Generation SDK SHALL represent mid-stream failures as render stream envelop
 - **WHEN** LLM 流在产生部分 DSL 后失败
 - **THEN** SDK 返回结果中的 `dsl` 来自已累计内容的提取结果
 - **AND** 返回结果中的 `dataModel` 仍等于请求 `response` 或空 map
-
-### Requirement: TraceId is optional and caller-owned
-Java Generation SDK SHALL accept optional `traceId` on `UiGenerationRequest` and SHALL copy it to synchronous results and all stream envelopes. The SDK SHALL NOT generate a traceId when the request omits it.
-
-#### Scenario: 流式 envelope 透传 traceId
-- **WHEN** 流式生成请求包含 `traceId`
-- **THEN** 每个 `RenderStreamEnvelope` 都包含同一个 `traceId`
-
-#### Scenario: SDK 不生成 traceId
-- **WHEN** 生成请求未包含 `traceId`
-- **THEN** 同步结果和流式 envelope 均不包含由 SDK 新生成的 traceId

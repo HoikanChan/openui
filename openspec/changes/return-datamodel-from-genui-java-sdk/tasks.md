@@ -2,8 +2,8 @@
 
 ## 1. SDK 输出模型
 
-- [x] 1.1 给 `UiGenerationRequest` 增加可选 `traceId` 字段、builder 方法和不可变构造测试
-- [x] 1.2 新增 `GenUiGenerationResult` record，包含 `dsl`、`dataModel`、`traceId`，并保证 `dataModel` 防御性拷贝且空数据为 empty map
+- [x] 1.1 校验 `UiGenerationRequest` builder 和不可变构造测试
+- [x] 1.2 新增 `GenUiGenerationResult` record，包含 `dsl`、`dataModel`，并保证 `dataModel` 防御性拷贝且空数据为 empty map
 - [x] 1.3 新增 `RenderStreamEnvelope` record，并提供或测试 `dataModel`、`dsl`、`error`、`done` 四类 envelope 的字段约束
 
 ## 2. SDK 同步生成
@@ -11,7 +11,7 @@
 - [x] 2.1 将 `GenUiGenerator.generate(...)` 返回类型改为 `GenUiGenerationResult`
 - [x] 2.2 保持现有 prompt 组装、LLM 请求、`ChatCompletionResponse` 解析和 `OpenuiCodeExtractor` 提取逻辑不变
 - [x] 2.3 在同步结果中回传请求 `response` 作为 `dataModel`，未提供时回传空 map
-- [x] 2.4 覆盖同步成功、空 response、traceId 透传和 LLM 异常抛出测试
+- [x] 2.4 覆盖同步成功、空 response 和 LLM 异常抛出测试
 
 ## 3. SDK 流式生成
 
@@ -20,7 +20,7 @@
 - [x] 3.3 将每个 LLM delta 包装为 `type=dsl` envelope，并维护递增 `seq`
 - [x] 3.4 正常结束时发送 `type=done` envelope，content 为 null
 - [x] 3.5 流中异常时发送 `type=error` envelope 后发送 `type=done` envelope，不向调用方抛出该流中异常
-- [x] 3.6 覆盖首帧、DSL chunk、done 无 content、error 后 done、返回累计结果和 traceId 透传测试
+- [x] 3.6 覆盖首帧、DSL chunk、done 无 content、error 后 done、返回累计结果测试
 
 ## 4. GenUI Service SSE 输出（暂缓 — 见范围说明）
 

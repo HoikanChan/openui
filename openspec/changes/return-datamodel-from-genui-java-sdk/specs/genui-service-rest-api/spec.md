@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Generate endpoint documents render stream envelopes
-GenUI Service Swagger 2.0 contract SHALL document `/v1/generate` as a `text/event-stream` endpoint whose SSE `data:` frames contain `RenderStreamEnvelope` JSON. The documented envelope SHALL include `type`, `seq`, optional `traceId`, and data-carrying `content`; `type=done` SHALL be documented as not carrying `content`.
+GenUI Service Swagger 2.0 contract SHALL document `/v1/generate` as a `text/event-stream` endpoint whose SSE `data:` frames contain `RenderStreamEnvelope` JSON. The documented envelope SHALL include `type`, `seq`, and data-carrying `content`; `type=done` SHALL be documented as not carrying `content`.
 
 #### Scenario: Swagger describes SSE envelope output
 - **WHEN** 调用方查阅 `swagger/genui-service.yaml` 中的 `/v1/generate`

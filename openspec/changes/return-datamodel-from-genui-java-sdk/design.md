@@ -8,7 +8,7 @@
 
 **Goals:**
 
-- 让 SDK 同步生成接口直接返回 `dsl`、`dataModel` 和可选 `traceId`。
+- 让 SDK 同步生成接口直接返回 `dsl` 和 `dataModel`。
 - 让 SDK 流式生成接口先发 `dataModel` envelope，再发 `dsl` envelope，最后发 `done` envelope。
 - 让 `dataModel` 始终来自 `UiGenerationRequest.response`，未提供时为空 map / `{}`。
 - 让 GenUI Service `/v1/generate` 输出 `text/event-stream`，每个 SSE `data:` 都是统一 JSON envelope。
@@ -18,7 +18,6 @@
 
 - 不处理模板直出、Generated Template Cache、PIU 直出或 iframe 直出。
 - 不设计前端渲染组件本身，只定义前端消费 envelope 的数据契约。
-- 不引入 SDK 自主生成 traceId 的能力；traceId 只由上游可选透传。
 - 不保留旧 `String generate(...)` / 裸 delta stream API。
 
 ## Decisions
@@ -36,12 +35,11 @@ GenUiGenerationResult generate(UiGenerationRequest request);
 ```java
 public record GenUiGenerationResult(
     String dsl,
-    Map<String, Object> dataModel,
-    String traceId
+    Map<String, Object> dataModel
 ) {}
 ```
 
-`dsl` 是 `OpenuiCodeExtractor` 提取后的完整 `openui-lang`；`dataModel` 是 `request.response()` 的防御性不可变拷贝；`traceId` 来自 `request.traceId()`，可以为 `null`。
+`dsl` 是 `OpenuiCodeExtractor` 提取后的完整 `openui-lang`；`dataModel` 是 `request.response()` 的防御性不可变拷贝。
 
 备选方案是保留旧 `generate(...) -> String` 并新增 `generateResult(...)`。该方案被否，因为当前没有调用方兼容要求，保留两套 API 会让新契约不够明确。
 
@@ -62,7 +60,6 @@ envelope 类型：
 public record RenderStreamEnvelope(
     String type,
     int seq,
-    String traceId,
     Object content
 ) {}
 ```
@@ -79,12 +76,12 @@ public record RenderStreamEnvelope(
 
 ### 3. `content` 按 `type` 使用不同 JSON 类型
 
-流式 envelope 顶层字段固定为 `type`、`seq`、可选 `traceId`、数据帧的 `content`。`content` 不做额外包装：
+流式 envelope 顶层字段固定为 `type`、`seq`、数据帧的 `content`。`content` 不做额外包装：
 
 ```json
-{"type":"dataModel","seq":0,"traceId":"t1","content":{"alarms":[]}}
-{"type":"dsl","seq":1,"traceId":"t1","content":"root = Stack([])"}
-{"type":"done","seq":2,"traceId":"t1"}
+{"type":"dataModel","seq":0,"content":{"alarms":[]}}
+{"type":"dsl","seq":1,"content":"root = Stack([])"}
+{"type":"done","seq":2}
 ```
 
 这样前端可以用 `type` 做判别联合类型，并把 `content` 直接用于目标状态：`dataModel` 设置 Renderer 数据，`dsl` 拼接 Renderer response。
@@ -126,7 +123,7 @@ data: {"type":"dsl","seq":1,"content":"root = Stack([])"}
 
 ## Migration Plan
 
-1. 在 SDK 中新增 `GenUiGenerationResult`、`RenderStreamEnvelope`，并给 `UiGenerationRequest` 增加 `traceId`。
+1. 在 SDK 中新增 `GenUiGenerationResult`、`RenderStreamEnvelope`。
 2. 将 `GenUiGenerator.generate(...)` 改为返回 `GenUiGenerationResult`。
 3. 将 `GenUiGenerator.generateStream(...)` 改为回调 `RenderStreamEnvelope`，内部维护 `seq`。
 4. 更新 `examples/genui-service` 的 `/v1/generate` 为 `text/event-stream` envelope 输出。

@@ -78,18 +78,6 @@ class GenUiGeneratorTest {
   }
 
   @Test
-  void syncPropagatesTraceId() {
-    FakeTransport transport =
-        FakeTransport.sync("{\"choices\":[{\"message\":{\"content\":\"root = Stack([])\"}}]}");
-
-    GenUiGenerationResult result =
-        GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-            .generate(UiGenerationRequest.builder().userInput("base").traceId("t-1").build());
-
-    assertEquals("t-1", result.traceId());
-  }
-
-  @Test
   void syncThrowsOnTransportError() {
     GenUiGenerator generator =
         GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), FakeTransport.failing());
@@ -130,7 +118,6 @@ class GenUiGeneratorTest {
                 UiGenerationRequest.builder()
                     .userInput("stream")
                     .response(response)
-                    .traceId("t-9")
                     .build(),
                 envelopes::add);
 
@@ -139,7 +126,6 @@ class GenUiGeneratorTest {
     assertEquals(RenderStreamEnvelope.TYPE_DATA_MODEL, first.type());
     assertEquals(0, first.seq());
     assertEquals(response, first.content());
-    assertEquals("t-9", first.traceId());
 
     // DSL chunk,seq 从 1 起递增
     assertEquals(RenderStreamEnvelope.TYPE_DSL, envelopes.get(1).type());
@@ -154,14 +140,9 @@ class GenUiGeneratorTest {
     assertEquals(RenderStreamEnvelope.TYPE_DONE, done.type());
     assertEquals(3, done.seq());
     assertNull(done.content());
-    assertEquals("t-9", done.traceId());
-
-    // 每个 envelope 透传 traceId
-    assertTrue(envelopes.stream().allMatch(e -> "t-9".equals(e.traceId())));
 
     assertEquals("root = Stack([])", result.dsl());
     assertEquals(response, result.dataModel());
-    assertEquals("t-9", result.traceId());
     Map<String, Object> body = Json.asObject(Json.parse(transport.lastBody), "request");
     assertEquals(true, body.get("stream"));
   }
