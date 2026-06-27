@@ -43,6 +43,94 @@ pnpm --dir packages/react-ui-dsl run generate:base-contract
 pnpm --dir packages/lang-core run generate:prompt-golden
 ```
 
+## Characterization (large data models)
+
+Host data can be large enough that embedding it verbatim in the system prompt
+blows the token budget — a 10k-row table or a 10k-point numeric series easily
+runs into hundreds of KB of JSON. **Characterization** is a deterministic,
+LLM-free, single-pass transform that keeps the prompt small without losing the
+information the model needs to render correctly.
+
+The dual-path invariant is the key guarantee: the same `request.response()`
+feeds two decoupled paths that share only a read-only reference.
+
+- **Render Data Model** — the full host data, sent to the runtime as the
+  seq=0 `dataModel` envelope and returned by `GenUiGenerationResult.dataModel()`.
+  The UI binds against this. It is **never** sampled or reduced.
+- **Prompt Data Model** — the prompt's copy of the same data. When it is
+  large, Characterization replaces it with a same-shape "sample tree" (the
+  first K rows/elements, long strings truncated) plus a TypeScript-type
+  **sidecar** that carries the complete schema, the complete enum domain for
+  every low-cardinality string field (rendered as a `"a" | "b" | "c"` union —
+  isomorphic to `@Switch` cases), and true array/object counts. The sidecar is
+  appended after the JSON sample block in the `## Data Model` section, e.g.:
+
+  ```ts
+  data: {
+    rows: {
+      id: number
+      name: string
+      status: "closed" | "open" | "pending"
+      revenue: number
+      note?: string | null
+    }[]  // 10000 items (showing 3)
+  }
+  ```
+
+Characterization only ever touches the Prompt Data Model. It is applied at
+`GenerationSdk.assemblePrompt`, the single prompt-convergence point, so it
+covers both the `GenUiGenerator` path and direct `assemblePrompt` callers.
+When the raw serialized data is small (`≤ triggerBytes`), the gate passes
+through unchanged — small data and the cross-language golden tests stay
+byte-identical to before.
+
+### Config (`CharacterizationConfig`)
+
+| Option | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | master switch; `false` restores full-data behavior everywhere |
+| `triggerBytes` | `2048` | raw serialized size above which characterization activates |
+| `sampleRows` (K) | `3` | number of elements kept verbatim in the sample tree |
+| `maxStringLen` | `80` | string values longer than this are truncated in the sample |
+| `enumMaxDistinct` | `50` | absolute cap on distinct values for a string column to qualify as an enum |
+| `enumMaxRatio` | `0.5` | cap on `distinct / total` for a string column to qualify as an enum |
+| `deepScanLimit` | `10000` | element cap for deep schema inference on nested object/array columns (does not limit top-level enum/count completeness) |
+
+A string column becomes an `EnumShape` (complete domain) iff
+`distinct ≤ enumMaxDistinct && distinct/total ≤ enumMaxRatio`; otherwise it
+stays a free-text `string`. The enum/count pass scans the full array, not the
+sample, so the domain is always complete when it qualifies.
+
+### Configuring it
+
+```java
+GenerationSdk sdk = GenerationSdk.builder()
+    .characterization(CharacterizationConfig.builder().sampleRows(5).build())
+    .build();
+```
+
+or via `GenUiGenerator`:
+
+```java
+GenUiGenerator generator =
+    GenUiGenerator.create(GenUiLlmConfig.defaults(), characterizationConfig);
+// or: GenUiGenerator.withTransport(config, characterizationConfig, transport)
+```
+
+To roll back to full-data prompt behavior immediately:
+
+```java
+CharacterizationConfig.builder().enabled(false).build()
+```
+
+### Effect validation
+
+`CharacterizationEffectTest` measures the compression effect on representative
+fixtures and writes `target/characterization-effect-metrics.md`. On a 10k-row
+table the prompt copy shrinks to ~0.05% of its uncompressed size, a 10k-point
+numeric series to ~0.06%, and a deep nested object to ~0.77% — all while
+keeping enum domains complete and array counts true.
+
 ## Running the tests
 
 Run the Java SDK tests with Maven:
