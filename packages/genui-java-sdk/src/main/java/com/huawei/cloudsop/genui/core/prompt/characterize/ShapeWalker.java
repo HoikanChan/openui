@@ -130,9 +130,19 @@ public final class ShapeWalker {
         // A heterogeneous element among object rows: treat the whole array as opaque.
         return new ScalarShape(ScalarType.UNKNOWN);
       }
+      long rowsSeenBeforeThis = n - 1;
       for (Map.Entry<?, ?> entry : row.entrySet()) {
         String key = String.valueOf(entry.getKey());
-        columns.computeIfAbsent(key, k -> new ColumnAccumulator(cfg.enumMaxDistinct()));
+        columns.computeIfAbsent(
+            key,
+            k -> {
+              ColumnAccumulator accumulator = new ColumnAccumulator(cfg.enumMaxDistinct());
+              // Backfill: every earlier row lacked this key, so it was missing there.
+              for (long i = 0; i < rowsSeenBeforeThis; i++) {
+                accumulator.observeMissing();
+              }
+              return accumulator;
+            });
       }
       for (Map.Entry<String, ColumnAccumulator> columnEntry : columns.entrySet()) {
         String key = columnEntry.getKey();
