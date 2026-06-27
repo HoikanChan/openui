@@ -319,4 +319,27 @@ class ShapeWalkerTest {
     assertInstanceOf(ScalarShape.class, valueField.node());
     assertEquals(ScalarType.UNKNOWN, ((ScalarShape) valueField.node()).type());
   }
+
+  @Test
+  void columnFirstAppearingMidArrayIsOptional() {
+    List<Object> rows = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      LinkedHashMap<String, Object> row = new LinkedHashMap<>();
+      row.put("id", (long) i);
+      // "x" is absent from rows 0-3 and present from row 4 onward.
+      if (i >= 4) {
+        row.put("x", "present");
+      }
+      rows.add(row);
+    }
+    CharacterizationConfig cfg = CharacterizationConfig.builder().sampleRows(2).build();
+
+    Characterized result = ShapeWalker.walk(rows, cfg, 0);
+
+    ArrayShape arrayShape = (ArrayShape) result.shape();
+    ObjectShape elementShape = (ObjectShape) arrayShape.element();
+    FieldShape xField = elementShape.fields().get("x");
+    assertTrue(xField.optional());
+    assertFalse(xField.nullable());
+  }
 }

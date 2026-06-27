@@ -26,6 +26,22 @@ class ColumnAccumulatorTest {
   }
 
   @Test
+  void missingCountReflectsEveryRowThatLackedTheKey() {
+    // Mirrors a column that first appears mid-array: rows 0-3 lack the key, rows 4-9 have it.
+    ColumnAccumulator accumulator = new ColumnAccumulator(5);
+
+    for (int i = 0; i < 4; i++) {
+      accumulator.observeMissing();
+    }
+    for (int i = 0; i < 6; i++) {
+      accumulator.observePresent("present");
+    }
+
+    assertEquals(4, accumulator.missingCount());
+    assertEquals(6, accumulator.occurrences());
+  }
+
+  @Test
   void stopsGrowingDistinctSetOnceCapacityExceeded() {
     ColumnAccumulator accumulator = new ColumnAccumulator(2);
 
