@@ -189,6 +189,10 @@ public final class ShapeWalker {
       accumulator.observeScalarType(ScalarType.UNKNOWN);
       if (withinDeepScanLimit && accumulator.deepScanned() < cfg.deepScanLimit()) {
         accumulator.incrementDeepScanned();
+        // v1 best-effort: the nested-object column's deep schema is last-row-wins, not a union
+        // across rows. For columns whose nested objects have differing inner keys, the sidecar
+        // reflects the most recently scanned (within deepScanLimit) row's shape. Top-level
+        // enum/count completeness is unaffected; widening this to a union is deferred (see design).
         ShapeNode deepShape = walk(value, cfg, depth + 1).shape();
         accumulator.setChildDeepShape(deepShape);
       }
