@@ -42,11 +42,18 @@ class CharacterizationIntegrationTest {
     assertEquals(response, result.dataModel());
     assertRowCount(result.dataModel(), ROW_COUNT);
 
-    // The PROMPT copy was characterized: sidecar present, full enum domain, sampled JSON rows.
+    // The PROMPT copy was characterized: sidecar present, sampled JSON rows.
     String prompt = systemPrompt(transport.lastBody);
     assertTrue(prompt.contains("Data shape (full dataset):"));
-    assertTrue(prompt.contains("\"closed\" | \"open\" | \"pending\""));
     assertTrue(promptJsonRowCount(prompt) < ROW_COUNT);
+
+    // Scenario (b): the embedded JSON sample (first K rows) is all "open" and OMITS "pending"
+    // and "closed", yet the TS sidecar union — built from a full-dataset scan — recovers the
+    // complete domain. This proves the full scan, not the sample, drives the enum.
+    String jsonBlock = jsonBlock(prompt);
+    assertFalse(jsonBlock.contains("\"pending\""));
+    assertFalse(jsonBlock.contains("\"closed\""));
+    assertTrue(prompt.contains("\"closed\" | \"open\" | \"pending\""));
   }
 
   @Test
@@ -96,17 +103,20 @@ class CharacterizationIntegrationTest {
   // ─── helpers ────────────────────────────────────────────────────────────
 
   /**
-   * 200 rows of {@code {id, status}} with status cycling open/closed/pending so the full enum
-   * domain is NOT entirely present within the first {@code sampleRows} (default 3) rows, but IS
-   * present across the full 200-row scan.
+   * 200 rows of {@code {id, status}}. The first 5 rows are all {@code "open"}; {@code "closed"}
+   * and {@code "pending"} appear only from row 5 onward. With the default {@code sampleRows} (3),
+   * the first-K sample therefore contains ONLY {@code "open"} — both other enum values are absent
+   * from the sample — yet the full 200-row scan still observes the complete domain. This exercises
+   * the brief's scenario (b): the characterizer recovers enum values missing from the sampled rows.
    */
   private static Map<String, Object> largeHostData() {
-    String[] statuses = {"open", "closed", "pending"};
+    String[] statuses = {"closed", "pending"};
     List<Object> rows = new ArrayList<>(ROW_COUNT);
     for (int i = 0; i < ROW_COUNT; i++) {
       LinkedHashMap<String, Object> row = new LinkedHashMap<>();
       row.put("id", (long) i);
-      row.put("status", statuses[i % statuses.length]);
+      // First 5 rows all "open" so the first K (3) sampled rows omit "closed" and "pending".
+      row.put("status", i < 5 ? "open" : statuses[i % statuses.length]);
       rows.add(row);
     }
     LinkedHashMap<String, Object> response = new LinkedHashMap<>();
@@ -132,11 +142,16 @@ class CharacterizationIntegrationTest {
     return String.valueOf(system.get("content"));
   }
 
-  /** Counts occurrences of {@code "id":} within the embedded ```json block to approximate row count. */
-  private static int promptJsonRowCount(String prompt) {
+  /** Extracts the contents of the embedded ```json fenced block from the system prompt. */
+  private static String jsonBlock(String prompt) {
     int start = prompt.indexOf("```json");
     int end = prompt.indexOf("```", start + 7);
-    String jsonBlock = prompt.substring(start + 7, end);
+    return prompt.substring(start + 7, end);
+  }
+
+  /** Counts occurrences of {@code "id":} within the embedded ```json block to approximate row count. */
+  private static int promptJsonRowCount(String prompt) {
+    String jsonBlock = jsonBlock(prompt);
     int count = 0;
     int index = 0;
     while ((index = jsonBlock.indexOf("\"id\":", index)) != -1) {
