@@ -3,6 +3,7 @@ package com.huawei.cloudsop.genui.core;
 import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentPropsSchema;
+import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
 import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
@@ -11,6 +12,10 @@ import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyMetadata;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.prompt.PromptAssembler;
+import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig;
+import com.huawei.cloudsop.genui.core.prompt.characterize.Characterized;
+import com.huawei.cloudsop.genui.core.prompt.characterize.Characterizer;
+import com.huawei.cloudsop.genui.core.prompt.characterize.TsTypeRenderer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -20,14 +25,17 @@ import java.util.Set;
 
 public final class GenerationSdk {
   private final GenerationContract baseContract;
+  private final CharacterizationConfig characterization;
   private final Map<String, GenUIExtension> generations = new LinkedHashMap<>();
 
-  private GenerationSdk(GenerationContract baseContract) {
+  private GenerationSdk(GenerationContract baseContract, CharacterizationConfig characterization) {
     if (baseContract == null) throw new GenerationSdkException("baseContract is required");
     if (baseContract.contractVersion() == null || baseContract.contractVersion().isBlank()) {
       throw new GenerationSdkException("baseContract.contractVersion is required");
     }
     this.baseContract = baseContract;
+    this.characterization =
+        characterization == null ? CharacterizationConfig.defaults() : characterization;
     validateComponents(baseContract.components(), "base contract");
     validateComponentGroups(baseContract.componentGroups(), baseContract.components().keySet(), "base contract");
   }
@@ -104,7 +112,7 @@ public final class GenerationSdk {
                 baseContract.root(),
                 components,
                 componentGroups,
-                effectiveRequest.dataModel(),
+                characterize(effectiveRequest.dataModel()),
                 registeredTools,
                 examples,
                 additionalRules,
@@ -121,6 +129,22 @@ public final class GenerationSdk {
             generation == null ? null : generation.version(),
             new ArrayList<>(registeredToolNames));
     return new GenUIPromptAssemblyResult(prompt, metadata);
+  }
+
+  /**
+   * Characterizes the prompt copy of the data model for the convergence point in {@link
+   * #assemblePrompt}. When the gate passes through (small/disabled/empty raw data), this returns
+   * the SAME {@code in} instance unchanged — no sidecar is attached, so {@code dataModelSection}
+   * stays byte-identical and existing golden prompts are unaffected.
+   */
+  private DataModelSpec characterize(DataModelSpec in) {
+    if (in == null) return null;
+    Characterized c = Characterizer.characterize(in.raw(), characterization);
+    if (c.shape() == null) return in; // gate passed through — unchanged, no sidecar (parity preserved)
+    @SuppressWarnings("unchecked")
+    Map<String, Object> sample = (Map<String, Object>) c.sample();
+    String sidecar = TsTypeRenderer.render(c.shape(), characterization.sampleRows());
+    return new DataModelSpec(in.description(), sample, sidecar);
   }
 
   private static void validateComponentGroups(
@@ -169,6 +193,7 @@ public final class GenerationSdk {
 
   public static final class Builder {
     private GenerationContract baseContract;
+    private CharacterizationConfig characterization;
 
     private Builder() {}
 
@@ -177,8 +202,15 @@ public final class GenerationSdk {
       return this;
     }
 
+    public Builder characterization(CharacterizationConfig characterization) {
+      this.characterization = characterization;
+      return this;
+    }
+
     public GenerationSdk build() {
-      return new GenerationSdk(baseContract == null ? GenerationContractLoader.loadDefault() : baseContract);
+      return new GenerationSdk(
+          baseContract == null ? GenerationContractLoader.loadDefault() : baseContract,
+          characterization == null ? CharacterizationConfig.defaults() : characterization);
     }
   }
 }
