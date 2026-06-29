@@ -109,7 +109,7 @@
         <file>${project.basedir}/../../config/spotless/huawei.importorder</file>
       </importOrder>
       <removeUnusedImports/>
-      <trailingWhitespace/>
+      <trimTrailingWhitespace/>
       <endWithNewline/>
     </java>
   </configuration>

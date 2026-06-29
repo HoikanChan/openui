@@ -176,7 +176,7 @@ Checkstyle 规则集，按 §3 映射编写。要点：
       <eclipse><file>${project.basedir}/../../config/spotless/eclipse-format.xml</file></eclipse>
       <importOrder><file>${project.basedir}/../../config/spotless/huawei.importorder</file></importOrder>
       <removeUnusedImports/>
-      <trailingWhitespace/>
+      <trimTrailingWhitespace/>
       <endWithNewline/>
     </java>
   </configuration>
