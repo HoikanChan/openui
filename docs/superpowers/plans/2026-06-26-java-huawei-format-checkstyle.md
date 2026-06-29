@@ -228,6 +228,12 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
     <module name="MissingJavadocType">
       <property name="scope" value="protected"/>
     </module>
+    <module name="WriteTag">
+      <property name="tag" value="@since"/>
+      <property name="tagFormat" value="\S.*"/>
+      <property name="severity" value="warning"/>
+      <property name="tagSeverity" value="ignore"/>
+    </module>
     <module name="JavadocMethod">
       <property name="accessModifiers" value="public,protected"/>
     </module>
@@ -398,7 +404,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **Spec 覆盖**：
 - §1–§2 目标/分工 → 全部任务的 Global Constraints + Task 1/Task 3 分工落地。
 - §3.1 命名 NAM → Task 2 规则集 PackageName/TypeName/MethodName/ConstantName/各 *Name/泛型 *TypeParameterName。
-- §3.2 注释 CMT → JavadocType/MissingJavadocType/JavadocMethod/AtclauseOrder/TodoComment/CommentsIndentation/RegexpHeader。
+- §3.2 注释 CMT → JavadocType/MissingJavadocType/WriteTag(@since 必填)/JavadocMethod/AtclauseOrder/TodoComment/CommentsIndentation/RegexpHeader。
 - §3.3 格式 FMT → 自动修部分 Task 1（eclipse-format.xml + importorder）；检测部分 NeedBraces/OneStatementPerLine/FallThrough/ModifierOrder/UpperEll/LineLength/AnnotationLocation/DeclarationOrder。
 - §3.4 声明 DCL → MultipleVariableDeclarations/ArrayTypeStyle（error）。
 - §4 假继承约束 → 两 pom 各加插件，相对路径引用。

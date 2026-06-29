@@ -54,6 +54,13 @@
     <module name="MissingJavadocType">
       <property name="scope" value="protected"/>
     </module>
+    <!-- 类/接口/枚举 Javadoc 必须带 @since 且非空 (G.CMT.02);缺失记 warning -->
+    <module name="WriteTag">
+      <property name="tag" value="@since"/>
+      <property name="tagFormat" value="\S.*"/>
+      <property name="severity" value="warning"/>
+      <property name="tagSeverity" value="ignore"/>
+    </module>
     <module name="JavadocMethod">
       <property name="accessModifiers" value="public,protected"/>
     </module>
