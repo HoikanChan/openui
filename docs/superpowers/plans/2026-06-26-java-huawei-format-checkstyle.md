@@ -151,7 +151,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Create: `config/checkstyle/suppressions.xml`
 
 **Interfaces:**
-- Produces: `config/checkstyle/huawei_checks.xml`（供两模块 `configLocation` 引用）、`config/checkstyle/suppressions.xml`（经 `${config_loc}` 在规则集内引用）。Task 3 的 pom 插件指向这两个文件。
+- Produces: `config/checkstyle/huawei_checks.xml`（供两模块 `configLocation` 引用）、`config/checkstyle/suppressions.xml`（经 pom 的 `suppressionsLocation`/`suppressionsFileExpression` 注入 `${checkstyle.suppressions.file}`，由规则集内 `SuppressionFilter` 读取）。Task 3 的 pom 插件指向这两个文件。
 
 - [ ] **Step 1: 创建抑制文件 `config/checkstyle/suppressions.xml`**
 
@@ -194,7 +194,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
   </module>
 
   <module name="SuppressionFilter">
-    <property name="file" value="${config_loc}/suppressions.xml"/>
+    <property name="file" value="${checkstyle.suppressions.file}" default=""/>
     <property name="optional" value="true"/>
   </module>
 
@@ -310,13 +310,17 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
   </dependencies>
   <configuration>
     <configLocation>${project.basedir}/../../config/checkstyle/huawei_checks.xml</configLocation>
+    <suppressionsLocation>${project.basedir}/../../config/checkstyle/suppressions.xml</suppressionsLocation>
+    <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
     <includeTestSourceDirectory>true</includeTestSourceDirectory>
     <failOnViolation>false</failOnViolation>
   </configuration>
 </plugin>
 ```
 
-> `${config_loc}` 由插件自动设为 configLocation 所在目录，故规则集中对 `suppressions.xml` 的相对引用可解析。
+> 抑制文件经 `suppressionsLocation` 定位 + `suppressionsFileExpression` 注入到属性
+> `checkstyle.suppressions.file`，规则集的 `SuppressionFilter` 用 `${checkstyle.suppressions.file}` 读取。
+> 不要用 `${config_loc}` —— 该变量仅 Eclipse-CS 注入，Maven CLI 下不可用。
 
 - [ ] **Step 2: 在 `examples/genui-service/pom.xml` 的 `<build><plugins>` 追加完全相同的 checkstyle 插件块**
 
