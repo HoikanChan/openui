@@ -237,6 +237,13 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
     <module name="JavadocMethod">
       <property name="accessModifiers" value="public,protected"/>
     </module>
+    <module name="MissingJavadocMethod">
+      <property name="scope" value="protected"/>
+    </module>
+    <module name="JavadocVariable">
+      <property name="scope" value="protected"/>
+      <property name="ignoreNamePattern" value="serialVersionUID"/>
+    </module>
     <module name="AtclauseOrder"/>
     <module name="TodoComment">
       <property name="format" value="(TODO)|(FIXME)"/>
@@ -271,7 +278,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 </module>
 ```
 
-> 说明：`MissingJavadocMethod` 暂不启用，避免对大量内部 protected/public 方法产生 warning 噪声；`JavadocMethod` 只校验已有 Javadoc 的正确性。如需强制"public/protected 必须有 Javadoc"，再加 `MissingJavadocMethod`。
+> 说明：按 G.CMT.01 强制 public/protected 元素均有 Javadoc —— 类型 `MissingJavadocType`、方法 `MissingJavadocMethod`、字段 `JavadocVariable`（均 scope=protected；字段豁免 `serialVersionUID`，方法 `@Override` 默认豁免）；`JavadocType`/`JavadocMethod` 负责校验已有 Javadoc 的格式。均为 warning，不阻断构建。
 
 - [ ] **Step 3: 校验规则集 XML 自身可被 Checkstyle 解析（失败测试 → 通过）**
 
@@ -404,7 +411,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **Spec 覆盖**：
 - §1–§2 目标/分工 → 全部任务的 Global Constraints + Task 1/Task 3 分工落地。
 - §3.1 命名 NAM → Task 2 规则集 PackageName/TypeName/MethodName/ConstantName/各 *Name/泛型 *TypeParameterName。
-- §3.2 注释 CMT → JavadocType/MissingJavadocType/WriteTag(@since 必填)/JavadocMethod/AtclauseOrder/TodoComment/CommentsIndentation/RegexpHeader。
+- §3.2 注释 CMT → JavadocType/MissingJavadocType/WriteTag(@since 必填)/JavadocMethod/MissingJavadocMethod/JavadocVariable/AtclauseOrder/TodoComment/CommentsIndentation/RegexpHeader。
 - §3.3 格式 FMT → 自动修部分 Task 1（eclipse-format.xml + importorder）；检测部分 NeedBraces/OneStatementPerLine/FallThrough/ModifierOrder/UpperEll/LineLength/AnnotationLocation/DeclarationOrder。
 - §3.4 声明 DCL → MultipleVariableDeclarations/ArrayTypeStyle（error）。
 - §4 假继承约束 → 两 pom 各加插件，相对路径引用。
