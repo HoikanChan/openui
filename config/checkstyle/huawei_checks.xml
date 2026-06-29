@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+  "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+  "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<module name="Checker">
+  <property name="charset" value="UTF-8"/>
+  <property name="severity" value="warning"/>
+  <property name="fileExtensions" value="java"/>
+
+  <!-- 文件头版权 G.CMT.05；年份允许单年或区间 -->
+  <module name="RegexpHeader">
+    <property name="header"
+              value="^/\*$\n^ \* Copyright \(c\) Huawei Technologies Co\., Ltd\. \d{4}(-\d{4})?\. All rights reserved\.$\n^ \*/$"/>
+  </module>
+
+  <!-- 行宽兜底 G.FMT.10 -->
+  <module name="LineLength">
+    <property name="max" value="120"/>
+    <property name="ignorePattern" value="^package.*|^import.*|https?://|ftp://"/>
+  </module>
+
+  <module name="SuppressionFilter">
+    <property name="file" value="${config_loc}/suppressions.xml"/>
+    <property name="optional" value="true"/>
+  </module>
+
+  <module name="TreeWalker">
+    <!-- 命名 NAM -->
+    <module name="PackageName">
+      <property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>
+    </module>
+    <module name="TypeName"/>
+    <module name="MethodName"/>
+    <module name="ConstantName"/>
+    <module name="MemberName"/>
+    <module name="LocalVariableName"/>
+    <module name="LocalFinalVariableName"/>
+    <module name="StaticVariableName"/>
+    <module name="ParameterName"/>
+    <module name="ClassTypeParameterName">
+      <property name="format" value="^[A-Z][0-9]?$"/>
+    </module>
+    <module name="MethodTypeParameterName">
+      <property name="format" value="^[A-Z][0-9]?$"/>
+    </module>
+    <module name="InterfaceTypeParameterName">
+      <property name="format" value="^[A-Z][0-9]?$"/>
+    </module>
+
+    <!-- 注释 CMT -->
+    <module name="JavadocType">
+      <property name="scope" value="protected"/>
+    </module>
+    <module name="MissingJavadocType">
+      <property name="scope" value="protected"/>
+    </module>
+    <module name="JavadocMethod">
+      <property name="accessModifiers" value="public,protected"/>
+    </module>
+    <module name="AtclauseOrder"/>
+    <module name="TodoComment">
+      <property name="format" value="(TODO)|(FIXME)"/>
+    </module>
+    <module name="CommentsIndentation"/>
+
+    <!-- 格式 FMT(不可自动修部分) -->
+    <module name="NeedBraces"/>
+    <module name="OneStatementPerLine"/>
+    <module name="FallThrough"/>
+    <module name="ModifierOrder"/>
+    <module name="UpperEll"/>
+    <module name="EmptyBlock">
+      <property name="option" value="text"/>
+    </module>
+    <module name="AnnotationLocation"/>
+    <module name="DeclarationOrder"/>
+
+    <!-- 声明 DCL(要求级=error) -->
+    <module name="MultipleVariableDeclarations">
+      <property name="severity" value="error"/>
+    </module>
+    <module name="ArrayTypeStyle">
+      <property name="severity" value="error"/>
+    </module>
+
+    <!-- import 兜底(自动修由 Spotless 负责) -->
+    <module name="AvoidStarImport"/>
+    <module name="RedundantImport"/>
+    <module name="UnusedImports"/>
+  </module>
+</module>
