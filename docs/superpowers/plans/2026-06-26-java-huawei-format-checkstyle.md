@@ -194,7 +194,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
   </module>
 
   <module name="SuppressionFilter">
-    <property name="file" value="${checkstyle.suppressions.file}" default=""/>
+    <property name="file" value="${checkstyle.suppressions.file}"/>
     <property name="optional" value="true"/>
   </module>
 
