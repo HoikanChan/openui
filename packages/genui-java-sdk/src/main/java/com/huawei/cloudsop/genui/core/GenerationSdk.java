@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core;
 
 import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
@@ -16,6 +20,7 @@ import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig
 import com.huawei.cloudsop.genui.core.prompt.characterize.Characterized;
 import com.huawei.cloudsop.genui.core.prompt.characterize.Characterizer;
 import com.huawei.cloudsop.genui.core.prompt.characterize.TsTypeRenderer;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -24,193 +29,192 @@ import java.util.Map;
 import java.util.Set;
 
 public final class GenerationSdk {
-  private final GenerationContract baseContract;
-  private final CharacterizationConfig characterization;
-  private final Map<String, GenUIExtension> generations = new LinkedHashMap<>();
+    private final GenerationContract baseContract;
+    private final CharacterizationConfig characterization;
+    private final Map<String, GenUIExtension> generations = new LinkedHashMap<>();
 
-  private GenerationSdk(GenerationContract baseContract, CharacterizationConfig characterization) {
-    if (baseContract == null) throw new GenerationSdkException("baseContract is required");
-    if (baseContract.contractVersion() == null || baseContract.contractVersion().isBlank()) {
-      throw new GenerationSdkException("baseContract.contractVersion is required");
-    }
-    this.baseContract = baseContract;
-    this.characterization =
-        characterization == null ? CharacterizationConfig.defaults() : characterization;
-    validateComponents(baseContract.components(), "base contract");
-    validateComponentGroups(baseContract.componentGroups(), baseContract.components().keySet(), "base contract");
-  }
-
-  public static GenerationSdk create() {
-    return builder().build();
-  }
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public GenerationContract baseContract() {
-    return baseContract;
-  }
-
-  public void register(GenUIExtension generation) {
-    if (generation == null) throw new GenerationSdkException("generation is required");
-    if (generation.extensionId() == null || generation.extensionId().isBlank()) {
-      throw new GenerationSdkException("generation.extensionId is required");
-    }
-    validateComponents(generation.components(), "generation " + generation.extensionId());
-
-    Set<String> baseComponentNames = baseContract.components().keySet();
-    Set<String> generationComponentNames = generation.components().keySet();
-    Set<String> componentCollisions = intersection(baseComponentNames, generationComponentNames);
-    if (!componentCollisions.isEmpty()) {
-      throw new GenerationSdkException("Component name collision: " + String.join(", ", componentCollisions));
+    private GenerationSdk(GenerationContract baseContract, CharacterizationConfig characterization) {
+        if (baseContract == null)
+            throw new GenerationSdkException("baseContract is required");
+        if (baseContract.contractVersion() == null || baseContract.contractVersion().isBlank()) {
+            throw new GenerationSdkException("baseContract.contractVersion is required");
+        }
+        this.baseContract = baseContract;
+        this.characterization = characterization == null ? CharacterizationConfig.defaults() : characterization;
+        validateComponents(baseContract.components(), "base contract");
+        validateComponentGroups(baseContract.componentGroups(), baseContract.components().keySet(), "base contract");
     }
 
-    LinkedHashSet<String> finalComponentNames = new LinkedHashSet<>(baseComponentNames);
-    finalComponentNames.addAll(generationComponentNames);
-    validateComponentGroups(generation.componentGroups(), finalComponentNames, "generation " + generation.extensionId());
-
-    Set<String> baseToolNames = toolNames(baseContract.tools());
-    Set<String> generationToolNames = toolNames(generation.tools());
-    Set<String> toolCollisions = intersection(baseToolNames, generationToolNames);
-    if (!toolCollisions.isEmpty()) {
-      throw new GenerationSdkException("Tool name collision: " + String.join(", ", toolCollisions));
+    public static GenerationSdk create() {
+        return builder().build();
     }
 
-    generations.put(generation.extensionId(), generation);
-  }
-
-  public GenUIPromptAssemblyResult assemblePrompt(GenUIPromptRequest request) {
-    GenUIPromptRequest effectiveRequest =
-        request == null ? new GenUIPromptRequest(null, null, List.of(), null, null, null, null) : request;
-    GenUIExtension generation =
-        effectiveRequest.extensionId() == null ? null : generations.get(effectiveRequest.extensionId());
-
-    LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
-    components.putAll(baseContract.components());
-    if (generation != null) components.putAll(generation.components());
-
-    ArrayList<ComponentGroup> componentGroups = new ArrayList<>(baseContract.componentGroups());
-    if (generation != null) componentGroups.addAll(generation.componentGroups());
-    validateComponentGroups(componentGroups, components.keySet(), "assembled context");
-
-    ArrayList<ToolSpec> registeredTools = new ArrayList<>(baseContract.tools());
-    if (generation != null) registeredTools.addAll(generation.tools());
-    Set<String> registeredToolNames = toolNames(registeredTools);
-
-    ArrayList<String> examples = new ArrayList<>(baseContract.examples());
-    if (generation != null) examples.addAll(generation.examples());
-
-    ArrayList<String> additionalRules = new ArrayList<>(baseContract.additionalRules());
-    if (generation != null) additionalRules.addAll(generation.additionalRules());
-    additionalRules.addAll(effectiveRequest.extraRules());
-
-    String prompt =
-        PromptAssembler.assemble(
-            new PromptAssembler.PromptInput(
-                null, // preamble — the SDK always uses the default openui-lang preamble
-                baseContract.root(),
-                components,
-                componentGroups,
-                characterize(effectiveRequest.dataModel()),
-                registeredTools,
-                examples,
-                additionalRules,
-                effectiveRequest.editMode(),
-                effectiveRequest.inlineMode(),
-                effectiveRequest.toolCalls(),
-                effectiveRequest.bindings()),
-            baseContract.builtins());
-
-    GenUIPromptAssemblyMetadata metadata =
-        new GenUIPromptAssemblyMetadata(
-            effectiveRequest.extensionId(),
-            baseContract.contractVersion(),
-            generation == null ? null : generation.version(),
-            new ArrayList<>(registeredToolNames));
-    return new GenUIPromptAssemblyResult(prompt, metadata);
-  }
-
-  /**
-   * Characterizes the prompt copy of the data model for the convergence point in {@link
-   * #assemblePrompt}. When the gate passes through (small/disabled/empty raw data), this returns
-   * the SAME {@code in} instance unchanged — no sidecar is attached, so {@code dataModelSection}
-   * stays byte-identical and existing golden prompts are unaffected.
-   */
-  private DataModelSpec characterize(DataModelSpec in) {
-    if (in == null) return null;
-    Characterized c = Characterizer.characterize(in.raw(), characterization);
-    if (c.shape() == null) return in; // gate passed through — unchanged, no sidecar (parity preserved)
-    @SuppressWarnings("unchecked")
-    Map<String, Object> sample = (Map<String, Object>) c.sample();
-    String sidecar = TsTypeRenderer.render(c.shape(), characterization.sampleRows());
-    return new DataModelSpec(in.description(), sample, sidecar);
-  }
-
-  private static void validateComponentGroups(
-      List<ComponentGroup> groups, Set<String> knownComponentNames, String scope) {
-    LinkedHashSet<String> missing = new LinkedHashSet<>();
-    for (ComponentGroup group : groups) {
-      for (String componentName : group.components()) {
-        if (!knownComponentNames.contains(componentName)) missing.add(componentName);
-      }
-    }
-    if (!missing.isEmpty()) {
-      throw new GenerationSdkException(
-          "Component group references missing component(s) in " + scope + ": " + String.join(", ", missing));
-    }
-  }
-
-  private static void validateComponents(Map<String, ComponentPromptSpec> components, String scope) {
-    for (Map.Entry<String, ComponentPromptSpec> entry : components.entrySet()) {
-      if (entry.getKey() == null || entry.getKey().isBlank()) {
-        throw new GenerationSdkException("Component name is required in " + scope);
-      }
-      ComponentPropsSchema.validate(entry.getKey(), entry.getValue());
-    }
-  }
-
-  private static Set<String> toolNames(List<ToolSpec> tools) {
-    LinkedHashSet<String> names = new LinkedHashSet<>();
-    LinkedHashSet<String> duplicates = new LinkedHashSet<>();
-    for (ToolSpec tool : tools) {
-      if (tool.name() == null || tool.name().isBlank()) {
-        throw new GenerationSdkException("Tool name is required");
-      }
-      if (!names.add(tool.name())) duplicates.add(tool.name());
-    }
-    if (!duplicates.isEmpty()) {
-      throw new GenerationSdkException("Tool name collision: " + String.join(", ", duplicates));
-    }
-    return names;
-  }
-
-  private static Set<String> intersection(Set<String> left, Set<String> right) {
-    LinkedHashSet<String> result = new LinkedHashSet<>(left);
-    result.retainAll(right);
-    return result;
-  }
-
-  public static final class Builder {
-    private GenerationContract baseContract;
-    private CharacterizationConfig characterization;
-
-    private Builder() {}
-
-    public Builder baseContract(GenerationContract baseContract) {
-      this.baseContract = baseContract;
-      return this;
+    public static Builder builder() {
+        return new Builder();
     }
 
-    public Builder characterization(CharacterizationConfig characterization) {
-      this.characterization = characterization;
-      return this;
+    public GenerationContract baseContract() {
+        return baseContract;
     }
 
-    public GenerationSdk build() {
-      return new GenerationSdk(
-          baseContract == null ? GenerationContractLoader.loadDefault() : baseContract,
-          characterization == null ? CharacterizationConfig.defaults() : characterization);
+    public void register(GenUIExtension generation) {
+        if (generation == null)
+            throw new GenerationSdkException("generation is required");
+        if (generation.extensionId() == null || generation.extensionId().isBlank()) {
+            throw new GenerationSdkException("generation.extensionId is required");
+        }
+        validateComponents(generation.components(), "generation " + generation.extensionId());
+
+        Set<String> baseComponentNames = baseContract.components().keySet();
+        Set<String> generationComponentNames = generation.components().keySet();
+        Set<String> componentCollisions = intersection(baseComponentNames, generationComponentNames);
+        if (!componentCollisions.isEmpty()) {
+            throw new GenerationSdkException("Component name collision: " + String.join(", ", componentCollisions));
+        }
+
+        LinkedHashSet<String> finalComponentNames = new LinkedHashSet<>(baseComponentNames);
+        finalComponentNames.addAll(generationComponentNames);
+        validateComponentGroups(generation.componentGroups(), finalComponentNames,
+                "generation " + generation.extensionId());
+
+        Set<String> baseToolNames = toolNames(baseContract.tools());
+        Set<String> generationToolNames = toolNames(generation.tools());
+        Set<String> toolCollisions = intersection(baseToolNames, generationToolNames);
+        if (!toolCollisions.isEmpty()) {
+            throw new GenerationSdkException("Tool name collision: " + String.join(", ", toolCollisions));
+        }
+
+        generations.put(generation.extensionId(), generation);
     }
-  }
+
+    public GenUIPromptAssemblyResult assemblePrompt(GenUIPromptRequest request) {
+        GenUIPromptRequest effectiveRequest = request == null
+                ? new GenUIPromptRequest(null, null, List.of(), null, null, null, null)
+                : request;
+        GenUIExtension generation = effectiveRequest.extensionId() == null
+                ? null
+                : generations.get(effectiveRequest.extensionId());
+
+        LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
+        components.putAll(baseContract.components());
+        if (generation != null)
+            components.putAll(generation.components());
+
+        ArrayList<ComponentGroup> componentGroups = new ArrayList<>(baseContract.componentGroups());
+        if (generation != null)
+            componentGroups.addAll(generation.componentGroups());
+        validateComponentGroups(componentGroups, components.keySet(), "assembled context");
+
+        ArrayList<ToolSpec> registeredTools = new ArrayList<>(baseContract.tools());
+        if (generation != null)
+            registeredTools.addAll(generation.tools());
+        Set<String> registeredToolNames = toolNames(registeredTools);
+
+        ArrayList<String> examples = new ArrayList<>(baseContract.examples());
+        if (generation != null)
+            examples.addAll(generation.examples());
+
+        ArrayList<String> additionalRules = new ArrayList<>(baseContract.additionalRules());
+        if (generation != null)
+            additionalRules.addAll(generation.additionalRules());
+        additionalRules.addAll(effectiveRequest.extraRules());
+
+        String prompt = PromptAssembler.assemble(new PromptAssembler.PromptInput(null, // preamble — the SDK always uses
+                                                                                       // the default openui-lang
+                                                                                       // preamble
+                baseContract.root(), components, componentGroups, characterize(effectiveRequest.dataModel()),
+                registeredTools, examples, additionalRules, effectiveRequest.editMode(), effectiveRequest.inlineMode(),
+                effectiveRequest.toolCalls(), effectiveRequest.bindings()), baseContract.builtins());
+
+        GenUIPromptAssemblyMetadata metadata = new GenUIPromptAssemblyMetadata(effectiveRequest.extensionId(),
+                baseContract.contractVersion(), generation == null ? null : generation.version(),
+                new ArrayList<>(registeredToolNames));
+        return new GenUIPromptAssemblyResult(prompt, metadata);
+    }
+
+    /**
+     * Characterizes the prompt copy of the data model for the convergence point in {@link #assemblePrompt}. When the
+     * gate passes through (small/disabled/empty raw data), this returns the SAME {@code in} instance unchanged — no
+     * sidecar is attached, so {@code dataModelSection} stays byte-identical and existing golden prompts are unaffected.
+     */
+    private DataModelSpec characterize(DataModelSpec in) {
+        if (in == null)
+            return null;
+        Characterized c = Characterizer.characterize(in.raw(), characterization);
+        if (c.shape() == null)
+            return in; // gate passed through — unchanged, no sidecar (parity preserved)
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sample = (Map<String, Object>) c.sample();
+        String sidecar = TsTypeRenderer.render(c.shape(), characterization.sampleRows());
+        return new DataModelSpec(in.description(), sample, sidecar);
+    }
+
+    private static void validateComponentGroups(List<ComponentGroup> groups, Set<String> knownComponentNames,
+            String scope) {
+        LinkedHashSet<String> missing = new LinkedHashSet<>();
+        for (ComponentGroup group : groups) {
+            for (String componentName : group.components()) {
+                if (!knownComponentNames.contains(componentName))
+                    missing.add(componentName);
+            }
+        }
+        if (!missing.isEmpty()) {
+            throw new GenerationSdkException(
+                    "Component group references missing component(s) in " + scope + ": " + String.join(", ", missing));
+        }
+    }
+
+    private static void validateComponents(Map<String, ComponentPromptSpec> components, String scope) {
+        for (Map.Entry<String, ComponentPromptSpec> entry : components.entrySet()) {
+            if (entry.getKey() == null || entry.getKey().isBlank()) {
+                throw new GenerationSdkException("Component name is required in " + scope);
+            }
+            ComponentPropsSchema.validate(entry.getKey(), entry.getValue());
+        }
+    }
+
+    private static Set<String> toolNames(List<ToolSpec> tools) {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        LinkedHashSet<String> duplicates = new LinkedHashSet<>();
+        for (ToolSpec tool : tools) {
+            if (tool.name() == null || tool.name().isBlank()) {
+                throw new GenerationSdkException("Tool name is required");
+            }
+            if (!names.add(tool.name()))
+                duplicates.add(tool.name());
+        }
+        if (!duplicates.isEmpty()) {
+            throw new GenerationSdkException("Tool name collision: " + String.join(", ", duplicates));
+        }
+        return names;
+    }
+
+    private static Set<String> intersection(Set<String> left, Set<String> right) {
+        LinkedHashSet<String> result = new LinkedHashSet<>(left);
+        result.retainAll(right);
+        return result;
+    }
+
+    public static final class Builder {
+        private GenerationContract baseContract;
+        private CharacterizationConfig characterization;
+
+        private Builder() {
+        }
+
+        public Builder baseContract(GenerationContract baseContract) {
+            this.baseContract = baseContract;
+            return this;
+        }
+
+        public Builder characterization(CharacterizationConfig characterization) {
+            this.characterization = characterization;
+            return this;
+        }
+
+        public GenerationSdk build() {
+            return new GenerationSdk(baseContract == null ? GenerationContractLoader.loadDefault() : baseContract,
+                    characterization == null ? CharacterizationConfig.defaults() : characterization);
+        }
+    }
 }

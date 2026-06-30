@@ -1,22 +1,14 @@
-package com.huawei.cloudsop.genui.service;
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
+package com.huawei.cloudsop.genui.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
@@ -26,12 +18,27 @@ import com.huawei.cloudsop.genui.service.llm.LlmClient;
 import com.huawei.cloudsop.genui.service.llm.LlmStream;
 import com.huawei.cloudsop.genui.service.llm.LlmUpstreamException;
 
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+
 /** 生成端点行为:流式转发、Prompt Override 旁路、错误尾巴、流前失败 502、空 prompt 400。 */
 @SpringBootTest
 @AutoConfigureMockMvc
 class GenerateApiTest {
-  @Autowired MockMvc mvc;
-  @MockBean LlmClient llmClient;
+    @Autowired
+    MockMvc mvc;
+    @MockBean
+    LlmClient llmClient;
 
   @Test
   void streamsLlmOutputAsPlainText() throws Exception {
@@ -70,11 +77,11 @@ class GenerateApiTest {
         performGenerate("{\"prompt\":\"展示UI\"}"));
   }
 
-  @Test
-  void emptyPromptReturns400() throws Exception {
-    mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"  \"}"))
-        .andExpect(status().isBadRequest());
-  }
+    @Test
+    void emptyPromptReturns400() throws Exception {
+        mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"  \"}"))
+                .andExpect(status().isBadRequest());
+    }
 
   @Test
   void upstreamFailureBeforeFirstTokenReturns502() throws Exception {
@@ -84,28 +91,20 @@ class GenerateApiTest {
         .andExpect(status().isBadGateway());
   }
 
-  @Test
-  void unknownextensionIdReturns404BeforeStreaming() throws Exception {
-    mvc.perform(
-            post("/v1/generate")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"prompt\":\"展示UI\",\"extensionId\":\"no-such\"}"))
-        .andExpect(status().isNotFound());
-  }
+    @Test
+    void unknownextensionIdReturns404BeforeStreaming() throws Exception {
+        mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"prompt\":\"展示UI\",\"extensionId\":\"no-such\"}")).andExpect(status().isNotFound());
+    }
 
-  private String performGenerate(String body) throws Exception {
-    MvcResult started =
-        mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON).content(body))
-            .andExpect(request().asyncStarted())
-            .andReturn();
-    return mvc.perform(asyncDispatch(started))
-        .andExpect(status().isOk())
-        .andReturn()
-        .getResponse()
-        .getContentAsString(StandardCharsets.UTF_8);
-  }
+    private String performGenerate(String body) throws Exception {
+        MvcResult started = mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(request().asyncStarted()).andReturn();
+        return mvc.perform(asyncDispatch(started)).andExpect(status().isOk()).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+    }
 
-  private static LlmStream stream(String sse) {
-    return new LlmStream(new ByteArrayInputStream(sse.getBytes(StandardCharsets.UTF_8)));
-  }
+    private static LlmStream stream(String sse) {
+        return new LlmStream(new ByteArrayInputStream(sse.getBytes(StandardCharsets.UTF_8)));
+    }
 }
