@@ -15,6 +15,7 @@ import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.llm.transport.RestfulLlmTransport;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
+import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -43,8 +44,28 @@ public final class GenUiGenerator {
         GenerationSdk.create(), effectiveConfig, new RestfulLlmTransport(effectiveConfig));
   }
 
+  public static GenUiGenerator create(GenUiLlmConfig config, CharacterizationConfig characterization) {
+    GenUiLlmConfig effectiveConfig = config == null ? GenUiLlmConfig.defaults() : config;
+    GenerationSdk sdk =
+        GenerationSdk.builder()
+            .characterization(
+                characterization == null ? CharacterizationConfig.defaults() : characterization)
+            .build();
+    return new GenUiGenerator(sdk, effectiveConfig, new RestfulLlmTransport(effectiveConfig));
+  }
+
   public static GenUiGenerator withTransport(GenUiLlmConfig config, LlmTransport transport) {
     return new GenUiGenerator(GenerationSdk.create(), config, transport);
+  }
+
+  public static GenUiGenerator withTransport(
+      GenUiLlmConfig config, CharacterizationConfig characterization, LlmTransport transport) {
+    GenerationSdk sdk =
+        GenerationSdk.builder()
+            .characterization(
+                characterization == null ? CharacterizationConfig.defaults() : characterization)
+            .build();
+    return new GenUiGenerator(sdk, config, transport);
   }
 
   public GenUiGenerator register(GenUIExtension extension) {

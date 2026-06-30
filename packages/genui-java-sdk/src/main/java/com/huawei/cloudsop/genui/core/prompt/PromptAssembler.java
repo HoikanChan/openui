@@ -266,6 +266,14 @@ public final class PromptAssembler {
     lines.add("```json");
     lines.add(Json.stringifyPretty(dataModel.raw()));
     lines.add("```");
+    if (dataModel.shapeSidecar() != null && !dataModel.shapeSidecar().isEmpty()) {
+      lines.add("");
+      lines.add("Data shape (full dataset):");
+      lines.add("");
+      lines.add("```ts");
+      lines.add(dataModel.shapeSidecar());
+      lines.add("```");
+    }
     lines.add("");
     lines.add("Use `data.<field>` to read host data.");
     lines.add("Use `Each(...)` to iterate arrays.");
