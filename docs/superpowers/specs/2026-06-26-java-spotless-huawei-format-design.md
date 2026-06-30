@@ -65,8 +65,8 @@ Spotless 的 Eclipse 格式化器只重排既有 token 的布局，**不会新�
 
 | 条款 | 级别 | 检查模块 | 说明 |
 | --- | --- | --- | --- |
-| G.CMT.01 public/protected 加 Javadoc | 建议 | `JavadocMethod`/`JavadocType`/`JavadocVariable`（scope=protected） | |
-| G.CMT.02 顶层 public 类 Javadoc 含功能+日期/版本 | 建议 | `JavadocType` + `MissingJavadocType`，`@since`/`@version` 经 `writeTag` | |
+| G.CMT.01 public/protected 元素加 Javadoc | 建议 | 存在性：`MissingJavadocType` + `MissingJavadocMethod` + `JavadocVariable`（scope=protected，字段豁免 `serialVersionUID`，方法 `@Override` 默认豁免）；格式校验：`JavadocType`/`JavadocMethod` | |
+| G.CMT.02 类 Javadoc 含功能 + 版本(`@since`) | 建议 | `JavadocType` + `MissingJavadocType` + `WriteTag`（`tag=@since`、`tagFormat=\S.*` 要求非空、缺失记 warning，作用于类/接口/枚举/注解声明） | |
 | G.CMT.03 方法 Javadoc 标签顺序 @param/@return/@throws | 建议 | `JavadocMethod` + `AtclauseOrder` | |
 | G.CMT.05 文件头版权 | 建议 | `RegexpHeader`，模板见 §6 | |
 | G.CMT.06 注释与代码留空格 | 建议 | `CommentsIndentation`（部分覆盖） | |
