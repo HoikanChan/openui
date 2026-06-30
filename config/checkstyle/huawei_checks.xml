@@ -54,8 +54,24 @@
     <module name="MissingJavadocType">
       <property name="scope" value="protected"/>
     </module>
+    <!-- 类/接口/枚举 Javadoc 必须带 @since 且非空 (G.CMT.02);缺失记 warning -->
+    <module name="WriteTag">
+      <property name="tag" value="@since"/>
+      <property name="tagFormat" value="\S.*"/>
+      <property name="severity" value="warning"/>
+      <property name="tagSeverity" value="ignore"/>
+    </module>
     <module name="JavadocMethod">
       <property name="accessModifiers" value="public,protected"/>
+    </module>
+    <!-- public/protected 方法必须有 Javadoc (G.CMT.01);@Override 默认豁免 -->
+    <module name="MissingJavadocMethod">
+      <property name="scope" value="protected"/>
+    </module>
+    <!-- public/protected 字段必须有 Javadoc (G.CMT.01);serialVersionUID 豁免 -->
+    <module name="JavadocVariable">
+      <property name="scope" value="protected"/>
+      <property name="ignoreNamePattern" value="serialVersionUID"/>
     </module>
     <module name="AtclauseOrder"/>
     <module name="TodoComment">
