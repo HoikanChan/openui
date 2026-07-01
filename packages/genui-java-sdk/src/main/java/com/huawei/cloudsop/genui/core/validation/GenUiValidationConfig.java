@@ -1,5 +1,7 @@
 package com.huawei.cloudsop.genui.core.validation;
 
+import java.util.Objects;
+
 /**
  * Top-level validation configuration for the GenUI generation pipeline.
  *
@@ -12,22 +14,12 @@ package com.huawei.cloudsop.genui.core.validation;
  *   GenUiValidationConfig cfg = GenUiValidationConfig.streamingGateWithReask();
  * </pre>
  */
-public final class GenUiValidationConfig {
+public record GenUiValidationConfig(
+    ValidationConfigMode validationMode, RepairPolicyKind repairPolicy) {
 
-  private final ValidationConfigMode validationMode;
-  private final RepairPolicyKind repairPolicy;
-
-  private GenUiValidationConfig(ValidationConfigMode validationMode, RepairPolicyKind repairPolicy) {
-    this.validationMode = validationMode;
-    this.repairPolicy = repairPolicy;
-  }
-
-  public ValidationConfigMode validationMode() {
-    return validationMode;
-  }
-
-  public RepairPolicyKind repairPolicy() {
-    return repairPolicy;
+  public GenUiValidationConfig {
+    Objects.requireNonNull(validationMode, "validationMode");
+    Objects.requireNonNull(repairPolicy, "repairPolicy");
   }
 
   // -----------------------------------------------------------------------

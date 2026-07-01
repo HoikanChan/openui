@@ -3,6 +3,7 @@ package com.huawei.cloudsop.genui.core.validation;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -75,6 +76,8 @@ public record ValidationRequest(
     }
 
     public ValidationRequest build() {
+      Objects.requireNonNull(dsl, "dsl");
+      Objects.requireNonNull(mode, "mode");
       return new ValidationRequest(dsl, contract, rootName, externalRefs, mode, requestId);
     }
   }

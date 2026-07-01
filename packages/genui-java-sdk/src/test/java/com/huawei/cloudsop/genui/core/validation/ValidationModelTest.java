@@ -304,7 +304,6 @@ class ValidationModelTest {
             "hint text",
             false);
 
-    // Serialize to a plain Map so Json.stringify can handle it
     String json = com.alibaba.fastjson2.JSON.toJSONString(original);
     ValidationIssue deserialized = com.alibaba.fastjson2.JSON.parseObject(json, ValidationIssue.class);
 
