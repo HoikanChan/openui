@@ -74,6 +74,11 @@ public final class ProgramAnalyzer {
     // Fold parser syntax diagnostics into the issue list (mode-aware severity).
     foldParserDiagnostics(program, mode, incomplete, issues);
 
+    // Compute the id of the LAST statement in the pre-dedup ordered list (streaming partial tail).
+    // Streaming text only ever appends at the end, so every statement before the last is fully received.
+    List<Statement> rawStatements = program.statements();
+    String lastStatementId = rawStatements.isEmpty() ? null : rawStatements.get(rawStatements.size() - 1).id();
+
     if (stmtMap.isEmpty()) {
       // No statements at all → FINAL root-missing; STREAMING pending/partial.
       if (mode == ValidationMode.FINAL) {
@@ -103,7 +108,7 @@ public final class ProgramAnalyzer {
       unreached.add(id);
     }
 
-    WalkCtx ctx = new WalkCtx(syms, issues, mode, incomplete, externalRefs == null ? Set.of() : externalRefs);
+    WalkCtx ctx = new WalkCtx(syms, issues, mode, incomplete, externalRefs == null ? Set.of() : externalRefs, lastStatementId);
     ctx.unreached = unreached;
     ctx.currentStatementId = entryId;
 
@@ -151,7 +156,29 @@ public final class ProgramAnalyzer {
                 "may resolve as more of the stream arrives",
                 true));
       }
-      // A non-renderable root while streaming is a pending state, not a hard failure.
+      // Reviewer #2: a non-renderable root is only a "pending state" if the root's entry statement
+      // is the last (potentially still-partial) statement. If the entry statement is definitively
+      // complete (either the program is complete, or the entry id != lastStatementId), and the root
+      // still failed to resolve, emit a blocking root-not-renderable.
+      // This ensures `root = Bogus(...)` in a COMPLETE earlier statement stays blocking even when the
+      // program is marked incomplete due to a partial tail elsewhere.
+      if (!rootResolved) {
+        boolean entryIsLastStatement = entryId != null && entryId.equals(ctx.lastStatementId);
+        boolean entryIsDefinitivelyComplete = !incomplete || !entryIsLastStatement;
+        if (entryIsDefinitivelyComplete) {
+          // Check whether the non-renderability is due to definitive contract errors already emitted
+          // (unknown-component / inline-reserved) rather than purely transient issues. If any blocking
+          // (ERROR) issue is attributed to the entry statement, that is already sufficient signal.
+          // We additionally check: if the entry node itself is a Comp whose name is definitively bad,
+          // emit root-not-renderable so the stream gate can act on it.
+          boolean hasBlockingEntryIssue = issues.stream().anyMatch(iss ->
+              iss.severity() == ValidationSeverity.ERROR
+              && entryId.equals(iss.statementId()));
+          if (hasBlockingEntryIssue) {
+            emitRootNotRenderable(issues, entryId, materialized);
+          }
+        }
+      }
     }
 
     return new ProgramAnalysis(
@@ -214,6 +241,14 @@ public final class ProgramAnalyzer {
     final ValidationMode mode;
     final boolean incomplete;
     final Set<String> externalRefs;
+    /**
+     * The id of the LAST statement in {@code program.statements()} (pre-dedup, source order).
+     * {@code null} when the program has no statements. Used for per-statement completeness: in
+     * STREAMING mode, only the last statement may be partially received; all earlier statements are
+     * fully received and their errors are definitive.
+     */
+    final String lastStatementId;
+
     final List<String> unresolved = new ArrayList<>();
     final Set<String> visited = new HashSet<>();
     Set<String> unreached;
@@ -224,12 +259,14 @@ public final class ProgramAnalyzer {
         List<ValidationIssue> issues,
         ValidationMode mode,
         boolean incomplete,
-        Set<String> externalRefs) {
+        Set<String> externalRefs,
+        String lastStatementId) {
       this.syms = syms;
       this.issues = issues;
       this.mode = mode;
       this.incomplete = incomplete;
       this.externalRefs = externalRefs;
+      this.lastStatementId = lastStatementId;
     }
   }
 
@@ -280,32 +317,33 @@ public final class ProgramAnalyzer {
     }
 
     if (Builtins.isReservedCall(name)) {
-      // Inline Query/Mutation used as a value → error.
+      // Inline Query/Mutation used as a value → definitively invalid; always blocking.
       emit(
           ctx,
           "inline-reserved",
-          ValidationSeverity.ERROR,
+          contractSeverity(ctx, "inline-reserved"),
           "contract",
           name,
           "",
           name + "() must be declared as a top-level statement, not used inline as a value",
           ctx.currentStatementId,
-          contractRetryable(ctx));
+          contractRetryable(ctx, "inline-reserved"));
       return null;
     }
 
     ComponentDef def = catalog.get(name);
     if (def == null) {
+      // unknown-component: definitively invalid (name fully received); always blocking in streaming.
       emit(
           ctx,
           "unknown-component",
-          contractSeverity(ctx),
+          contractSeverity(ctx, "unknown-component"),
           "contract",
           name,
           "",
           "Unknown component \"" + name + "\" — not found in catalog or builtins",
           ctx.currentStatementId,
-          contractRetryable(ctx));
+          contractRetryable(ctx, "unknown-component"));
       // Still walk args so nested unresolved refs / unknown components are reported.
       for (AstNode a : comp.args()) walkExpr(a, ctx);
       return null;
@@ -317,8 +355,10 @@ public final class ProgramAnalyzer {
       argValues.add(materializeValue(a, ctx));
     }
 
+    // For the remaining contract checks (missing-required, null-required, excess-args, invalid-prop)
+    // use a generic non-definitive code for the per-statement severity computation.
     ComponentContractValidator validator =
-        new ComponentContractValidator(contractSeverity(ctx), contractRetryable(ctx), ctx.issues);
+        new ComponentContractValidator(contractSeverity(ctx, "missing-required"), contractRetryable(ctx, "missing-required"), ctx.issues);
     boolean renderable = validator.validate(name, def, argValues, ctx.currentStatementId);
     if (!renderable) return null; // missing/null required → dropped (TS returns null)
     return new ElementValue(name);
@@ -404,15 +444,60 @@ public final class ProgramAnalyzer {
   // Mode-aware severity for contract errors.
   // ───────────────────────────────────────────────────────────────────────────
 
-  private ValidationSeverity contractSeverity(WalkCtx ctx) {
-    // FINAL: always blocking. STREAMING: blocking only for definitively complete programs;
-    // a still-streaming (incomplete) program's contract errors are transient/non-blocking.
+  /**
+   * Returns the severity for a contract issue on the current statement ({@code
+   * ctx.currentStatementId}).
+   *
+   * <p>FINAL mode: always ERROR. STREAMING mode with per-statement completeness:
+   *
+   * <ul>
+   *   <li>If the program is complete ({@code incomplete==false}): all contract errors are ERROR.
+   *   <li>If the program is still streaming ({@code incomplete==true}):
+   *       <ul>
+   *         <li>{@code unknown-component} and {@code inline-reserved}: always ERROR. These fire only
+   *             on a fully-parsed component name and can NEVER become valid by appending more tokens.
+   *         <li>All other contract codes: ERROR only for statements that are FULLY received (i.e.,
+   *             NOT the last statement in the pre-dedup source order). The last statement may still be
+   *             partially received, so its errors are transient → WARNING.
+   *       </ul>
+   * </ul>
+   *
+   * @param code the contract error code about to be emitted (e.g. "unknown-component")
+   */
+  private ValidationSeverity contractSeverity(WalkCtx ctx, String code) {
     if (ctx.mode == ValidationMode.FINAL) return ValidationSeverity.ERROR;
-    return ctx.incomplete ? ValidationSeverity.WARNING : ValidationSeverity.ERROR;
+    if (!ctx.incomplete) return ValidationSeverity.ERROR;
+    // Streaming + incomplete: definitively-invalid codes are always blocking.
+    if (isDefinitiveContractCode(code)) return ValidationSeverity.ERROR;
+    // Other codes: blocking only for fully-received (non-tail) statements.
+    boolean isLastStatement = ctx.currentStatementId != null
+        && ctx.currentStatementId.equals(ctx.lastStatementId);
+    return isLastStatement ? ValidationSeverity.WARNING : ValidationSeverity.ERROR;
   }
 
-  private boolean contractRetryable(WalkCtx ctx) {
-    return ctx.mode == ValidationMode.STREAMING && ctx.incomplete;
+  /**
+   * Returns whether a contract error is retryable for the current statement in streaming mode.
+   *
+   * <p>Retryable is the inverse of blocking: FINAL never retryable; STREAMING retryable only when
+   * the issue is transient (non-definitive code on the last/partial statement).
+   *
+   * @param code the contract error code about to be emitted
+   */
+  private boolean contractRetryable(WalkCtx ctx, String code) {
+    if (ctx.mode != ValidationMode.STREAMING || !ctx.incomplete) return false;
+    if (isDefinitiveContractCode(code)) return false;
+    boolean isLastStatement = ctx.currentStatementId != null
+        && ctx.currentStatementId.equals(ctx.lastStatementId);
+    return isLastStatement;
+  }
+
+  /**
+   * Returns {@code true} for contract codes that are ALWAYS definitive — i.e., they fire on a
+   * component name that is already fully received and cannot be extended into validity by more
+   * streaming tokens. These remain blocking even when the program is incomplete.
+   */
+  private static boolean isDefinitiveContractCode(String code) {
+    return "unknown-component".equals(code) || "inline-reserved".equals(code);
   }
 
   // ───────────────────────────────────────────────────────────────────────────

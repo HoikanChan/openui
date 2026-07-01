@@ -228,4 +228,83 @@ class SemanticValidationTest {
     assertTrue(a.rootResolved());
     assertEquals("root", a.entryId());
   }
+
+  // ── Streaming blocking classification (per-statement completeness) ─────────
+
+  /**
+   * When a COMPLETE statement earlier in the stream has a definitively-invalid error
+   * (unknown-component) and the LAST statement is an incomplete tail, the earlier statement's error
+   * must remain ERROR (blocking). Only the tail statement's non-definitive errors are tolerated.
+   *
+   * <p>DSL: {@code root = Bogus("x")\nheader = Header(} — "root" is fully received (not the last
+   * statement); "header" is the last (partially received) tail making the program incomplete.
+   * The unknown-component on "root" must be ERROR.
+   */
+  @Test
+  void streamingCompleteInvalidStatementBeforeIncompleteTailStaysBlocking() {
+    // "root" is the first statement (fully received, NOT the last).
+    // "header" is the second/last statement and is incomplete (unclosed paren → program.incomplete).
+    String dsl = "root = Bogus(\"x\")\nheader = Header(";
+    Program program = OpenuiParser.parse(dsl, ParseMode.STREAMING);
+    assertTrue(program.incomplete(), "program must be incomplete for this test to exercise the path");
+
+    ProgramAnalysis a = new ProgramAnalyzer(catalog()).analyze(program, ValidationMode.STREAMING);
+
+    ValidationIssue unknownComp = issue(a, "unknown-component");
+    assertNotNull(unknownComp, "expected unknown-component issue on earlier complete statement");
+    assertEquals("root", unknownComp.statementId());
+    assertEquals("Bogus", unknownComp.component());
+    assertEquals(ValidationSeverity.ERROR, unknownComp.severity(),
+        "complete earlier statement's unknown-component must stay blocking (ERROR)");
+    assertFalse(unknownComp.retryable(), "blocking issue must not be retryable");
+  }
+
+  /**
+   * {@code unknown-component} is always blocking even when it appears on the LAST (potentially
+   * partial) statement, because the component name is already fully received and cannot become valid
+   * by appending more tokens.
+   *
+   * <p>DSL: {@code root = Bogus("x"} — single statement, incomplete (unclosed paren), but the name
+   * "Bogus" is definitively unknown. Must remain ERROR.
+   */
+  @Test
+  void streamingUnknownComponentAlwaysBlockingEvenOnLastStatement() {
+    String dsl = "root = Bogus(\"x\"";
+    Program program = OpenuiParser.parse(dsl, ParseMode.STREAMING);
+    assertTrue(program.incomplete(), "program must be incomplete for this test");
+
+    ProgramAnalysis a = new ProgramAnalyzer(catalog()).analyze(program, ValidationMode.STREAMING);
+
+    ValidationIssue unknownComp = issue(a, "unknown-component");
+    assertNotNull(unknownComp, "expected unknown-component issue");
+    assertEquals("Bogus", unknownComp.component());
+    assertEquals(ValidationSeverity.ERROR, unknownComp.severity(),
+        "unknown-component must be blocking (ERROR) even on the last/partial statement");
+    assertFalse(unknownComp.retryable(), "unknown-component is never retryable");
+  }
+
+  /**
+   * A known component on the last (partially received) statement that is still missing a required
+   * prop — while the program is incomplete — should be downgraded to a WARNING (retryable). The
+   * required arg may still arrive as more tokens stream in.
+   *
+   * <p>DSL: {@code root = Header(} — "Header" is known but "title" is missing. The statement is
+   * the last and the program is incomplete → should be WARNING/retryable, not ERROR.
+   */
+  @Test
+  void streamingTailMissingRequiredIsTolerated() {
+    String dsl = "root = Header(";
+    Program program = OpenuiParser.parse(dsl, ParseMode.STREAMING);
+    assertTrue(program.incomplete(), "program must be incomplete for this test");
+
+    ProgramAnalysis a = new ProgramAnalyzer(catalog()).analyze(program, ValidationMode.STREAMING);
+
+    ValidationIssue missingReq = issue(a, "missing-required");
+    assertNotNull(missingReq, "expected missing-required issue on tail statement");
+    assertEquals("Header", missingReq.component());
+    assertEquals("/title", missingReq.path());
+    assertEquals(ValidationSeverity.WARNING, missingReq.severity(),
+        "tail statement missing-required must be tolerated (WARNING) while streaming");
+    assertTrue(missingReq.retryable(), "tail missing-required must be retryable");
+  }
 }
