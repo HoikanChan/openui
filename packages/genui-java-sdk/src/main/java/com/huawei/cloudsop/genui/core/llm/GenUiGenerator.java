@@ -2,8 +2,10 @@ package com.huawei.cloudsop.genui.core.llm;
 
 import com.huawei.cloudsop.genui.core.GenerationSdk;
 import com.huawei.cloudsop.genui.core.GenerationSdkException;
+import com.huawei.cloudsop.genui.core.GenerationValidationException;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
+import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.llm.extract.OpenuiCodeExtractor;
 import com.huawei.cloudsop.genui.core.llm.protocol.ChatCompletionRequest;
@@ -16,22 +18,46 @@ import com.huawei.cloudsop.genui.core.llm.transport.RestfulLlmTransport;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig;
+import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
+import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
+import com.huawei.cloudsop.genui.core.validation.OpenuiLangValidator;
+import com.huawei.cloudsop.genui.core.validation.RepairPolicyKind;
+import com.huawei.cloudsop.genui.core.validation.ValidationConfigMode;
+import com.huawei.cloudsop.genui.core.validation.ValidationMode;
+import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
+import com.huawei.cloudsop.genui.core.validation.ValidationResult;
+import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public final class GenUiGenerator {
   private final GenerationSdk sdk;
   private final GenUiLlmConfig config;
   private final LlmTransport transport;
+  private final GenUiValidationConfig validationConfig;
+  private final OpenuiLangValidator validator;
 
-  private GenUiGenerator(GenerationSdk sdk, GenUiLlmConfig config, LlmTransport transport) {
+  private GenUiGenerator(
+      GenerationSdk sdk,
+      GenUiLlmConfig config,
+      LlmTransport transport,
+      GenUiValidationConfig validationConfig,
+      OpenuiLangValidator validator) {
     this.sdk = Objects.requireNonNull(sdk, "sdk must not be null");
     this.config = config == null ? GenUiLlmConfig.defaults() : config;
     this.transport = Objects.requireNonNull(transport, "transport must not be null");
+    this.validationConfig = validationConfig == null ? GenUiValidationConfig.finalOnly() : validationConfig;
+    this.validator = validator == null ? new DefaultOpenuiLangValidator() : validator;
+  }
+
+  /** Backwards-compatible private constructor (no validation config). */
+  private GenUiGenerator(GenerationSdk sdk, GenUiLlmConfig config, LlmTransport transport) {
+    this(sdk, config, transport, null, null);
   }
 
   public static GenUiGenerator create() {
@@ -68,6 +94,21 @@ public final class GenUiGenerator {
     return new GenUiGenerator(sdk, config, transport);
   }
 
+  /**
+   * Create a generator backed by a fake/test transport, a custom validation config, and an optional
+   * custom validator. If {@code validationConfig} is null, defaults to {@link
+   * GenUiValidationConfig#finalOnly()}. If {@code validator} is null, defaults to
+   * {@link DefaultOpenuiLangValidator}.
+   */
+  public static GenUiGenerator withTransport(
+      GenUiLlmConfig config,
+      LlmTransport transport,
+      GenUiValidationConfig validationConfig,
+      OpenuiLangValidator validator) {
+    return new GenUiGenerator(
+        GenerationSdk.create(), config, transport, validationConfig, validator);
+  }
+
   public GenUiGenerator register(GenUIExtension extension) {
     sdk.register(extension);
     return this;
@@ -81,10 +122,50 @@ public final class GenUiGenerator {
       String response = transport.post(body);
       String content = ChatCompletionResponse.parse(response).firstContent();
       String extracted = OpenuiCodeExtractor.extract(content);
+
+      // ── FINAL validation gate ─────────────────────────────────────────────
+      if (validationConfig.validationMode() != ValidationConfigMode.DISABLED) {
+        GenUIPromptRequest promptRequest = toPromptRequest(effectiveRequest);
+        GenerationContract merged = sdk.mergedContract(promptRequest);
+
+        ValidationRequest validationRequest = ValidationRequest.builder()
+            .dsl(extracted)
+            .contract(merged)
+            .rootName(merged.root())
+            .mode(ValidationMode.FINAL)
+            .build();
+
+        ValidationResult validationResult = validator.validate(validationRequest);
+
+        if (validationResult.status() == ValidationStatus.INVALID) {
+          if (validationConfig.repairPolicy() == RepairPolicyKind.NONE
+              || validationConfig.repairPolicy() == RepairPolicyKind.FINAL_REPAIR) {
+            // TODO(Section 7): insert FINAL_REPAIR logic here when repair is implemented.
+            // For now FINAL_REPAIR is treated the same as NONE — throw immediately.
+            String summary = buildIssueSummary(validationResult);
+            throw new GenerationValidationException(
+                "Generated DSL failed validation: " + summary, validationResult);
+          }
+        }
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
       return new GenUiGenerationResult(extracted, effectiveRequest.response());
+    } catch (GenerationValidationException e) {
+      // Re-throw directly — do not wrap in a generic GenerationSdkException.
+      throw e;
     } catch (LlmTransportException error) {
       throw new GenerationSdkException("Failed to invoke LLM: " + error.getMessage(), error);
     }
+  }
+
+  /** Summarize the first few blocking issues for the exception message. */
+  private static String buildIssueSummary(ValidationResult result) {
+    return result.issues().stream()
+        .filter(i -> i.severity() == com.huawei.cloudsop.genui.core.validation.ValidationSeverity.ERROR)
+        .limit(3)
+        .map(i -> "[" + i.code() + "] " + i.message())
+        .collect(Collectors.joining("; "));
   }
 
   /**

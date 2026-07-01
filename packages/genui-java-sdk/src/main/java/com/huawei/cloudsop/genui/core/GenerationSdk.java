@@ -80,9 +80,68 @@ public final class GenerationSdk {
     generations.put(generation.extensionId(), generation);
   }
 
+  /**
+   * Returns the merged {@link GenerationContract} that would be used for a given prompt request.
+   *
+   * <p>This is the same merge that {@link #assemblePrompt(GenUIPromptRequest)} performs (base +
+   * registered extension for the request's {@code extensionId}), exposed so callers such as the
+   * validator can obtain the SAME contract the LLM was prompted with — ensuring component names and
+   * props match exactly what the model was told.
+   */
+  public GenerationContract mergedContract(GenUIPromptRequest request) {
+    GenUIPromptRequest effectiveRequest =
+        request == null ? new GenUIPromptRequest(null, null, List.of(), null, null, null, null) : request;
+    MergedParts parts = merge(effectiveRequest);
+    return new GenerationContract(
+        baseContract.contractVersion(),
+        baseContract.root(),
+        parts.components(),
+        parts.componentGroups(),
+        parts.tools(),
+        parts.examples(),
+        parts.additionalRules(),
+        baseContract.builtins());
+  }
+
   public GenUIPromptAssemblyResult assemblePrompt(GenUIPromptRequest request) {
     GenUIPromptRequest effectiveRequest =
         request == null ? new GenUIPromptRequest(null, null, List.of(), null, null, null, null) : request;
+    MergedParts parts = merge(effectiveRequest);
+    Set<String> registeredToolNames = toolNames(parts.tools());
+
+    String prompt =
+        PromptAssembler.assemble(
+            new PromptAssembler.PromptInput(
+                null, // preamble — the SDK always uses the default openui-lang preamble
+                baseContract.root(),
+                parts.components(),
+                parts.componentGroups(),
+                characterize(effectiveRequest.dataModel()),
+                parts.tools(),
+                parts.examples(),
+                parts.additionalRules(),
+                effectiveRequest.editMode(),
+                effectiveRequest.inlineMode(),
+                effectiveRequest.toolCalls(),
+                effectiveRequest.bindings()),
+            baseContract.builtins());
+
+    GenUIExtension generation =
+        effectiveRequest.extensionId() == null ? null : generations.get(effectiveRequest.extensionId());
+    GenUIPromptAssemblyMetadata metadata =
+        new GenUIPromptAssemblyMetadata(
+            effectiveRequest.extensionId(),
+            baseContract.contractVersion(),
+            generation == null ? null : generation.version(),
+            new ArrayList<>(registeredToolNames));
+    return new GenUIPromptAssemblyResult(prompt, metadata);
+  }
+
+  /**
+   * Shared merge helper: base + registered extension components/groups/tools/examples/rules.
+   * Used by both {@link #assemblePrompt} and {@link #mergedContract} so the two never drift.
+   */
+  private MergedParts merge(GenUIPromptRequest effectiveRequest) {
     GenUIExtension generation =
         effectiveRequest.extensionId() == null ? null : generations.get(effectiveRequest.extensionId());
 
@@ -96,7 +155,6 @@ public final class GenerationSdk {
 
     ArrayList<ToolSpec> registeredTools = new ArrayList<>(baseContract.tools());
     if (generation != null) registeredTools.addAll(generation.tools());
-    Set<String> registeredToolNames = toolNames(registeredTools);
 
     ArrayList<String> examples = new ArrayList<>(baseContract.examples());
     if (generation != null) examples.addAll(generation.examples());
@@ -105,31 +163,16 @@ public final class GenerationSdk {
     if (generation != null) additionalRules.addAll(generation.additionalRules());
     additionalRules.addAll(effectiveRequest.extraRules());
 
-    String prompt =
-        PromptAssembler.assemble(
-            new PromptAssembler.PromptInput(
-                null, // preamble — the SDK always uses the default openui-lang preamble
-                baseContract.root(),
-                components,
-                componentGroups,
-                characterize(effectiveRequest.dataModel()),
-                registeredTools,
-                examples,
-                additionalRules,
-                effectiveRequest.editMode(),
-                effectiveRequest.inlineMode(),
-                effectiveRequest.toolCalls(),
-                effectiveRequest.bindings()),
-            baseContract.builtins());
-
-    GenUIPromptAssemblyMetadata metadata =
-        new GenUIPromptAssemblyMetadata(
-            effectiveRequest.extensionId(),
-            baseContract.contractVersion(),
-            generation == null ? null : generation.version(),
-            new ArrayList<>(registeredToolNames));
-    return new GenUIPromptAssemblyResult(prompt, metadata);
+    return new MergedParts(components, componentGroups, registeredTools, examples, additionalRules);
   }
+
+  /** Value object carrying the merged contract parts from {@link #merge}. */
+  private record MergedParts(
+      LinkedHashMap<String, ComponentPromptSpec> components,
+      ArrayList<ComponentGroup> componentGroups,
+      ArrayList<ToolSpec> tools,
+      ArrayList<String> examples,
+      ArrayList<String> additionalRules) {}
 
   /**
    * Characterizes the prompt copy of the data model for the convergence point in {@link
