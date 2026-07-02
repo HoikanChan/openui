@@ -6,8 +6,9 @@ info:
     GenUI Service —— Java Generation SDK 的 REST 参考实现(SmartCanvasService 契约)。
 
     - generations / prompts 端点由 swagger-codegen 生成接口,手写 Controller 实现。
-    - /generate 为手写流式实现(text/plain chunked),本文档中仅作契约声明;
-      codegen 生成的接口签名无法表达流式,故该接口不被实现。
+    - /generate 为手写流式实现(text/event-stream, Server-Sent Events),本文档中仅作契约声明;
+      codegen 生成的接口签名无法表达流式,故该接口不被实现。每个 SSE `data:` 行是一个 JSON
+      RenderStreamEnvelope 帧(dataModel/dsl/error/done)。
 basePath: /v1
 # 不设全局 consumes:codegen 会把它刻进 GET 映射,导致无 Content-Type 的 GET 请求 415
 schemes:
@@ -108,16 +109,25 @@ paths:
       tags:
         - generation
       operationId: generate
-      summary: 生成 openui-lang(流式)
+      summary: 生成 openui-lang(SSE 流式,SDK 校验门包络)
       description: |
-        以 text/plain chunked 流式返回 LLM 生成的 openui-lang 文本。
-        手写实现,不经 codegen。
-        流开始前失败返回 502 JSON;流中途失败或 finish_reason 非 stop 时,
-        在流尾追加 "[ERROR: ...]" 文本后正常关闭。
+        以 Server-Sent Events(text/event-stream)流式返回 SDK 校验门包络帧。手写实现,不经 codegen。
+
+        每个 SSE `data:` 行是一个 JSON RenderStreamEnvelope {type, seq, content}:
+        - `dataModel`(seq=0):首帧,回显请求的 dataModel(content 为 JSON 对象)。
+        - `dsl`(seq 递增):经 SDK 校验门放行、可安全渲染的 openui-lang 内容(一条完整语句,
+          content 为字符串);**不是** LLM 原始增量,未通过校验门的语句永不出现在此帧。
+        - `error`:SDK 判定无法产出可信 DSL(content 为 {code, message, retryable})。
+          code=VALIDATION_FAILED 表示某完整语句被校验门 withhold(retryable=false);
+          code=LLM_STREAM_FAILED 表示流中途失败或 finish_reason 非 stop(retryable=true)。
+        - `done`:流结束(无 content 字段),仅表示 SSE 结束,不承载业务成功语义。
+
+        错误边界:拼装/连接在响应体开始前失败仍返回 JSON(400/404/502),任何 SSE 帧都在
+        LLM 连接成功之后;流中途或 finish_reason 非 stop 改为发 error 帧(取代旧的 "[ERROR: ...]" 文本尾巴)。
       consumes:
         - application/json
       produces:
-        - text/plain
+        - text/event-stream
       parameters:
         - name: body
           in: body
@@ -126,9 +136,11 @@ paths:
             $ref: "#/definitions/GenerateRequest"
       responses:
         200:
-          description: openui-lang 文本流(chunked)
+          description: |
+            RenderStreamEnvelope 帧的 SSE 流(text/event-stream)。每行 `data: <json>`,
+            帧类型见 RenderStreamEnvelope 定义;首帧 dataModel(seq=0),末帧 done。
           schema:
-            type: string
+            $ref: "#/definitions/RenderStreamEnvelope"
         400:
           description: prompt 为空等非法输入
           schema:
@@ -355,6 +367,46 @@ definitions:
         description: |
           Prompt Override(debug-only):有值时整段替换 SDK 拼装产物,绕过 Generation。
           仅供调试实验,生产调用方不应使用。与请求级 extraRules(仅追加)语义严格区分。
+
+  StreamEnvelopeError:
+    type: object
+    description: error 帧的 content
+    properties:
+      code:
+        type: string
+        description: VALIDATION_FAILED(语句被校验门 withhold)| LLM_STREAM_FAILED(流中途失败/截断)
+      message:
+        type: string
+      retryable:
+        type: boolean
+
+  RenderStreamEnvelope:
+    type: object
+    description: |
+      /generate SSE 流的单帧,序列化为一行 `data: <json>`。content 的 JSON 类型由 type 决定:
+      dataModel→对象;dsl→字符串;error→StreamEnvelopeError;done→省略 content。
+    required:
+      - type
+      - seq
+    properties:
+      type:
+        type: string
+        description: dataModel | dsl | error | done
+        enum:
+          - dataModel
+          - dsl
+          - error
+          - done
+      seq:
+        type: integer
+        format: int32
+        description: 帧序号,首帧 dataModel 为 0,其后单调递增
+      content:
+        type: object
+        description: |
+          按 type 变化的载荷:dataModel 为原始数据模型对象;dsl 为已放行的 openui-lang 字符串;
+          error 为 StreamEnvelopeError;done 无此字段。
+        additionalProperties: true
 
   ErrorResponse:
     type: object
