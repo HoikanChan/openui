@@ -75,6 +75,6 @@
 
 - [x] 10.1 更新 `packages/genui-java-sdk/README.md`，说明 Generated DSL Validation、stream gate、repair 配置和调用示例
 - [x] 10.2 更新迁移说明，指导服务调用方从裸 LLM delta 迁移到 SDK accepted DSL chunk，并说明 validation/repair 状态默认不进入公开 stream
-- [ ] 10.3 运行 `mvn test` 覆盖 Java SDK 新旧测试
-- [ ] 10.4 运行相关 TypeScript parser/oracle 测试，确认 fixture 生成和 parity 数据稳定
+- [x] 10.3 运行 `mvn test` 覆盖 Java SDK 新旧测试
+- [x] 10.4 运行相关 TypeScript parser/oracle 测试，确认 fixture 生成和 parity 数据稳定
 - [x] 10.5 记录回滚方式：切换到 `GenUiValidationConfig.disabled()`、`finalOnly()` 或恢复裸 delta streaming
