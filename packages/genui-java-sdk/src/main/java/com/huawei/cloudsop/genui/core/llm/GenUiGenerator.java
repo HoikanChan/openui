@@ -23,14 +23,18 @@ import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 import com.huawei.cloudsop.genui.core.validation.OpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.RepairPolicyKind;
 import com.huawei.cloudsop.genui.core.validation.ValidationConfigMode;
+import com.huawei.cloudsop.genui.core.validation.ValidationMetadata;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
+import com.huawei.cloudsop.genui.core.validation.repair.RepairCoordinator;
+import com.huawei.cloudsop.genui.core.validation.repair.RepairPolicy;
 import com.huawei.cloudsop.genui.core.validation.stream.GateDecision;
 import com.huawei.cloudsop.genui.core.validation.stream.StreamingValidationSession;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -140,10 +144,31 @@ public final class GenUiGenerator {
         ValidationResult validationResult = validator.validate(validationRequest);
 
         if (validationResult.status() == ValidationStatus.INVALID) {
-          // TODO(Section 7): if repairPolicy == FINAL_REPAIR, attempt sync repair here; re-validate;
-          // only throw if still INVALID.
-          // FAIL_FAST_REASK is streaming-only and cannot execute in sync; NONE never repairs.
-          // All INVALID -> throw.
+          // Section 7: FINAL_REPAIR attempts sync whole-DSL repair before throwing; each attempt is
+          // re-validated in FINAL mode. FAIL_FAST_REASK is streaming-only (cannot run in sync) and
+          // NONE never repairs — both fall through to the throw below.
+          RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
+          if (policy.kind() == RepairPolicyKind.FINAL_REPAIR) {
+            RepairCoordinator.FullRepairOutcome outcome =
+                repairCoordinator(policy)
+                    .repairFull(
+                        userMessage(effectiveRequest),
+                        extracted,
+                        validationResult,
+                        merged,
+                        merged.root());
+            if (outcome.repaired()) {
+              return new GenUiGenerationResult(
+                  outcome.dsl(),
+                  effectiveRequest.response(),
+                  ValidationStatus.VALID,
+                  markRepaired(outcome.result()));
+            }
+            // Exhausted / still invalid / timeout / transport error → throw with the last result.
+            ValidationResult last = outcome.result() == null ? validationResult : outcome.result();
+            throw new GenerationValidationException(
+                "Generated DSL failed validation after repair: " + buildIssueSummary(last), last);
+          }
           String summary = buildIssueSummary(validationResult);
           throw new GenerationValidationException(
               "Generated DSL failed validation: " + summary, validationResult);
@@ -161,6 +186,35 @@ public final class GenUiGenerator {
     } catch (LlmTransportException error) {
       throw new GenerationSdkException("Failed to invoke LLM: " + error.getMessage(), error);
     }
+  }
+
+  /** Build a repair coordinator bound to this generator's transport/validator + a policy. */
+  private RepairCoordinator repairCoordinator(RepairPolicy policy) {
+    return new RepairCoordinator(transport, validator, policy)
+        .withBodyBuilder(this::buildBodyFromMessages);
+  }
+
+  /** Serialize repair chat messages into a transport body, reusing the generation request shape. */
+  private String buildBodyFromMessages(List<ChatMessage> messages, boolean stream) {
+    return ChatCompletionRequest.of(config, null, messages, stream).toJson();
+  }
+
+  /** Tag a repaired result's metadata with {@code repaired=true} for service-layer logging. */
+  private static ValidationResult markRepaired(ValidationResult result) {
+    if (result == null) {
+      return null;
+    }
+    ValidationMetadata meta = result.metadata();
+    LinkedHashMap<String, String> extra =
+        new LinkedHashMap<>(meta == null || meta.extra() == null ? Map.of() : meta.extra());
+    extra.put("repaired", "true");
+    ValidationMetadata newMeta =
+        new ValidationMetadata(
+            meta == null ? 0 : meta.statementCount(),
+            meta == null ? null : meta.rootName(),
+            meta == null ? ValidationMode.FINAL : meta.mode(),
+            extra);
+    return ValidationResult.valid(result.normalizedDsl(), result.issues(), newMeta);
   }
 
   /** Summarize the first few blocking issues for the exception message. */
@@ -250,29 +304,28 @@ public final class GenUiGenerator {
     GenerationContract merged = sdk.mergedContract(toPromptRequest(effectiveRequest));
     StreamingValidationSession session =
         new StreamingValidationSession(validator, merged, merged.root());
-    boolean[] failed = {false};
+    RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
 
     String body = buildRequestBody(effectiveRequest, true);
     try (InputStream stream = transport.postStream(body)) {
-      SseDeltaParser.parse(
-          stream,
-          delta -> {
-            if (failed[0]) {
-              return; // already failed fast; ignore trailing deltas
-            }
-            if (applyDecisions(session.onDelta(delta), session, sink, nextSeq)) {
-              failed[0] = true;
-            }
-          });
+      boolean withheld = consumeGatedStream(stream, session, sink, nextSeq, true);
 
-      if (!failed[0]) {
-        if (applyDecisions(session.onEnd(), session, sink, nextSeq)) {
-          failed[0] = true;
+      if (withheld) {
+        // Section 7 Fail-Fast Reask: cancel-then-reask when policy is FAIL_FAST_REASK; otherwise the
+        // withheld statement is terminal (error -> done, INVALID). Reask reuses the SAME session/gate
+        // continuing from the accepted prefix; only accepted repaired DSL is emitted. seq is shared.
+        if (policy.kind() == RepairPolicyKind.FAIL_FAST_REASK
+            && failFastReask(effectiveRequest, merged, session, sink, nextSeq, policy)) {
+          // Reask succeeded: continuation emitted accepted DSL and closed cleanly via onEnd().
+          sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
+          return new GenUiGenerationResult(
+              session.acceptedDsl(), dataModel, ValidationStatus.VALID,
+              session.latestValidationResult());
         }
-      }
-
-      if (failed[0]) {
-        // Fail path already emitted the error frame; just close.
+        // Terminal failure (no reask, or reask exhausted/failed): emit error -> done, INVALID.
+        sink.accept(
+            RenderStreamEnvelope.error(
+                nextSeq[0]++, "VALIDATION_FAILED", withheldMessage(session), false));
         sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
         return new GenUiGenerationResult(
             session.acceptedDsl(), dataModel, ValidationStatus.INVALID, session.withheldResult());
@@ -293,17 +346,96 @@ public final class GenUiGenerator {
   }
 
   /**
-   * Apply gate decisions to the sink. Forwards EMIT decisions as {@code dsl} envelopes; on a
-   * WITHHOLD/FAIL (definitively invalid) emits {@code error("VALIDATION_FAILED")} and returns {@code
-   * true} to signal the stream must stop. BUFFER decisions are held inside the session (no frame).
+   * Drive one stream through the gate/session. Consumption STOPS at the first withheld statement
+   * (fail-fast): the original stream is not read past that point (a {@link StopStreamSignal} unwinds
+   * the SSE parser). EMIT decisions are forwarded as {@code dsl} envelopes; BUFFER stays internal.
+   * No {@code error}/{@code done} frames are emitted here — the caller decides terminal vs reask.
+   *
+   * @param runOnEnd whether to flush buffered statements via {@link StreamingValidationSession#onEnd}
+   *     at clean end-of-stream (the reask continuation runs onEnd via its own driver call).
+   * @return {@code true} if a statement was withheld (fail-fast), {@code false} on a clean end.
+   */
+  private boolean consumeGatedStream(
+      InputStream stream,
+      StreamingValidationSession session,
+      Consumer<RenderStreamEnvelope> sink,
+      int[] nextSeq,
+      boolean runOnEnd)
+      throws IOException {
+    try {
+      SseDeltaParser.parse(
+          stream,
+          delta -> {
+            if (applyDecisions(session.onDelta(delta), sink, nextSeq)) {
+              throw new StopStreamSignal(); // withheld — stop reading the original stream now
+            }
+          });
+    } catch (StopStreamSignal stop) {
+      return true;
+    }
+    if (runOnEnd && applyDecisions(session.onEnd(), sink, nextSeq)) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Fail-Fast Reask (design Decision #6). Cancel-then-reask: the original stream is already stopped.
+   * Reset the session to continue from its accepted prefix, then open ONE new continuation stream
+   * (bounded by {@link RepairPolicy#maxAttempts}) and feed it through the SAME gate. The bad
+   * statement text (original AND any reask-bad) never enters a {@code dsl} frame. Returns {@code
+   * true} only if a reask round completed cleanly (final DSL valid); {@code false} if every round
+   * still withheld / the stream failed / the attempt budget was exhausted.
+   */
+  private boolean failFastReask(
+      UiGenerationRequest effectiveRequest,
+      GenerationContract merged,
+      StreamingValidationSession session,
+      Consumer<RenderStreamEnvelope> sink,
+      int[] nextSeq,
+      RepairPolicy policy) {
+    RepairCoordinator coordinator = repairCoordinator(policy);
+    for (int attempt = 1; attempt <= policy.maxAttempts(); attempt++) {
+      String acceptedPrefix = session.acceptedDsl();
+      String invalidStatement = session.withheldStatement();
+      List<com.huawei.cloudsop.genui.core.validation.ValidationIssue> issues =
+          session.withheldResult() == null ? List.of() : session.withheldResult().issues();
+
+      // Prepare the session to continue from the accepted prefix on the fresh continuation stream.
+      session.resetForReask();
+
+      boolean clean =
+          coordinator.reaskStream(
+              userMessage(effectiveRequest),
+              acceptedPrefix,
+              invalidStatement,
+              issues,
+              merged,
+              newStream -> !consumeGatedStream(newStream, session, sink, nextSeq, true));
+      if (clean && !session.hasWithheld()) {
+        return true; // continuation produced only valid DSL
+      }
+      // else: reask still withheld a statement → loop for another attempt (if budget remains).
+    }
+    return false;
+  }
+
+  /** Control-flow signal to unwind the blocking SSE parser at a fail-fast withhold point. */
+  private static final class StopStreamSignal extends RuntimeException {
+    StopStreamSignal() {
+      super(null, null, false, false); // no message, no stack trace — pure control flow
+    }
+  }
+
+  /**
+   * Apply gate decisions to the sink. Forwards EMIT decisions as {@code dsl} envelopes; a
+   * WITHHOLD/FAIL (definitively invalid) returns {@code true} to signal the stream must stop — but
+   * emits NO frame (the caller chooses terminal error vs reask). BUFFER stays internal (no frame).
    *
    * @return {@code true} if a definitively-invalid statement was encountered (fail-fast)
    */
   private boolean applyDecisions(
-      List<GateDecision> decisions,
-      StreamingValidationSession session,
-      Consumer<RenderStreamEnvelope> sink,
-      int[] nextSeq) {
+      List<GateDecision> decisions, Consumer<RenderStreamEnvelope> sink, int[] nextSeq) {
     for (GateDecision decision : decisions) {
       switch (decision.kind()) {
         case EMIT ->
@@ -312,15 +444,7 @@ public final class GenUiGenerator {
           // held internally — no envelope until flushed
         }
         case WITHHOLD, FAIL -> {
-          // Section 7 seam: when validationConfig.repairPolicy() == FAIL_FAST_REASK, Section 7 will
-          // cancel the stream + reask here, feeding session.withheldResult() issues back to the LLM
-          // and resuming. For THIS task, FAIL_FAST_REASK behaves identically to the non-reask fail
-          // path (error -> done, validationStatus=INVALID).
-          // TODO(Section 7): cancel stream + reask here (only when repairPolicy == FAIL_FAST_REASK).
-          String message = withheldMessage(session);
-          sink.accept(
-              RenderStreamEnvelope.error(nextSeq[0]++, "VALIDATION_FAILED", message, false));
-          return true;
+          return true; // fail-fast trigger; caller decides terminal error vs reask
         }
         default -> {
           // no-op

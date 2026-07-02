@@ -230,4 +230,18 @@ public final class StreamingValidationSession {
   public List<String> bufferedStatements() {
     return List.copyOf(acceptedButBuffered);
   }
+
+  /**
+   * Prepare this session to continue from its accepted prefix on a Section 7 reask stream. Clears
+   * the fail-fast state ({@link #withheldStatement} / {@link #withheldResult}) and discards the
+   * abandoned original-stream tail from the boundary scanner, WITHOUT touching {@link
+   * #acceptedPrefix} or {@link #acceptedButBuffered}. After this the same instance can be driven by
+   * {@link #onDelta}/{@link #onEnd} over a fresh continuation stream, so accepted DSL and seq
+   * monotonicity carry across the takeover.
+   */
+  public void resetForReask() {
+    withheldStatement = null;
+    withheldResult = null;
+    scanner.reset();
+  }
 }

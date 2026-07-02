@@ -58,6 +58,16 @@ public final class StatementBoundaryScanner {
     return rawBuffer.toString();
   }
 
+  /**
+   * Discard all buffered raw input and surfaced-statement bookkeeping. Used by the Section 7 reask
+   * takeover: the original stream's partially-received (and now-abandoned) tail must not leak into
+   * the continuation stream's statement boundaries. The continuation's deltas start a fresh buffer.
+   */
+  public void reset() {
+    rawBuffer.setLength(0);
+    emittedCount = 0;
+  }
+
   private List<String> newlyComplete(boolean atEnd) {
     // Mid-stream: preprocess WITHOUT auto-close so an unclosed tail stays a single (still-pending)
     // statement and is not surfaced early. At end-of-stream: auto-close (STREAMING mode) so the
