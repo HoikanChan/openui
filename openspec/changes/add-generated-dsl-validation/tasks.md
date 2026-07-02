@@ -66,10 +66,10 @@
 ## 9. GenUI Service 与 REST 契约
 
 - [x] 9.1 更新 GenUI Service `/v1/generate` 流式实现，将 SDK gated `dataModel`、`dsl`、`error`、`done` 序列化为 SSE JSON
-- [x] 9.2 更新服务层缓存策略，只缓存 SDK completion result 为 `VALID` 或 `REPAIRED` 的最终 normalized DSL
+- [x] 9.2 更新服务层缓存策略，只缓存 SDK completion result 最终状态为 `VALID` 的 normalized DSL；repair 成功通过 `VALID` 加 metadata 表达
 - [x] 9.3 更新 Swagger 2.0 文档，描述 `dataModel`、SDK accepted `dsl`、`error`、`done` envelope schema
 - [x] 9.4 确认前端/demo stream parser 不需要消费 validation/repair/replace/commit/discard，仅按现有 `dsl` 和 `error` 行为处理
-- [x] 9.5 更新 GenUI Service 流式测试，覆盖 valid stream、repaired statement as `dsl`、unrecoverable validation `error -> done`、pre-stream 502 和 mid-stream structured error
+- [x] 9.5 更新 GenUI Service 流式测试，覆盖 valid stream、invalid statement withheld、unrecoverable validation `error -> done`、pre-stream 502 和 mid-stream structured error
 
 ## 10. 文档、验证与回滚
 

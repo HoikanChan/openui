@@ -13,7 +13,8 @@ import java.util.Map;
  * {@code UiGenerationRequest.response()} 的防御性不可变拷贝,请求未提供数据时为空 map。
  *
  * <p>{@code validationStatus} / {@code validationResult} 携带本次生成的最终校验状态与详情,供服务层
- * 做缓存决策(仅 VALID/REPAIRED 才缓存,见 design Section 9)与日志记录。校验被禁用
+ * 做缓存决策(仅最终 {@link ValidationStatus#VALID} 才缓存;repair 成功以 VALID 加
+ * metadata 标记表达,见 design Section 9)与日志记录。校验被禁用
  * ({@link com.huawei.cloudsop.genui.core.validation.ValidationConfigMode#DISABLED}) 时二者均为
  * {@code null}。
  */

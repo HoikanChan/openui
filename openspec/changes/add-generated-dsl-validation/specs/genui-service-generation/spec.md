@@ -17,15 +17,15 @@ GenUI Service SHALL accept generation requests through `POST /v1/generate`, asse
 - **WHEN** the generation request has an empty or blank prompt
 - **THEN** the service returns 400 with an error response before writing any stream envelope
 
-#### Scenario: Invalid statement is withheld and repaired internally
+#### Scenario: Invalid statement is withheld by the service stream
 - **WHEN** the SDK streaming gate detects a definitively invalid completed statement
 - **THEN** the service does not stream that invalid statement in a `dsl` envelope
-- **AND** if configured repair succeeds, the service streams the repaired accepted DSL as ordinary `dsl`
 - **AND** clients are not required to consume validation, repairing, replace, commit, or discard envelope types
 
 #### Scenario: Final valid result may be cached by the service
-- **WHEN** the SDK completes the stream with a final validation status of `VALID` or `REPAIRED`
+- **WHEN** the SDK completes the stream with a final validation status of `VALID`
 - **THEN** the service may cache the final normalized DSL
+- **AND** repaired output is cacheable only after it has been revalidated as `VALID` and marked in SDK metadata
 - **AND** cache eligibility is determined by the SDK completion result, not by a frontend stream command
 
 #### Scenario: Unrecoverable validation failure is not cached

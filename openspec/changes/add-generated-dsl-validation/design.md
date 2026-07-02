@@ -323,7 +323,7 @@ GenUiValidationConfig.disabled()
 4. 保持 `RenderStreamEnvelope` 公开类型为 `dataModel`、`dsl`、`error`、`done`，但把 `dsl` 语义改为 SDK accepted DSL，而不是 raw LLM delta。
 5. 接入 statement boundary scanner 和 streaming gate，先只 gate 明确 invalid statement。
 6. 接入可选 full repair，再接入可选 Fail-Fast Reask statement repair。
-7. 服务层缓存策略切换为只缓存 SDK completion result 为 `VALID` 或 `REPAIRED` 的 DSL。
+7. 服务层缓存策略切换为只缓存 SDK completion result 最终状态为 `VALID` 的 DSL；repair 成功通过 `VALID` 加 metadata 表达。
 8. 回滚时可切到 `GenUiValidationConfig.disabled()`，或从 `STREAMING_GATE` 降级到 `FINAL_ONLY`，保留原始 LLM delta 流式路径。
 
 ## Open Questions
