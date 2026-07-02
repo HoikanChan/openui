@@ -21,7 +21,6 @@ import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 import com.huawei.cloudsop.genui.core.validation.OpenuiLangValidator;
-import com.huawei.cloudsop.genui.core.validation.RepairPolicyKind;
 import com.huawei.cloudsop.genui.core.validation.ValidationConfigMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
@@ -138,14 +137,13 @@ public final class GenUiGenerator {
         ValidationResult validationResult = validator.validate(validationRequest);
 
         if (validationResult.status() == ValidationStatus.INVALID) {
-          if (validationConfig.repairPolicy() == RepairPolicyKind.NONE
-              || validationConfig.repairPolicy() == RepairPolicyKind.FINAL_REPAIR) {
-            // TODO(Section 7): insert FINAL_REPAIR logic here when repair is implemented.
-            // For now FINAL_REPAIR is treated the same as NONE — throw immediately.
-            String summary = buildIssueSummary(validationResult);
-            throw new GenerationValidationException(
-                "Generated DSL failed validation: " + summary, validationResult);
-          }
+          // TODO(Section 7): if repairPolicy == FINAL_REPAIR, attempt sync repair here; re-validate;
+          // only throw if still INVALID.
+          // FAIL_FAST_REASK is streaming-only and cannot execute in sync; NONE never repairs.
+          // All INVALID -> throw.
+          String summary = buildIssueSummary(validationResult);
+          throw new GenerationValidationException(
+              "Generated DSL failed validation: " + summary, validationResult);
         }
       }
       // ─────────────────────────────────────────────────────────────────────

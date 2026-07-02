@@ -122,6 +122,38 @@ class GenUiGeneratorValidationTest {
         "exception message should mention the issue code, got: " + ex.getMessage());
   }
 
+  // ── Test 3b: FAIL_FAST_REASK config — sync generate() must still throw on INVALID ──
+
+  /**
+   * FAIL_FAST_REASK is a streaming-only repair strategy and cannot execute inside sync generate().
+   * Regression guard: previously only NONE/FINAL_REPAIR threw on INVALID, so FAIL_FAST_REASK fell
+   * through the inner repair-policy filter and returned invalid DSL silently. Any INVALID result
+   * must now throw regardless of repair policy.
+   */
+  @Test
+  void syncInvalid_failFastReaskConfig_stillThrows() {
+    // BogusWidget is NOT in the base contract → unknown-component ERROR.
+    String dsl = "root = BogusWidget()";
+    FakeTransport transport = FakeTransport.sync(syncResponse(dsl));
+
+    GenUiGenerator generator = GenUiGenerator.withTransport(
+        GenUiLlmConfig.defaults(), transport,
+        GenUiValidationConfig.streamingGateWithReask(),
+        null /* default validator */);
+
+    GenerationValidationException ex = assertThrows(
+        GenerationValidationException.class,
+        () -> generator.generate(UiGenerationRequest.builder().userInput("show bogus").build()));
+
+    ValidationResult result = ex.validationResult();
+    assertNotNull(result, "validationResult() must not be null");
+    assertEquals(ValidationStatus.INVALID, result.status(), "status must be INVALID");
+    assertTrue(
+        result.issues().stream().anyMatch(i ->
+            "unknown-component".equals(i.code()) && i.severity() == ValidationSeverity.ERROR),
+        "must have an unknown-component ERROR issue, got: " + result.issues());
+  }
+
   // ── Test 4: validation DISABLED — invalid DSL passes through ─────────────
 
   /**
@@ -256,8 +288,9 @@ class GenUiGeneratorValidationTest {
   }
 
   @Test
-  void defaultValidator_unknownComponent_returnsInvalid() {
-    // ContractCatalog.from(null) is an empty catalog → unknown-component ERROR for any component.
+  void nullContract_treatsAllComponentsAsUnknown() {
+    // A null contract yields an EMPTY ContractCatalog, so every component is reported as
+    // unknown-component — there is no contract-less "syntax-only" validation mode.
     DefaultOpenuiLangValidator v = new DefaultOpenuiLangValidator();
     ValidationResult result = v.validate(ValidationRequest.builder()
         .dsl("root = AnyComponent()")
@@ -271,26 +304,21 @@ class GenUiGeneratorValidationTest {
 
   @Test
   void defaultValidator_streaming_withWarningIsPartial() {
-    // In STREAMING mode, an unclosed bracket produces a WARNING (transient syntax issue).
-    // With no blocking ERROR that results in PARTIAL.
+    // In STREAMING mode, ProgramAnalyzer downgrades unresolved-ref from ERROR (FINAL) to WARNING
+    // (retryable, since the ref may resolve once more of the stream arrives). A WARNING-only,
+    // non-empty issue list in STREAMING mode maps to ValidationStatus.PARTIAL (see
+    // DefaultOpenuiLangValidator#validate). generate() always validates in FINAL mode, so PARTIAL
+    // is unreachable through generate() — call the validator directly in STREAMING mode instead.
+    // 'item' is a Ref, not a Comp, so this exercises unresolved-ref only (no unknown-component).
     DefaultOpenuiLangValidator v = new DefaultOpenuiLangValidator();
-    // Provide an incomplete (unclosed) DSL that makes the auto-close fire.
-    // With no contract => empty catalog => any component triggers unknown-component ERROR in streaming.
-    // Use a streaming-specific approach: just test the metadata/mode plumbing here.
-    // Actually the simplest PARTIAL case: partial input in STREAMING with an unresolved ref warning
-    // and no contract → no unknown-component check. Use a Ref that's never resolved.
-    // But ProgramAnalyzer in STREAMING mode emits unresolved-ref as WARNING (retryable).
-    // root = item  ← ref to undeclared 'item' → STREAMING WARNING only → PARTIAL.
     ValidationResult result = v.validate(ValidationRequest.builder()
-        .dsl("root = item")  // 'item' is a Ref, not a Comp — no unknown-component
+        .dsl("root = item")
         .mode(ValidationMode.STREAMING)
         .build());
-    // No ERROR issues → not INVALID; has warning → PARTIAL
+
     assertFalse(result.hasBlockingIssues(), "unresolved ref in STREAMING is non-blocking WARNING");
-    // The status will be PARTIAL (warnings present) or VALID depending on issues.
-    // Unresolved-ref in STREAMING is a WARNING → non-empty issues, mode is STREAMING → PARTIAL.
-    // (VALID only when issues are empty in STREAMING or no issues at all in FINAL)
-    assertNotNull(result.status());
+    assertEquals(ValidationStatus.PARTIAL, result.status(),
+        "non-blocking warning in STREAMING mode must yield PARTIAL, got: " + result.issues());
   }
 
   // ── Fake transport (mirrors GenUiGeneratorTest.FakeTransport) ─────────────

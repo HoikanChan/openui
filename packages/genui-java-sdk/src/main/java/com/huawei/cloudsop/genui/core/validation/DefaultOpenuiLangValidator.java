@@ -15,7 +15,8 @@ import java.util.Objects;
  * <p>Pipeline:
  * <ol>
  *   <li>Pre-process and parse the DSL via {@link OpenuiParser#parse(String, ParseMode)}.</li>
- *   <li>Build a {@link ContractCatalog} from the request contract (null → syntax-only).</li>
+ *   <li>Build a {@link ContractCatalog} from the request contract (null → empty catalog, so every
+ *       component is reported as unknown-component; not a supported "syntax-only" mode).</li>
  *   <li>Run {@link ProgramAnalyzer#analyze(Program, ValidationMode, String, java.util.Set)}.</li>
  *   <li>Map issues to {@link ValidationStatus}: {@code INVALID} if any issue is
  *       {@link ValidationSeverity#ERROR}; {@code PARTIAL} only in
@@ -43,10 +44,9 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
         : ParseMode.FINAL;
     Program program = OpenuiParser.parse(request.dsl() != null ? request.dsl() : "", parseMode);
 
-    // 2. Build catalog — null contract → syntax-only (ProgramAnalyzer handles null catalog fine
-    //    because ContractCatalog.from(null) returns an empty catalog with no known components,
-    //    which means unknown-component is never emitted for a null-contract call; that's what
-    //    "syntax-only" means here).
+    // 2. Build catalog. A null contract yields an EMPTY catalog, so every component is reported
+    //    as unknown-component; callers validating real generations must pass the merged
+    //    GenerationContract. Contract-less syntax-only validation is not supported.
     ContractCatalog catalog = ContractCatalog.from(request.contract());
 
     // 3. Semantic analysis.
