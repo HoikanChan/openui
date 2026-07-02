@@ -1,0 +1,330 @@
+{
+  "rootName": "root",
+  "externalRefs": ["data", "v", "row", "s", "item"],
+  "sharedContractFile": "contracts/openui-shared.json",
+  "cases": [
+    {
+      "id": "valid-table-basic",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/table-basic.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/table-basic.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-table-render-cell",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/table-render-cell.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/table-render-cell.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-table-sortable-date",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/table-sortable-date.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/table-sortable-date.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-list-action-items",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/list-action-items.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/list-action-items.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-card-kpi",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/card-kpi.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/card-kpi.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-bar-product-comparison",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/bar-product-comparison.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/bar-product-comparison.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-pie-sales-by-region",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/pie-sales-by-region.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/pie-sales-by-region.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-line-monthly-revenue",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/line-monthly-revenue.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/line-monthly-revenue.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "unknown-component-datatable",
+      "source": "mutated",
+      "expectedClass": "unknown-component",
+      "dslFile": "dsl/bad/unknown-component-datatable.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["unknown-component"]
+    },
+    {
+      "id": "unknown-component-metric-card",
+      "source": "mutated",
+      "expectedClass": "unknown-component",
+      "dslFile": "dsl/bad/unknown-component-metric-card.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["unknown-component"]
+    },
+    {
+      "id": "unknown-component-sparkline",
+      "source": "mutated",
+      "expectedClass": "unknown-component",
+      "dslFile": "dsl/bad/unknown-component-sparkline.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["unknown-component"]
+    },
+    {
+      "id": "missing-required-textcontent",
+      "source": "handcrafted",
+      "expectedClass": "missing-required",
+      "dslFile": "dsl/bad/missing-required-textcontent.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["missing-required"]
+    },
+    {
+      "id": "missing-required-table-rows",
+      "source": "mutated",
+      "expectedClass": "missing-required",
+      "dslFile": "dsl/bad/missing-required-table-rows.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["missing-required"]
+    },
+    {
+      "id": "missing-required-series-data",
+      "source": "mutated",
+      "expectedClass": "missing-required",
+      "dslFile": "dsl/bad/missing-required-series-data.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["missing-required"]
+    },
+    {
+      "id": "null-required-textcontent",
+      "source": "handcrafted",
+      "expectedClass": "null-required",
+      "dslFile": "dsl/bad/null-required-textcontent.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["null-required"]
+    },
+    {
+      "id": "null-required-table-columns",
+      "source": "mutated",
+      "expectedClass": "null-required",
+      "dslFile": "dsl/bad/null-required-table-columns.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["null-required"]
+    },
+    {
+      "id": "null-required-series-data",
+      "source": "mutated",
+      "expectedClass": "null-required",
+      "dslFile": "dsl/bad/null-required-series-data.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["null-required"]
+    },
+    {
+      "id": "excess-args-textcontent",
+      "source": "handcrafted",
+      "expectedClass": "excess-args",
+      "dslFile": "dsl/bad/excess-args-textcontent.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["excess-args"]
+    },
+    {
+      "id": "excess-args-stack",
+      "source": "handcrafted",
+      "expectedClass": "excess-args",
+      "dslFile": "dsl/bad/excess-args-stack.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["excess-args"]
+    },
+    {
+      "id": "excess-args-col",
+      "source": "mutated",
+      "expectedClass": "excess-args",
+      "dslFile": "dsl/bad/excess-args-col.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["excess-args"]
+    },
+    {
+      "id": "invalid-prop-col-format",
+      "source": "mutated",
+      "expectedClass": "invalid-prop",
+      "dslFile": "dsl/bad/invalid-prop-col-format.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["invalid-prop"]
+    },
+    {
+      "id": "invalid-prop-col-width",
+      "source": "mutated",
+      "expectedClass": "invalid-prop",
+      "dslFile": "dsl/bad/invalid-prop-col-width.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["invalid-prop"]
+    },
+    {
+      "id": "invalid-prop-tabs-option",
+      "source": "handcrafted",
+      "expectedClass": "invalid-prop",
+      "dslFile": "dsl/bad/invalid-prop-tabs-option.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["invalid-prop"]
+    },
+    {
+      "id": "inline-reserved-query-root",
+      "source": "handcrafted",
+      "expectedClass": "inline-reserved",
+      "dslFile": "dsl/bad/inline-reserved-query-root.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["inline-reserved"]
+    },
+    {
+      "id": "inline-reserved-query-child",
+      "source": "handcrafted",
+      "expectedClass": "inline-reserved",
+      "dslFile": "dsl/bad/inline-reserved-query-child.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["inline-reserved"]
+    },
+    {
+      "id": "inline-reserved-mutation-child",
+      "source": "handcrafted",
+      "expectedClass": "inline-reserved",
+      "dslFile": "dsl/bad/inline-reserved-mutation-child.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["inline-reserved"]
+    },
+    {
+      "id": "syntax-unclosed-component",
+      "source": "handcrafted",
+      "expectedClass": "syntax",
+      "dslFile": "dsl/bad/syntax-unclosed-component.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["syntax-unclosed-bracket"]
+    },
+    {
+      "id": "syntax-unclosed-array",
+      "source": "handcrafted",
+      "expectedClass": "syntax",
+      "dslFile": "dsl/bad/syntax-unclosed-array.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["syntax-unclosed-bracket"]
+    },
+    {
+      "id": "syntax-missing-assignment",
+      "source": "handcrafted",
+      "expectedClass": "syntax",
+      "dslFile": "dsl/bad/syntax-missing-assignment.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["syntax-missing-assignment"]
+    },
+    {
+      "id": "root-missing-comment",
+      "source": "handcrafted",
+      "expectedClass": "root-missing",
+      "dslFile": "dsl/bad/root-missing-comment.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["root-missing"]
+    },
+    {
+      "id": "root-missing-two-comments",
+      "source": "handcrafted",
+      "expectedClass": "root-missing",
+      "dslFile": "dsl/bad/root-missing-two-comments.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["root-missing"]
+    },
+    {
+      "id": "root-missing-empty-fence",
+      "source": "handcrafted",
+      "expectedClass": "root-missing",
+      "dslFile": "dsl/bad/root-missing-empty-fence.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["root-missing"]
+    },
+    {
+      "id": "unresolved-ref-missing-panel",
+      "source": "mutated",
+      "expectedClass": "unresolved-ref",
+      "dslFile": "dsl/bad/unresolved-ref-missing-panel.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["unresolved-ref"]
+    },
+    {
+      "id": "unresolved-ref-missing-title",
+      "source": "mutated",
+      "expectedClass": "unresolved-ref",
+      "dslFile": "dsl/bad/unresolved-ref-missing-title.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["unresolved-ref"]
+    },
+    {
+      "id": "unresolved-ref-missing-field",
+      "source": "mutated",
+      "expectedClass": "unresolved-ref",
+      "dslFile": "dsl/bad/unresolved-ref-missing-field.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": ["unresolved-ref"]
+    }
+  ]
+}

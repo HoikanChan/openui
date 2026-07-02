@@ -1,0 +1,130 @@
+{
+  "contractVersion": "interception-corpus-v1",
+  "root": "root",
+  "components": {
+    "Stack": {
+      "type": "object",
+      "properties": {
+        "children": { "type": "array" },
+        "direction": { "type": "string" },
+        "gap": { "type": "string" },
+        "align": { "type": "string" },
+        "justify": { "type": "string" }
+      },
+      "required": ["children"]
+    },
+    "TextContent": {
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "variant": { "type": "string" }
+      },
+      "required": ["text"]
+    },
+    "Table": {
+      "type": "object",
+      "properties": {
+        "columns": { "type": "array" },
+        "rows": { "type": "array" }
+      },
+      "required": ["columns", "rows"]
+    },
+    "Col": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "field": { "type": "string" },
+        "options": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sortable": { "type": "boolean" },
+            "cell": {}
+          }
+        }
+      },
+      "required": ["title", "field"]
+    },
+    "Card": {
+      "type": "object",
+      "properties": {
+        "children": { "type": "array" },
+        "variant": { "type": "string" },
+        "size": { "type": "string" }
+      },
+      "required": ["children"]
+    },
+    "CardHeader": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" }
+      },
+      "required": ["title"]
+    },
+    "List": {
+      "type": "object",
+      "properties": {
+        "items": { "type": "array" },
+        "title": { "type": "string" }
+      },
+      "required": ["items"]
+    },
+    "Series": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "data": { "type": "array" }
+      },
+      "required": ["name", "data"]
+    },
+    "BarChart": {
+      "type": "object",
+      "properties": {
+        "labels": { "type": "array" },
+        "series": { "type": "array" },
+        "variant": { "type": "string" },
+        "xAxis": { "type": "string" },
+        "yAxis": { "type": "string" }
+      },
+      "required": ["labels", "series"]
+    },
+    "PieChart": {
+      "type": "object",
+      "properties": {
+        "labels": { "type": "array" },
+        "values": { "type": "array" },
+        "variant": { "type": "string" }
+      },
+      "required": ["labels", "values"]
+    },
+    "LineChart": {
+      "type": "object",
+      "properties": {
+        "labels": { "type": "array" },
+        "series": { "type": "array" },
+        "variant": { "type": "string" },
+        "xAxis": { "type": "string" },
+        "yAxis": { "type": "string" }
+      },
+      "required": ["labels", "series"]
+    },
+    "Tabs": {
+      "type": "object",
+      "properties": {
+        "items": { "type": "array" },
+        "options": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "style": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {}
+            }
+          }
+        }
+      },
+      "required": ["items"]
+    }
+  }
+}
