@@ -1,0 +1,1 @@
+root = Stack([...data.items])

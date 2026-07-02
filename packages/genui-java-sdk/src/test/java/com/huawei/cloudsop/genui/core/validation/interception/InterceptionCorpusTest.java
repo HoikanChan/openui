@@ -44,13 +44,19 @@ class InterceptionCorpusTest {
           "inline-reserved",
           "syntax",
           "root-missing",
-          "unresolved-ref");
+          "unresolved-ref",
+          "js-method-call",
+          "js-global",
+          "js-syntax-construct",
+          "builtin-misuse",
+          "prose-chatter",
+          "known-miss");
 
   @Test
   void corpusMeetsBriefMinimums() {
     List<Map<String, Object>> cases = cases();
     long validControls = cases.stream().filter(c -> "valid-control".equals(str(c.get("expectedClass")))).count();
-    assertTrue(validControls >= 8, "expected at least 8 valid controls");
+    assertTrue(validControls >= 12, "expected at least 12 valid controls");
 
     Map<String, Long> byClass =
         cases.stream()
