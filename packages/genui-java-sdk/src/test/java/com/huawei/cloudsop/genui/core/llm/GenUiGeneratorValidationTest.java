@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -66,6 +67,31 @@ class GenUiGeneratorValidationTest {
         generator.generate(UiGenerationRequest.builder().userInput("show something").build());
 
     assertEquals(dsl, result.dsl());
+  }
+
+  // ── Test 1b: sync VALID result carries validationStatus + validationResult ────
+
+  /**
+   * The VALID-return path of generate() must populate the result's validationStatus and
+   * validationResult, not just return the DSL — service caching/logging (Section 9) depends on
+   * this being non-null on success.
+   */
+  @Test
+  void syncValid_defaultConfig_resultCarriesValidationStatusAndResult() {
+    String dsl = "root = Stack([])";
+    FakeTransport transport = FakeTransport.sync(syncResponse(dsl));
+
+    GenUiGenerator generator = GenUiGenerator.withTransport(
+        GenUiLlmConfig.defaults(), transport, null /* finalOnly */, null /* default validator */);
+
+    GenUiGenerationResult result =
+        generator.generate(UiGenerationRequest.builder().userInput("show something").build());
+
+    assertEquals(ValidationStatus.VALID, result.validationStatus(),
+        "VALID generation must carry validationStatus=VALID on the result");
+    assertNotNull(result.validationResult(), "VALID generation must carry a non-null validationResult");
+    assertEquals(ValidationStatus.VALID, result.validationResult().status());
+    assertFalse(result.validationResult().hasBlockingIssues());
   }
 
   // ── Test 2: sync INVALID — default config throws GenerationValidationException ──
@@ -175,6 +201,8 @@ class GenUiGeneratorValidationTest {
         generator.generate(UiGenerationRequest.builder().userInput("go").build());
 
     assertEquals(dsl, result.dsl(), "DSL must be returned as-is when validation is disabled");
+    assertNull(result.validationStatus(), "validationStatus must be null when validation is DISABLED");
+    assertNull(result.validationResult(), "validationResult must be null when validation is DISABLED");
   }
 
   // ── Test 5: custom validator injected — stub forces INVALID ──────────────

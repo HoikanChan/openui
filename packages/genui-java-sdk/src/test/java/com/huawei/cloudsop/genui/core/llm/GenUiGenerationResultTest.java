@@ -1,10 +1,16 @@
 package com.huawei.cloudsop.genui.core.llm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.huawei.cloudsop.genui.core.validation.ValidationMetadata;
+import com.huawei.cloudsop.genui.core.validation.ValidationMode;
+import com.huawei.cloudsop.genui.core.validation.ValidationResult;
+import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -27,5 +33,29 @@ class GenUiGenerationResultTest {
     GenUiGenerationResult result = new GenUiGenerationResult("root = Stack([])", null);
 
     assertTrue(result.dataModel().isEmpty());
+  }
+
+  @Test
+  void twoArgConstructorLeavesValidationFieldsNull() {
+    GenUiGenerationResult result = new GenUiGenerationResult("root = Stack([])", Map.of());
+
+    assertNull(result.validationStatus(), "backward-compatible ctor must default validationStatus to null");
+    assertNull(result.validationResult(), "backward-compatible ctor must default validationResult to null");
+  }
+
+  @Test
+  void canonicalConstructorCarriesValidationStatusAndResult() {
+    ValidationResult validationResult =
+        ValidationResult.valid(
+            "root = Stack([])",
+            List.of(),
+            new ValidationMetadata(1, "root", ValidationMode.FINAL, null));
+
+    GenUiGenerationResult result =
+        new GenUiGenerationResult(
+            "root = Stack([])", Map.of(), ValidationStatus.VALID, validationResult);
+
+    assertEquals(ValidationStatus.VALID, result.validationStatus());
+    assertEquals(validationResult, result.validationResult());
   }
 }

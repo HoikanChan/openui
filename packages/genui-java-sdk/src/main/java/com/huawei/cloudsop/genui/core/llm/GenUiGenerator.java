@@ -145,6 +145,9 @@ public final class GenUiGenerator {
           throw new GenerationValidationException(
               "Generated DSL failed validation: " + summary, validationResult);
         }
+
+        return new GenUiGenerationResult(
+            extracted, effectiveRequest.response(), validationResult.status(), validationResult);
       }
       // ─────────────────────────────────────────────────────────────────────
 
@@ -193,12 +196,16 @@ public final class GenUiGenerator {
           });
       String extracted = OpenuiCodeExtractor.extract(accumulated.toString());
       sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
+      // TODO(Section 6): once the streaming statement gate + tail validation lands, populate
+      // validationStatus/validationResult here instead of the backward-compatible 2-arg ctor.
       return new GenUiGenerationResult(extracted, dataModel);
     } catch (LlmTransportException | IOException error) {
       sink.accept(
           RenderStreamEnvelope.error(nextSeq[0]++, "LLM_STREAM_FAILED", error.getMessage(), true));
       sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
       String extracted = OpenuiCodeExtractor.extract(accumulated.toString());
+      // TODO(Section 6): same as above — no validation status is available from the raw-delta
+      // stream path yet.
       return new GenUiGenerationResult(extracted, dataModel);
     }
   }
