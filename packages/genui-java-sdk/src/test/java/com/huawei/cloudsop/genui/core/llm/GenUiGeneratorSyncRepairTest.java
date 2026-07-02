@@ -32,7 +32,7 @@ class GenUiGeneratorSyncRepairTest {
         + "\"}}]}";
   }
 
-  private static GenUiValidationConfig finalRepair(int maxAttempts) {
+  private static GenUiValidationConfig finalRepair() {
     // FINAL_ONLY + FINAL_REPAIR; maxAttempts is applied internally via RepairPolicy.from default (1),
     // so exercise attempts through separate configs where needed.
     return new GenUiValidationConfig(ValidationConfigMode.FINAL_ONLY, RepairPolicyKind.FINAL_REPAIR);
@@ -53,7 +53,7 @@ class GenUiGeneratorSyncRepairTest {
 
     GenUiGenerator generator =
         GenUiGenerator.withTransport(
-            GenUiLlmConfig.defaults(), t, finalRepair(1), null);
+            GenUiLlmConfig.defaults(), t, finalRepair(), null);
 
     GenUiGenerationResult result = generator.generate(req());
 
@@ -79,7 +79,7 @@ class GenUiGeneratorSyncRepairTest {
 
     GenUiGenerator generator =
         GenUiGenerator.withTransport(
-            GenUiLlmConfig.defaults(), t, finalRepair(1), null);
+            GenUiLlmConfig.defaults(), t, finalRepair(), null);
 
     GenerationValidationException ex =
         assertThrows(GenerationValidationException.class, () -> generator.generate(req()));
@@ -100,7 +100,7 @@ class GenUiGeneratorSyncRepairTest {
 
     GenUiGenerator generator =
         GenUiGenerator.withTransport(
-            GenUiLlmConfig.defaults(), t, finalRepair(1), null);
+            GenUiLlmConfig.defaults(), t, finalRepair(), null);
 
     GenerationValidationException ex =
         assertThrows(GenerationValidationException.class, () -> generator.generate(req()));

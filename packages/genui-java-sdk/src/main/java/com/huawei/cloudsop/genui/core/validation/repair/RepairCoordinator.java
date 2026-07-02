@@ -71,6 +71,8 @@ public final class RepairCoordinator {
     long deadlineNanos = deadline(policy.timeout());
 
     for (int attempt = 1; attempt <= policy.maxAttempts(); attempt++) {
+      // NOTE: timeout is checked BETWEEN attempts; a single in-flight transport.post is not
+      // independently time-bounded here (needs transport read-timeout).
       if (timedOut(deadlineNanos)) {
         return FullRepairOutcome.timedOut(currentDsl, currentResult, attempt - 1);
       }
@@ -128,6 +130,9 @@ public final class RepairCoordinator {
       List<com.huawei.cloudsop.genui.core.validation.ValidationIssue> issues,
       GenerationContract contract,
       StreamConsumer consumer) {
+    // TODO: statementRepairTimeout is not yet enforced here — a hung SSE read blocks until the
+    // transport closes it. Enforcing a wall-clock budget needs transport-level read-timeout
+    // cooperation.
     List<ChatMessage> messages =
         ReaskPromptBuilder.buildRepairAndContinue(
             userIntent, acceptedPrefix, invalidStatement, issues, contract);

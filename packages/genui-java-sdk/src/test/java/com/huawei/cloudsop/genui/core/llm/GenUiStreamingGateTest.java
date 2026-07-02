@@ -195,7 +195,7 @@ class GenUiStreamingGateTest {
   }
 
   @Test
-  void reaskPolicyBehavesLikeFailPathForNow() {
+  void reaskExhaustionFallsBackToErrorThenDone() {
     FakeStream t = FakeStream.of(frame("root = Bogus(\"x\")\n"), SseFrames.done());
     List<RenderStreamEnvelope> envelopes = run(reaskGenerator(t));
     RenderStreamEnvelope error = envelopes.get(envelopes.size() - 2);
