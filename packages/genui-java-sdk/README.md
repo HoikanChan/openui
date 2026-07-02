@@ -43,6 +43,33 @@ pnpm --dir packages/react-ui-dsl run generate:base-contract
 pnpm --dir packages/lang-core run generate:prompt-golden
 ```
 
+## Cross-language validation oracle
+
+The Java `DefaultOpenuiLangValidator`'s contract-error taxonomy is pinned to the
+TypeScript `packages/lang-core` parser (the oracle) on the SUPPORTED SUBSET — this is
+not full AST parity. `CrossLanguageParityTest` loads the committed, TS-generated
+`src/test/resources/parity/oracle.json` from the classpath, rebuilds each case's
+`GenerationContract`, runs the validator in `FINAL` mode, and asserts:
+
+- **contract errors** (`unknown-component`, `missing-required`, `null-required`,
+  `excess-args`, `invalid-prop`, `inline-reserved`) match EXACTLY on
+  code/component/path/statementId, with no extra contract-error codes;
+- **unresolved** refs match by NAME SET (`unresolved-ref`);
+- **root/syntax** issues match at the STRUCTURAL level only (Java structural codes are
+  Java-authored). Notably, TS `parse()` always auto-closes unbalanced input, so the
+  oracle records the unclosed case as `valid`, while Java `FINAL` does not auto-close and
+  reports it as `INVALID` with a `syntax` diagnostic — the test asserts that divergence
+  at the structural level rather than demanding TS's status. See the test's KNOWN
+  DIVERGENCES javadoc.
+
+The Java build runs NO Node — it consumes the committed JSON. `oracle.json` is a
+GENERATED artifact (regen-only, do NOT hand-edit). Regenerate it after changing the
+parity cases or the TS parser:
+
+```bash
+pnpm --dir packages/lang-core run generate:validation-oracle
+```
+
 ## Characterization (large data models)
 
 Host data can be large enough that embedding it verbatim in the system prompt
