@@ -21,11 +21,14 @@ import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 import com.huawei.cloudsop.genui.core.validation.OpenuiLangValidator;
+import com.huawei.cloudsop.genui.core.validation.RepairPolicyKind;
 import com.huawei.cloudsop.genui.core.validation.ValidationConfigMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
+import com.huawei.cloudsop.genui.core.validation.stream.GateDecision;
+import com.huawei.cloudsop.genui.core.validation.stream.StreamingValidationSession;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -179,6 +182,21 @@ public final class GenUiGenerator {
     Objects.requireNonNull(sink, "sink must not be null");
     UiGenerationRequest effectiveRequest =
         request == null ? UiGenerationRequest.builder().build() : request;
+
+    if (validationConfig.validationMode() == ValidationConfigMode.STREAMING_GATE) {
+      return generateStreamGated(effectiveRequest, sink);
+    }
+    return generateStreamRaw(effectiveRequest, sink);
+  }
+
+  /**
+   * DISABLED / FINAL_ONLY path: unchanged low-latency raw-delta streaming. In FINAL_ONLY, one FINAL
+   * validation runs at stream end over the accumulated DSL to set {@code validationStatus} — the DSL
+   * is already delivered, so an INVALID result does NOT emit a spurious {@code error} frame; it only
+   * marks the result so the service layer won't cache it (Section 9).
+   */
+  private GenUiGenerationResult generateStreamRaw(
+      UiGenerationRequest effectiveRequest, Consumer<RenderStreamEnvelope> sink) {
     Map<String, Object> dataModel = effectiveRequest.response();
 
     // 首帧:dataModel,seq=0。一旦发出,后续 LLM 流错误改为 error envelope 而不再抛给调用方。
@@ -196,18 +214,141 @@ public final class GenUiGenerator {
           });
       String extracted = OpenuiCodeExtractor.extract(accumulated.toString());
       sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
-      // TODO(Section 6): once the streaming statement gate + tail validation lands, populate
-      // validationStatus/validationResult here instead of the backward-compatible 2-arg ctor.
+
+      if (validationConfig.validationMode() == ValidationConfigMode.FINAL_ONLY) {
+        ValidationResult finalResult = finalValidate(effectiveRequest, extracted);
+        return new GenUiGenerationResult(
+            extracted, dataModel, finalResult.status(), finalResult);
+      }
+      // DISABLED: no validation status.
       return new GenUiGenerationResult(extracted, dataModel);
     } catch (LlmTransportException | IOException error) {
       sink.accept(
           RenderStreamEnvelope.error(nextSeq[0]++, "LLM_STREAM_FAILED", error.getMessage(), true));
       sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
       String extracted = OpenuiCodeExtractor.extract(accumulated.toString());
-      // TODO(Section 6): same as above — no validation status is available from the raw-delta
-      // stream path yet.
+      // Transport failed mid-stream; content is partial. Do not run a tail validation here — the
+      // error frame already signals SDK inability to produce a trustworthy final DSL.
       return new GenUiGenerationResult(extracted, dataModel);
     }
+  }
+
+  /**
+   * STREAMING_GATE / streamingGateWithReask path: feed each LLM delta through a {@link
+   * StreamingValidationSession}. Only SDK-accepted COMPLETE statements are emitted as {@code dsl}
+   * envelopes (never raw deltas). A definitively-invalid completed statement is WITHHELD (its text
+   * never appears in any frame) and triggers {@code error("VALIDATION_FAILED")} → {@code done}.
+   */
+  private GenUiGenerationResult generateStreamGated(
+      UiGenerationRequest effectiveRequest, Consumer<RenderStreamEnvelope> sink) {
+    Map<String, Object> dataModel = effectiveRequest.response();
+
+    // 首帧:dataModel,seq=0。
+    sink.accept(RenderStreamEnvelope.dataModel(dataModel));
+    int[] nextSeq = {1};
+
+    GenerationContract merged = sdk.mergedContract(toPromptRequest(effectiveRequest));
+    StreamingValidationSession session =
+        new StreamingValidationSession(validator, merged, merged.root());
+    boolean[] failed = {false};
+
+    String body = buildRequestBody(effectiveRequest, true);
+    try (InputStream stream = transport.postStream(body)) {
+      SseDeltaParser.parse(
+          stream,
+          delta -> {
+            if (failed[0]) {
+              return; // already failed fast; ignore trailing deltas
+            }
+            if (applyDecisions(session.onDelta(delta), session, sink, nextSeq)) {
+              failed[0] = true;
+            }
+          });
+
+      if (!failed[0]) {
+        if (applyDecisions(session.onEnd(), session, sink, nextSeq)) {
+          failed[0] = true;
+        }
+      }
+
+      if (failed[0]) {
+        // Fail path already emitted the error frame; just close.
+        sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
+        return new GenUiGenerationResult(
+            session.acceptedDsl(), dataModel, ValidationStatus.INVALID, session.withheldResult());
+      }
+
+      // Clean end: buffered statements were flushed by onEnd(); close the stream.
+      sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
+      ValidationResult finalResult = session.latestValidationResult();
+      return new GenUiGenerationResult(
+          session.acceptedDsl(), dataModel, ValidationStatus.VALID, finalResult);
+    } catch (LlmTransportException | IOException error) {
+      sink.accept(
+          RenderStreamEnvelope.error(nextSeq[0]++, "LLM_STREAM_FAILED", error.getMessage(), true));
+      sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
+      return new GenUiGenerationResult(
+          session.acceptedDsl(), dataModel, ValidationStatus.INVALID, session.latestValidationResult());
+    }
+  }
+
+  /**
+   * Apply gate decisions to the sink. Forwards EMIT decisions as {@code dsl} envelopes; on a
+   * WITHHOLD/FAIL (definitively invalid) emits {@code error("VALIDATION_FAILED")} and returns {@code
+   * true} to signal the stream must stop. BUFFER decisions are held inside the session (no frame).
+   *
+   * @return {@code true} if a definitively-invalid statement was encountered (fail-fast)
+   */
+  private boolean applyDecisions(
+      List<GateDecision> decisions,
+      StreamingValidationSession session,
+      Consumer<RenderStreamEnvelope> sink,
+      int[] nextSeq) {
+    for (GateDecision decision : decisions) {
+      switch (decision.kind()) {
+        case EMIT ->
+            sink.accept(RenderStreamEnvelope.dsl(nextSeq[0]++, decision.statementText()));
+        case BUFFER -> {
+          // held internally — no envelope until flushed
+        }
+        case WITHHOLD, FAIL -> {
+          // Section 7 seam: when validationConfig.repairPolicy() == FAIL_FAST_REASK, Section 7 will
+          // cancel the stream + reask here, feeding session.withheldResult() issues back to the LLM
+          // and resuming. For THIS task, FAIL_FAST_REASK behaves identically to the non-reask fail
+          // path (error -> done, validationStatus=INVALID).
+          // TODO(Section 7): cancel stream + reask here (only when repairPolicy == FAIL_FAST_REASK).
+          String message = withheldMessage(session);
+          sink.accept(
+              RenderStreamEnvelope.error(nextSeq[0]++, "VALIDATION_FAILED", message, false));
+          return true;
+        }
+        default -> {
+          // no-op
+        }
+      }
+    }
+    return false;
+  }
+
+  private static String withheldMessage(StreamingValidationSession session) {
+    ValidationResult result = session.withheldResult();
+    if (result == null) {
+      return "Generated DSL failed streaming validation";
+    }
+    return "Generated DSL failed streaming validation: " + buildIssueSummary(result);
+  }
+
+  /** Run a FINAL validation over the accumulated DSL (FINAL_ONLY tail check). */
+  private ValidationResult finalValidate(UiGenerationRequest request, String dsl) {
+    GenerationContract merged = sdk.mergedContract(toPromptRequest(request));
+    ValidationRequest validationRequest =
+        ValidationRequest.builder()
+            .dsl(dsl)
+            .contract(merged)
+            .rootName(merged.root())
+            .mode(ValidationMode.FINAL)
+            .build();
+    return validator.validate(validationRequest);
   }
 
   private String buildRequestBody(UiGenerationRequest request, boolean stream) {
