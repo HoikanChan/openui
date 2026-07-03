@@ -113,7 +113,7 @@ class InterceptionCorpusTest {
     throw new AssertionError("Unknown expectedOutcome for " + id + ": " + expectedOutcome);
   }
 
-  private static ValidationResult validate(Map<String, Object> testCase) {
+  static ValidationResult validate(Map<String, Object> testCase) {
     Map<String, Object> manifest = manifest();
     String dsl = read(ROOT + str(testCase.get("dslFile")));
     GenerationContract contract = loadContract(str(testCase.get("contractFile")));
@@ -129,7 +129,7 @@ class InterceptionCorpusTest {
             .build());
   }
 
-  private static GenerationContract loadContract(String contractFile) {
+  static GenerationContract loadContract(String contractFile) {
     Map<String, Object> raw = Json.asObject(Json.parse(read(ROOT + contractFile)), contractFile);
     Map<String, Object> components = Json.asObject(raw.get("components"), contractFile + ".components");
     LinkedHashMap<String, ComponentPromptSpec> specs = new LinkedHashMap<>();
@@ -150,17 +150,17 @@ class InterceptionCorpusTest {
         List.of());
   }
 
-  private static List<Map<String, Object>> cases() {
+  static List<Map<String, Object>> cases() {
     return Json.asList(manifest().get("cases"), "cases").stream()
         .map(item -> Json.asObject(item, "case"))
         .toList();
   }
 
-  private static Map<String, Object> manifest() {
+  static Map<String, Object> manifest() {
     return Json.asObject(Json.parse(read(MANIFEST)), "manifest");
   }
 
-  private static String read(String resource) {
+  static String read(String resource) {
     ClassLoader loader = Thread.currentThread().getContextClassLoader();
     try (InputStream in = loader.getResourceAsStream(resource)) {
       assertNotNull(in, resource + " not found on test classpath");
@@ -175,7 +175,7 @@ class InterceptionCorpusTest {
     return Json.asList(value, "string list").stream().map(InterceptionCorpusTest::str).toList();
   }
 
-  private static String str(Object value) {
+  static String str(Object value) {
     return value == null ? null : String.valueOf(value);
   }
 
