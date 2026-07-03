@@ -95,6 +95,36 @@ class ReaskPromptBuilderTest {
   }
 
   @Test
+  void issueLineCarriesStatementIdAndPosition() {
+    // Decision 11.3: multi-statement documents need per-issue location context.
+    ValidationIssue located =
+        new ValidationIssue(
+            "syntax-unexpected-token", ValidationSeverity.ERROR, "syntax",
+            "Unexpected token R_PAREN", "kpiValue", null, null, 3, 51, null, false);
+    String text =
+        join(ReaskPromptBuilder.buildFullRepair("x", "root = Stack([])", List.of(located), null));
+    assertTrue(text.contains("(stmt=kpiValue, line 3:51)"), "stmt and line:col rendered");
+  }
+
+  @Test
+  void issueLineOmitsUnknownLocationParts() {
+    ValidationIssue stmtOnly =
+        new ValidationIssue(
+            "unresolved-ref", ValidationSeverity.ERROR, "reference",
+            "unresolved reference \"x\"", "kpi", null, null, -1, -1, null, false);
+    ValidationIssue neither =
+        new ValidationIssue(
+            "root-missing", ValidationSeverity.ERROR, "root",
+            "no root statement", null, null, null, -1, -1, null, false);
+    String text =
+        join(
+            ReaskPromptBuilder.buildFullRepair(
+                "x", "root = Stack([])", List.of(stmtOnly, neither), null));
+    assertTrue(text.contains("(stmt=kpi)"), "stmt-only location rendered without line part");
+    assertFalse(text.contains("-1"), "unknown line/column never rendered");
+  }
+
+  @Test
   void nonErrorIssuesAreNotRendered() {
     ValidationIssue warning =
         new ValidationIssue(

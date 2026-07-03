@@ -131,11 +131,36 @@ public final class ReaskPromptBuilder {
       if (issue.path() != null && !issue.path().isBlank()) {
         sb.append(" (at ").append(issue.path()).append(')');
       }
+      appendLocation(sb, issue);
       if (issue.hint() != null && !issue.hint().isBlank()) {
         sb.append("\n  hint: ").append(issue.hint());
       }
       sb.append('\n');
     }
+  }
+
+  /**
+   * Location segment {@code (stmt=id, line L:C)} so the repair model can find the issue in a
+   * multi-statement document. Unknown parts ({@code null} statementId, {@code -1} line) are
+   * omitted; nothing is rendered when neither is known.
+   */
+  private static void appendLocation(StringBuilder sb, ValidationIssue issue) {
+    boolean hasStmt = issue.statementId() != null && !issue.statementId().isBlank();
+    boolean hasLine = issue.line() > 0;
+    if (!hasStmt && !hasLine) {
+      return;
+    }
+    sb.append(" (");
+    if (hasStmt) {
+      sb.append("stmt=").append(issue.statementId());
+    }
+    if (hasLine) {
+      if (hasStmt) {
+        sb.append(", ");
+      }
+      sb.append("line ").append(issue.line()).append(':').append(Math.max(issue.column(), 1));
+    }
+    sb.append(')');
   }
 
   /**
