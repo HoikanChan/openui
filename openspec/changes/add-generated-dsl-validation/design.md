@@ -307,6 +307,86 @@ GenUiValidationConfig.disabled()
 - Cross-language parity tests 从 TypeScript parser 生成 fixture JSON，Java 测试断言 status、issue code、statementId、component、path 与 oracle 对齐。
 - `GenUiGenerator` integration tests 覆盖 sync validation、streaming `dataModel/dsl/error/done` 顺序、bad statement withheld、repair success 以普通 `dsl` 输出、缓存前状态标记。
 
+### 11. Reask 诊断 LLM 友好化：hint 分流 + prompt 层级联抑制
+
+对 61 例拦截 corpus 逐例 dump（DSL → issues → reask prompt）确认了三类问题：部分 hint 积极误导修复方向（`unresolved-ref` 对 `Math`/`FormatNumber` 一律给 "define a statement named X or pass it as an external ref"，后者是 SDK 调用方 API，修复模型做不到）；`ReaskPromptBuilder.appendIssues` 丢掉 `statementId` 与 `line:column`，多语句文档无从定位；一条解析失败可派生 7+ 条 issue（假 excess-args、假 null-required、root-not-renderable 级联尾巴），根因被噪声淹没。
+
+**决策要点（已确认）：**
+
+- 富化只进 `hint` 字段，`message` 保持不动。硬约束：`CrossLanguageParityTest` 靠 message 首尾引号抽取 unresolved 名字，且 syntax message 镜像 TS `enrich-errors.ts`；任何带引号的富化进 message 都会破坏 parity。
+- unresolved-ref 归属修正做在 validator 层：这是**字段级修正而非行为变更**（不增删 issue，parity 只断言名字集合、corpus 只断言 code 集合）。spec 的 "Final unresolved reference is invalid" scenario 本就要求 "identifies … the statement that used it"，现实现挂 entryId 属于偏离。
+- 级联抑制只做在 `ReaskPromptBuilder`（prompt 视图），validator 输出保持全量——corpus 的 `containsAll` 期望与 parity oracle 都依赖全量输出。该取舍写入 `ReaskPromptBuilder` 类 javadoc（不另立 ADR）。
+- 本轮**不做**去重、不做编辑距离 did-you-mean、不做 legacy 组件重命名映射（后两者属后续 unknown-component 富化轮次）。
+
+**11.1 unresolved-ref 归属（`ProgramAnalyzer`）**
+
+`WalkCtx.unresolved` 由 `List<String>` 改为 `List<UnresolvedRef>`：
+
+```java
+record UnresolvedRef(String name, String statementId) {}   // ProgramAnalyzer 私有 record
+```
+
+`resolveRef` 记录命中时的 `ctx.currentStatementId`。FINAL 分支 emit 时：`statementId` 用归属语句（null 时回退 entryId）；`line/column` 取 `stmtMap.get(statementId).span()` 起点（`AstNode.Ref` 无 span，语句级精度是上限，不动 lexer）。`ProgramAnalysis.unresolvedRefs` 对外仍为名字列表，形状不变。
+
+**11.2 hint 分流（新类 `validation/semantic/RepairHints`）**
+
+hint 文案与"根因判定"必须同源，集中在一个类，`ProgramAnalyzer` 生成、`ReaskPromptBuilder` 判定豁免时共用：
+
+```java
+public final class RepairHints {
+  static final Set<String> JS_GLOBAL_NAMES = Set.of(
+      "Math","JSON","Date","String","Number","Boolean","Array","Object","RegExp",
+      "Map","Set","Promise","Intl","NaN","Infinity","undefined","globalThis",
+      "window","document","console","parseInt","parseFloat","isNaN","isFinite",
+      "new","typeof","instanceof","function","async","await");   // 关键字会被 parser 当 identifier 产出
+
+  public static String unresolvedRefHint(String name);  // 三档分流，见下
+  public static boolean isRootCauseHint(String hint);   // 级联抑制的豁免判定
+}
+```
+
+`unresolvedRefHint` 分流顺序：
+
+1. `Builtins.isBuiltin(name)`（**精确大小写匹配**，只治漏 `@`）→ `did you mean "@Name"? openui-lang builtins must be called with a leading '@'`
+2. `JS_GLOBAL_NAMES.contains(name)` → `"Name" is a JavaScript global — JS globals and methods are not available in openui-lang; use builtins like @Abs, @Round, @FormatNumber, @FormatDate instead`
+3. 其余 → `define a statement named "Name" earlier in the document`（删除 "or pass it as an external ref"）
+
+`isRootCauseHint` 按 1/2 档的固定前缀判定（前缀常量私有于本类，配单测钉住，防止文案改动后判定脱钩）。
+
+**11.3 issue 行格式（`appendIssues`）**
+
+```text
+- [excess-args] TextContent takes 2 arg(s), got 3 (component: TextContent) (stmt=kpiValue, line 3:51)
+  hint: ...
+```
+
+`stmt=` 在 `statementId` 非空时输出；`line L:C` 在 `line > 0` 时输出；两者皆无则省略整个括号段。
+
+**11.4 级联抑制算法（`ReaskPromptBuilder` 私有 static，`buildFullRepair`/`buildRepairAndContinue` 共用）**
+
+```text
+suppressCascades(issues):
+  S = { i.statementId : i.source == "syntax" && i.severity == ERROR && i.statementId != null }
+  D = { "excess-args", "null-required", "unresolved-ref" }
+  kept = [ i : !(i.code ∈ D && i.statementId ∈ S) ]
+         例外：code == "unresolved-ref" 且 RepairHints.isRootCauseHint(i.hint) 的 issue 始终保留
+  若 kept 含任一 code != "root-not-renderable" 的 ERROR：
+      从 kept 移除所有 "root-not-renderable"
+  return kept
+```
+
+语义：语句级抑制（syntax 已坏的语句只留 syntax 根因）+ 根因 hint 豁免（`Math.abs(v).toFixed(1)` 这类语句同时有 syntax ERROR 和携带 @Abs 指引的 unresolved-ref，后者本身就是根因解释，不得被抑制）+ root-not-renderable 在任何其它 ERROR 存在时视为级联尾巴（corpus 中 16/16 次均为尾巴）。仅影响 prompt 文本，`ValidationResult` 不变。
+
+**11.5 dump 验收工具固化**
+
+`src/test/java/.../corpus/InterceptionCorpusDumpTest.java`：常规随 test 执行（无断言失败路径），加载 corpus manifest → `DefaultOpenuiLangValidator` + `ReaskPromptBuilder.buildFullRepair` → 写 `target/interception-corpus-dump.md`（DSL/issues/prompt 三栏对照）。作为每轮 hint/prompt 改动的验收工件，输出不进版本控制。
+
+**11.6 验证与文档同步**
+
+- TDD：`ReaskPromptBuilderTest`（现有文案断言会红，先改期望）+ 新增 `RepairHintsTest`；再实现。
+- 定向：`InterceptionCorpusTest`、`ReaskPromptBuilderTest`、`RepairCoordinatorTest`、`CrossLanguageParityTest`；最后全量 361+（低 heap 形态）。
+- `docs/generated-dsl-interception-report.md` "拦截报告示例"节引用了旧 hint 文案，需同步。
+
 ## Risks / Trade-offs
 
 - [Risk] Java parser 与 TypeScript parser drift。-> Mitigation: 使用 TS parser 作为测试 oracle，新增 parity fixtures；只承诺第一版验证子集，不承诺完整 AST parity。
@@ -314,6 +394,8 @@ GenUiValidationConfig.disabled()
 - [Risk] Fail-Fast Reask 增加一次模型请求延迟和成本。-> Mitigation: 只对 definitively invalid completed statement 触发，默认 repair 关闭，开启后最多 1 次并有超时。
 - [Risk] 不提供公开 `replace` 后，SDK 无法在流式中静默改写已发出的 DSL。-> Mitigation: 坏 statement 发出前 withheld，temporary unresolved 默认进入 accepted buffer，final repair 只允许修改未发出的 tail；需要改写已发出前缀时失败本次 stream 且不缓存。
 - [Risk] validator 拦截过严导致可渲染 DSL 被拒。-> Mitigation: 流式中 unresolved 仅作 temporary signal；第一版错误码分类明确区分 blocking 与 warning。
+- [Risk] 级联抑制的根因豁免靠 hint 前缀判定，hint 文案改动可能使判定脱钩。-> Mitigation: 文案与判定同源于 `RepairHints` 单一类，前缀常量私有并由单测钉住。
+- [Risk] prompt 层抑制过度，把真实独立错误当级联误删。-> Mitigation: 抑制仅限同 statementId 且派生码集合固定（excess-args/null-required/unresolved-ref）；validator 输出保持全量，corpus dump 工具可逐例核对 prompt 视图。
 
 ## Migration Plan
 
@@ -323,7 +405,7 @@ GenUiValidationConfig.disabled()
 4. 保持 `RenderStreamEnvelope` 公开类型为 `dataModel`、`dsl`、`error`、`done`，但把 `dsl` 语义改为 SDK accepted DSL，而不是 raw LLM delta。
 5. 接入 statement boundary scanner 和 streaming gate，先只 gate 明确 invalid statement。
 6. 接入可选 full repair，再接入可选 Fail-Fast Reask statement repair。
-7. 服务层缓存策略切换为只缓存 SDK completion result 最终状态为 `VALID` 的 DSL；repair 成功通过 `VALID` 加 metadata 表达。
+7. 服务层缓存策略切换为只缓存 SDK completion result 为 `VALID` 或 `REPAIRED` 的 DSL。
 8. 回滚时可切到 `GenUiValidationConfig.disabled()`，或从 `STREAMING_GATE` 降级到 `FINAL_ONLY`，保留原始 LLM delta 流式路径。
 
 ## Open Questions

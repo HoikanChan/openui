@@ -128,6 +128,36 @@ When repair is enabled for completed generation, the SDK SHALL use bounded refle
 - **THEN** the SDK stops after the configured maximum repair attempts
 - **AND** it returns or throws a failure containing the latest validation result
 
+### Requirement: Reask prompts present repair-oriented diagnostics
+The SDK reask prompt builder SHALL present validation issues in a form optimized for a repair model: each issue line carries statement and position context when known, symptom-only cascade issues are suppressed from the prompt view (never from the validation result), and unresolved references caused by JavaScript-subset violations carry root-cause hints naming usable openui-lang builtins. Hint enrichment MUST NOT alter issue `message` text, which is bound by TypeScript parity.
+
+#### Scenario: JavaScript global reference gets a root-cause hint
+- **WHEN** final validation reports an unresolved reference whose name is a known JavaScript global or keyword such as `Math`, `Date`, or `new`
+- **THEN** the issue hint states that JavaScript globals and methods are not available in `openui-lang` and names builtin alternatives such as `@Abs`, `@Round`, `@FormatNumber`
+- **AND** the hint does not suggest defining a statement of that name or passing it as an external ref
+
+#### Scenario: Builtin name missing '@' gets a did-you-mean hint
+- **WHEN** final validation reports an unresolved reference whose name exactly matches a builtin name including case, such as `FormatNumber`
+- **THEN** the issue hint suggests calling the builtin with a leading `@`, such as `did you mean "@FormatNumber"`
+
+#### Scenario: Unresolved reference is attributed to the referencing statement
+- **WHEN** final validation reports an unresolved reference used inside a statement
+- **THEN** the issue carries the statementId of the statement that used the reference and that statement's start position, not the root statement
+
+#### Scenario: Derived issues of a syntax-broken statement are suppressed in the prompt
+- **WHEN** a statement carries a blocking syntax issue and the same statement also produced excess-args, null-required, or unresolved-ref issues
+- **THEN** the reask prompt omits those derived issues while the validation result still contains them
+- **AND** an unresolved-ref issue carrying a root-cause hint is not suppressed
+
+#### Scenario: Root-not-renderable is suppressed when another error explains it
+- **WHEN** the issue list sent to the reask prompt contains any other blocking issue besides `root-not-renderable`
+- **THEN** the reask prompt omits the `root-not-renderable` issue
+- **AND** `root-not-renderable` is presented only when it is the sole blocking issue
+
+#### Scenario: Prompt issue lines carry statement and position context
+- **WHEN** the reask prompt renders an issue that has a statementId or a known line and column
+- **THEN** the issue line includes the statement id and `line:column` so a multi-statement document can be located
+
 ### Requirement: Java validator parity is tested against TypeScript parser fixtures
 The repository SHALL include cross-language validation fixtures or golden tests that compare Java validator behavior with the TypeScript `packages/lang-core` parser for the supported validation subset.
 
