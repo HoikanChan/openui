@@ -129,9 +129,11 @@ status=INVALID
 
 ```text
 status=INVALID
-[ERROR] unresolved-ref  src=reference  stmt=root  unresolved reference "Math"
-        hint: define a statement named "Math" or pass it as an external ref
+[ERROR] unresolved-ref  src=reference  stmt=root  line=1:1  unresolved reference "Math"
+        hint: "Math" is a JavaScript global — JS globals and methods are not available in openui-lang; use builtins like @Abs, @Round, @FormatNumber, @FormatDate instead
 ```
+
+hint 由 `RepairHints` 三档分流：精确同名 builtin（漏 `@`）→ did-you-mean `@X`；已知 JS global/关键字 → 上面的根因提示；其余 → `define a statement named "X" earlier in the document`（已移除误导修复模型的 "pass it as an external ref" 措辞）。`ReaskPromptBuilder` 在 prompt 视图做级联抑制（validator 输出保持全量），逐例对照见 `mvn test` 生成的 `target/interception-corpus-dump.md`。
 
 `prose-chatter-intro`（无 fence 的开场白）：
 

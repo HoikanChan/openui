@@ -73,13 +73,13 @@
 
 ## 10. Reask 诊断 LLM 友好化（hint 分流 + prompt 层级联抑制）
 
-- [ ] 10.1 `ProgramAnalyzer`：`WalkCtx.unresolved` 改为 `List<UnresolvedRef>(name, statementId)`，FINAL emit 时 statementId/line/col 指向引用语句（语句 span 起点）；跑 `CrossLanguageParityTest` + `InterceptionCorpusTest` 证明 issue 数量与 code 集合不变
-- [ ] 10.2 新增 `validation/semantic/RepairHints`：`JS_GLOBAL_NAMES` 名单、`unresolvedRefHint(name)` 三档分流（builtin 精确匹配 did-you-mean → JS-global 根因 → 默认 define-a-statement，删 external-ref 措辞）、`isRootCauseHint(hint)`；配 `RepairHintsTest`
-- [ ] 10.3 `ProgramAnalyzer` unresolved-ref hint 接入 `RepairHints.unresolvedRefHint`（仅 hint 字段，message 不动）
-- [ ] 10.4 `ReaskPromptBuilder.appendIssues`：issue 行追加 `(stmt=id, line L:C)` 段（TDD：先改 `ReaskPromptBuilderTest` 文案期望）
-- [ ] 10.5 `ReaskPromptBuilder.suppressCascades`：语句级抑制（syntax ERROR 语句的 excess-args/null-required/unresolved-ref）+ 根因 hint 豁免 + root-not-renderable 其它 ERROR 存在即抑制；取舍理由写类 javadoc；`buildFullRepair`/`buildRepairAndContinue` 共用
-- [ ] 10.6 固化 `InterceptionCorpusDumpTest`：随 test 生成 `target/interception-corpus-dump.md`（DSL/issues/prompt 对照），作为验收工件
-- [ ] 10.7 同步 `docs/generated-dsl-interception-report.md` 的 hint 文案节；定向跑 InterceptionCorpusTest / ReaskPromptBuilderTest / RepairCoordinatorTest / CrossLanguageParityTest 后全量 `mvn test`（低 heap 形态）
+- [x] 10.1 `ProgramAnalyzer`：`WalkCtx.unresolved` 改为 `List<UnresolvedRef>(name, statementId)`，FINAL emit 时 statementId/line/col 指向引用语句（语句 span 起点）；跑 `CrossLanguageParityTest` + `InterceptionCorpusTest` 证明 issue 数量与 code 集合不变
+- [x] 10.2 新增 `validation/semantic/RepairHints`：`JS_GLOBAL_NAMES` 名单、`unresolvedRefHint(name)` 三档分流（builtin 精确匹配 did-you-mean → JS-global 根因 → 默认 define-a-statement，删 external-ref 措辞）、`isRootCauseHint(hint)`；配 `RepairHintsTest`
+- [x] 10.3 `ProgramAnalyzer` unresolved-ref hint 接入 `RepairHints.unresolvedRefHint`（仅 hint 字段，message 不动）
+- [x] 10.4 `ReaskPromptBuilder.appendIssues`：issue 行追加 `(stmt=id, line L:C)` 段（TDD：先改 `ReaskPromptBuilderTest` 文案期望）
+- [x] 10.5 `ReaskPromptBuilder.suppressCascades`：语句级抑制（syntax ERROR 语句的 excess-args/null-required/unresolved-ref）+ 根因 hint 豁免 + root-not-renderable 其它 ERROR 存在即抑制；取舍理由写类 javadoc；`buildFullRepair`/`buildRepairAndContinue` 共用
+- [x] 10.6 固化 `InterceptionCorpusDumpTest`：随 test 生成 `target/interception-corpus-dump.md`（DSL/issues/prompt 对照），作为验收工件
+- [x] 10.7 同步 `docs/generated-dsl-interception-report.md` 的 hint 文案节；定向跑 InterceptionCorpusTest / ReaskPromptBuilderTest / RepairCoordinatorTest / CrossLanguageParityTest 后全量 `mvn test`（低 heap 形态）
 
 ## 11. 文档、验证与回滚
 
