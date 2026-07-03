@@ -6,6 +6,7 @@ import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.llm.protocol.ChatMessage;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
+import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -27,6 +28,19 @@ import java.util.Set;
  * <p>The issue block is built from the structured {@link ValidationIssue} fields (code / message /
  * hint / component / path) — never from raw parser exception text. Component signature hints come
  * from the merged {@link GenerationContract} via {@link ComponentPropsSchema#formatSignature}.
+ *
+ * <h2>Cascade suppression lives HERE, not in the validator (design Decision 11.4)</h2>
+ *
+ * <p>One parse failure fans out into derived noise: the statement's expression is torn into fake
+ * {@code excess-args}/{@code null-required} args, template fragments surface as {@code
+ * unresolved-ref}, and the root stops materializing ({@code root-not-renderable}). This class
+ * filters that noise out of the PROMPT VIEW ONLY — {@code ValidationResult} stays complete.
+ * Do not "clean up" by moving suppression into the validator: the interception corpus asserts
+ * expected-code subsets against full validator output, and the TS parity oracle mirrors the
+ * unsuppressed TS parser; both break if the validator starts dropping issues. Exemption: an
+ * {@code unresolved-ref} whose hint IS the root cause (JS global / missing '@', per
+ * {@link RepairHints#isRootCauseHint}) survives suppression — removing it would leave only the
+ * token-level symptom.
  */
 public final class ReaskPromptBuilder {
 
@@ -120,7 +134,7 @@ public final class ReaskPromptBuilder {
       sb.append("- (no structured issues supplied)\n");
       return;
     }
-    for (ValidationIssue issue : issues) {
+    for (ValidationIssue issue : suppressCascades(issues)) {
       if (issue == null || issue.severity() != ValidationSeverity.ERROR) {
         continue; // machine-readable: only blocking issues drive the repair
       }
@@ -137,6 +151,58 @@ public final class ReaskPromptBuilder {
       }
       sb.append('\n');
     }
+  }
+
+  /** Issue codes that a same-statement syntax failure derives (symptoms, not causes). */
+  private static final Set<String> DERIVED_CODES =
+      Set.of("excess-args", "null-required", "unresolved-ref");
+
+  private static final String ROOT_NOT_RENDERABLE = "root-not-renderable";
+
+  /**
+   * Prompt-view cascade filter (see class javadoc for the layering rationale):
+   *
+   * <ol>
+   *   <li>statement-level: derived codes on a statement that already has a blocking syntax issue
+   *       are dropped, except unresolved-refs carrying a root-cause hint;
+   *   <li>root tail: {@code root-not-renderable} is dropped whenever any other blocking issue
+   *       remains — that other issue already explains why the root did not materialize.
+   * </ol>
+   */
+  private static List<ValidationIssue> suppressCascades(List<ValidationIssue> issues) {
+    Set<String> syntaxBrokenStmts = new LinkedHashSet<>();
+    for (ValidationIssue issue : issues) {
+      if (issue != null
+          && issue.severity() == ValidationSeverity.ERROR
+          && "syntax".equals(issue.source())
+          && issue.statementId() != null) {
+        syntaxBrokenStmts.add(issue.statementId());
+      }
+    }
+    List<ValidationIssue> kept = new ArrayList<>();
+    boolean keptOtherError = false;
+    for (ValidationIssue issue : issues) {
+      if (issue == null) {
+        continue;
+      }
+      boolean derivedOnBrokenStmt =
+          issue.severity() == ValidationSeverity.ERROR
+              && DERIVED_CODES.contains(issue.code())
+              && issue.statementId() != null
+              && syntaxBrokenStmts.contains(issue.statementId())
+              && !RepairHints.isRootCauseHint(issue.hint());
+      if (derivedOnBrokenStmt) {
+        continue;
+      }
+      kept.add(issue);
+      if (issue.severity() == ValidationSeverity.ERROR && !ROOT_NOT_RENDERABLE.equals(issue.code())) {
+        keptOtherError = true;
+      }
+    }
+    if (keptOtherError) {
+      kept.removeIf(i -> ROOT_NOT_RENDERABLE.equals(i.code()));
+    }
+    return kept;
   }
 
   /**
