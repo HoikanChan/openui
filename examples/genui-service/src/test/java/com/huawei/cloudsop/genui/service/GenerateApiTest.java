@@ -1,26 +1,15 @@
-package com.huawei.cloudsop.genui.service;
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+package com.huawei.cloudsop.genui.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
@@ -31,19 +20,37 @@ import com.huawei.cloudsop.genui.service.llm.LlmClient;
 import com.huawei.cloudsop.genui.service.llm.LlmStream;
 import com.huawei.cloudsop.genui.service.llm.LlmUpstreamException;
 
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 /**
  * 生成端点行为:SDK 校验门产生的 dataModel/dsl/error/done envelope 序列化为 SSE JSON。
  *
- * <p>协议(design Decision #7):首帧 dataModel(seq=0)→ 若干 dsl(仅门放行的完整语句)→ done;
- * withhold 的非法语句触发 error(VALIDATION_FAILED)→ done,其文本从不出现在 dsl 帧;流前失败 502 不变;
- * finish_reason 非 stop / 流中途失败 → error(LLM_STREAM_FAILED)→ done(取代旧文本尾巴);
- * 空 prompt 400 / 未知 extensionId 404 / promptOverride 不变。
+ * <p>
+ * 协议(design Decision #7):首帧 dataModel(seq=0)→ 若干 dsl(仅门放行的完整语句)→ done; withhold 的非法语句触发 error(VALIDATION_FAILED)→
+ * done,其文本从不出现在 dsl 帧;流前失败 502 不变; finish_reason 非 stop / 流中途失败 → error(LLM_STREAM_FAILED)→ done(取代旧文本尾巴); 空 prompt 400
+ * / 未知 extensionId 404 / promptOverride 不变。
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 class GenerateApiTest {
-  @Autowired MockMvc mvc;
-  @MockBean LlmClient llmClient;
+    @Autowired
+    MockMvc mvc;
+    @MockBean
+    LlmClient llmClient;
 
   @Test
   void streamsAcceptedDslAsEnvelopeFrames() throws Exception {
@@ -118,11 +125,11 @@ class GenerateApiTest {
     assertEquals("done", frames.get(frames.size() - 1).type);
   }
 
-  @Test
-  void emptyPromptReturns400() throws Exception {
-    mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"  \"}"))
-        .andExpect(status().isBadRequest());
-  }
+    @Test
+    void emptyPromptReturns400() throws Exception {
+        mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"  \"}"))
+                .andExpect(status().isBadRequest());
+    }
 
   @Test
   void upstreamFailureBeforeFirstTokenReturns502() throws Exception {
@@ -132,106 +139,92 @@ class GenerateApiTest {
         .andExpect(status().isBadGateway());
   }
 
-  @Test
-  void unknownextensionIdReturns404BeforeStreaming() throws Exception {
-    mvc.perform(
-            post("/v1/generate")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"prompt\":\"展示UI\",\"extensionId\":\"no-such\"}"))
-        .andExpect(status().isNotFound());
-  }
-
-  // ── SSE frame parsing helpers ─────────────────────────────────────────────
-
-  private static final class Frame {
-    final String type;
-    final int seq;
-    final Object content;
-
-    Frame(String type, int seq, Object content) {
-      this.type = type;
-      this.seq = seq;
-      this.content = content;
+    @Test
+    void unknownextensionIdReturns404BeforeStreaming() throws Exception {
+        mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"prompt\":\"展示UI\",\"extensionId\":\"no-such\"}")).andExpect(status().isNotFound());
     }
 
-    @Override
-    public String toString() {
-      return "Frame{" + type + ", seq=" + seq + ", content=" + content + "}";
+    // ── SSE frame parsing helpers ─────────────────────────────────────────────
+
+    private static final class Frame {
+        final String type;
+        final int seq;
+        final Object content;
+
+        Frame(String type, int seq, Object content) {
+            this.type = type;
+            this.seq = seq;
+            this.content = content;
+        }
+
+        @Override
+        public String toString() {
+            return "Frame{" + type + ", seq=" + seq + ", content=" + content + "}";
+        }
     }
-  }
 
-  private List<Frame> performGenerate(String body) throws Exception {
-    MvcResult started =
-        mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON).content(body))
-            .andExpect(request().asyncStarted())
-            .andReturn();
-    String raw =
-        mvc.perform(asyncDispatch(started))
-            .andExpect(status().isOk())
-            .andReturn()
-            .getResponse()
-            .getContentAsString(StandardCharsets.UTF_8);
-    return parseFrames(raw);
-  }
-
-  @SuppressWarnings("unchecked")
-  private static List<Frame> parseFrames(String raw) {
-    List<Frame> frames = new ArrayList<>();
-    for (String block : raw.split("\n\n")) {
-      String line = block.trim();
-      if (!line.startsWith("data:")) {
-        continue;
-      }
-      String json = line.substring("data:".length()).trim();
-      if (json.isEmpty()) {
-        continue;
-      }
-      Map<String, Object> obj = (Map<String, Object>) Json.parse(json);
-      frames.add(
-          new Frame(
-              String.valueOf(obj.get("type")),
-              ((Number) obj.get("seq")).intValue(),
-              obj.get("content")));
+    private List<Frame> performGenerate(String body) throws Exception {
+        MvcResult started = mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(request().asyncStarted()).andReturn();
+        String raw = mvc.perform(asyncDispatch(started)).andExpect(status().isOk()).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        return parseFrames(raw);
     }
-    return frames;
-  }
 
-  private static boolean hasType(List<Frame> frames, String type) {
-    return frames.stream().anyMatch(f -> type.equals(f.type));
-  }
-
-  private static Frame lastOfType(List<Frame> frames, String type) {
-    Frame found = null;
-    for (Frame f : frames) {
-      if (type.equals(f.type)) {
-        found = f;
-      }
+    @SuppressWarnings("unchecked")
+    private static List<Frame> parseFrames(String raw) {
+        List<Frame> frames = new ArrayList<>();
+        for (String block : raw.split("\n\n")) {
+            String line = block.trim();
+            if (!line.startsWith("data:")) {
+                continue;
+            }
+            String json = line.substring("data:".length()).trim();
+            if (json.isEmpty()) {
+                continue;
+            }
+            Map<String, Object> obj = (Map<String, Object>) Json.parse(json);
+            frames.add(new Frame(String.valueOf(obj.get("type")), ((Number) obj.get("seq")).intValue(),
+                    obj.get("content")));
+        }
+        return frames;
     }
-    if (found == null) {
-      throw new AssertionError("no frame of type " + type + " in " + frames);
+
+    private static boolean hasType(List<Frame> frames, String type) {
+        return frames.stream().anyMatch(f -> type.equals(f.type));
     }
-    return found;
-  }
 
-  @SuppressWarnings("unchecked")
-  private static Object errorCode(Frame f) {
-    return ((Map<String, Object>) f.content).get("code");
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Object errorMessage(Frame f) {
-    return ((Map<String, Object>) f.content).get("message");
-  }
-
-  private static void assertSeqMonotonic(List<Frame> frames) {
-    for (int i = 1; i < frames.size(); i++) {
-      assertTrue(
-          frames.get(i).seq > frames.get(i - 1).seq,
-          "seq must strictly increase: " + frames);
+    private static Frame lastOfType(List<Frame> frames, String type) {
+        Frame found = null;
+        for (Frame f : frames) {
+            if (type.equals(f.type)) {
+                found = f;
+            }
+        }
+        if (found == null) {
+            throw new AssertionError("no frame of type " + type + " in " + frames);
+        }
+        return found;
     }
-  }
 
-  private static LlmStream stream(String sse) {
-    return new LlmStream(new ByteArrayInputStream(sse.getBytes(StandardCharsets.UTF_8)));
-  }
+    @SuppressWarnings("unchecked")
+    private static Object errorCode(Frame f) {
+        return ((Map<String, Object>) f.content).get("code");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object errorMessage(Frame f) {
+        return ((Map<String, Object>) f.content).get("message");
+    }
+
+    private static void assertSeqMonotonic(List<Frame> frames) {
+        for (int i = 1; i < frames.size(); i++) {
+            assertTrue(frames.get(i).seq > frames.get(i - 1).seq, "seq must strictly increase: " + frames);
+        }
+    }
+
+    private static LlmStream stream(String sse) {
+        return new LlmStream(new ByteArrayInputStream(sse.getBytes(StandardCharsets.UTF_8)));
+    }
 }
