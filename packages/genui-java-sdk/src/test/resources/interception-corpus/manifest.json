@@ -1,0 +1,695 @@
+{
+  "rootName": "root",
+  "externalRefs": [
+    "data",
+    "v",
+    "row",
+    "s",
+    "item"
+  ],
+  "sharedContractFile": "contracts/openui-shared.json",
+  "cases": [
+    {
+      "id": "valid-table-basic",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/table-basic.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/table-basic.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-table-render-cell",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/table-render-cell.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/table-render-cell.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-table-sortable-date",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/table-sortable-date.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/table-sortable-date.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-list-action-items",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/list-action-items.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/list-action-items.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-card-kpi",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/card-kpi.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/card-kpi.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-bar-product-comparison",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/bar-product-comparison.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/bar-product-comparison.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-pie-sales-by-region",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/pie-sales-by-region.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/pie-sales-by-region.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-line-monthly-revenue",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/snapshots/line-monthly-revenue.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/line-monthly-revenue.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "unknown-component-datatable",
+      "source": "mutated",
+      "expectedClass": "unknown-component",
+      "dslFile": "dsl/bad/unknown-component-datatable.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unknown-component"
+      ]
+    },
+    {
+      "id": "unknown-component-metric-card",
+      "source": "mutated",
+      "expectedClass": "unknown-component",
+      "dslFile": "dsl/bad/unknown-component-metric-card.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unknown-component"
+      ]
+    },
+    {
+      "id": "unknown-component-sparkline",
+      "source": "mutated",
+      "expectedClass": "unknown-component",
+      "dslFile": "dsl/bad/unknown-component-sparkline.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unknown-component"
+      ]
+    },
+    {
+      "id": "missing-required-textcontent",
+      "source": "handcrafted",
+      "expectedClass": "missing-required",
+      "dslFile": "dsl/bad/missing-required-textcontent.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "missing-required"
+      ]
+    },
+    {
+      "id": "missing-required-table-rows",
+      "source": "mutated",
+      "expectedClass": "missing-required",
+      "dslFile": "dsl/bad/missing-required-table-rows.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "missing-required"
+      ]
+    },
+    {
+      "id": "missing-required-series-data",
+      "source": "mutated",
+      "expectedClass": "missing-required",
+      "dslFile": "dsl/bad/missing-required-series-data.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "missing-required"
+      ]
+    },
+    {
+      "id": "null-required-textcontent",
+      "source": "handcrafted",
+      "expectedClass": "null-required",
+      "dslFile": "dsl/bad/null-required-textcontent.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "null-required"
+      ]
+    },
+    {
+      "id": "null-required-table-columns",
+      "source": "mutated",
+      "expectedClass": "null-required",
+      "dslFile": "dsl/bad/null-required-table-columns.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "null-required"
+      ]
+    },
+    {
+      "id": "null-required-series-data",
+      "source": "mutated",
+      "expectedClass": "null-required",
+      "dslFile": "dsl/bad/null-required-series-data.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "null-required"
+      ]
+    },
+    {
+      "id": "excess-args-textcontent",
+      "source": "handcrafted",
+      "expectedClass": "excess-args",
+      "dslFile": "dsl/bad/excess-args-textcontent.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "excess-args"
+      ]
+    },
+    {
+      "id": "excess-args-stack",
+      "source": "handcrafted",
+      "expectedClass": "excess-args",
+      "dslFile": "dsl/bad/excess-args-stack.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "excess-args"
+      ]
+    },
+    {
+      "id": "excess-args-col",
+      "source": "mutated",
+      "expectedClass": "excess-args",
+      "dslFile": "dsl/bad/excess-args-col.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "excess-args"
+      ]
+    },
+    {
+      "id": "invalid-prop-col-format",
+      "source": "mutated",
+      "expectedClass": "invalid-prop",
+      "dslFile": "dsl/bad/invalid-prop-col-format.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "invalid-prop"
+      ]
+    },
+    {
+      "id": "invalid-prop-col-width",
+      "source": "mutated",
+      "expectedClass": "invalid-prop",
+      "dslFile": "dsl/bad/invalid-prop-col-width.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "invalid-prop"
+      ]
+    },
+    {
+      "id": "invalid-prop-tabs-option",
+      "source": "handcrafted",
+      "expectedClass": "invalid-prop",
+      "dslFile": "dsl/bad/invalid-prop-tabs-option.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "invalid-prop"
+      ]
+    },
+    {
+      "id": "inline-reserved-query-root",
+      "source": "handcrafted",
+      "expectedClass": "inline-reserved",
+      "dslFile": "dsl/bad/inline-reserved-query-root.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "inline-reserved"
+      ]
+    },
+    {
+      "id": "inline-reserved-query-child",
+      "source": "handcrafted",
+      "expectedClass": "inline-reserved",
+      "dslFile": "dsl/bad/inline-reserved-query-child.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "inline-reserved"
+      ]
+    },
+    {
+      "id": "inline-reserved-mutation-child",
+      "source": "handcrafted",
+      "expectedClass": "inline-reserved",
+      "dslFile": "dsl/bad/inline-reserved-mutation-child.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "inline-reserved"
+      ]
+    },
+    {
+      "id": "syntax-unclosed-component",
+      "source": "handcrafted",
+      "expectedClass": "syntax",
+      "dslFile": "dsl/bad/syntax-unclosed-component.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "syntax-unclosed-bracket"
+      ]
+    },
+    {
+      "id": "syntax-unclosed-array",
+      "source": "handcrafted",
+      "expectedClass": "syntax",
+      "dslFile": "dsl/bad/syntax-unclosed-array.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "syntax-unclosed-bracket"
+      ]
+    },
+    {
+      "id": "syntax-missing-assignment",
+      "source": "handcrafted",
+      "expectedClass": "syntax",
+      "dslFile": "dsl/bad/syntax-missing-assignment.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "syntax-missing-assignment"
+      ]
+    },
+    {
+      "id": "root-missing-comment",
+      "source": "handcrafted",
+      "expectedClass": "root-missing",
+      "dslFile": "dsl/bad/root-missing-comment.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "root-missing"
+      ]
+    },
+    {
+      "id": "root-missing-two-comments",
+      "source": "handcrafted",
+      "expectedClass": "root-missing",
+      "dslFile": "dsl/bad/root-missing-two-comments.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "root-missing"
+      ]
+    },
+    {
+      "id": "root-missing-empty-fence",
+      "source": "handcrafted",
+      "expectedClass": "root-missing",
+      "dslFile": "dsl/bad/root-missing-empty-fence.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "root-missing"
+      ]
+    },
+    {
+      "id": "unresolved-ref-missing-panel",
+      "source": "mutated",
+      "expectedClass": "unresolved-ref",
+      "dslFile": "dsl/bad/unresolved-ref-missing-panel.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unresolved-ref"
+      ]
+    },
+    {
+      "id": "unresolved-ref-missing-title",
+      "source": "mutated",
+      "expectedClass": "unresolved-ref",
+      "dslFile": "dsl/bad/unresolved-ref-missing-title.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unresolved-ref"
+      ]
+    },
+    {
+      "id": "unresolved-ref-missing-field",
+      "source": "mutated",
+      "expectedClass": "unresolved-ref",
+      "dslFile": "dsl/bad/unresolved-ref-missing-field.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unresolved-ref"
+      ]
+    },
+    {
+      "id": "valid-single-quote",
+      "source": "handcrafted",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/single-quote.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": [],
+      "note": "single-quoted strings are legal per lexer parity; not a JS-flavor error"
+    },
+    {
+      "id": "valid-ternary-nullish",
+      "source": "handcrafted",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/eval/runs/20260527_172847_mddu/task-bundle/fixtures/aggregated-only.dsl",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ternary-nullish.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": [],
+      "note": "ternary and ?? are supported dynamic expressions, must not be flagged"
+    },
+    {
+      "id": "valid-fenced-block",
+      "source": "handcrafted",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/fenced-block.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": [],
+      "note": "preprocessor strips markdown fences"
+    },
+    {
+      "id": "valid-fenced-with-prose",
+      "source": "handcrafted",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/fenced-with-prose.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": [],
+      "note": "prose around a fenced block is tolerated; contrast with prose-chatter (unfenced)"
+    },
+    {
+      "id": "js-method-call-tostring",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/eval/runs/20260527_172847_mddu/task-bundle/fixtures/aggregated-only.dsl",
+      "expectedClass": "js-method-call",
+      "dslFile": "dsl/bad/js-method-call-tostring.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "syntax-unexpected-token"
+      ]
+    },
+    {
+      "id": "js-method-call-tostring-ternary",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/eval/runs/20260519_145917_u0uu/task-bundle/fixtures/current-vs-previous-kpi.dsl",
+      "expectedClass": "js-method-call",
+      "dslFile": "dsl/bad/js-method-call-tostring-ternary.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "syntax-unexpected-token",
+        "unresolved-ref"
+      ]
+    },
+    {
+      "id": "js-method-call-map-arrow",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/eval/runs/20260519_142402_wtrg/task-bundle/fixtures/multi-top-arrays.dsl",
+      "expectedClass": "js-method-call",
+      "dslFile": "dsl/bad/js-method-call-map-arrow.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "syntax-unexpected-token",
+        "unresolved-ref"
+      ]
+    },
+    {
+      "id": "js-global-math-abs",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/eval/runs/20260519_145917_u0uu/task-bundle/fixtures/current-vs-previous-kpi.dsl",
+      "expectedClass": "js-global",
+      "dslFile": "dsl/bad/js-global-math-abs.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unresolved-ref"
+      ]
+    },
+    {
+      "id": "js-global-new-date",
+      "source": "handcrafted",
+      "expectedClass": "js-global",
+      "dslFile": "dsl/bad/js-global-new-date.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unresolved-ref",
+        "unknown-component"
+      ]
+    },
+    {
+      "id": "js-global-string-conversion",
+      "source": "handcrafted",
+      "expectedClass": "js-global",
+      "dslFile": "dsl/bad/js-global-string-conversion.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unknown-component"
+      ]
+    },
+    {
+      "id": "js-syntax-arrow-helper",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/eval/runs/20260511_143450_r5x9/task-bundle/fixtures/percentage-as-decimal.dsl",
+      "expectedClass": "js-syntax-construct",
+      "dslFile": "dsl/bad/js-syntax-arrow-helper.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unresolved-ref"
+      ],
+      "note": "arrow helper is intercepted via the unresolved lambda parameter, not a syntax diagnostic"
+    },
+    {
+      "id": "js-syntax-template-string",
+      "source": "handcrafted",
+      "expectedClass": "js-syntax-construct",
+      "dslFile": "dsl/bad/js-syntax-template-string.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "syntax-unexpected-token"
+      ]
+    },
+    {
+      "id": "js-syntax-spread",
+      "source": "handcrafted",
+      "expectedClass": "js-syntax-construct",
+      "dslFile": "dsl/bad/js-syntax-spread.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "syntax-unexpected-token"
+      ]
+    },
+    {
+      "id": "builtin-misuse-bare-format-number",
+      "source": "handcrafted",
+      "expectedClass": "builtin-misuse",
+      "dslFile": "dsl/bad/builtin-misuse-bare-format-number.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unresolved-ref"
+      ],
+      "note": "builtin written without @ resolves as a plain identifier reference"
+    },
+    {
+      "id": "builtin-misuse-invented-div-mul",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/eval/runs/20260527_172847_mddu/task-bundle/fixtures/aggregated-only.dsl",
+      "expectedClass": "builtin-misuse",
+      "dslFile": "dsl/bad/builtin-misuse-invented-div-mul.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unknown-component"
+      ]
+    },
+    {
+      "id": "builtin-misuse-invented-clamp",
+      "source": "handcrafted",
+      "expectedClass": "builtin-misuse",
+      "dslFile": "dsl/bad/builtin-misuse-invented-clamp.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unknown-component"
+      ]
+    },
+    {
+      "id": "unknown-component-minichart",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/eval/runs/20260527_172847_mddu/task-bundle/fixtures/aggregated-only.dsl",
+      "expectedClass": "unknown-component",
+      "dslFile": "dsl/bad/unknown-component-minichart.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unknown-component"
+      ]
+    },
+    {
+      "id": "unknown-component-legacy-vlayout",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/eval/runs/20260527_172847_mddu/task-bundle/fixtures/aggregated-only.dsl",
+      "expectedClass": "unknown-component",
+      "dslFile": "dsl/bad/unknown-component-legacy-vlayout.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unknown-component"
+      ],
+      "note": "legacy VLayout/Text names after the Stack/TextContent rename"
+    },
+    {
+      "id": "unknown-component-descriptions",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/eval/runs/20260428_200424_uuxo/task-bundle/fixtures/flat-object-single.dsl",
+      "expectedClass": "unknown-component",
+      "dslFile": "dsl/bad/unknown-component-descriptions.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "unknown-component"
+      ]
+    },
+    {
+      "id": "prose-chatter-intro",
+      "source": "handcrafted",
+      "expectedClass": "prose-chatter",
+      "dslFile": "dsl/bad/prose-chatter-intro.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "syntax-missing-assignment"
+      ]
+    },
+    {
+      "id": "prose-chatter-trailing",
+      "source": "handcrafted",
+      "expectedClass": "prose-chatter",
+      "dslFile": "dsl/bad/prose-chatter-trailing.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "syntax-missing-assignment"
+      ]
+    },
+    {
+      "id": "prose-chatter-bullet",
+      "source": "handcrafted",
+      "expectedClass": "prose-chatter",
+      "dslFile": "dsl/bad/prose-chatter-bullet.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "syntax-invalid-statement"
+      ]
+    },
+    {
+      "id": "known-miss-envelope",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/eval/runs/20260527_172847_mddu/task-bundle/fixtures/api-response-envelope.dsl",
+      "expectedClass": "known-miss",
+      "dslFile": "dsl/bad/known-miss-envelope.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "missed",
+      "expectedCodes": [
+        "data-path-mismatch"
+      ],
+      "note": "data.data.users passes because the validator has no dataModel schema; 36 eval files show this envelope mistake"
+    },
+    {
+      "id": "known-miss-field-typo",
+      "source": "handcrafted",
+      "expectedClass": "known-miss",
+      "dslFile": "dsl/bad/known-miss-field-typo.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "missed",
+      "expectedCodes": [
+        "data-path-mismatch"
+      ],
+      "note": "misspelled field/collection names are indistinguishable from valid external data refs"
+    },
+    {
+      "id": "known-miss-method-1arg",
+      "source": "handcrafted",
+      "expectedClass": "known-miss",
+      "dslFile": "dsl/bad/known-miss-method-1arg.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "missed",
+      "expectedCodes": [
+        "syntax-unexpected-token"
+      ],
+      "note": "single-argument JS method calls parse as call expressions in BOTH TS and Java parsers; 0-arg and 2+-arg variants are caught"
+    },
+    {
+      "id": "real-file-aggregated-kpi",
+      "source": "harvested",
+      "origin": "packages/react-ui-dsl/src/__tests__/e2e/eval/runs/20260527_172847_mddu/task-bundle/fixtures/aggregated-only.dsl",
+      "expectedClass": "real-file",
+      "dslFile": "dsl/bad/real-file-aggregated-kpi.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "syntax-unexpected-token",
+        "unknown-component"
+      ],
+      "note": "verbatim eval artifact: 41 issues (4x toString syntax, 32 unknown components incl legacy VLayout/Text/Tag, invented MiniChart/@Div/@Mul, root-not-renderable)"
+    }
+  ]
+}

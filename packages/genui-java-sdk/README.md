@@ -43,6 +43,175 @@ pnpm --dir packages/react-ui-dsl run generate:base-contract
 pnpm --dir packages/lang-core run generate:prompt-golden
 ```
 
+## Cross-language validation oracle
+
+The Java `DefaultOpenuiLangValidator`'s contract-error taxonomy is pinned to the
+TypeScript `packages/lang-core` parser (the oracle) on the SUPPORTED SUBSET — this is
+not full AST parity. `CrossLanguageParityTest` loads the committed, TS-generated
+`src/test/resources/parity/oracle.json` from the classpath, rebuilds each case's
+`GenerationContract`, runs the validator in `FINAL` mode, and asserts:
+
+- **contract errors** (`unknown-component`, `missing-required`, `null-required`,
+  `excess-args`, `invalid-prop`, `inline-reserved`) match EXACTLY on
+  code/component/path/statementId, with no extra contract-error codes;
+- **unresolved** refs match by NAME SET (`unresolved-ref`);
+- **root/syntax** issues match at the STRUCTURAL level only (Java structural codes are
+  Java-authored). Notably, TS `parse()` always auto-closes unbalanced input, so the
+  oracle records the unclosed case as `valid`, while Java `FINAL` does not auto-close and
+  reports it as `INVALID` with a `syntax` diagnostic — the test asserts that divergence
+  at the structural level rather than demanding TS's status. See the test's KNOWN
+  DIVERGENCES javadoc.
+
+The Java build runs NO Node — it consumes the committed JSON. `oracle.json` is a
+GENERATED artifact (regen-only, do NOT hand-edit). Regenerate it after changing the
+parity cases or the TS parser:
+
+```bash
+pnpm --dir packages/lang-core run generate:validation-oracle
+```
+
+## Generated DSL validation
+
+`GenUiGenerator` can validate generated openui-lang before services cache or
+render it. The validation data model lives under `core.validation`:
+
+- `ValidationStatus` (`VALID`, `PARTIAL`, `INVALID`)
+- `ValidationMode` (`FINAL`, `STREAMING`)
+- `ValidationSeverity` (`ERROR`, `WARNING`, `INFO`)
+- `ValidationIssue`, `ValidationResult`, `ValidationMetadata`, `ValidationRequest`
+- `ValidationConfigMode` (`FINAL_ONLY`, `STREAMING_GATE`, `DISABLED`)
+- `RepairPolicyKind` (`NONE`, `FINAL_REPAIR`, `FAIL_FAST_REASK`)
+- `GenUiValidationConfig`, the top-level generator config record
+
+`GenUiValidationConfig` intentionally exposes two axes only: when to validate
+and what coarse repair policy to apply. Use the presets for the common modes:
+
+```java
+GenUiValidationConfig cfg = GenUiValidationConfig.finalOnly(); // default
+GenUiValidationConfig gate = GenUiValidationConfig.streamingGate();
+GenUiValidationConfig reask = GenUiValidationConfig.streamingGateWithReask();
+GenUiValidationConfig off = GenUiValidationConfig.disabled();
+```
+
+`GenUiGenerator.generate()` runs the sync final-validation gate after extracting
+openui-lang from the LLM response. With `DISABLED`, it skips validation and
+returns a backward-compatible `GenUiGenerationResult(dsl, dataModel)`, leaving
+`validationStatus()` and `validationResult()` as `null`. With `FINAL_ONLY`, a
+valid result returns the extracted DSL plus the populated `validationStatus()`
+and `validationResult()`. Any `INVALID` result throws
+`GenerationValidationException`; callers can inspect
+`e.validationResult().issues()` for the blocking diagnostics.
+
+```java
+try {
+  GenUiGenerationResult result = generator.generate(request);
+  if (result.validationStatus() == ValidationStatus.VALID) {
+    cache(result.dsl());
+  }
+} catch (GenerationValidationException e) {
+  ValidationResult result = e.validationResult();
+  log.warn("Generated DSL failed validation: {}", result.issues());
+}
+```
+
+For sync repair, configure the coarse policy as `FINAL_REPAIR`. The generator
+maps that kind to `RepairPolicy.from(...)` and `RepairCoordinator.repairFull(...)`
+tries reflection repair before throwing. Repaired output is re-validated in
+`FINAL` mode and returned as `VALID`; the result metadata includes
+`extra["repaired"] = "true"`.
+
+```java
+GenUiValidationConfig cfg =
+    new GenUiValidationConfig(
+        ValidationConfigMode.FINAL_ONLY, RepairPolicyKind.FINAL_REPAIR);
+
+GenUiGenerator generator =
+    GenUiGenerator.withTransport(llmConfig, transport, cfg, null);
+```
+
+The lower-level `RepairPolicy` value object carries advanced attempt and timeout
+knobs for repair coordination:
+
+```java
+RepairPolicy policy = RepairPolicy.of(RepairPolicyKind.FINAL_REPAIR, 2);
+```
+
+Today the top-level `GenUiValidationConfig` stores only `RepairPolicyKind`; the
+generator uses `RepairPolicy.from(...)`, whose default attempt budget is one.
+If a service needs non-default attempt budgets or timeout integration, wire that
+at the repair-coordinator boundary rather than adding fields to
+`GenUiValidationConfig`.
+
+### Streaming gate
+
+`GenUiGenerator.generateStream(request, sink)` always starts by sending a
+`RenderStreamEnvelope.dataModel(...)` frame with `seq=0`. The remaining behavior
+depends on `ValidationConfigMode`:
+
+| Mode | Stream behavior |
+|---|---|
+| `DISABLED` | Raw LLM deltas are emitted as `dsl` envelopes. No validation result is attached. |
+| `FINAL_ONLY` | Raw LLM deltas are emitted as `dsl` envelopes, then one final validation runs over the accumulated DSL. Invalid final output marks the returned result but does not add a late `error` frame. |
+| `STREAMING_GATE` | Raw LLM deltas stay inside `StreamingValidationSession`; only gate-accepted complete statements are emitted as `dsl` envelopes. |
+
+The stream gate emits `GateDecision.Kind` values:
+
+- `EMIT`: render-safe statement; forwarded as `RenderStreamEnvelope.dsl(seq, acceptedDsl)`.
+- `BUFFER`: valid so far but waiting on a temporary dependency; held inside the session.
+- `WITHHOLD`: completed statement is definitively invalid; its text is never emitted.
+- `FAIL`: terminal end-of-stream failure, equivalent to withholding at the end.
+
+`RenderStreamEnvelope.dsl(...)` therefore has accepted-DSL semantics. In
+`STREAMING_GATE`, consumers see SDK-accepted complete statements, not raw model
+deltas. With `streamingGateWithReask()`, a fail-fast `WITHHOLD` cancels the
+current stream and re-asks the LLM using the accepted prefix plus validation
+issues; the reask continuation is driven through the same
+`StreamingValidationSession`, preserving accepted DSL and monotonically
+increasing sequence numbers. If reask is not enabled or every reask attempt
+fails, the SDK emits `error` with code `VALIDATION_FAILED`, then `done`.
+
+Validation and repair internals do not enter the public stream by default:
+issue lists, repair prompts, repair attempts, and buffer/retry decisions remain
+SDK-internal. Public stream consumers see only `dataModel`, accepted `dsl`,
+terminal `error`, and `done` envelopes.
+
+Known limitation: streaming reask `statementRepairTimeout` is not enforced.
+Sync repair `timeout` bounds the attempt count, not a single in-flight LLM call.
+Both are inert at the default `Duration.ZERO`. Proper enforcement needs
+transport read-timeout cooperation.
+
+### Rollback
+
+To roll back validation quickly, use `GenUiValidationConfig.disabled()` for
+bare-delta behavior. To keep raw streaming while still checking the final result,
+use `GenUiValidationConfig.finalOnly()`. A service can also revert its endpoint
+implementation to raw delta streaming if clients cannot yet consume
+`RenderStreamEnvelope` SSE frames.
+
+## Migrating from bare LLM delta streaming
+
+Older integrations often treated streaming generation as plain text: read each
+HTTP chunk, append it to a string, and pass the concatenated text to the
+renderer. With generated DSL validation enabled, migrate stream consumers to
+the SDK contract instead:
+
+1. Server-side generation should call `GenUiGenerator.generateStream(request, sink)`
+   or an equivalent `StreamingValidationSession` gate, then serialize each
+   `RenderStreamEnvelope` as one SSE `data:` frame.
+2. Client-side consumers should parse `text/event-stream`, JSON-decode each
+   `data:` payload, and append only frames whose `type` is `"dsl"`.
+3. Treat `type="dataModel"` with `seq=0` as the render data model, `type="error"`
+   as terminal failure detail (`content.code`, `content.message`,
+   `content.retryable`), and `type="done"` as stream closure.
+
+Breaking change for the reference service: `examples/genui-service` `/generate`
+now returns `text/event-stream` `RenderStreamEnvelope` SSE frames:
+`dataModel` with `seq=0`, then accepted `dsl` frames, optional `error`
+frames with `{code, message, retryable}`, and `done`. Existing consumers that
+concatenate raw response body chunks, including
+`examples/react-ui-dsl-demo/src/useGenerate.ts`, will break and need an SSE
+envelope parsing follow-up. This docs change does not fix that frontend.
+
 ## Characterization (large data models)
 
 Host data can be large enough that embedding it verbatim in the system prompt

@@ -17,14 +17,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.function.Consumer;
 
 /**
  * OpenAI 兼容 SSE 响应流:把 delta.content 文本逐段写出,返回 finish_reason。
  *
  * <p>
  * 与被替换的 Node 版一致:只透传文本增量,usage 仅打日志;finish_reason 为 null 表示连接被掐断(代理/网络),由调用方追加错误尾巴。
- *
- * @since 2026
  */
 public final class LlmStream implements Closeable {
     private static final Logger log = LoggerFactory.getLogger(LlmStream.class);
@@ -57,6 +56,42 @@ public final class LlmStream implements Closeable {
             if (!text.isEmpty()) {
                 out.write(text.getBytes(StandardCharsets.UTF_8));
                 out.flush();
+            }
+            JsonNode reason = choice.path("finish_reason");
+            if (reason.isTextual()) {
+                finishReason = reason.asText();
+            }
+            JsonNode usage = chunk.path("usage");
+            if (usage.isObject()) {
+                log.info("[llm] usage: {}", usage);
+            }
+        }
+        return finishReason;
+    }
+
+    /**
+     * 把文本增量交给 {@code onDelta} 消费者(镜像 {@link #pipeTo}:逐段读取 OpenAI 兼容 SSE 的 delta.content,不写 OutputStream),返回
+     * finish_reason(可能为 null)。供 SDK 校验门中间层使用: 服务层把每个 delta 喂给 {@code StreamingValidationSession},由门决定放行/withhold。
+     */
+    public String pipeToConsumer(Consumer<String> onDelta) throws IOException {
+        String finishReason = null;
+        String line;
+        while ((line = reader.readLine()) != null) {
+            if (!line.startsWith("data:")) {
+                continue;
+            }
+            String data = line.substring("data:".length()).trim();
+            if (data.isEmpty()) {
+                continue;
+            }
+            if ("[DONE]".equals(data)) {
+                break;
+            }
+            JsonNode chunk = JSON.readTree(data);
+            JsonNode choice = chunk.path("choices").path(0);
+            String text = choice.path("delta").path("content").asText("");
+            if (!text.isEmpty()) {
+                onDelta.accept(text);
             }
             JsonNode reason = choice.path("finish_reason");
             if (reason.isTextual()) {

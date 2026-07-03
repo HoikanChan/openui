@@ -1,6 +1,6 @@
 # GenUI Java SDK
 
-Java 21 SDK that assembles GenUI system prompts and drives an LLM to generate openui-lang UI from host data. This context covers the prompt-side data handling, in particular how large host data is characterized before being embedded in a prompt.
+Java 21 SDK that assembles GenUI system prompts and drives an LLM to generate openui-lang UI from host data. This context covers the prompt-side data handling (how large host data is characterized before being embedded in a prompt) and the repair-side vocabulary (how validation failures are explained back to the model).
 
 ## Language
 
@@ -28,11 +28,29 @@ _Avoid_: examples, preview
 Characterization metadata (counts, inferred schema, Enum Domains) presented out-of-band alongside the data tree rather than inside it, so that `data.<field>` reference paths in the tree stay valid.
 _Avoid_: annotations, metadata block
 
+**Reask Prompt**:
+The deterministic repair message sent back to the model after a failed generation, presenting the validation issues it must fix.
+_Avoid_: retry prompt, error prompt
+
+**Derived Issue**:
+A validation issue that exists only because another failure on the same statement corrupted parsing or materialization; it describes a symptom, not a cause.
+_Avoid_: cascade error, secondary error
+
+**Cascade Suppression**:
+Dropping Derived Issues from a Reask Prompt so the repair model sees causes instead of symptoms. Applies only to the prompt view — never to the validation verdict itself.
+_Avoid_: dedup (different concern), filtering
+
+**Root-cause Hint**:
+A hint that names the underlying language-subset violation behind an error (e.g. a JS global that does not exist in openui-lang, or a builtin missing its `@`). Exempt from Cascade Suppression because it *is* the explanation.
+_Avoid_: suggestion, tip
+
 ## Relationships
 
 - A **Render Data Model** is reduced by **Characterization** into a **Prompt Data Model**
 - A **Prompt Data Model** is a same-shape data tree (**Sample Rows** in place of full arrays) plus a **Sidecar**
 - A **Sidecar** carries the **Enum Domain** and counts that **Sample Rows** alone cannot guarantee
+- A **Reask Prompt** presents validation issues after **Cascade Suppression**; a **Root-cause Hint** always survives suppression
+- A **Derived Issue** is what **Cascade Suppression** removes
 
 ## Flagged ambiguities
 

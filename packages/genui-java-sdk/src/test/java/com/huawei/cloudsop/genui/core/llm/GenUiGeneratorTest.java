@@ -133,6 +133,9 @@ class GenUiGeneratorTest {
         assertEquals(response, result.dataModel());
         Map<String, Object> body = Json.asObject(Json.parse(transport.lastBody), "request");
         assertEquals(true, body.get("stream"));
+
+        // seq 在所有帧中严格递增
+        assertSeqStrictlyIncreasing(envelopes);
     }
 
     @Test
@@ -157,7 +160,7 @@ class GenUiGeneratorTest {
         GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
                 .generateStream(UiGenerationRequest.builder().userInput("stream").build(), envelopes::add);
 
-        // 末尾是 error 后接 done
+        // 末尾是 error 后接 done,且中间不再有其它帧插入(error 紧邻 done)
         RenderStreamEnvelope error = envelopes.get(envelopes.size() - 2);
         RenderStreamEnvelope done = envelopes.get(envelopes.size() - 1);
         assertEquals(RenderStreamEnvelope.TYPE_ERROR, error.type());
@@ -165,9 +168,28 @@ class GenUiGeneratorTest {
         assertEquals("LLM_STREAM_FAILED", payload.get("code"));
         assertEquals(true, payload.get("retryable"));
         assertEquals(RenderStreamEnvelope.TYPE_DONE, done.type());
+        assertTrue(error.seq() < done.seq(), "error seq must precede done seq");
+        assertNull(done.content(), "done frame must carry no content");
+
+        // 首帧仍是 dataModel(seq=0),即便随后流失败
+        assertEquals(RenderStreamEnvelope.TYPE_DATA_MODEL, envelopes.get(0).type());
+        assertEquals(0, envelopes.get(0).seq());
+
+        // seq 在所有帧中严格递增,即使是失败路径
+        assertSeqStrictlyIncreasing(envelopes);
 
         // 返回结果包含已累计内容的提取结果
         assertEquals("root = Stack([])", result.dsl());
+    }
+
+    /** 断言 envelope 列表中的 seq 严格单调递增(seq 顺序即发出顺序)。 */
+    private static void assertSeqStrictlyIncreasing(List<RenderStreamEnvelope> envelopes) {
+        for (int i = 1; i < envelopes.size(); i++) {
+            int previous = envelopes.get(i - 1).seq();
+            int current = envelopes.get(i).seq();
+            assertTrue(current > previous, "seq must strictly increase: index " + (i - 1) + " seq=" + previous
+                    + " -> index " + i + " seq=" + current);
+        }
     }
 
     @Test
