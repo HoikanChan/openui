@@ -172,6 +172,25 @@ class SemanticValidationTest {
   }
 
   @Test
+  void unresolvedJsGlobalHintRoutedThroughRepairHints() {
+    // `Math` leaked from JS → the FINAL unresolved-ref hint must be the root-cause hint,
+    // not "define a statement named Math or pass it as an external ref".
+    ProgramAnalysis a = analyze("root = Header(\"T\", Math)", ValidationMode.FINAL);
+    ValidationIssue i = issue(a, "unresolved-ref");
+    assertNotNull(i, "expected unresolved-ref issue");
+    assertEquals(RepairHints.unresolvedRefHint("Math"), i.hint());
+    assertTrue(RepairHints.isRootCauseHint(i.hint()));
+  }
+
+  @Test
+  void unresolvedBuiltinNameHintSuggestsAtPrefix() {
+    ProgramAnalysis a = analyze("root = Header(\"T\", FormatNumber)", ValidationMode.FINAL);
+    ValidationIssue i = issue(a, "unresolved-ref");
+    assertNotNull(i, "expected unresolved-ref issue");
+    assertEquals(RepairHints.unresolvedRefHint("FormatNumber"), i.hint());
+  }
+
+  @Test
   void streamingTemporaryUnresolvedIsNotBlocking() {
     // Streaming + incomplete: reference to a not-yet-defined statement is a WARNING, retryable.
     Program program = OpenuiParser.parse("root = Header(\"Hi\", laterRef", ParseMode.STREAMING);

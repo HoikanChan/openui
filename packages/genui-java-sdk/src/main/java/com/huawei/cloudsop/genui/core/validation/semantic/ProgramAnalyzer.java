@@ -139,7 +139,7 @@ public final class ProgramAnalyzer {
                 null,
                 refSpan.line(),
                 refSpan.column(),
-                "define a statement named \"" + ref.name() + "\" or pass it as an external ref",
+                RepairHints.unresolvedRefHint(ref.name()),
                 false));
       }
     } else {
