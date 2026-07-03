@@ -159,6 +159,19 @@ class SemanticValidationTest {
   }
 
   @Test
+  void unresolvedRefAttributedToReferencingStatement() {
+    // Spec (Final unresolved reference is invalid): the issue identifies the unresolved
+    // reference AND the statement that used it — not the root/entry statement.
+    String dsl = "kpi = Header(\"T\", missingRef)\nroot = Table([], [kpi])";
+    ProgramAnalysis a = analyze(dsl, ValidationMode.FINAL);
+    ValidationIssue i = issue(a, "unresolved-ref");
+    assertNotNull(i, "expected unresolved-ref issue");
+    assertEquals("kpi", i.statementId());
+    assertEquals(1, i.line());
+    assertTrue(i.column() > 0);
+  }
+
+  @Test
   void streamingTemporaryUnresolvedIsNotBlocking() {
     // Streaming + incomplete: reference to a not-yet-defined statement is a WARNING, retryable.
     Program program = OpenuiParser.parse("root = Header(\"Hi\", laterRef", ParseMode.STREAMING);

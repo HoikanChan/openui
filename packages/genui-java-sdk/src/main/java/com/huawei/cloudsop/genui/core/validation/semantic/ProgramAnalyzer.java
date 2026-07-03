@@ -7,6 +7,7 @@ import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
 import com.huawei.cloudsop.genui.core.validation.parser.Builtins;
 import com.huawei.cloudsop.genui.core.validation.parser.ParseDiagnostic;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
+import com.huawei.cloudsop.genui.core.validation.parser.SourceSpan;
 import com.huawei.cloudsop.genui.core.validation.parser.Statement;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -124,35 +125,39 @@ public final class ProgramAnalyzer {
         // materialized to an element, it's not renderable.
         emitRootNotRenderable(issues, entryId, materialized);
       }
-      for (String ref : ctx.unresolved) {
+      for (UnresolvedRef ref : ctx.unresolved) {
+        String refStmtId = ref.statementId() != null ? ref.statementId() : entryId;
+        SourceSpan refSpan = spanOf(stmtMap.get(refStmtId));
         issues.add(
             new ValidationIssue(
                 "unresolved-ref",
                 ValidationSeverity.ERROR,
                 SOURCE_REFERENCE,
-                "unresolved reference \"" + ref + "\"",
-                entryId,
+                "unresolved reference \"" + ref.name() + "\"",
+                refStmtId,
                 null,
                 null,
-                -1,
-                -1,
-                "define a statement named \"" + ref + "\" or pass it as an external ref",
+                refSpan.line(),
+                refSpan.column(),
+                "define a statement named \"" + ref.name() + "\" or pass it as an external ref",
                 false));
       }
     } else {
       // STREAMING: temporary unresolved refs are non-blocking (retryable WARNING).
-      for (String ref : ctx.unresolved) {
+      for (UnresolvedRef ref : ctx.unresolved) {
+        String refStmtId = ref.statementId() != null ? ref.statementId() : entryId;
+        SourceSpan refSpan = spanOf(stmtMap.get(refStmtId));
         issues.add(
             new ValidationIssue(
                 "unresolved-ref",
                 ValidationSeverity.WARNING,
                 SOURCE_REFERENCE,
-                "reference \"" + ref + "\" not yet defined (streaming)",
-                entryId,
+                "reference \"" + ref.name() + "\" not yet defined (streaming)",
+                refStmtId,
                 null,
                 null,
-                -1,
-                -1,
+                refSpan.line(),
+                refSpan.column(),
                 "may resolve as more of the stream arrives",
                 true));
       }
@@ -185,9 +190,21 @@ public final class ProgramAnalyzer {
         issues,
         entryId,
         rootResolved,
-        new ArrayList<>(ctx.unresolved),
+        ctx.unresolved.stream().map(UnresolvedRef::name).collect(java.util.stream.Collectors.toCollection(ArrayList::new)),
         new ArrayList<>(ctx.unreached),
         stmtMap.size());
+  }
+
+  /**
+   * An unresolved reference plus the id of the statement whose expression used it (the walk's
+   * {@code currentStatementId} at the moment of resolution failure), so the emitted issue can point
+   * at the referencing statement instead of the entry/root statement.
+   */
+  private record UnresolvedRef(String name, String statementId) {}
+
+  /** Statement start span, or {@link SourceSpan#UNKNOWN} when the statement is not in the map. */
+  private static SourceSpan spanOf(Statement s) {
+    return s == null || s.span() == null ? SourceSpan.UNKNOWN : s.span();
   }
 
   private static AstNode exprOf(Statement s) {
@@ -249,7 +266,7 @@ public final class ProgramAnalyzer {
      */
     final String lastStatementId;
 
-    final List<String> unresolved = new ArrayList<>();
+    final List<UnresolvedRef> unresolved = new ArrayList<>();
     final Set<String> visited = new HashSet<>();
     Set<String> unreached;
     String currentStatementId;
@@ -367,12 +384,12 @@ public final class ProgramAnalyzer {
   /** Resolve a Ref: inline from symbol table, track cycles + unresolved. Mirrors resolveRef. */
   private Object resolveRef(String name, WalkCtx ctx) {
     if (ctx.visited.contains(name)) {
-      ctx.unresolved.add(name);
+      ctx.unresolved.add(new UnresolvedRef(name, ctx.currentStatementId));
       return null;
     }
     if (!ctx.syms.containsKey(name)) {
       if (ctx.externalRefs.contains(name)) return DYNAMIC; // RuntimeRef → resolves at runtime
-      ctx.unresolved.add(name);
+      ctx.unresolved.add(new UnresolvedRef(name, ctx.currentStatementId));
       return null;
     }
     AstNode target = ctx.syms.get(name);
