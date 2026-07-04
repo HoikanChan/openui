@@ -95,6 +95,47 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>2.43.0</version>
+        <configuration>
+          <java>
+            <includes>
+              <include>src/main/java/**/*.java</include>
+              <include>src/test/java/**/*.java</include>
+            </includes>
+            <eclipse>
+              <file>${project.basedir}/../../config/spotless/eclipse-format.xml</file>
+            </eclipse>
+            <importOrder>
+              <file>${project.basedir}/../../config/spotless/huawei.importorder</file>
+            </importOrder>
+            <removeUnusedImports/>
+            <trimTrailingWhitespace/>
+            <endWithNewline/>
+          </java>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>3.6.0</version>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>10.21.0</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <configLocation>${project.basedir}/../../config/checkstyle/huawei_checks.xml</configLocation>
+          <suppressionsLocation>${project.basedir}/../../config/checkstyle/suppressions.xml</suppressionsLocation>
+          <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
+          <includeTestSourceDirectory>true</includeTestSourceDirectory>
+          <failOnViolation>false</failOnViolation>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 </project>

@@ -109,7 +109,7 @@
         <file>${project.basedir}/../../config/spotless/huawei.importorder</file>
       </importOrder>
       <removeUnusedImports/>
-      <trailingWhitespace/>
+      <trimTrailingWhitespace/>
       <endWithNewline/>
     </java>
   </configuration>
@@ -151,7 +151,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Create: `config/checkstyle/suppressions.xml`
 
 **Interfaces:**
-- Produces: `config/checkstyle/huawei_checks.xml`（供两模块 `configLocation` 引用）、`config/checkstyle/suppressions.xml`（经 `${config_loc}` 在规则集内引用）。Task 3 的 pom 插件指向这两个文件。
+- Produces: `config/checkstyle/huawei_checks.xml`（供两模块 `configLocation` 引用）、`config/checkstyle/suppressions.xml`（经 pom 的 `suppressionsLocation`/`suppressionsFileExpression` 注入 `${checkstyle.suppressions.file}`，由规则集内 `SuppressionFilter` 读取）。Task 3 的 pom 插件指向这两个文件。
 
 - [ ] **Step 1: 创建抑制文件 `config/checkstyle/suppressions.xml`**
 
@@ -194,7 +194,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
   </module>
 
   <module name="SuppressionFilter">
-    <property name="file" value="${config_loc}/suppressions.xml"/>
+    <property name="file" value="${checkstyle.suppressions.file}"/>
     <property name="optional" value="true"/>
   </module>
 
@@ -228,8 +228,21 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
     <module name="MissingJavadocType">
       <property name="scope" value="protected"/>
     </module>
+    <module name="WriteTag">
+      <property name="tag" value="@since"/>
+      <property name="tagFormat" value="\S.*"/>
+      <property name="severity" value="warning"/>
+      <property name="tagSeverity" value="ignore"/>
+    </module>
     <module name="JavadocMethod">
       <property name="accessModifiers" value="public,protected"/>
+    </module>
+    <module name="MissingJavadocMethod">
+      <property name="scope" value="protected"/>
+    </module>
+    <module name="JavadocVariable">
+      <property name="scope" value="protected"/>
+      <property name="ignoreNamePattern" value="serialVersionUID"/>
     </module>
     <module name="AtclauseOrder"/>
     <module name="TodoComment">
@@ -265,7 +278,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 </module>
 ```
 
-> 说明：`MissingJavadocMethod` 暂不启用，避免对大量内部 protected/public 方法产生 warning 噪声；`JavadocMethod` 只校验已有 Javadoc 的正确性。如需强制"public/protected 必须有 Javadoc"，再加 `MissingJavadocMethod`。
+> 说明：按 G.CMT.01 强制 public/protected 元素均有 Javadoc —— 类型 `MissingJavadocType`、方法 `MissingJavadocMethod`、字段 `JavadocVariable`（均 scope=protected；字段豁免 `serialVersionUID`，方法 `@Override` 默认豁免）；`JavadocType`/`JavadocMethod` 负责校验已有 Javadoc 的格式。均为 warning，不阻断构建。
 
 - [ ] **Step 3: 校验规则集 XML 自身可被 Checkstyle 解析（失败测试 → 通过）**
 
@@ -310,13 +323,17 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
   </dependencies>
   <configuration>
     <configLocation>${project.basedir}/../../config/checkstyle/huawei_checks.xml</configLocation>
+    <suppressionsLocation>${project.basedir}/../../config/checkstyle/suppressions.xml</suppressionsLocation>
+    <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
     <includeTestSourceDirectory>true</includeTestSourceDirectory>
     <failOnViolation>false</failOnViolation>
   </configuration>
 </plugin>
 ```
 
-> `${config_loc}` 由插件自动设为 configLocation 所在目录，故规则集中对 `suppressions.xml` 的相对引用可解析。
+> 抑制文件经 `suppressionsLocation` 定位 + `suppressionsFileExpression` 注入到属性
+> `checkstyle.suppressions.file`，规则集的 `SuppressionFilter` 用 `${checkstyle.suppressions.file}` 读取。
+> 不要用 `${config_loc}` —— 该变量仅 Eclipse-CS 注入，Maven CLI 下不可用。
 
 - [ ] **Step 2: 在 `examples/genui-service/pom.xml` 的 `<build><plugins>` 追加完全相同的 checkstyle 插件块**
 
@@ -394,7 +411,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 **Spec 覆盖**：
 - §1–§2 目标/分工 → 全部任务的 Global Constraints + Task 1/Task 3 分工落地。
 - §3.1 命名 NAM → Task 2 规则集 PackageName/TypeName/MethodName/ConstantName/各 *Name/泛型 *TypeParameterName。
-- §3.2 注释 CMT → JavadocType/MissingJavadocType/JavadocMethod/AtclauseOrder/TodoComment/CommentsIndentation/RegexpHeader。
+- §3.2 注释 CMT → JavadocType/MissingJavadocType/WriteTag(@since 必填)/JavadocMethod/MissingJavadocMethod/JavadocVariable/AtclauseOrder/TodoComment/CommentsIndentation/RegexpHeader。
 - §3.3 格式 FMT → 自动修部分 Task 1（eclipse-format.xml + importorder）；检测部分 NeedBraces/OneStatementPerLine/FallThrough/ModifierOrder/UpperEll/LineLength/AnnotationLocation/DeclarationOrder。
 - §3.4 声明 DCL → MultipleVariableDeclarations/ArrayTypeStyle（error）。
 - §4 假继承约束 → 两 pom 各加插件，相对路径引用。

@@ -65,8 +65,8 @@ Spotless 的 Eclipse 格式化器只重排既有 token 的布局，**不会新�
 
 | 条款 | 级别 | 检查模块 | 说明 |
 | --- | --- | --- | --- |
-| G.CMT.01 public/protected 加 Javadoc | 建议 | `JavadocMethod`/`JavadocType`/`JavadocVariable`（scope=protected） | |
-| G.CMT.02 顶层 public 类 Javadoc 含功能+日期/版本 | 建议 | `JavadocType` + `MissingJavadocType`，`@since`/`@version` 经 `writeTag` | |
+| G.CMT.01 public/protected 元素加 Javadoc | 建议 | 存在性：`MissingJavadocType` + `MissingJavadocMethod` + `JavadocVariable`（scope=protected，字段豁免 `serialVersionUID`，方法 `@Override` 默认豁免）；格式校验：`JavadocType`/`JavadocMethod` | |
+| G.CMT.02 类 Javadoc 含功能 + 版本(`@since`) | 建议 | `JavadocType` + `MissingJavadocType` + `WriteTag`（`tag=@since`、`tagFormat=\S.*` 要求非空、缺失记 warning，作用于类/接口/枚举/注解声明） | |
 | G.CMT.03 方法 Javadoc 标签顺序 @param/@return/@throws | 建议 | `JavadocMethod` + `AtclauseOrder` | |
 | G.CMT.05 文件头版权 | 建议 | `RegexpHeader`，模板见 §6 | |
 | G.CMT.06 注释与代码留空格 | 建议 | `CommentsIndentation`（部分覆盖） | |
@@ -152,11 +152,12 @@ Checkstyle 规则集，按 §3 映射编写。要点：
   ModifierOrder / UpperEll / MultipleVariableDeclarations / ArrayTypeStyle 等模块。
 - `RegexpHeader` 引用 §6 版权头模板（或内联 `header`）。
 - 顶层挂 `SuppressionFilter` 指向 §5.4。
-
+=======
+- 顶层挂 `SuppressionFilter`，其 `file` 读取 `${checkstyle.suppressions.file}`（由 pom 的
+  `suppressionsFileExpression` 注入，见 §5.5），并设 `optional=true`。
 ### 5.4 `config/checkstyle/suppressions.xml`
 
 抑制规则：排除 `target/generated-sources/**`（Swagger codegen 产物）、按需排除遗留文件。
-
 ### 5.5 两个子模块 pom 插件块（不绑 phase）
 
 `packages/genui-java-sdk/pom.xml` 与 `examples/genui-service/pom.xml` 的 `<build><plugins>` 各加：
@@ -176,7 +177,7 @@ Checkstyle 规则集，按 §3 映射编写。要点：
       <eclipse><file>${project.basedir}/../../config/spotless/eclipse-format.xml</file></eclipse>
       <importOrder><file>${project.basedir}/../../config/spotless/huawei.importorder</file></importOrder>
       <removeUnusedImports/>
-      <trailingWhitespace/>
+      <trimTrailingWhitespace/>
       <endWithNewline/>
     </java>
   </configuration>
@@ -196,10 +197,8 @@ Checkstyle 规则集，按 §3 映射编写。要点：
   </dependencies>
   <configuration>
     <configLocation>${project.basedir}/../../config/checkstyle/huawei_checks.xml</configLocation>
-    <sourceDirectories>
-      <sourceDirectory>${project.basedir}/src/main/java</sourceDirectory>
-      <sourceDirectory>${project.basedir}/src/test/java</sourceDirectory>
-    </sourceDirectories>
+    <suppressionsLocation>${project.basedir}/../../config/checkstyle/suppressions.xml</suppressionsLocation>
+    <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
     <includeTestSourceDirectory>true</includeTestSourceDirectory>
     <failOnViolation>false</failOnViolation>
   </configuration>
@@ -209,13 +208,15 @@ Checkstyle 规则集，按 §3 映射编写。要点：
 > 版本（spotless 2.43.0 / checkstyle-plugin 3.6.0 / checkstyle 10.21.0）在实施时按当时可用且
 > 支持 Java 21 的版本确认。`failOnViolation=false` 体现"不绑构建/默认不阻断"；需要门禁时再调。
 
+=======
+> 抑制文件经 `suppressionsLocation` 定位、`suppressionsFileExpression` 注入到属性
+> `checkstyle.suppressions.file`，供规则集中的 `SuppressionFilter` 读取（见 §5.3）。
 ## 6. 文件头版权模板
 
 ```java
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. {year}. All rights reserved.
  */
-```
 
 （`RegexpHeader` 用正则允许年份/年份区间变化。）
 

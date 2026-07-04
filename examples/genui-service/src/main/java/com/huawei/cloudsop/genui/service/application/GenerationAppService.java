@@ -1,57 +1,62 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.service.application;
 
+import com.huawei.cloudsop.genui.core.GenerationSdk;
 import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
-import com.huawei.cloudsop.genui.core.GenerationSdk;
+
+import org.springframework.stereotype.Service;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.springframework.stereotype.Service;
 
 /**
  * 用例编排层:DTO 之下、SDK 之上。
  *
- * <p>SDK 不暴露已注册扩展的枚举能力(且本服务不修改 packages/ 库代码),所以这里维护一份只读镜像,
- * 仅在 SDK 注册成功后写入,用于 generations 列表与未知 extensionId 的 404 判断。
+ * <p>
+ * SDK 不暴露已注册扩展的枚举能力(且本服务不修改 packages/ 库代码),所以这里维护一份只读镜像, 仅在 SDK 注册成功后写入,用于 generations 列表与未知 extensionId 的 404 判断。
+ *
+ * @since 2026
  */
 @Service
 public class GenerationAppService {
-  private final GenerationSdk sdk;
-  private final Map<String, GenUIExtension> registered = new LinkedHashMap<>();
+    private final GenerationSdk sdk;
+    private final Map<String, GenUIExtension> registered = new LinkedHashMap<>();
 
-  public GenerationAppService(GenerationSdk sdk) {
-    this.sdk = sdk;
-  }
-
-  public synchronized GenerationSummaryData register(GenUIExtension generation) {
-    sdk.register(generation);
-    registered.put(generation.extensionId(), generation);
-    return summarize(generation);
-  }
-
-  public synchronized List<GenerationSummaryData> listGenerations() {
-    List<GenerationSummaryData> summaries = new ArrayList<>();
-    for (GenUIExtension generation : registered.values()) {
-      summaries.add(summarize(generation));
+    public GenerationAppService(GenerationSdk sdk) {
+        this.sdk = sdk;
     }
-    return summaries;
-  }
 
-  public synchronized GenUIPromptAssemblyResult assemble(GenUIPromptRequest request) {
-    // SDK 对未注册的 extensionId 会静默回落到 base contract;服务层选择 fail loudly。
-    if (request.extensionId() != null && !registered.containsKey(request.extensionId())) {
-      throw new UnknownGenerationException(request.extensionId());
+    public synchronized GenerationSummaryData register(GenUIExtension generation) {
+        sdk.register(generation);
+        registered.put(generation.extensionId(), generation);
+        return summarize(generation);
     }
-    return sdk.assemblePrompt(request);
-  }
 
-  private static GenerationSummaryData summarize(GenUIExtension generation) {
-    return new GenerationSummaryData(
-        generation.extensionId(),
-        generation.version(),
-        generation.components().size(),
-        generation.tools().size());
-  }
+    public synchronized List<GenerationSummaryData> listGenerations() {
+        List<GenerationSummaryData> summaries = new ArrayList<>();
+        for (GenUIExtension generation : registered.values()) {
+            summaries.add(summarize(generation));
+        }
+        return summaries;
+    }
+
+    public synchronized GenUIPromptAssemblyResult assemble(GenUIPromptRequest request) {
+        // SDK 对未注册的 extensionId 会静默回落到 base contract;服务层选择 fail loudly。
+        if (request.extensionId() != null && !registered.containsKey(request.extensionId())) {
+            throw new UnknownGenerationException(request.extensionId());
+        }
+        return sdk.assemblePrompt(request);
+    }
+
+    private static GenerationSummaryData summarize(GenUIExtension generation) {
+        return new GenerationSummaryData(generation.extensionId(), generation.version(), generation.components().size(),
+                generation.tools().size());
+    }
 }

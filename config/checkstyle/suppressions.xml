@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+  "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+  "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<suppressions>
+  <!-- 生成代码与构建产物不检查 -->
+  <suppress files="[\\/]target[\\/]" checks=".*"/>
+  <suppress files="[\\/]generated-sources[\\/]" checks=".*"/>
+</suppressions>
