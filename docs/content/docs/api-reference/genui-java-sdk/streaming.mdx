@@ -1,0 +1,94 @@
+---
+title: Streaming
+description: RenderStreamEnvelope 帧类型、generateStream 流程、SSE 序列化协议和流式错误处理。
+---
+
+流式生成通过 `GenUiGenerator.generateStream()` 实现。SDK 定义了统一的 `RenderStreamEnvelope` 帧格式，服务层负责把每个 envelope 序列化为 SSE `data:` 行。
+
+## RenderStreamEnvelope
+
+```java
+public record RenderStreamEnvelope(String type, int seq, Object content) {
+    public static final String TYPE_DATA_MODEL = "dataModel";
+    public static final String TYPE_DSL = "dsl";
+    public static final String TYPE_ERROR = "error";
+    public static final String TYPE_DONE = "done";
+}
+```
+
+| `type` | `seq` | `content` | 说明 |
+| --- | --- | --- | --- |
+| `dataModel` | `0` | `Map<String, Object>`（完整渲染数据） | 首帧，固定 seq=0 |
+| `dsl` | 递增 | `String`（模型 delta 文本） | 每个模型增量一帧 |
+| `error` | 递增 | `{code, message, retryable}` | 生成或传输失败 |
+| `done` | 递增 | `null` | 流结束 |
+
+工厂方法：
+
+```java
+RenderStreamEnvelope.dataModel(dataModel)              // 首帧
+RenderStreamEnvelope.dsl(seq, delta)                   // DSL 增量
+RenderStreamEnvelope.error(seq, code, message, retryable)  // 错误
+RenderStreamEnvelope.done(seq)                         // 结束
+```
+
+## generateStream 流程
+
+```java
+public GenUiGenerationResult generateStream(
+    UiGenerationRequest request,
+    Consumer<RenderStreamEnvelope> sink)
+```
+
+1. **首帧**：立即发出 `dataModel`（seq=0，content 为 `request.response()` 或空 map）。一旦首帧发出，后续 LLM 流错误转为 `error` envelope 而不再抛给调用方。
+2. **组装请求**：`buildRequestBody(request, stream=true)` 调用 `sdk.assemblePrompt()` 组装系统 prompt，构造 ChatCompletion 流式请求体。
+3. **流式读取**：`transport.postStream(body)` 返回 SSE `InputStream`，`SseDeltaParser.parse()` 逐帧提取 `delta.content`，每段 delta 发出一个 `dsl` envelope（seq 递增）。
+4. **正常结束**：流读完，对累积内容执行 `OpenuiCodeExtractor.extract()`，发出 `done`，返回 `GenUiGenerationResult(extracted, dataModel)`。
+5. **失败结束**：流读取/传输失败，发出 `error`（`code=LLM_STREAM_FAILED`，`retryable=true`），再发 `done`，返回已累积内容的提取结果。
+
+```java
+generator.generateStream(
+    request,
+    envelope -> {
+      out.write(("data: " + toJson(envelope) + "\n\n").getBytes(StandardCharsets.UTF_8));
+      out.flush();
+    });
+```
+
+## SSE 序列化示例
+
+服务层把每个 envelope 序列化为 SSE `data:` 行。SDK 本身不序列化——它通过 `Consumer<RenderStreamEnvelope>` 回调把帧交给服务层，由服务层决定 JSON 序列化和 SSE 写入。
+
+```text
+data: {"type":"dataModel","seq":0,"content":{"alarms":[{"id":"A-1"}]}}
+
+data: {"type":"dsl","seq":1,"content":"root = Stack(["}
+
+data: {"type":"dsl","seq":2,"content":"Table([Col(\"id\")], $.alarms)])"}
+
+data: {"type":"done","seq":3}
+```
+
+`done` 帧的 `content` 为 `null`，序列化时不应输出 `content` 字段。
+
+## 错误处理
+
+首帧 `dataModel` 发出后的传输/读取错误（`LlmTransportException` 或 `IOException`）不会抛给调用方。SDK 改为：
+
+1. 发出 `error` envelope：`{code: "LLM_STREAM_FAILED", message: error.getMessage(), retryable: true}`。
+2. 发出 `done` envelope。
+3. 返回 `GenUiGenerationResult`，其中 `dsl` 是已累积内容的 `OpenuiCodeExtractor.extract()` 结果（可能为空字符串），`dataModel` 是首帧发出的完整数据。
+
+这意味着调用方总能拿到一个非 null 的 `GenUiGenerationResult`，即使流中途失败。调用方可以通过 `error` envelope 的 `retryable` 字段决定是否重试。
+
+## 同步 vs 流式
+
+| | `generate()` | `generateStream()` |
+| --- | --- | --- |
+| 返回 | `GenUiGenerationResult` | `GenUiGenerationResult`（通过 sink 推送帧） |
+| LLM 调用 | `transport.post()` 同步 | `transport.postStream()` 流式 |
+| 错误 | 抛 `GenerationSdkException` | 转 `error` envelope，不抛 |
+| 首帧 | 无 | `dataModel`（seq=0） |
+| 代码提取 | `OpenuiCodeExtractor.extract(content)` | `OpenuiCodeExtractor.extract(accumulated)` |
+
+两条路径都经过 `sdk.assemblePrompt()` 组装 prompt，Characterization 在组装阶段统一应用。
