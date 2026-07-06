@@ -1,0 +1,104 @@
+{
+  "meta": {
+    "prompt": "查询区域漫游质量指标\n\nAPI Schema:\n{\n  \"apiId\": \"查询区域漫游质量指标\",\n  \"apiName\": \"查询区域漫游质量指标\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/campuswlanqualityservice/v1/intent/common/roam\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"id\",\n      \"description\": \"区域id\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"description\": \"区域层级\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"开始时间\"\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"description\": \"租户id\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"charts\",\n      \"description\": \"charts\",\n      \"childParams\": [\n        {\n          \"paramName\": \"charts\",\n          \"description\": \"echart option\",\n          \"childParams\": [\n            {\n              \"paramName\": \"en\",\n              \"description\": \"英文echart option\"\n            },\n            {\n              \"paramName\": \"zh\",\n              \"description\": \"中文echart option\"\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"data\",\n      \"description\": \"data\",\n      \"childParams\": [\n        {\n          \"paramName\": \"data\",\n          \"description\": \"键值对模型\",\n          \"childParams\": [\n            {\n              \"paramName\": \"key\",\n              \"description\": \"列举值 accessSuccessRate,roam,accessConsume,capacity,coverage,throughput\"\n            },\n            {\n              \"paramName\": \"value\",\n              \"description\": \"质量评估数据模型\",\n              \"childParams\": [\n                {\n                  \"paramName\": \"rootValue\",\n                  \"description\": \"rootValue\"\n                },\n                {\n                  \"paramName\": \"rank\",\n                  \"description\": \"rank\"\n                },\n                {\n                  \"paramName\": \"rankList\",\n                  \"description\": \"rankList\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"rankList\",\n                      \"description\": \"质量评估排名数据模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"regionId\",\n                          \"description\": \"regionId\"\n                        },\n                        {\n                          \"paramName\": \"regionName\",\n                          \"description\": \"regionName\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"description\": \"value\"\n                        }\n                      ]\n                    }\n                  ]\n                },\n                {\n                  \"paramName\": \"subValues\",\n                  \"description\": \"subValues\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"subValues\",\n                      \"description\": \"键值对模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"key\",\n                          \"description\": \"key\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"description\": \"value\"\n                        }\n                      ]\n                    }\n                  ]\n                },\n                {\n                  \"paramName\": \"baseline\",\n                  \"description\": \"baseline\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"baseline\",\n                      \"description\": \"质量评估趋势基本数据模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"timestamp\",\n                          \"description\": \"timestamp\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"description\": \"value\"\n                        }\n                      ]\n                    }\n                  ]\n                },\n                {\n                  \"paramName\": \"essential\",\n                  \"description\": \"essential\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"essential\",\n                      \"description\": \"质量评估趋势基本数据模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"timestamp\",\n                          \"description\": \"timestamp\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"description\": \"value\"\n                        }\n                      ]\n                    }\n                  ]\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"detailUrl\",\n      \"description\": \"detailUrl\"\n    },\n    {\n      \"paramName\": \"errorAdvice\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDes\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDetail\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorReson\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"healthScore\",\n      \"description\": \"healthScore\"\n    },\n    {\n      \"paramName\": \"resultCode\",\n      \"description\": \"状态码\"\n    },\n    {\n      \"paramName\": \"summary\",\n      \"description\": \"总结\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "api-response-envelope",
+      "record-with-array-field",
+      "epoch-ms, composite-id",
+      "single-entity",
+      "full",
+      "stats-plus-rows"
+    ],
+    "evalHints": [
+      "折线图/面积图（趋势数据）"
+    ]
+  },
+  "data": {
+    "resultCode": 200,
+    "errorDes": "Successful.",
+    "errorReson": "Successful.",
+    "errorDetail": "Successful.",
+    "errorAdvice": "Successful.",
+    "detailUrl": "",
+    "healthScore": 85.5,
+    "data": [
+      {
+        "key": "roam",
+        "value": {
+          "rootValue": 92.5,
+          "rank": 3,
+          "rankList": [
+            {
+              "regionId": "region-001",
+              "regionName": "华东区域",
+              "value": 95.2
+            },
+            {
+              "regionId": "region-002",
+              "regionName": "华南区域",
+              "value": 93.8
+            },
+            {
+              "regionId": "region-003",
+              "regionName": "当前区域",
+              "value": 92.5
+            }
+          ],
+          "subValues": [
+            {
+              "key": "roam_success_rate",
+              "value": "94.3"
+            },
+            {
+              "key": "avg_roam_time",
+              "value": "125"
+            },
+            {
+              "key": "signal_strength_before_roam",
+              "value": "-65"
+            },
+            {
+              "key": "roam_compliance_rate",
+              "value": "92.5"
+            }
+          ],
+          "baseline": [
+            {
+              "timestamp": 1625097600000,
+              "value": 90.2
+            },
+            {
+              "timestamp": 1625184000000,
+              "value": 91.5
+            },
+            {
+              "timestamp": 1625270400000,
+              "value": 92.5
+            }
+          ],
+          "essential": [
+            {
+              "timestamp": 1625097600000,
+              "value": 92.1
+            },
+            {
+              "timestamp": 1625184000000,
+              "value": 93
+            },
+            {
+              "timestamp": 1625270400000,
+              "value": 94.3
+            }
+          ]
+        }
+      }
+    ],
+    "charts": [
+      {
+        "en": "{\"title\": {\"text\": \"Roam Quality Metrics Trend\"}, \"xAxis\": {\"type\": \"category\"}, \"yAxis\": {\"type\": \"value\"}, \"series\": [{\"data\": [90.2, 91.5, 92.5], \"type\": \"line\"}]}",
+        "zh": "{\"title\": {\"text\": \"漫游质量指标趋势\"}, \"xAxis\": {\"type\": \"category\"}, \"yAxis\": {\"type\": \"value\"}, \"series\": [{\"data\": [90.2, 91.5, 92.5], \"type\": \"折线\"}]}"
+      }
+    ],
+    "summary": "本次查询的区域漫游达标率为92.5%，健康度为85.5分。在近3天的趋势中，漫游达标率呈现稳步上升趋势。各区对比中，当前区域排名第3。漫游相关子指标表现良好，其中漫游成功率达到94.3%。"
+  }
+}

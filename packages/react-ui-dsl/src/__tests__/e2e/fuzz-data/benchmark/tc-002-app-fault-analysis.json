@@ -1,0 +1,100 @@
+{
+  "meta": {
+    "prompt": "排查应用问题\n\nAPI Schema:\n{\n  \"apiId\": \"排查应用问题\",\n  \"apiName\": \"排查应用问题\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/campusapplicationservice/v1/app/faultanalysis\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"X-Auth-Token\",\n      \"description\": \"鉴权token\"\n    },\n    {\n      \"paramName\": \"appName\",\n      \"description\": \"应用名称，必填\"\n    },\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"id\",\n      \"description\": \"站点id，选填，regionName和id、level可选，id和level必须同时有\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"description\": \"层级，选填，regionName和id、level可选，id和level必须同时有\"\n    },\n    {\n      \"paramName\": \"querySiteIdList\",\n      \"description\": \"站点id列表\",\n      \"childParams\": [\n        {\n          \"paramName\": \"querySiteIdList\",\n          \"description\": \"站点id\"\n        }\n      ]\n    },\n    {\n      \"paramName\": \"queryUserIpList\",\n      \"description\": \"用户Ip列表\",\n      \"childParams\": [\n        {\n          \"paramName\": \"queryUserIpList\",\n          \"description\": \"用户Ip\"\n        }\n      ]\n    },\n    {\n      \"paramName\": \"regionName\",\n      \"description\": \"站点名称，选填\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"开始时间\"\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"description\": \"租户Id\"\n    },\n    {\n      \"paramName\": \"userName\",\n      \"description\": \"用户名，选填\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"cost_time\",\n      \"description\": \"查询时间。\"\n    },\n    {\n      \"paramName\": \"error_code\",\n      \"description\": \"错误码。\"\n    },\n    {\n      \"paramName\": \"error_msg\",\n      \"description\": \"错误消息。\"\n    },\n    {\n      \"paramName\": \"resultData\",\n      \"description\": \"结果集合\",\n      \"childParams\": [\n        {\n          \"paramName\": \"resultData\",\n          \"description\": \"单应用排障详情\",\n          \"childParams\": [\n            {\n              \"paramName\": \"regionName\",\n              \"description\": \"区域名称\"\n            },\n            {\n              \"paramName\": \"startTime\",\n              \"description\": \"故障开始时间\"\n            },\n            {\n              \"paramName\": \"endTime\",\n              \"description\": \"故障结束时间\"\n            },\n            {\n              \"paramName\": \"srcIp\",\n              \"description\": \"源IP\"\n            },\n            {\n              \"paramName\": \"destIp\",\n              \"description\": \"目的IP\"\n            },\n            {\n              \"paramName\": \"srcPort\",\n              \"description\": \"源端口\"\n            },\n            {\n              \"paramName\": \"destPort\",\n              \"description\": \"目的端口\"\n            },\n            {\n              \"paramName\": \"protocol\",\n              \"description\": \"协议号\"\n            },\n            {\n              \"paramName\": \"appId\",\n              \"description\": \"应用ID\"\n            },\n            {\n              \"paramName\": \"appName\",\n              \"description\": \"应用名称\"\n            },\n            {\n              \"paramName\": \"userIp\",\n              \"description\": \"用户IP\"\n            },\n            {\n              \"paramName\": \"userName\",\n              \"description\": \"用户名称\"\n            },\n            {\n              \"paramName\": \"userMac\",\n              \"description\": \"用户mac\"\n            },\n            {\n              \"paramName\": \"faultInfo\",\n              \"description\": \"故障信息\",\n              \"childParams\": [\n                {\n                  \"paramName\": \"faultInfo\",\n                  \"description\": \"单故障详情\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"srcDevName\",\n                      \"description\": \"源设备名称\"\n                    },\n                    {\n                      \"paramName\": \"destDevName\",\n                      \"description\": \"目的设备名称\"\n                    },\n                    {\n                      \"paramName\": \"srcMac\",\n                      \"description\": \"源设备MAC\"\n                    },\n                    {\n                      \"paramName\": \"destMac\",\n                      \"description\": \"目的设mac\"\n                    },\n                    {\n                      \"paramName\": \"srcDevIp\",\n                      \"description\": \"源设备IP\"\n                    },\n                    {\n                      \"paramName\": \"destDevIp\",\n                      \"description\": \"目的设备IP\"\n                    },\n                    {\n                      \"paramName\": \"srcPortName\",\n                      \"description\": \"源端口名称\"\n                    },\n                    {\n                      \"paramName\": \"destPortName\",\n                      \"description\": \"目的端口名称\"\n                    },\n                    {\n                      \"paramName\": \"packetLossRate\",\n                      \"description\": \"丢包率\"\n                    },\n                    {\n                      \"paramName\": \"latency\",\n                      \"description\": \"时延\"\n                    },\n                    {\n                      \"paramName\": \"poorFlowCount\",\n                      \"description\": \"异常流数\"\n                    },\n                    {\n                      \"paramName\": \"poorFlowProportion\",\n                      \"description\": \"异常流占比\"\n                    },\n                    {\n                      \"paramName\": \"faultReason\",\n                      \"description\": \"故障原因\"\n                    },\n                    {\n                      \"paramName\": \"faultSuggestion\",\n                      \"description\": \"修复建议\"\n                    },\n                    {\n                      \"paramName\": \"qualityTrends\",\n                      \"description\": \"丢包、时延、异常流趋势\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"qualityTrends\",\n                          \"description\": \"丢包时延趋势\",\n                          \"childParams\": [\n                            {\n                              \"paramName\": \"timestamp\",\n                              \"description\": \"时间戳\"\n                            },\n                            {\n                              \"paramName\": \"packetLossRate\",\n                              \"description\": \"丢包率\"\n                            },\n                            {\n                              \"paramName\": \"latency\",\n                              \"description\": \"时延(毫秒)\"\n                            },\n                            {\n                              \"paramName\": \"poorFlowCount\",\n                              \"description\": \"异常流数\"\n                            },\n                            {\n                              \"paramName\": \"poorFlowProportion\",\n                              \"description\": \"异常流占比\"\n                            },\n                            {\n                              \"paramName\": \"userNum\",\n                              \"description\": \"用户数\"\n                            }\n                          ]\n                        }\n                      ]\n                    }\n                  ]\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"status_code\",\n      \"description\": \"状态码。\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "api-response-envelope",
+      "record-with-array-field",
+      "epoch-s, percentage-decimal",
+      "single-entity",
+      "singleton",
+      "raw-only"
+    ],
+    "evalHints": [
+      "步骤条/卡片（排查流程）",
+      "折线图/面积图（趋势数据）"
+    ]
+  },
+  "data": {
+    "status_code": 200,
+    "error_code": 0,
+    "error_msg": "Success.",
+    "cost_time": 156,
+    "resultData": [
+      {
+        "regionName": "北京研发中心-3F-办公区A",
+        "startTime": 1715326800,
+        "endTime": 1715330400,
+        "srcIp": "192.168.10.55",
+        "destIp": "203.0.113.20",
+        "srcPort": 54312,
+        "destPort": 443,
+        "protocol": "TCP",
+        "appId": "app_vconf_007",
+        "appName": "企业视频会议",
+        "userIp": "192.168.10.55",
+        "userName": "li_si",
+        "userMac": "AC:DE:48:00:11:22",
+        "faultInfo": [
+          {
+            "srcDevName": "Core-Switch-BJ01",
+            "destDevName": "Access-Switch-3F-A02",
+            "srcMac": "00:11:22:33:44:55",
+            "destMac": "66:77:88:99:AA:BB",
+            "srcDevIp": "10.1.1.1",
+            "destDevIp": "10.1.1.254",
+            "srcPortName": "GigabitEthernet0/0/1",
+            "destPortName": "GigabitEthernet0/0/24",
+            "packetLossRate": 0.052,
+            "latency": 145.5,
+            "poorFlowCount": 128,
+            "poorFlowProportion": 0.35,
+            "faultReason": "链路带宽利用率过高，导致队列拥塞，产生丢包和时延抖动。",
+            "faultSuggestion": "建议检查Accesswitch-3F-A02上行链路流量，考虑配置QoS策略保障视频业务流量，或扩容上行带宽。",
+            "qualityTrends": [
+              {
+                "timestamp": 1715326800,
+                "packetLossRate": 0.01,
+                "latency": 20.5,
+                "poorFlowCount": 5,
+                "poorFlowProportion": 0.05,
+                "userNum": 45
+              },
+              {
+                "timestamp": 1715326860,
+                "packetLossRate": 0.02,
+                "latency": 45.2,
+                "poorFlowCount": 20,
+                "poorFlowProportion": 0.12,
+                "userNum": 48
+              },
+              {
+                "timestamp": 1715326920,
+                "packetLossRate": 0.05,
+                "latency": 110.8,
+                "poorFlowCount": 65,
+                "poorFlowProportion": 0.28,
+                "userNum": 52
+              },
+              {
+                "timestamp": 1715326980,
+                "packetLossRate": 0.052,
+                "latency": 145.5,
+                "poorFlowCount": 128,
+                "poorFlowProportion": 0.35,
+                "userNum": 55
+              },
+              {
+                "timestamp": 1715327040,
+                "packetLossRate": 0.048,
+                "latency": 130.2,
+                "poorFlowCount": 110,
+                "poorFlowProportion": 0.3,
+                "userNum": 54
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

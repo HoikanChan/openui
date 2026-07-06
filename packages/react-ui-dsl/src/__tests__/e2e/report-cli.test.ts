@@ -80,6 +80,41 @@ describe("report-cli", () => {
     expect(config.env.LLM_API_KEY).toBe("sk-test");
   });
 
+  it("parses benchmark report mode with a test-name filter", () => {
+    expect(parseReportCliArgs(["--benchmark", "--filter", "tc-"])).toEqual({
+      mode: "run",
+      suite: "benchmark",
+      testNameFilter: "tc-",
+    });
+  });
+
+  it("rejects --filter without a pattern", () => {
+    expect(() => parseReportCliArgs(["--benchmark", "--filter"])).toThrow("--filter");
+  });
+
+  it("builds a filtered benchmark vitest run config that loads .env without forcing regen", () => {
+    const config = buildVitestRunConfig({
+      baseEnv: { LLM_API_KEY: "sk-test" },
+      reportDir: "/tmp/react-ui-dsl-report",
+      suite: "benchmark",
+      testNameFilter: "tc-",
+    });
+
+    expect(config.args).toEqual([
+      "exec",
+      "vitest",
+      "run",
+      "src/__tests__/e2e/dsl-benchmark.test.tsx",
+      "-t",
+      "tc-",
+    ]);
+    expect(config.env.REACT_UI_DSL_E2E_REPORT).toBe("1");
+    expect(config.env.REACT_UI_DSL_E2E_REPORT_DIR).toBe("/tmp/react-ui-dsl-report");
+    expect(config.env.REACT_UI_DSL_E2E_SUITE).toBe("benchmark");
+    expect(config.env.REGEN_SNAPSHOTS).toBe("0");
+    expect(config.env.LLM_API_KEY).toBe("sk-test");
+  });
+
   it("builds an http report url instead of a file path", () => {
     expect(buildReportUrl("http://127.0.0.1:4173")).toBe("http://127.0.0.1:4173/index.html");
   });

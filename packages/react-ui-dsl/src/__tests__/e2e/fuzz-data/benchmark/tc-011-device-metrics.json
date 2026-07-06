@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "prompt": "查询设备指标数据\n\nAPI Schema:\n{\n  \"apiId\": \"查询设备指标数据\",\n  \"apiName\": \"查询设备指标数据\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/campuswlanqualityservice/v1/intent/device/metrics\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"aggregationType\",\n      \"description\": \"汇聚类型 最新值(last)、最大值(max)、最小值(min)、平均值(average)和累计值(sum)\"\n    },\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"filter\",\n      \"description\": \"过滤条件\",\n      \"childParams\": [\n        {\n          \"paramName\": null,\n          \"description\": null\n        }\n      ]\n    },\n    {\n      \"paramName\": \"id\",\n      \"description\": \"站点或区域id、\\\"/\\\" 为根区域\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"description\": \"区域层级，global为0，站点为1，楼栋为8，楼层为9\"\n    },\n    {\n      \"paramName\": \"limit\",\n      \"description\": \"返回的最大设备数量\"\n    },\n    {\n      \"paramName\": \"metricType\",\n      \"description\": \"指标类别[channelUsage, infRatio等]\",\n      \"childParams\": [\n        {\n          \"paramName\": null,\n          \"description\": null\n        }\n      ]\n    },\n    {\n      \"paramName\": \"queryType\",\n      \"description\": \"查询类型 scatter(散点查询)、count(计算查询)、aggregation(聚合查询)和topN(TopN查询)\"\n    },\n    {\n      \"paramName\": \"sortType\",\n      \"description\": \"排序类型，desc：降序；asc：升序\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"example 1683302400000\"\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"description\": \"租户ID\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"data\",\n      \"description\": \"列表数据\",\n      \"childParams\": [\n        {\n          \"paramName\": \"data\",\n          \"description\": \"列表数据\"\n        }\n      ]\n    },\n    {\n      \"paramName\": \"errorAdvice\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDes\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDetail\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorReson\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"resultCode\",\n      \"description\": \"状态码\"\n    },\n    {\n      \"paramName\": \"total\",\n      \"description\": \"总数\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "api-response-envelope",
+      "schema-inconsistent",
+      "—",
+      "none",
+      "nearly-all-null",
+      "aggregated-only"
+    ],
+    "evalHints": [
+      "卡片/表单（概要信息）"
+    ]
+  },
+  "data": {
+    "resultCode": 200,
+    "errorDes": "Successful.",
+    "errorReson": "Successful.",
+    "errorDetail": "Successful.",
+    "errorAdvice": "Successful.",
+    "total": 0,
+    "data": [
+      {
+        "additionalProp1": {},
+        "additionalProp2": {},
+        "additionalProp3": {}
+      }
+    ]
+  }
+}
