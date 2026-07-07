@@ -1,15 +1,15 @@
 ## 1. SDK 重载（genui-java-sdk）
 
-- [ ] 1.1 新增 `GenUiGenerator.withTransport(GenerationSdk, GenUiLlmConfig, LlmTransport)` 通用重载（含 characterization 变体或经既有 builder 复用），单测覆盖自定义 `GenerationSdk`（外部 base contract）生效
-- [ ] 1.2 `mvn -q -pl packages/genui-java-sdk package -DskipTests` 编译通过；跑受影响的 SDK 单测（独立 java 方式，避开 surefire fork OOM）
+- [x] 1.1 新增 `GenUiGenerator.withTransport(GenerationSdk, GenUiLlmConfig, LlmTransport)` 通用重载（含 characterization 变体或经既有 builder 复用），单测覆盖自定义 `GenerationSdk`（外部 base contract）生效
+- [x] 1.2 `mvn -q -pl packages/genui-java-sdk package -DskipTests` 编译通过；跑受影响的 SDK 单测（`mvn test -Dtest=GenUiGeneratorTest`，11 个用例全过）
 
 ## 2. Eval Generation CLI 新模块（packages/genui-eval-cli）
 
-- [ ] 2.1 创建 maven module `packages/genui-eval-cli`：pom（依赖 genui-java-sdk、maven-shade fat jar、finalName 固定 `genui-eval-cli`）、根 `pom.xml` 注册 module
-- [ ] 2.2 实现 `OpenAiCompatibleLlmTransport`：JDK HttpClient，URL = `LLM_BASE_URL` + `/chat/completions`，Bearer `LLM_API_KEY`，`HTTPS_PROXY` 代理，connect timeout 15s（照抄 genui-service `LlmClient` 写法，实现 `LlmTransport` 接口）
-- [ ] 2.3 实现 `generate` 命令：读 `--base-contract`（`GenerationContractLoader.fromJson` → `GenerationSdk.builder().baseContract()`）与 `--jobs` 清单，`--concurrency`（缺省 6）有界线程池并发，每用例经 `GenUiGenerator.generate()`，stdout 逐行 JSONL（`{id,status,dsl|error}`）；单 case 失败继续、exit 0，基础设施失败 exit 非零 + stderr 报错
-- [ ] 2.4 实现 `--print-prompt` 子命令：占位 dataModel（`__EVAL_DATA_MODEL_PLACEHOLDER__` 同现有 prompt-artifact）调 `assemblePrompt`，stdout 输出，不发 HTTP、不要求 `LLM_API_KEY`
-- [ ] 2.5 CLI 单测：参数校验、jobs 解析、JSONL 输出格式、print-prompt 离线性（transport 打桩）；构建 fat jar 并冒烟 `java -jar … --print-prompt`
+- [x] 2.1 创建 maven module `packages/genui-eval-cli`：pom（依赖 genui-java-sdk、maven-shade fat jar、finalName 固定 `genui-eval-cli`）、根 `pom.xml` 注册 module
+- [x] 2.2 实现 `OpenAiCompatibleLlmTransport`：JDK HttpClient，URL = `LLM_BASE_URL` + `/chat/completions`，Bearer `LLM_API_KEY`，`HTTPS_PROXY` 代理，connect timeout 15s（照抄 genui-service `LlmClient` 写法，实现 `LlmTransport` 接口）
+- [x] 2.3 实现 `generate` 命令：读 `--base-contract`（`GenerationContractLoader.fromJson` → `GenerationSdk.builder().baseContract()`）与 `--jobs` 清单，`--concurrency`（缺省 6）有界线程池并发，每用例经 `GenUiGenerator.generate()`，stdout 逐行 JSONL（`{id,status,dsl|error}`）；单 case 失败继续、exit 0，基础设施失败 exit 非零 + stderr 报错
+- [x] 2.4 实现 `--print-prompt` 子命令：占位 dataModel（`__EVAL_DATA_MODEL_PLACEHOLDER__` 同现有 prompt-artifact）调 `assemblePrompt`，stdout 输出，不发 HTTP、不要求 `LLM_API_KEY`（stdout 显式 UTF-8，不随平台编码漂移）
+- [x] 2.5 CLI 单测：参数校验、jobs 解析、JSONL 输出格式、print-prompt 离线性（transport 打桩），9 个用例全过；fat jar 冒烟 `--print-prompt` 输出 321 行 prompt
 
 ## 3. Node 侧接线（packages/react-ui-dsl）
 
