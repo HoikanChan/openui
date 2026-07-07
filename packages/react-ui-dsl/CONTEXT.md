@@ -54,6 +54,8 @@
 
 **E2E Report** — `pnpm test:e2e:report` 产出的带时间戳 HTML 报告,在 `src/__tests__/e2e/reports/<timestamp>/index.html`。
 
+**Eval Generation CLI** — 独立 Java 命令行工具([packages/genui-eval-cli](../genui-eval-cli/)),包装 Java Generation SDK 的生成能力。regen 阶段由 Node 侧以子进程批量调用:输入用例清单与从当前 dslLibrary 导出的 base contract,输出生成的 OpenUI Lang。它让 eval 的生成链路(prompt 拼装、请求构造、响应提取)与生产链路共用同一套 SDK 实现;eval 中不再存在 TS 侧的 prompt 拼装路径。
+
 ---
 
 ## 外部消费方(仅边界引用,不展开)
