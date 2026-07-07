@@ -12,11 +12,13 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.huawei.cloudsop.genui.core.GenerationSdk;
 import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
+import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.ToolSpec;
 import com.huawei.cloudsop.genui.core.llm.stream.SseFrames;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
@@ -95,6 +97,25 @@ class GenUiGeneratorTest {
         List<Object> messages = Json.asList(body.get("messages"), "messages");
         String prompt = String.valueOf(Json.asObject(messages.get(0), "system").get("content"));
         assertTrue(prompt.contains("Stack("));
+        assertFalse(prompt.contains("AlarmCard("));
+    }
+
+    @Test
+    void withCustomSdkUsesInjectedBaseContract() {
+        FakeTransport transport = FakeTransport
+                .sync("{\"choices\":[{\"message\":{\"content\":\"root = Panel([])\"}}]}");
+        GenerationContract contract = new GenerationContract("custom@1.0.0", "Panel",
+                Map.of("Panel", new ComponentPromptSpec("Panel(title: string)", "Custom panel")), List.of(), List.of(),
+                List.of(), List.of());
+        GenerationSdk sdk = GenerationSdk.builder().baseContract(contract).build();
+
+        GenUiGenerator.withTransport(sdk, GenUiLlmConfig.defaults(), transport)
+                .generate(UiGenerationRequest.builder().userInput("build").build());
+
+        Map<String, Object> body = Json.asObject(Json.parse(transport.lastBody), "request");
+        List<Object> messages = Json.asList(body.get("messages"), "messages");
+        String prompt = String.valueOf(Json.asObject(messages.get(0), "system").get("content"));
+        assertTrue(prompt.contains("Panel(title: string)"));
         assertFalse(prompt.contains("AlarmCard("));
     }
 
