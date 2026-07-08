@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reask 修复改动 A/B 复跑报告</title>
+  <style>
+    :root {
+      --ink: #1d2433;
+      --muted: #5d6678;
+      --line: #d8dde8;
+      --paper: #f7f8fb;
+      --panel: #ffffff;
+      --blue: #265fbd;
+      --green: #087f5b;
+      --amber: #9a6700;
+      --red: #b42318;
+      --violet: #6c4ab6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Aptos", "Microsoft YaHei UI", "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    .shell {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 36px 0 56px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: end;
+      border-bottom: 3px solid var(--ink);
+      padding-bottom: 22px;
+      margin-bottom: 28px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      line-height: 1.18;
+      font-weight: 760;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    .subtle {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .stamp {
+      min-width: 260px;
+      border-left: 1px solid var(--line);
+      padding-left: 22px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .stamp strong {
+      display: block;
+      color: var(--ink);
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .span-12 {
+      grid-column: span 12;
+    }
+
+    .span-8 {
+      grid-column: span 8;
+    }
+
+    .span-6 {
+      grid-column: span 6;
+    }
+
+    .span-4 {
+      grid-column: span 4;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 8px 24px rgba(29, 36, 51, 0.04);
+    }
+
+    .verdict {
+      border-top: 6px solid var(--amber);
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 14px;
+      min-height: 104px;
+      background: #fbfcff;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 28px;
+      line-height: 1.15;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+
+    .metric span {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .delta-up {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .delta-flat {
+      color: var(--amber);
+      font-weight: 700;
+    }
+
+    .delta-down {
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+
+    th {
+      background: #eef2f8;
+      font-weight: 720;
+      color: #263348;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .ok {
+      color: var(--green);
+      background: #eaf7f1;
+      border-color: #b7e4d2;
+    }
+
+    .warn {
+      color: var(--amber);
+      background: #fff6dc;
+      border-color: #ecd795;
+    }
+
+    .bad {
+      color: var(--red);
+      background: #fff0ed;
+      border-color: #f3c2ba;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr) 74px;
+      gap: 10px;
+      align-items: center;
+      margin: 10px 0;
+      font-size: 13px;
+    }
+
+    .bar {
+      height: 14px;
+      border-radius: 4px;
+      background: #e7ebf3;
+      overflow: hidden;
+      border: 1px solid #d0d7e6;
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      background: var(--blue);
+    }
+
+    .bar.after > span {
+      background: var(--green);
+    }
+
+    .mono {
+      font-family: "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .list {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .list li {
+      margin: 8px 0;
+    }
+
+    .callout {
+      border-left: 4px solid var(--blue);
+      padding: 12px 14px;
+      background: #eef5ff;
+      color: #1f365f;
+      border-radius: 0 6px 6px 0;
+    }
+
+    @media (max-width: 820px) {
+      header,
+      .metric-row,
+      .grid {
+        display: block;
+      }
+
+      .stamp,
+      .panel,
+      .metric {
+        margin-top: 14px;
+      }
+
+      .stamp {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+        padding-left: 0;
+        padding-top: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Reask 修复改动 A/B 复跑报告</h1>
+        <p class="subtle">比较改动前 temp=0.7 两轮与改动后 temp=0.7 两轮的 Java ValidationBenchmarkDriver 结果。</p>
+      </div>
+      <div class="stamp">
+        <strong>生成时间</strong>
+        2026-07-07<br />
+        <strong>样本口径</strong>
+        63 fixtures，58 eligible，5 skipped<br />
+        <strong>模型</strong>
+        qwen3-30b-a3b-instruct-2507
+      </div>
+    </header>
+
+    <section class="grid">
+      <article class="panel verdict span-12">
+        <h2>结论</h2>
+        <p>
+          本次改动的<strong>请求体和 prompt 注入已经生效</strong>：新 reask 请求全部从 <span class="mono">temperature=0.7</span>
+          降到 <span class="mono">temperature=0</span>，并且带上完整原始 system prompt、compact syntax rules、syntax repair hints
+          与组件签名。但从两轮修复率看，收益很小：reask 修复率从 <strong>12.5%</strong> 到 <strong>14.3%</strong>，
+          语法类从 <strong>0/10</strong> 到 <strong>1/12</strong>。
+        </p>
+        <p>
+          所以判断是：<span class="pill warn">机制有效，效果不足</span>
+          。这两步解决了“修复请求缺材料、温度太高”的确定性问题，但还不足以显著提升复杂语法失败的修复率。
+        </p>
+      </article>
+    </section>
+
+    <section class="grid">
+      <article class="panel span-6">
+        <h2>两轮汇总</h2>
+        <div class="metric-row">
+          <div class="metric">
+            <b>87.9% → 89.7%</b>
+            <span>eligible VALID 率，+1.8pp</span>
+          </div>
+          <div class="metric">
+            <b>12.5% → 14.3%</b>
+            <span>reask 修复率，+1.8pp</span>
+          </div>
+          <div class="metric">
+            <b>5095ms → 4702ms</b>
+            <span>平均耗时，下降 393ms</span>
+          </div>
+          <div class="metric">
+            <b>3084ms → 2689ms</b>
+            <span>首个 DSL 平均输出，下降 395ms</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel span-6">
+        <h2>关键比例</h2>
+        <div class="bar-row">
+          <span>改动前 VALID</span>
+          <div class="bar"><span style="width: 87.9%"></span></div>
+          <strong>87.9%</strong>
+        </div>
+        <div class="bar-row">
+          <span>改动后 VALID</span>
+          <div class="bar after"><span style="width: 89.7%"></span></div>
+          <strong>89.7%</strong>
+        </div>
+        <div class="bar-row">
+          <span>改动前 reask 修复</span>
+          <div class="bar"><span style="width: 12.5%"></span></div>
+          <strong>12.5%</strong>
+        </div>
+        <div class="bar-row">
+          <span>改动后 reask 修复</span>
+          <div class="bar after"><span style="width: 14.3%"></span></div>
+          <strong>14.3%</strong>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <h2>逐轮结果</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>阶段</th>
+            <th>轮次</th>
+            <th>VALID / eligible</th>
+            <th>INVALID</th>
+            <th>reask 触发</th>
+            <th>reask 修复</th>
+            <th>平均耗时</th>
+            <th>首帧平均</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>改动前</td>
+            <td>round1</td>
+            <td>48 / 58，82.8%</td>
+            <td>10</td>
+            <td>10</td>
+            <td><span class="pill bad">0 / 10</span></td>
+            <td>4928ms</td>
+            <td>2955ms</td>
+          </tr>
+          <tr>
+            <td>改动前</td>
+            <td>round2</td>
+            <td>54 / 58，93.1%</td>
+            <td>4</td>
+            <td>6</td>
+            <td><span class="pill warn">2 / 6</span></td>
+            <td>5261ms</td>
+            <td>3211ms</td>
+          </tr>
+          <tr>
+            <td>改动后</td>
+            <td>round1</td>
+            <td>52 / 58，89.7%</td>
+            <td>6</td>
+            <td>6</td>
+            <td><span class="pill bad">0 / 6</span></td>
+            <td>4803ms</td>
+            <td>2735ms</td>
+          </tr>
+          <tr>
+            <td>改动后</td>
+            <td>round2</td>
+            <td>52 / 58，89.7%</td>
+            <td>6</td>
+            <td>8</td>
+            <td><span class="pill warn">2 / 8</span></td>
+            <td>4602ms</td>
+            <td>2643ms</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="grid">
+      <article class="panel span-8">
+        <h2>修复请求体是否生效</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>检查项</th>
+              <th>改动前</th>
+              <th>改动后</th>
+              <th>判断</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>reask temperature</td>
+              <td><span class="mono">0.7, 0.7</span></td>
+              <td><span class="mono">0.7, 0</span></td>
+              <td><span class="pill ok">生效</span></td>
+            </tr>
+            <tr>
+              <td>完整原始 system prompt</td>
+              <td>缺失</td>
+              <td>所有新 reask call log 均包含</td>
+              <td><span class="pill ok">生效</span></td>
+            </tr>
+            <tr>
+              <td>compact syntax rules</td>
+              <td>缺失</td>
+              <td>所有新 reask call log 均包含</td>
+              <td><span class="pill ok">生效</span></td>
+            </tr>
+            <tr>
+              <td>syntax repair hints</td>
+              <td>缺失</td>
+              <td>语法类 reask 基本包含；非语法类不强制输出</td>
+              <td><span class="pill ok">符合预期</span></td>
+            </tr>
+            <tr>
+              <td>invalid statement component signatures</td>
+              <td>仅按 issue component 提示，覆盖不全</td>
+              <td>所有新 reask call log 均包含相关签名</td>
+              <td><span class="pill ok">生效</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </article>
+
+      <article class="panel span-4">
+        <h2>分类表现</h2>
+        <p class="callout">
+          语法类 reask 是核心瓶颈。改动前两轮语法类为 0/10，改动后两轮为 1/12，仅出现一个成功样本：
+          <span class="mono">actual-target-gap</span>。
+        </p>
+        <ul class="list">
+          <li>改动前：16 次 reask，2 次修复，10 次语法类全部失败。</li>
+          <li>改动后：14 次 reask，2 次修复，12 次语法类修复 1 次。</li>
+          <li>非语法类仍可修，说明签名/契约上下文对 unknown component、null-required 更有帮助。</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="panel">
+      <h2>关键 fixture 对照</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Fixture</th>
+            <th>改动前 round1</th>
+            <th>改动前 round2</th>
+            <th>改动后 round1</th>
+            <th>改动后 round2</th>
+            <th>解读</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">tc-002-app-fault-analysis</td>
+            <td>INVALID, reask</td>
+            <td>INVALID, reask</td>
+            <td>VALID, no reask</td>
+            <td>INVALID, reask</td>
+            <td>不再稳定失败，但改善来自首轮采样，不能归因于 reask 修复。</td>
+          </tr>
+          <tr>
+            <td class="mono">tc-010-coverage-quality</td>
+            <td>INVALID, reask</td>
+            <td>INVALID, reask</td>
+            <td>INVALID, reask</td>
+            <td>INVALID, reask</td>
+            <td>仍是稳定失败样本，适合作为下一步回归靶点。</td>
+          </tr>
+          <tr>
+            <td class="mono">actual-target-gap</td>
+            <td>INVALID, reask</td>
+            <td>VALID, no reask</td>
+            <td>VALID, no reask</td>
+            <td>VALID, reask</td>
+            <td>新 round2 出现语法类 reask 修复成功，是本次改动的正向证据。</td>
+          </tr>
+          <tr>
+            <td class="mono">record-with-sparkline</td>
+            <td>VALID, no reask</td>
+            <td>VALID, no reask</td>
+            <td>VALID, no reask</td>
+            <td>VALID, reask</td>
+            <td>新 round2 的非语法类 reask 修复成功。</td>
+          </tr>
+          <tr>
+            <td class="mono">tc-015-throughput-quality</td>
+            <td>VALID, no reask</td>
+            <td>VALID, no reask</td>
+            <td>INVALID, reask</td>
+            <td>INVALID, reask</td>
+            <td>新增稳定失败，说明采样方差和 prompt 复杂度仍压过当前修复策略。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="grid">
+      <article class="panel span-6">
+        <h2>为什么提升有限</h2>
+        <ul class="list">
+          <li><strong>maxAttempts 仍为 1。</strong> 用户本轮指定只做 prompt 和降温；复杂语法错误通常需要二次纠偏。</li>
+          <li><strong>语法错误往往不是单 token 修复。</strong> 多数失败同时出现 unresolved-ref、unclosed bracket、unexpected token，代表模型需要重写整段结构。</li>
+          <li><strong>reask 只能补救被 gate 截断的后缀。</strong> 如果 accepted prefix 中已经埋了错误结构或抽象方式不好，后缀修复空间有限。</li>
+          <li><strong>LLM 采样方差仍大。</strong> 同一 fixture 在不同轮次可能首轮直接 VALID，也可能走 reask 后失败。</li>
+        </ul>
+      </article>
+
+      <article class="panel span-6">
+        <h2>建议下一步</h2>
+        <ul class="list">
+          <li>把 <span class="mono">RepairPolicy.maxAttempts</span> 从 1 提到 2，优先验证 <span class="mono">tc-010</span>、<span class="mono">tc-015</span>。</li>
+          <li>对 syntax reask 增加“重写 invalid statement，不保留任何 JS 语法”的强约束，尤其是箭头函数、命名参数、`.includes`、函数声明。</li>
+          <li>把 reask 输出再加一层轻量 lint prompt 或本地模板化 rewrite，专门处理命名参数转 positional 的高频错误。</li>
+          <li>继续用两轮以上复跑，避免把首轮采样变好误判为 reask 能力提升。</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="panel">
+      <h2>数据来源</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>用途</th>
+            <th>路径</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>改动前 round1</td>
+            <td class="mono">packages/genui-java-sdk/target/benchmark-out/t07/round1/metrics-on.json</td>
+          </tr>
+          <tr>
+            <td>改动前 round2</td>
+            <td class="mono">packages/genui-java-sdk/target/benchmark-out/t07/round2/metrics-on.json</td>
+          </tr>
+          <tr>
+            <td>改动后 round1</td>
+            <td class="mono">packages/genui-java-sdk/target/benchmark-out/t07-after/round1/metrics-on.json</td>
+          </tr>
+          <tr>
+            <td>改动后 round2</td>
+            <td class="mono">packages/genui-java-sdk/target/benchmark-out/t07-after/round2/metrics-on.json</td>
+          </tr>
+          <tr>
+            <td>运行命令</td>
+            <td class="mono">ValidationBenchmarkDriver --fixtures C:\workspace\openui\packages\react-ui-dsl\src\__tests__\e2e\fuzz-data\benchmark --arm on --temperature 0.7 --model qwen3-30b-a3b-instruct-2507</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>
