@@ -43,6 +43,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -114,8 +115,8 @@ public final class GenUiGenerator {
     public GenUiGenerationResult generate(UiGenerationRequest request) {
         UiGenerationRequest effectiveRequest = request == null ? UiGenerationRequest.builder().build() : request;
         try {
-            String body = buildRequestBody(effectiveRequest, false);
-            String response = transport.post(body);
+            RequestBody requestBody = buildRequest(effectiveRequest, false);
+            String response = transport.post(requestBody.json());
             String content = ChatCompletionResponse.parse(response).firstContent();
             String extracted = OpenuiCodeExtractor.extract(content);
 
@@ -123,9 +124,10 @@ public final class GenUiGenerator {
             if (validationConfig.validationMode() != ValidationConfigMode.DISABLED) {
                 GenUIPromptRequest promptRequest = toPromptRequest(effectiveRequest);
                 GenerationContract merged = sdk.mergedContract(promptRequest);
+                Set<String> externalRefs = externalRefsFor(promptRequest);
 
                 ValidationRequest validationRequest = ValidationRequest.builder().dsl(extracted).contract(merged)
-                        .rootName(merged.root()).mode(ValidationMode.FINAL).build();
+                        .rootName(merged.root()).externalRefs(externalRefs).mode(ValidationMode.FINAL).build();
 
                 ValidationResult validationResult = validator.validate(validationRequest);
 
@@ -135,8 +137,9 @@ public final class GenUiGenerator {
                     // NONE never repairs — both fall through to the throw below.
                     RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
                     if (policy.kind() == RepairPolicyKind.FINAL_REPAIR) {
-                        RepairCoordinator.FullRepairOutcome outcome = repairCoordinator(policy).repairFull(
-                                userMessage(effectiveRequest), extracted, validationResult, merged, merged.root());
+                        RepairCoordinator.FullRepairOutcome outcome = repairCoordinator(policy, externalRefs)
+                                .repairFull(userMessage(effectiveRequest), extracted, validationResult, merged,
+                                        merged.root(), requestBody.systemPrompt());
                         if (outcome.repaired()) {
                             return new GenUiGenerationResult(outcome.dsl(), effectiveRequest.response(),
                                     ValidationStatus.VALID, markRepaired(outcome.result()));
@@ -166,13 +169,29 @@ public final class GenUiGenerator {
     }
 
     /** Build a repair coordinator bound to this generator's transport/validator + a policy. */
-    private RepairCoordinator repairCoordinator(RepairPolicy policy) {
-        return new RepairCoordinator(transport, validator, policy).withBodyBuilder(this::buildBodyFromMessages);
+    private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs) {
+        return new RepairCoordinator(transport, validator, policy).withBodyBuilder(this::buildBodyFromMessages)
+                .withExternalRefs(externalRefs);
+    }
+
+    /**
+     * External reference names for validation: when the request carries a dataModel, the host binds {@code data} at
+     * render time (the prompt teaches the model to use {@code data.<field>}), so the validator must treat it as
+     * runtime-resolved. Without a dataModel a {@code data} reference is genuinely unresolved — inject nothing.
+     */
+    private static Set<String> externalRefsFor(GenUIPromptRequest promptRequest) {
+        return promptRequest.dataModel() == null ? Set.of() : Set.of("data");
     }
 
     /** Serialize repair chat messages into a transport body, reusing the generation request shape. */
     private String buildBodyFromMessages(List<ChatMessage> messages, boolean stream) {
-        return ChatCompletionRequest.of(config, null, messages, stream).toJson();
+        return ChatCompletionRequest.of(repairConfig(), null, messages, stream).toJson();
+    }
+
+    private GenUiLlmConfig repairConfig() {
+        return GenUiLlmConfig.builder().endpoint(config.endpoint()).defaultModel(config.defaultModel()).temperature(0)
+                .enableThinking(false).jsonObjectResponse(config.jsonObjectResponse()).extraHeaders(config.extraHeaders())
+                .build();
     }
 
     /** Tag a repaired result's metadata with {@code repaired=true} for service-layer logging. */
@@ -264,12 +283,15 @@ public final class GenUiGenerator {
         sink.accept(RenderStreamEnvelope.dataModel(dataModel));
         int[] nextSeq = {1};
 
-        GenerationContract merged = sdk.mergedContract(toPromptRequest(effectiveRequest));
-        StreamingValidationSession session = new StreamingValidationSession(validator, merged, merged.root());
+        GenUIPromptRequest promptRequest = toPromptRequest(effectiveRequest);
+        GenerationContract merged = sdk.mergedContract(promptRequest);
+        Set<String> externalRefs = externalRefsFor(promptRequest);
+        StreamingValidationSession session = new StreamingValidationSession(validator, merged, merged.root(),
+                externalRefs);
         RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
 
-        String body = buildRequestBody(effectiveRequest, true);
-        try (InputStream stream = transport.postStream(body)) {
+        RequestBody requestBody = buildRequest(effectiveRequest, true);
+        try (InputStream stream = transport.postStream(requestBody.json())) {
             boolean withheld = consumeGatedStream(stream, session, sink, nextSeq, true);
 
             if (withheld) {
@@ -277,7 +299,8 @@ public final class GenUiGenerator {
                 // withheld statement is terminal (error -> done, INVALID). Reask reuses the SAME session/gate
                 // continuing from the accepted prefix; only accepted repaired DSL is emitted. seq is shared.
                 if (policy.kind() == RepairPolicyKind.FAIL_FAST_REASK
-                        && failFastReask(effectiveRequest, merged, session, sink, nextSeq, policy)) {
+                        && failFastReask(effectiveRequest, merged, externalRefs, session, sink, nextSeq, policy,
+                                requestBody.systemPrompt())) {
                     // Reask succeeded: continuation emitted accepted DSL and closed cleanly via onEnd().
                     sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
                     return new GenUiGenerationResult(session.acceptedDsl(), dataModel, ValidationStatus.VALID,
@@ -340,9 +363,9 @@ public final class GenUiGenerator {
      * the stream failed / the attempt budget was exhausted.
      */
     private boolean failFastReask(UiGenerationRequest effectiveRequest, GenerationContract merged,
-            StreamingValidationSession session, Consumer<RenderStreamEnvelope> sink, int[] nextSeq,
-            RepairPolicy policy) {
-        RepairCoordinator coordinator = repairCoordinator(policy);
+            Set<String> externalRefs, StreamingValidationSession session, Consumer<RenderStreamEnvelope> sink,
+            int[] nextSeq, RepairPolicy policy, String originalSystemPrompt) {
+        RepairCoordinator coordinator = repairCoordinator(policy, externalRefs);
         for (int attempt = 1; attempt <= policy.maxAttempts(); attempt++) {
             String acceptedPrefix = session.acceptedDsl();
             String invalidStatement = session.withheldStatement();
@@ -354,7 +377,8 @@ public final class GenUiGenerator {
             session.resetForReask();
 
             boolean clean = coordinator.reaskStream(userMessage(effectiveRequest), acceptedPrefix, invalidStatement,
-                    issues, merged, newStream -> !consumeGatedStream(newStream, session, sink, nextSeq, true));
+                    issues, merged, originalSystemPrompt,
+                    newStream -> !consumeGatedStream(newStream, session, sink, nextSeq, true));
             if (clean && !session.hasWithheld()) {
                 return true; // continuation produced only valid DSL
             }
@@ -405,18 +429,27 @@ public final class GenUiGenerator {
 
     /** Run a FINAL validation over the accumulated DSL (FINAL_ONLY tail check). */
     private ValidationResult finalValidate(UiGenerationRequest request, String dsl) {
-        GenerationContract merged = sdk.mergedContract(toPromptRequest(request));
+        GenUIPromptRequest promptRequest = toPromptRequest(request);
+        GenerationContract merged = sdk.mergedContract(promptRequest);
         ValidationRequest validationRequest = ValidationRequest.builder().dsl(dsl).contract(merged)
-                .rootName(merged.root()).mode(ValidationMode.FINAL).build();
+                .rootName(merged.root()).externalRefs(externalRefsFor(promptRequest)).mode(ValidationMode.FINAL)
+                .build();
         return validator.validate(validationRequest);
     }
 
     private String buildRequestBody(UiGenerationRequest request, boolean stream) {
+        return buildRequest(request, stream).json();
+    }
+
+    private RequestBody buildRequest(UiGenerationRequest request, boolean stream) {
         UiGenerationRequest effectiveRequest = request == null ? UiGenerationRequest.builder().build() : request;
         GenUIPromptAssemblyResult assembly = sdk.assemblePrompt(toPromptRequest(effectiveRequest));
         List<ChatMessage> messages = List.of(ChatMessage.system(assembly.prompt()),
                 ChatMessage.user(userMessage(effectiveRequest)));
-        return ChatCompletionRequest.of(config, null, messages, stream).toJson();
+        return new RequestBody(ChatCompletionRequest.of(config, null, messages, stream).toJson(), assembly.prompt());
+    }
+
+    private record RequestBody(String json, String systemPrompt) {
     }
 
     private GenUIPromptRequest toPromptRequest(UiGenerationRequest request) {

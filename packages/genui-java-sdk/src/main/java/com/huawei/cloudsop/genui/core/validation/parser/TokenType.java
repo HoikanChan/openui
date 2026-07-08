@@ -1,47 +1,91 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.validation.parser;
 
 /**
- * Token type discriminant for openui-lang.
+ * openui-lang 的 token 类型判别符。
  *
- * <p>Mirrors the TypeScript {@code const enum T} in {@code packages/lang-core/src/parser/tokens.ts}.
- * Ordinal order is kept identical to the TS enum so cross-language parity fixtures line up.
+ * <p>
+ * 对应 {@code packages/lang-core/src/parser/tokens.ts} 中的 TypeScript {@code const enum T}。序数顺序与 TS
+ * 枚举保持一致，以便跨语言对齐测试数据能够一一对应。
+ *
+ * @since 2026
  */
 public enum TokenType {
-  NEWLINE, // \n (significant — statement separator at depth 0)
-  L_PAREN, // (
-  R_PAREN, // )
-  L_BRACK, // [
-  R_BRACK, // ]
-  L_BRACE, // {
-  R_BRACE, // }
-  COMMA, // ,
-  COLON, // :
-  EQUALS, // =
-  TRUE, // true
-  FALSE, // false
-  NULL, // null
-  EOF, // end of input
-  STR, // string literal (carries value)
-  NUM, // number literal (carries value)
-  IDENT, // lowercase identifier — becomes a reference
-  TYPE, // PascalCase identifier — component name or reference
-  STATE_VAR, // $identifier — reactive state reference (value includes leading $)
-  DOT, // .
-  PLUS, // +
-  MINUS, // -
-  STAR, // *
-  SLASH, // /
-  PERCENT, // %
-  EQ_EQ, // ==
-  NOT_EQ, // !=
-  GREATER, // >
-  LESS, // <
-  GREATER_EQ, // >=
-  LESS_EQ, // <=
-  AND, // &&
-  OR, // ||
-  NOT, // !
-  QUESTION, // ?
-  BUILTIN_CALL, // @identifier — builtin function call (value excludes leading @)
-  NULL_COAL // ??
+    /** {@code \n}（有意义 —— 深度为 0 时作为语句分隔符）。 */
+    NEWLINE,
+    /** {@code (}。 */
+    L_PAREN,
+    /** {@code )}。 */
+    R_PAREN,
+    /** {@code [}。 */
+    L_BRACK,
+    /** {@code ]}。 */
+    R_BRACK,
+    /** 左花括号 {@code &#123;}。 */
+    L_BRACE,
+    /** 右花括号 {@code &#125;}。 */
+    R_BRACE,
+    /** {@code ,}。 */
+    COMMA,
+    /** {@code :}。 */
+    COLON,
+    /** {@code =}。 */
+    EQUALS,
+    /** {@code true}。 */
+    TRUE,
+    /** {@code false}。 */
+    FALSE,
+    /** {@code null}。 */
+    NULL,
+    /** 输入结束。 */
+    EOF,
+    /** 字符串字面量（携带值）。 */
+    STR,
+    /** 数字字面量（携带值）。 */
+    NUM,
+    /** 小写标识符 —— 会成为一个引用。 */
+    IDENT,
+    /** 帕斯卡命名标识符 —— 组件名或类型引用。 */
+    TYPE,
+    /** {@code $identifier} —— 响应式状态引用（值包含前导 {@code $}）。 */
+    STATE_VAR,
+    /** {@code .}。 */
+    DOT,
+    /** {@code +}。 */
+    PLUS,
+    /** {@code -}。 */
+    MINUS,
+    /** {@code *}。 */
+    STAR,
+    /** {@code /}。 */
+    SLASH,
+    /** {@code %}。 */
+    PERCENT,
+    /** {@code ==}。 */
+    EQ_EQ,
+    /** {@code !=}。 */
+    NOT_EQ,
+    /** {@code >}。 */
+    GREATER,
+    /** {@code <}。 */
+    LESS,
+    /** {@code >=}。 */
+    GREATER_EQ,
+    /** {@code <=}。 */
+    LESS_EQ,
+    /** {@code &&}。 */
+    AND,
+    /** {@code ||}。 */
+    OR,
+    /** {@code !}。 */
+    NOT,
+    /** {@code ?}。 */
+    QUESTION,
+    /** {@code @identifier} —— 内置函数调用（值不含前导 {@code @}）。 */
+    BUILTIN_CALL,
+    /** {@code ??}。 */
+    NULL_COAL
 }

@@ -1,26 +1,34 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.validation;
 
 /**
- * Top-level DSL validator API.
+ * DSL 校验器顶层 API。
  *
- * <p>Receives a {@link ValidationRequest} and returns a {@link ValidationResult} whose
- * {@link ValidationStatus} is computed by the implementation:
+ * <p>
+ * 接收一个 {@link ValidationRequest}，返回一个 {@link ValidationResult}，其 {@link ValidationStatus} 由实现方计算：
  * <ul>
- *   <li>{@link ValidationStatus#INVALID} — any issue with severity {@code ERROR}.</li>
- *   <li>{@link ValidationStatus#PARTIAL} — only in {@link ValidationMode#STREAMING} when there are
- *       non-blocking (non-ERROR) issues and no blocking ERROR.</li>
- *   <li>{@link ValidationStatus#VALID} — no issues or only informational/non-blocking.</li>
+ * <li>{@link ValidationStatus#INVALID} —— 存在任意 {@code ERROR} 级别的问题。</li>
+ * <li>{@link ValidationStatus#PARTIAL} —— 仅在 {@link ValidationMode#STREAMING} 下，存在非阻塞（非 ERROR）问题且无阻塞
+ * ERROR 时出现。</li>
+ * <li>{@link ValidationStatus#VALID} —— 无问题，或仅有提示性/非阻塞问题。</li>
  * </ul>
  *
- * <p>Implementations must be stateless/thread-safe unless documented otherwise.
+ * <p>
+ * 除非另有说明，实现必须是无状态且线程安全的。
+ *
+ * @since 2026
  */
 public interface OpenuiLangValidator {
 
-  /**
-   * Validate the DSL in {@code request} and return a {@link ValidationResult}.
-   *
-   * @param request the validation input; never {@code null}
-   * @return validation result; never {@code null}
-   */
-  ValidationResult validate(ValidationRequest request);
+    /**
+     * 校验 {@code request} 中的 DSL 并返回结果。
+     *
+     * @param request
+     *            校验输入，不允许为 {@code null}
+     * @return 校验结果，不会为 {@code null}
+     */
+    ValidationResult validate(ValidationRequest request);
 }

@@ -1,21 +1,27 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.validation.parser;
 
 /**
- * Machine-readable parser syntax-error codes.
+ * 机器可读的解析器语法错误码。
  *
- * <p>These mirror the diagnostic <em>classes</em> the TS pipeline surfaces (see {@code
- * enrich-errors.ts}/{@code types.ts}), not exact message strings. Section 3 maps them into {@code
- * ValidationIssue} codes.
+ * <p>
+ * 这些编码对应 TS 流水线暴露的诊断<em>类别</em>（参见 {@code enrich-errors.ts}/{@code types.ts}），而非精确的错误
+ * 文案。后续章节会将其映射为 {@code ValidationIssue} 编码。
+ *
+ * @since 2026
  */
 public enum ParseErrorCode {
-  /** A statement line had no {@code =} after its identifier. */
-  MISSING_ASSIGNMENT,
-  /** A line started with a token that cannot be a statement identifier. */
-  INVALID_STATEMENT,
-  /** An opening {@code (} / {@code [} / {@code &#123;} was never closed. */
-  UNCLOSED_BRACKET,
-  /** A string literal was never closed. */
-  UNCLOSED_STRING,
-  /** A token appeared that the expression grammar could not use. */
-  UNEXPECTED_TOKEN
+    /** 语句行的标识符后缺少 {@code =}。 */
+    MISSING_ASSIGNMENT,
+    /** 某行以无法作为语句标识符的 token 开头。 */
+    INVALID_STATEMENT,
+    /** 开括号 {@code (} / {@code [} / {@code &#123;} 未闭合。 */
+    UNCLOSED_BRACKET,
+    /** 字符串字面量未闭合。 */
+    UNCLOSED_STRING,
+    /** 出现了表达式文法无法使用的 token。 */
+    UNEXPECTED_TOKEN
 }

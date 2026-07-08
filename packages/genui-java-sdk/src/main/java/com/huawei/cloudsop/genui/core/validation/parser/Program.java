@@ -1,30 +1,44 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.validation.parser;
 
 import java.util.List;
 
 /**
- * The result of parsing an openui-lang source string.
+ * 解析 openui-lang 源字符串得到的结果。
  *
- * <p>The TS side calls this a {@code ParseResult} and folds materialization/schema validation into
- * it; here the parser stops at the syntactic layer. A {@code Program} therefore carries the ordered
- * list of typed {@link Statement}s plus structured {@link ParseDiagnostic}s. Section 3 consumes this
- * for semantic/contract validation.
+ * <p>
+ * TS 侧称之为 {@code ParseResult}，并把物化/schema 校验也并入其中；此处的解析器仅停留在语法层。因此
+ * {@code Program} 携带按源码顺序排列的 {@link Statement} 列表，以及结构化的 {@link ParseDiagnostic}。后续章节据此
+ * 做语义/合约校验。
  *
- * @param statements parsed statements, in source order; never {@code null}
- * @param diagnostics structured syntax diagnostics; never {@code null}
- * @param incomplete {@code true} if auto-close had to repair unclosed brackets/strings (streaming or
- *     truncated input)
+ * @param statements
+ *            按源码顺序解析出的语句；不会为 {@code null}
+ * @param diagnostics
+ *            结构化的语法诊断信息；不会为 {@code null}
+ * @param incomplete
+ *            若为自动闭合修复了未闭合的括号/字符串（流式或截断输入）则为 {@code true}
+ *
+ * @since 2026
  */
-public record Program(
-    List<Statement> statements, List<ParseDiagnostic> diagnostics, boolean incomplete) {
+public record Program(List<Statement> statements, List<ParseDiagnostic> diagnostics, boolean incomplete) {
 
-  public Program {
-    statements = statements == null ? List.of() : List.copyOf(statements);
-    diagnostics = diagnostics == null ? List.of() : List.copyOf(diagnostics);
-  }
+    /**
+     * 紧凑构造方法，将各列表归一化为不可变列表。
+     */
+    public Program {
+        statements = statements == null ? List.of() : List.copyOf(statements);
+        diagnostics = diagnostics == null ? List.of() : List.copyOf(diagnostics);
+    }
 
-  /** {@code true} iff no diagnostics were collected. */
-  public boolean isClean() {
-    return diagnostics.isEmpty();
-  }
+    /**
+     * 判断是否未收集到任何诊断信息。
+     *
+     * @return 无诊断信息时返回 {@code true}
+     */
+    public boolean isClean() {
+        return diagnostics.isEmpty();
+    }
 }

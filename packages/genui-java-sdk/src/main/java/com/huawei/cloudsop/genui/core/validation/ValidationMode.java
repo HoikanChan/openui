@@ -1,12 +1,17 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.validation;
 
 /**
- * Tells the validator which rule set to apply for a single validation call.
- * Distinct from {@link ValidationConfigMode} which governs when validation is triggered.
+ * 告知校验器单次调用应采用的规则集。区别于控制校验触发时机的 {@link ValidationConfigMode}。
+ *
+ * @since 2026
  */
 public enum ValidationMode {
-  /** Validate the complete, final DSL string. */
-  FINAL,
-  /** Validate an in-progress streaming DSL fragment (relaxed rules). */
-  STREAMING
+    /** 校验完整的最终 DSL 字符串。 */
+    FINAL,
+    /** 校验进行中的流式 DSL 片段（规则较宽松）。 */
+    STREAMING
 }

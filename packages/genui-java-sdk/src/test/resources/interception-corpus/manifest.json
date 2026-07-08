@@ -1,11 +1,7 @@
 {
   "rootName": "root",
   "externalRefs": [
-    "data",
-    "v",
-    "row",
-    "s",
-    "item"
+    "data"
   ],
   "sharedContractFile": "contracts/openui-shared.json",
   "cases": [

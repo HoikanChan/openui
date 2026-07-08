@@ -1,57 +1,104 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.validation.stream;
 
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 
 /**
- * A single decision produced by the streaming statement gate for a completed openui-lang statement
- * (or a batch flushed together).
+ * 流式语句门控针对一条已完成的 openui-lang 语句（或一批一起刷出的语句）产出的单个决策。
  *
- * <p>Decisions are the only way statement text leaves the {@link StreamingValidationSession}. The
- * generator translates {@link Kind#EMIT} decisions into {@code dsl} envelopes and {@link Kind#FAIL}
- * / {@link Kind#WITHHOLD} into the fail-fast path. {@link Kind#BUFFER} statements are held inside the
- * session until a later dependency resolves them (then re-surface as {@link Kind#EMIT}) or the stream
- * ends.
+ * <p>
+ * 决策是语句文本离开 {@link StreamingValidationSession} 的唯一途径。生成器把 {@link Kind#EMIT} 决策转换为
+ * {@code dsl} 信封，把 {@link Kind#FAIL} / {@link Kind#WITHHOLD} 转入 fail-fast 路径。{@link Kind#BUFFER}
+ * 语句会一直留在 session 内部，直到后续某个依赖解析成功（再以 {@link Kind#EMIT} 重新出现）或流结束。
+ *
+ * @param kind
+ *            决策种类
+ * @param statementText
+ *            语句文本
+ * @param validationResult
+ *            该语句的校验结果
+ *
+ * @since 2026
  */
 public record GateDecision(Kind kind, String statementText, ValidationResult validationResult) {
 
-  /** The kind of gate decision. */
-  public enum Kind {
-    /** Statement validated render-safe: forward as a {@code dsl} envelope. */
-    EMIT,
     /**
-     * Statement validated OK but held pending a temporarily-unresolved dependency. Never leaves the
-     * session as its own frame — it is re-issued as {@link #EMIT} once flushed.
+     * 门控决策的种类。
+     *
+     * @since 2026
      */
-    BUFFER,
+    public enum Kind {
+        /** 语句校验为渲染安全：作为 {@code dsl} 信封转发。 */
+        EMIT,
+        /**
+         * 语句校验通过，但因存在临时未解析的依赖而被暂留。不会作为独立帧离开 session —— 一旦刷出会重新以
+         * {@link #EMIT} 形式出现。
+         */
+        BUFFER,
+        /**
+         * 已完成的语句被判定为确定性无效（阻塞级 ERROR）。其文本<em>永远不会</em>被发出。这是 Fail-Fast 的
+         * 触发点（后续章节会在此处取消并重新请求）。
+         */
+        WITHHOLD,
+        /**
+         * 在 {@code onEnd()} 时产生的终态失败：累积的 DSL 仍存在阻塞级错误（例如缓冲的语句始终未能解析）。
+         * 等价于流结束时的 WITHHOLD。
+         */
+        FAIL
+    }
+
     /**
-     * Completed statement is definitively invalid (blocking ERROR). Its text is NEVER emitted. This
-     * is the Fail-Fast trigger point (Section 7 will cancel + reask here).
+     * 构建一个携带渲染安全语句文本的 EMIT 决策。
+     *
+     * @param statementText
+     *            语句文本
+     * @param result
+     *            校验结果
+     * @return EMIT 决策
      */
-    WITHHOLD,
+    public static GateDecision emit(String statementText, ValidationResult result) {
+        return new GateDecision(Kind.EMIT, statementText, result);
+    }
+
     /**
-     * Terminal failure produced at {@code onEnd()} when accumulated DSL still has a blocking error
-     * (e.g. buffered statements never resolved). Equivalent to WITHHOLD at end-of-stream.
+     * 构建一个 BUFFER 决策（语句留在内部；文本尚未转发）。
+     *
+     * @param statementText
+     *            语句文本
+     * @param result
+     *            校验结果
+     * @return BUFFER 决策
      */
-    FAIL
-  }
+    public static GateDecision buffer(String statementText, ValidationResult result) {
+        return new GateDecision(Kind.BUFFER, statementText, result);
+    }
 
-  /** An EMIT decision carrying the render-safe statement text. */
-  public static GateDecision emit(String statementText, ValidationResult result) {
-    return new GateDecision(Kind.EMIT, statementText, result);
-  }
+    /**
+     * 构建一个 WITHHOLD 决策（确定性无效；文本绝不能被转发）。
+     *
+     * @param statementText
+     *            语句文本
+     * @param result
+     *            校验结果
+     * @return WITHHOLD 决策
+     */
+    public static GateDecision withhold(String statementText, ValidationResult result) {
+        return new GateDecision(Kind.WITHHOLD, statementText, result);
+    }
 
-  /** A BUFFER decision (statement held internally; text not forwarded yet). */
-  public static GateDecision buffer(String statementText, ValidationResult result) {
-    return new GateDecision(Kind.BUFFER, statementText, result);
-  }
-
-  /** A WITHHOLD decision (definitively invalid; text must never be forwarded). */
-  public static GateDecision withhold(String statementText, ValidationResult result) {
-    return new GateDecision(Kind.WITHHOLD, statementText, result);
-  }
-
-  /** A terminal FAIL decision at end-of-stream. */
-  public static GateDecision fail(String statementText, ValidationResult result) {
-    return new GateDecision(Kind.FAIL, statementText, result);
-  }
+    /**
+     * 构建一个流结束时的终态 FAIL 决策。
+     *
+     * @param statementText
+     *            语句文本
+     * @param result
+     *            校验结果
+     * @return FAIL 决策
+     */
+    public static GateDecision fail(String statementText, ValidationResult result) {
+        return new GateDecision(Kind.FAIL, statementText, result);
+    }
 }

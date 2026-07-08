@@ -83,8 +83,12 @@ public class GenerateController {
     /** 驱动 SDK 校验门,把 envelope 序列化为 SSE 帧。异常不外抛(首帧已发出),转为 error 帧。 */
     private void streamEnvelopes(OutputStream out, LlmStream stream, GenerationContract merged,
             java.util.Map<String, Object> dataModel) {
+        // dataModel 存在时,宿主会在渲染期绑定 `data`(prompt 教模型用 data.<field>),校验门必须视其为外部引用。
+        java.util.Set<String> externalRefs = dataModel == null || dataModel.isEmpty()
+                ? java.util.Collections.emptySet()
+                : java.util.Collections.singleton("data");
         StreamingValidationSession session = new StreamingValidationSession(new DefaultOpenuiLangValidator(), merged,
-                merged.root());
+                merged.root(), externalRefs);
         int[] nextSeq = {1};
         ValidationStatus finalStatus = null;
         try {
