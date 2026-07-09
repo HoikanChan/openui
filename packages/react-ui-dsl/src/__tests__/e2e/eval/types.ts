@@ -7,7 +7,7 @@ export const VISUAL_ISSUE_TAGS = [
   "weak-hierarchy",
 ] as const;
 
-export type VisualIssueTag = typeof VISUAL_ISSUE_TAGS[number];
+export type VisualIssueTag = (typeof VISUAL_ISSUE_TAGS)[number];
 
 export interface JudgeScore {
   fixtureId: string;
@@ -31,12 +31,7 @@ export interface FailingPattern {
   agent_hint: string;
 }
 
-export type RunState =
-  | "created"
-  | "waiting_for_agent"
-  | "verifying"
-  | "verified"
-  | "stalled";
+export type RunState = "created" | "waiting_for_agent" | "verifying" | "verified" | "stalled";
 
 export type PhaseStatus = "done" | "failed";
 
@@ -78,8 +73,13 @@ export interface RunManifest {
   updatedAt: string;
   regen: boolean;
   suite?: "e2e" | "fuzz" | "benchmark";
-  /** React UI DSL prompt strictness used for this run. */
-  strictness?: "standard" | "strict";
+  /**
+   * Generation pipeline that produced this run's DSL, e.g.
+   * "genui-eval-cli (@cloudsop/openui-react-ui-dsl@0.1.0)". Absent on runs
+   * created before the Java Generation SDK switch (those may carry a legacy
+   * `strictness` field instead — tolerated on read, never written).
+   */
+  generator?: string;
   reportDataPath: string;
   taskBundlePath: string;
   resultBundlePath: string;
@@ -119,7 +119,10 @@ export interface CorrectionEntry {
   state: CorrectionState;
   fixtureId?: string;
   score_corrections?: Partial<
-    Pick<JudgeScore, "component_fit" | "data_completeness" | "format_quality" | "layout_coherence" | "overall">
+    Pick<
+      JudgeScore,
+      "component_fit" | "data_completeness" | "format_quality" | "layout_coherence" | "overall"
+    >
   >;
   text_feedback?: string;
   rubric_hash?: string;

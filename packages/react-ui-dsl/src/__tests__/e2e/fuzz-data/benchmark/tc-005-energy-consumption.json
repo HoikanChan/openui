@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "prompt": "查询能耗统计\n\nAPI Schema:\n{\n  \"apiId\": \"查询能耗情况\",\n  \"apiName\": \"查询能耗情况\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/campusecoanalyservice/v1/intent/analysis/stat\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"X-Auth-Token\",\n      \"description\": \"鉴权token\"\n    },\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"filter\",\n      \"description\": \"过滤条件\"\n    },\n    {\n      \"paramName\": \"id\",\n      \"description\": \"区域Id\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"description\": \"区域level\"\n    },\n    {\n      \"paramName\": \"metricType\",\n      \"description\": \"能耗统计维度, region区域维度  device设备维度\"\n    },\n    {\n      \"paramName\": \"policyStatus\",\n      \"description\": \"节能策略下发状态：1：未部署；2：已部署；3：部署中；4：失败 0：不区分节能策略状态\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"开始时间\"\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"description\": \"租户Id\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"data\",\n      \"description\": \"概览统计模型\",\n      \"childParams\": [\n        {\n          \"paramName\": \"energy\",\n          \"description\": \"能耗\"\n        },\n        {\n          \"paramName\": \"efficiencyRatio\",\n          \"description\": \"能效比\"\n        },\n        {\n          \"paramName\": \"carbonEmission\",\n          \"description\": \"碳排放\"\n        },\n        {\n          \"paramName\": \"top5List\",\n          \"description\": \"rest返回模型\",\n          \"childParams\": [\n            {\n              \"paramName\": \"top5List\",\n              \"description\": \"单站点统计模型\",\n              \"childParams\": [\n                {\n                  \"paramName\": \"energy\",\n                  \"description\": \"能耗\"\n                },\n                {\n                  \"paramName\": \"efficiencyRatio\",\n                  \"description\": \"能效比\"\n                },\n                {\n                  \"paramName\": \"id\",\n                  \"description\": \"id\"\n                },\n                {\n                  \"paramName\": \"name\",\n                  \"description\": \"名称\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"errorAdvice\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDes\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDetail\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorReson\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"resultCode\",\n      \"description\": \"状态码\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "api-response-envelope",
+      "homogeneous",
+      "—",
+      "none",
+      "nearly-all-null",
+      "aggregated-only"
+    ],
+    "evalHints": []
+  },
+  "data": {
+    "resultCode": 200,
+    "errorDes": "Successful.",
+    "errorReson": "Successful.",
+    "errorDetail": "Successful.",
+    "errorAdvice": "Successful.",
+    "data": {
+      "energy": 0,
+      "efficiencyRatio": 0,
+      "carbonEmission": -1,
+      "top5List": [
+        {
+          "energy": 0,
+          "efficiencyRatio": 0,
+          "id": "string",
+          "name": "string"
+        }
+      ]
+    }
+  }
+}

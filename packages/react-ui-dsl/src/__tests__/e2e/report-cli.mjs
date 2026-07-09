@@ -40,7 +40,7 @@ function normalizeIdForMatch(id) {
   return normalized;
 }
 
-function reactUiDslViewTargetPlugin(rootDir, target = getReactUiDslViewTarget()) {
+export function reactUiDslViewTargetPlugin(rootDir, target = getReactUiDslViewTarget()) {
   const isEview = target === "eview";
 
   const lookup = new Map();
@@ -86,10 +86,20 @@ export function parseReportCliArgs(argv) {
     };
   }
 
-  const suite = argv.includes("--fuzz") ? "fuzz" : "e2e";
+  const suite = argv.includes("--fuzz") ? "fuzz" : argv.includes("--benchmark") ? "benchmark" : "e2e";
+
+  const filterIndex = argv.indexOf("--filter");
+  let testNameFilter;
+  if (filterIndex !== -1) {
+    testNameFilter = argv[filterIndex + 1];
+    if (!testNameFilter || testNameFilter.startsWith("--")) {
+      throw new Error("`--filter` requires a test-name pattern, for example `--filter tc-`.");
+    }
+  }
+
   const updateSnapshotIndex = argv.indexOf("--update-snapshot");
   if (updateSnapshotIndex === -1) {
-    return { mode: "run", suite };
+    return testNameFilter ? { mode: "run", suite, testNameFilter } : { mode: "run", suite };
   }
 
   const updateSnapshotFixtureId = argv[updateSnapshotIndex + 1];
@@ -104,13 +114,22 @@ export function parseReportCliArgs(argv) {
   };
 }
 
-export function buildVitestRunConfig({ reportDir, suite = "e2e", updateSnapshotFixtureId, baseEnv = process.env }) {
-  const targetFile = suite === "fuzz" ? "src/__tests__/e2e/dsl-fuzz.test.tsx" : "src/__tests__/e2e/dsl-e2e.test.tsx";
+export function buildVitestRunConfig({ reportDir, suite = "e2e", updateSnapshotFixtureId, testNameFilter, baseEnv = process.env }) {
+  const targetFile =
+    suite === "fuzz"
+      ? "src/__tests__/e2e/dsl-fuzz.test.tsx"
+      : suite === "benchmark"
+        ? "src/__tests__/e2e/dsl-benchmark.test.tsx"
+        : "src/__tests__/e2e/dsl-e2e.test.tsx";
   const args = updateSnapshotFixtureId
     ? ["exec", "vitest", "run", targetFile, "-t", updateSnapshotFixtureId]
-    : suite === "fuzz"
+    : suite === "fuzz" || suite === "benchmark"
       ? ["exec", "vitest", "run", targetFile]
       : ["exec", "vitest", "run", "src/__tests__/e2e"];
+
+  if (!updateSnapshotFixtureId && testNameFilter) {
+    args.push("-t", testNameFilter);
+  }
 
   const env = {
     ...baseEnv,
@@ -121,6 +140,11 @@ export function buildVitestRunConfig({ reportDir, suite = "e2e", updateSnapshotF
 
   if (updateSnapshotFixtureId) {
     env[REGEN_SNAPSHOTS_FLAG] = "1";
+  } else if (suite === "benchmark") {
+    // "0" (not unset) so setup.ts still loads .env: benchmark fixtures with a
+    // missing snapshot are generated on the fly via loadOrGenerate, which
+    // needs LLM_API_KEY, while existing snapshots are reused as-is.
+    env[REGEN_SNAPSHOTS_FLAG] = "0";
   }
 
   return {
@@ -141,6 +165,7 @@ async function main(argv = process.argv.slice(2)) {
     reportDir,
     suite: cliArgs.mode === "run" ? cliArgs.suite : undefined,
     updateSnapshotFixtureId: cliArgs.mode === "run" ? cliArgs.updateSnapshotFixtureId : undefined,
+    testNameFilter: cliArgs.mode === "run" ? cliArgs.testNameFilter : undefined,
   });
 
   const vitestResult = spawnSync(vitestRunConfig.command, vitestRunConfig.args, {
@@ -183,7 +208,7 @@ export function getOpenCommand(targetPath) {
   return { command: "xdg-open", args: [targetPath] };
 }
 
-async function buildReportApp(reportDir, reportDataPath) {
+export async function buildReportApp(reportDir, reportDataPath) {
   await build({
     appType: "spa",
     base: "./",

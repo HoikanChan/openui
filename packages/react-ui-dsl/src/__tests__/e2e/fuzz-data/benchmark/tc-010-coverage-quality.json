@@ -1,0 +1,66 @@
+{
+  "meta": {
+    "prompt": "查询区域信号质量指标\n\nAPI Schema:\n{\n  \"apiId\": \"查询区域信号质量指标\",\n  \"apiName\": \"查询区域信号质量指标\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/campuswlanqualityservice/v1/intent/common/coverage\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"endTime\",\n      \"paramType\": \"integer\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"id\",\n      \"paramType\": \"string\",\n      \"description\": \"区域id\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"paramType\": \"integer\",\n      \"description\": \"区域层级\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"paramType\": \"integer\",\n      \"description\": \"开始时间\"\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"paramType\": \"string\",\n      \"description\": \"租户id\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"charts\",\n      \"paramType\": \"array\",\n      \"description\": \"charts\",\n      \"childParams\": [\n        {\n          \"paramName\": \"charts\",\n          \"paramType\": \"object\",\n          \"description\": \"echart option\",\n          \"childParams\": [\n            {\n              \"paramName\": \"en\",\n              \"paramType\": \"string\",\n              \"description\": \"英文echart option\"\n            },\n            {\n              \"paramName\": \"zh\",\n              \"paramType\": \"string\",\n              \"description\": \"中文echart option\"\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"data\",\n      \"paramType\": \"array\",\n      \"description\": \"data\",\n      \"childParams\": [\n        {\n          \"paramName\": \"data\",\n          \"paramType\": \"object\",\n          \"description\": \"键值对模型\",\n          \"childParams\": [\n            {\n              \"paramName\": \"key\",\n              \"paramType\": \"string\",\n              \"description\": \"列举值 accessSuccessRate,roam,accessConsume,capacity,coverage,throughput\"\n            },\n            {\n              \"paramName\": \"value\",\n              \"paramType\": \"object\",\n              \"description\": \"质量评估数据模型\",\n              \"childParams\": [\n                {\n                  \"paramName\": \"rootValue\",\n                  \"paramType\": \"number\",\n                  \"description\": \"rootValue\"\n                },\n                {\n                  \"paramName\": \"rank\",\n                  \"paramType\": \"integer\",\n                  \"description\": \"rank\"\n                },\n                {\n                  \"paramName\": \"rankList\",\n                  \"paramType\": \"array\",\n                  \"description\": \"rankList\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"rankList\",\n                      \"paramType\": \"object\",\n                      \"description\": \"质量评估排名数据模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"regionId\",\n                          \"paramType\": \"string\",\n                          \"description\": \"regionId\"\n                        },\n                        {\n                          \"paramName\": \"regionName\",\n                          \"paramType\": \"string\",\n                          \"description\": \"regionName\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"paramType\": \"number\",\n                          \"description\": \"value\"\n                        }\n                      ]\n                    }\n                  ]\n                },\n                {\n                  \"paramName\": \"subValues\",\n                  \"paramType\": \"array\",\n                  \"description\": \"subValues\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"subValues\",\n                      \"paramType\": \"object\",\n                      \"description\": \"键值对模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"key\",\n                          \"paramType\": \"string\",\n                          \"description\": \"key\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"paramType\": \"string\",\n                          \"description\": \"value\"\n                        }\n                      ]\n                    }\n                  ]\n                },\n                {\n                  \"paramName\": \"baseline\",\n                  \"paramType\": \"array\",\n                  \"description\": \"baseline\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"baseline\",\n                      \"paramType\": \"object\",\n                      \"description\": \"质量评估趋势基本数据模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"timestamp\",\n                          \"paramType\": \"integer\",\n                          \"description\": \"timestamp\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"paramType\": \"number\",\n                          \"description\": \"value\"\n                        }\n                      ]\n                    }\n                  ]\n                },\n                {\n                  \"paramName\": \"essential\",\n                  \"paramType\": \"array\",\n                  \"description\": \"essential\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"essential\",\n                      \"paramType\": \"object\",\n                      \"description\": \"质量评估趋势基本数据模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"timestamp\",\n                          \"paramType\": \"integer\",\n                          \"description\": \"timestamp\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"paramType\": \"number\",\n                          \"description\": \"value\"\n                        }\n                      ]\n                    }\n                  ]\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"detailUrl\",\n      \"paramType\": \"string\",\n      \"description\": \"detailUrl\"\n    },\n    {\n      \"paramName\": \"errorAdvice\",\n      \"paramType\": \"string\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDes\",\n      \"paramType\": \"string\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDetail\",\n      \"paramType\": \"string\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorReson\",\n      \"paramType\": \"string\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"healthScore\",\n      \"paramType\": \"number\",\n      \"description\": \"healthScore\"\n    },\n    {\n      \"paramName\": \"resultCode\",\n      \"paramType\": \"integer\",\n      \"description\": \"状态码\"\n    },\n    {\n      \"paramName\": \"summary\",\n      \"paramType\": \"string\",\n      \"description\": \"总结\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "api-response-envelope",
+      "homogeneous",
+      "—",
+      "none",
+      "nearly-all-null",
+      "raw-only"
+    ],
+    "evalHints": [
+      "折线图/面积图（趋势数据）"
+    ]
+  },
+  "data": {
+    "resultCode": 200,
+    "errorDes": "Successful.",
+    "errorReson": "Successful.",
+    "errorDetail": "Successful.",
+    "errorAdvice": "Successful.",
+    "detailUrl": "",
+    "healthScore": -1,
+    "data": [
+      {
+        "key": "string",
+        "value": {
+          "rootValue": 0,
+          "rank": 0,
+          "rankList": [
+            {
+              "regionId": "string",
+              "regionName": "string",
+              "value": 0
+            }
+          ],
+          "subValues": [
+            {
+              "key": "string",
+              "value": "string"
+            }
+          ],
+          "baseline": [
+            {
+              "timestamp": 0,
+              "value": 0
+            }
+          ],
+          "essential": [
+            {
+              "timestamp": 0,
+              "value": 0
+            }
+          ]
+        }
+      }
+    ],
+    "charts": [
+      {
+        "en": "string",
+        "zh": "string"
+      }
+    ],
+    "summary": "string"
+  }
+}

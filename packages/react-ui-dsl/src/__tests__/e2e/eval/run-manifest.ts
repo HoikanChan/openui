@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
-import type { RunManifest, RunState, VerificationSummaryData, PhaseProgress, PhaseStatus } from "./types.ts";
+import { getGeneratorLabel } from "./generation-cli.ts";
 import { writePromptArtifact } from "./prompt-artifact.ts";
+import type { PhaseProgress, PhaseStatus, RunManifest, RunState } from "./types.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const RUNS_DIR = resolve(__dirname, "runs");
@@ -48,7 +48,6 @@ export function createRunWorkspace(
   runId: string,
   regen: boolean,
   suite: "e2e" | "fuzz" | "benchmark" = "e2e",
-  strictness: "standard" | "strict" = "standard",
 ): RunManifest {
   const runDir = getRunDir(runId);
   mkdirSync(runDir, { recursive: true });
@@ -56,7 +55,7 @@ export function createRunWorkspace(
   mkdirSync(resolve(runDir, "task-bundle", "adapters"), { recursive: true });
   mkdirSync(resolve(runDir, "result-bundle"), { recursive: true });
 
-  const { runRelativePath, hash } = writePromptArtifact(runDir, strictness);
+  const { runRelativePath, hash } = writePromptArtifact(runDir);
 
   const now = new Date().toISOString();
   const manifest: RunManifest = {
@@ -66,7 +65,7 @@ export function createRunWorkspace(
     updatedAt: now,
     regen,
     suite,
-    strictness,
+    generator: getGeneratorLabel(),
     reportDataPath: getReportDataPath(runId),
     taskBundlePath: getTaskBundlePath(runId),
     resultBundlePath: getResultBundlePath(runId),
@@ -116,7 +115,11 @@ export function listRunIds(): string[] {
 
 export type PhaseName = "regen" | "render" | "screenshot" | "judge";
 
-export function markPhaseDone(runId: string, phase: PhaseName, status: PhaseStatus = "done"): RunManifest {
+export function markPhaseDone(
+  runId: string,
+  phase: PhaseName,
+  status: PhaseStatus = "done",
+): RunManifest {
   const manifest = readRunManifest(runId);
   const phases: PhaseProgress = manifest.phases ?? {};
   phases[phase] = status;

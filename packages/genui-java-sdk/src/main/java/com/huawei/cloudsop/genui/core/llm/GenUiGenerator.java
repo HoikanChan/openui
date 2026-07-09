@@ -107,6 +107,13 @@ public final class GenUiGenerator {
         return new GenUiGenerator(GenerationSdk.create(), config, transport, validationConfig, validator);
     }
 
+    /**
+     * 使用调用方自建的 {@link GenerationSdk}(例如注入外部 base contract)与自定义 transport 创建生成器。
+     */
+    public static GenUiGenerator withTransport(GenerationSdk sdk, GenUiLlmConfig config, LlmTransport transport) {
+        return new GenUiGenerator(sdk, config, transport);
+    }
+
     public GenUiGenerator register(GenUIExtension extension) {
         sdk.register(extension);
         return this;

@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "prompt": "查询离线原因统计信息\n\nAPI Schema:\n{\n  \"apiId\": \"查询离线原因统计信息\",\n  \"apiName\": \"查询离线原因统计信息\",\n  \"method\": \"GET\",\n  \"url\": \"/rest/campusclientservice/v1/clientoverview/userstatistics/offlinestatistics\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"X-Auth-Token\",\n      \"description\": \"鉴权token\"\n    },\n    {\n      \"paramName\": \"param\",\n      \"description\": \"查询参数\",\n      \"required\": true\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"data\",\n      \"description\": \"values\",\n      \"childParams\": [\n        {\n          \"paramName\": \"data\",\n          \"description\": \"用户上线失败或离线统计\",\n          \"childParams\": [\n            {\n              \"paramName\": \"errCode\",\n              \"description\": \"错误码\"\n            },\n            {\n              \"paramName\": \"errMsg\",\n              \"description\": \"错误原因\"\n            },\n            {\n              \"paramName\": \"num\",\n              \"description\": \"数量\"\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"errorAdvice\",\n      \"description\": \"错误建议。\"\n    },\n    {\n      \"paramName\": \"errorDes\",\n      \"description\": \"错误描述。\"\n    },\n    {\n      \"paramName\": \"errorDetail\",\n      \"description\": \"错误详情。\"\n    },\n    {\n      \"paramName\": \"errorReson\",\n      \"description\": \"错误原因。\"\n    },\n    {\n      \"paramName\": \"resultCode\",\n      \"description\": \"状态码。\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "api-response-envelope",
+      "homogeneous",
+      "string-enum",
+      "none",
+      "full",
+      "ratio-distribution"
+    ],
+    "evalHints": [
+      "柱状图/饼图（统计/分布数据）"
+    ]
+  },
+  "data": {
+    "resultCode": 0,
+    "errorDes": "Operation successful.",
+    "errorReson": "Success",
+    "errorDetail": "The offline statistics data was retrieved successfully.",
+    "errorAdvice": "None",
+    "data": [
+      {
+        "errCode": "0",
+        "errMsg": "正常下线",
+        "num": 3420
+      },
+      {
+        "errCode": "201001",
+        "errMsg": "认证失败",
+        "num": 125
+      },
+      {
+        "errCode": "201002",
+        "errMsg": "DHCP获取超时",
+        "num": 45
+      },
+      {
+        "errCode": "201003",
+        "errMsg": "信号强度弱断开",
+        "num": 89
+      },
+      {
+        "errCode": "201004",
+        "errMsg": "IP地址冲突",
+        "num": 12
+      },
+      {
+        "errCode": "201005",
+        "errMsg": "认证服务器无响应",
+        "num": 8
+      },
+      {
+        "errCode": "201006",
+        "errMsg": "用户手动下线",
+        "num": 567
+      },
+      {
+        "errCode": "201007",
+        "errMsg": "AP设备重启",
+        "num": 30
+      }
+    ]
+  }
+}
