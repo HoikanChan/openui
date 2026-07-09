@@ -21,6 +21,7 @@ pnpm build && pnpm test
 These files are LLM-generated outputs captured during a regen run. They are the test inputs for `dsl-e2e.test.tsx` — editing them directly to make a test pass is not a fix; it hides the real problem.
 
 If an e2e test fails:
+
 - Fix the DSL component, renderer, or fixture definition — not the snapshot.
 - If the snapshot is legitimately stale (e.g., after a DSL schema change), regenerate it:
 
@@ -31,4 +32,6 @@ pnpm test:e2e:regen
 
 > **Note:** API keys and LLM configuration (`LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`) are already set in `packages/react-ui-dsl/.env`. Do **not** ask the user to provide a key — just run the command directly.
 
-The regen script calls the LLM with the fixture prompt and overwrites the snapshot. That is the only correct way to update these files.
+> **Requires JDK 21+ and Maven.** Regen generates DSL through the **Eval Generation CLI** (`packages/genui-eval-cli`), a Java wrapper around the Generation SDK — the same pipeline production uses. The fat jar builds automatically on first use; after editing the CLI's Java sources, rebuild with `pnpm eval build-cli`. There is no TypeScript generation fallback.
+
+The regen script calls the LLM (via the Java Generation SDK) with the fixture prompt and overwrites the snapshot. That is the only correct way to update these files.

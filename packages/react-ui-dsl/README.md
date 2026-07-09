@@ -67,6 +67,14 @@ What each command does:
 
 Snapshot regeneration uses the configured LLM and expects the credentials to be configured in `packages/react-ui-dsl/.env`.
 
+> **Requires a JDK (21+) and Maven.** DSL generation runs through the **Eval Generation CLI** (`packages/genui-eval-cli`), a thin Java wrapper around the Generation SDK — the exact pipeline production uses (prompt assembly, request construction, response extraction). There is no TypeScript generation path anymore. On the first regen the fat jar is built automatically (`mvn -pl packages/genui-eval-cli -am package -DskipTests`); after changing the CLI's Java sources, rebuild it explicitly:
+>
+> ```bash
+> pnpm eval build-cli
+> ```
+>
+> If `java`/`mvn` are not on `PATH`, regen fails with an install-guidance error instead of silently skipping generation.
+
 Start from `.env.example` and create `.env`:
 
 ```bash
@@ -169,11 +177,11 @@ pnpm eval status <run-id>     # detailed view: state, score, history, next step
 
 Open the adapter doc for your preferred agent:
 
-| Agent | Adapter file |
-|---|---|
+| Agent       | Adapter file                          |
+| ----------- | ------------------------------------- |
 | Claude Code | `task-bundle/adapters/claude-code.md` |
-| Codex | `task-bundle/adapters/codex.md` |
-| opencode | `task-bundle/adapters/opencode.md` |
+| Codex       | `task-bundle/adapters/codex.md`       |
+| opencode    | `task-bundle/adapters/opencode.md`    |
 
 The adapter gives the agent a self-contained prompt. The agent edits source files and writes a `result-bundle/` when done.
 
@@ -241,21 +249,21 @@ Drop a `corrections.json` in the run directory to calibrate the judge or inject 
 
 ### Run states
 
-| State | Meaning |
-|---|---|
-| `created` | Workspace initialized |
-| `waiting_for_agent` | Task bundle ready |
-| `verifying` | Verification in progress |
-| `verified` | Done (check verificationSummary in run.json) |
-| `stalled` | No improvement for 3+ iterations |
+| State               | Meaning                                      |
+| ------------------- | -------------------------------------------- |
+| `created`           | Workspace initialized                        |
+| `waiting_for_agent` | Task bundle ready                            |
+| `verifying`         | Verification in progress                     |
+| `verified`          | Done (check verificationSummary in run.json) |
+| `stalled`           | No improvement for 3+ iterations             |
 
 ### Judge dimensions
 
 Each fixture is scored on four dimensions (0–3 each) plus an overall 0–10:
 
-| Dimension | What it measures |
-|---|---|
-| `component_fit` | Is the chosen component type right for this data? |
+| Dimension           | What it measures                                    |
+| ------------------- | --------------------------------------------------- |
+| `component_fit`     | Is the chosen component type right for this data?   |
 | `data_completeness` | Are all important fields from the data model shown? |
-| `format_quality` | Are dates, numbers, and values formatted correctly? |
-| `layout_coherence` | Is the layout clear and logically organized? |
+| `format_quality`    | Are dates, numbers, and values formatted correctly? |
+| `layout_coherence`  | Is the layout clear and logically organized?        |
