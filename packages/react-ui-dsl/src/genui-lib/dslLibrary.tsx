@@ -29,7 +29,6 @@ import { Form } from "./Form";
 import { Image } from "./Image";
 import { Input } from "./Input";
 import { Link } from "./Link";
-import { List } from "./List";
 import { Separator } from "./Separator";
 import { Select } from "./Select";
 import { Tag } from "./Tag";
@@ -143,7 +142,7 @@ export const dslComponentGroups: ComponentGroup[] = [
   },
   {
     name: "Data Display",
-    components: ["Tag", "TagBlock", "List", "TimeLine", "Button"],
+    components: ["Tag", "TagBlock", "TimeLine", "Button"],
     notes: [
       "- For boolean fields (active, enabled, status), use a ternary: `v ? Tag(\"Active\", \"success\") : Tag(\"Inactive\", \"danger\")`. `@Switch` matches string keys so `{true: ...}` won't match boolean values.",
       '- Color-mapped Tag (variant is the 2nd arg in dsl): Tag(v, v == "high" ? "danger" : v == "medium" ? "warning" : "neutral").',
@@ -304,7 +303,6 @@ export const dslLibrary: Library = createLibrary({
     Descriptions,
     DescGroup,
     DescField,
-    List,
     Form,
     Col,
     Table,
