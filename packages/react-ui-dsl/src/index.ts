@@ -30,7 +30,6 @@ export { Form } from "./genui-lib/Form";
 export { Image } from "./genui-lib/Image";
 export { Input } from "./genui-lib/Input";
 export { Link } from "./genui-lib/Link";
-export { List } from "./genui-lib/List";
 export { MarkDownRenderer } from "./genui-lib/MarkDownRenderer";
 export { Select } from "./genui-lib/Select";
 export { Separator } from "./genui-lib/Separator";
