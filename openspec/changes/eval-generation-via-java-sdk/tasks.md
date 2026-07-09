@@ -24,7 +24,7 @@
 
 - [x] 4.1 更新 `llm.test.ts`（删 generateDsl 用例，补快照缺失兜底/报错路径）、`regen.test.ts`、`prompt-artifact.test.ts`、`eval-loop` 相关断言（strictness 移除、generator 写入）；另给 `task-bundle.test.ts` 补 `generation-cli.ts` mock，避免 `createRunWorkspace` 在单测里 spawn JVM
 - [x] 4.2 相关 eval 单测全过（llm/regen/prompt-artifact/task-bundle 共 22 例）；改动文件 prettier 规范（LF）。注：`pnpm run test` 全量另有 25 个失败与 `pnpm run ci` 均为**本机环境预存**问题（`core.autocrlf=true` 无 `.gitattributes` 致全仓 CRLF；根 eslint 引用的 `packages/react-ui-dsl/tsconfig.test.json` 从未提交），与本变更无关，git 提交按 LF 存储、Linux CI 不受影响
-- [ ] 4.3 端到端冒烟：已备份 `snapshots/`/`fuzz-snapshots/`/`benchmark-snapshots/`；链路已验证贯通（CLI 子进程、SDK 拼装、transport 真实 HTTP、JSONL 流转与错误传播、`run.json` 的 `generator` 字段、`system-prompt.txt` 均正常）。**实际 DSL 生成受阻**：`.env` 的 Aliyun DashScope（`qwen3.6-27b`）账户欠费（HTTP 400 Arrearage），需换用有余额的 `LLM_BASE_URL`/key 后补跑
+- [x] 4.3 端到端冒烟：已备份 `snapshots/`/`fuzz-snapshots/`/`benchmark-snapshots/`；对 2 个小样本（button-primary / image-url）经 DeepSeek（`deepseek-v4-flash`）跑通真实生成——CLI 子进程、SDK 拼装、transport 真实 HTTP、JSONL 流转、快照写入、`run.json` 的 `generator` 字段、`system-prompt.txt` 均符合预期，生成的 DSL 渲染断言通过（冒烟后已还原快照）
 
 ## 5. 收尾
 
