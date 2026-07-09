@@ -1,13 +1,26 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ResultBundleError, hasResultBundle, readResultBundle } from "./result-bundle-reader.ts";
+import {
+  createRunWorkspace,
+  getResultBundlePath,
+  getRunDir,
+  getTaskBundlePath,
+} from "./run-manifest.ts";
+import { writeTaskBundle } from "./task-bundle-writer.ts";
+import type { JudgeScore } from "./types.ts";
+
+// createRunWorkspace records a canonical prompt via the Java Generation CLI.
+// This test exercises task-bundle writing, not prompt assembly — stub the CLI
+// boundary so no JVM/Maven is spawned here.
+vi.mock("./generation-cli.ts", () => ({
+  printCanonicalPrompt: () => "MOCK CANONICAL PROMPT __EVAL_DATA_MODEL_PLACEHOLDER__\n",
+  getGeneratorLabel: () => "genui-eval-cli (test)",
+}));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-import { writeTaskBundle } from "./task-bundle-writer.ts";
-import { ResultBundleError, hasResultBundle, readResultBundle } from "./result-bundle-reader.ts";
-import { createRunWorkspace, getResultBundlePath, getRunDir, getTaskBundlePath } from "./run-manifest.ts";
-import type { JudgeScore } from "./types.ts";
 
 function testRunId(): string {
   return `__test__${Date.now()}`;
@@ -79,7 +92,10 @@ describe("writeTaskBundle", () => {
     writeTaskBundle({
       runId,
       overallScore: 5,
-      judgeScores: [fakeScore("overlap-case"), { ...fakeScore("clipped-case"), visual_issues: ["clipped"] }],
+      judgeScores: [
+        fakeScore("overlap-case"),
+        { ...fakeScore("clipped-case"), visual_issues: ["clipped"] },
+      ],
       failingPatterns: [],
       snapshotsDir: resolve(__dirname, "../snapshots"),
     });

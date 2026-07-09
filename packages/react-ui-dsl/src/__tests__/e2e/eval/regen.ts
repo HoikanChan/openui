@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { generateDsl, getConfiguredLlmModel } from "../llm.ts";
 import type { BenchmarkCase } from "../benchmark-loader.ts";
+import { runGenerationCli, type GenerationCase } from "./generation-cli.ts";
 import { markPhaseDone } from "./run-manifest.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -13,7 +13,6 @@ export interface RegenOptions {
   suite: "e2e" | "fuzz" | "benchmark";
   fixtureIds?: string[];
   concurrency?: number;
-  strictness?: "standard" | "strict";
 }
 
 function getStagingDir(runId: string): string {
@@ -39,76 +38,58 @@ interface RegenResult {
   error?: string;
 }
 
-async function regenFixture(
-  fixture: BenchmarkCase,
-  stagingDir: string,
-  strictness: "standard" | "strict",
-): Promise<RegenResult> {
-  const apiKey = process.env["LLM_API_KEY"];
-  if (!apiKey) {
-    return {
-      fixtureId: fixture.id,
-      success: false,
-      error: "LLM_API_KEY is not set",
-    };
-  }
-
-  try {
-    const dsl = await generateDsl({
-      prompt: fixture.prompt,
-      dataModel: fixture.dataModel as Record<string, unknown>,
-      strictness,
-      model: getConfiguredLlmModel(),
-      apiKey,
-    });
-
-    const stagingPath = resolve(stagingDir, `${fixture.id}.dsl`);
-    writeFileSync(stagingPath, dsl, "utf-8");
-
-    return { fixtureId: fixture.id, success: true };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return {
-      fixtureId: fixture.id,
-      success: false,
-      error: message,
-    };
-  }
-}
-
 /**
- * Generate DSL for fixtures concurrently with staging + atomic rename.
- * All fixtures must succeed before any file is written to the snapshot directory.
+ * Generate DSL for fixtures through the Eval Generation CLI (Java Generation
+ * SDK path) with staging + atomic rename. All fixtures must succeed before
+ * any file is written to the snapshot directory. Concurrency is enforced
+ * inside the CLI via --concurrency.
  */
 export async function regenFixtures(
   fixtures: BenchmarkCase[],
   options: RegenOptions,
   onProgress?: (done: number, total: number) => void,
 ): Promise<{ results: RegenResult[]; success: boolean }> {
-  const concurrency = options.concurrency ?? resolveConcurrency(fixtures.length);
-  const strictness = options.strictness ?? "standard";
-  const stagingDir = getStagingDir(options.runId);
-
-  // Create staging directory
-  mkdirSync(stagingDir, { recursive: true });
-
-  const results: RegenResult[] = new Array(fixtures.length);
-  let cursor = 0;
-  let completed = 0;
-
-  async function worker(): Promise<void> {
-    while (true) {
-      const i = cursor++;
-      if (i >= fixtures.length) return;
-      results[i] = await regenFixture(fixtures[i]!, stagingDir, strictness);
-      completed++;
-      onProgress?.(completed, fixtures.length);
-    }
+  if (!process.env["LLM_API_KEY"]) {
+    throw new Error(
+      "LLM_API_KEY is not set. The Eval Generation CLI needs it to call the LLM. " +
+        "Configure packages/react-ui-dsl/.env and retry.",
+    );
   }
 
-  await Promise.all(Array.from({ length: concurrency }, () => worker()));
+  const concurrency = options.concurrency ?? resolveConcurrency(fixtures.length);
+  const stagingDir = getStagingDir(options.runId);
+  mkdirSync(stagingDir, { recursive: true });
 
-  // Check if all succeeded
+  const cases: GenerationCase[] = fixtures.map((f) => ({
+    id: f.id,
+    userInput: f.prompt,
+    dataModel: f.dataModel as Record<string, unknown>,
+  }));
+
+  let completed = 0;
+  const cliResults = await runGenerationCli(cases, {
+    workDir: stagingDir,
+    concurrency,
+    onResult: (result) => {
+      if (result.status === "ok" && result.dsl) {
+        writeFileSync(resolve(stagingDir, `${result.id}.dsl`), result.dsl, "utf-8");
+      }
+      completed++;
+      onProgress?.(completed, fixtures.length);
+    },
+  });
+
+  const results: RegenResult[] = fixtures.map((fixture) => {
+    const cliResult = cliResults.get(fixture.id);
+    if (!cliResult) {
+      return { fixtureId: fixture.id, success: false, error: "No result from generation CLI" };
+    }
+    if (cliResult.status !== "ok" || !cliResult.dsl) {
+      return { fixtureId: fixture.id, success: false, error: cliResult.error ?? "empty DSL" };
+    }
+    return { fixtureId: fixture.id, success: true };
+  });
+
   const allSuccess = results.every((r) => r.success);
 
   if (allSuccess) {
@@ -153,9 +134,7 @@ export async function regenMissingFixtures(
   onProgress?: (done: number, total: number) => void,
 ): Promise<{ results: RegenResult[]; success: boolean }> {
   const snapshotsDir = snapshotsDirForSuite(options.suite);
-  const missing = fixtures.filter(
-    (f) => !existsSync(resolve(snapshotsDir, `${f.id}.dsl`)),
-  );
+  const missing = fixtures.filter((f) => !existsSync(resolve(snapshotsDir, `${f.id}.dsl`)));
 
   if (missing.length === 0) {
     console.log(`[regen] All ${fixtures.length} fixtures already have snapshots.`);

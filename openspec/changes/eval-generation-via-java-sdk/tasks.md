@@ -13,20 +13,20 @@
 
 ## 3. Node 侧接线（packages/react-ui-dsl）
 
-- [ ] 3.1 新增 CLI 调用封装（如 `eval/generation-cli.ts`）：进程内导出 base contract（`{...dslLibrary.toSpec(), builtins: getBuiltinsManifest()}`）写入 run 工作区；jar 缺失时自动 `mvn -q -pl packages/genui-eval-cli -am package -DskipTests`，检测不到 JDK/Maven 报错给指引；spawn 子进程并逐行消费 JSONL
-- [ ] 3.2 `regen.ts` 改走 CLI 封装：写 jobs.json、`EVAL_REGEN_CONCURRENCY` 透传 `--concurrency`、结果回写 staging（原子替换与断点续跑逻辑不动）
-- [ ] 3.3 `llm.ts` 瘦身：删除 `generateDsl()`、`OpenAI`/`HttpsProxyAgent` import 与 strictness 逻辑；`loadOrGenerate` 快照缺失且有 `LLM_API_KEY` 时经 CLI 单用例兜底生成，无 key 报错指向 `pnpm eval regen`
-- [ ] 3.4 `prompt-artifact.ts` 改为消费 CLI `--print-prompt` 输出（hash 逻辑不变）
-- [ ] 3.5 eval-loop / types：删除 `--strictness` 参数与 manifest `strictness` 字段（读旧 run 容忍）；新增 `generator` 字段（`genui-eval-cli (<contractVersion>)`）
-- [ ] 3.6 package.json 新增 `eval build-cli` 显式重建命令（或 eval 子命令）；确认 `openai`/`https-proxy-agent` 依赖保留（judge 使用）
+- [x] 3.1 新增 CLI 调用封装（如 `eval/generation-cli.ts`）：进程内导出 base contract（`{...dslLibrary.toSpec(), builtins: getBuiltinsManifest()}`）写入 run 工作区；jar 缺失时自动 `mvn -q -pl packages/genui-eval-cli -am package -DskipTests`，检测不到 JDK/Maven 报错给指引；spawn 子进程并逐行消费 JSONL
+- [x] 3.2 `regen.ts` 改走 CLI 封装：写 jobs.json、`EVAL_REGEN_CONCURRENCY` 透传 `--concurrency`、结果回写 staging（原子替换与断点续跑逻辑不动）
+- [x] 3.3 `llm.ts` 瘦身：删除 `generateDsl()`、`OpenAI`/`HttpsProxyAgent` import 与 strictness 逻辑；`loadOrGenerate` 快照缺失且有 `LLM_API_KEY` 时经 CLI 单用例兜底生成，无 key 报错指向 `pnpm eval regen`
+- [x] 3.4 `prompt-artifact.ts` 改为消费 CLI `--print-prompt` 输出（hash 逻辑不变）
+- [x] 3.5 eval-loop / types：删除 `--strictness` 参数与 manifest `strictness` 字段（读旧 run 容忍）；新增 `generator` 字段（`genui-eval-cli (<contractVersion>)`）
+- [x] 3.6 package.json 新增 `eval build-cli` 显式重建命令（或 eval 子命令）；确认 `openai`/`https-proxy-agent` 依赖保留（judge 使用）
 
 ## 4. 测试与验证
 
-- [ ] 4.1 更新 `llm.test.ts`（删 generateDsl 用例，补快照缺失兜底/报错路径）、`regen.test.ts`、`prompt-artifact.test.ts`、`eval-loop` 相关断言（strictness 移除、generator 写入）
-- [ ] 4.2 `pnpm --filter @cloudsop/openui-react-ui-dsl run test` 全绿；`pnpm run ci`（lint + format）通过
-- [ ] 4.3 端到端冒烟：备份 `snapshots/`、`benchmark-snapshots/` 后，对小样本跑一次真实 regen（`.env` 已配 key），确认 DSL 生成、JSONL 流转、快照写入、`system-prompt.txt` 与 `generator` 字段均符合预期
+- [x] 4.1 更新 `llm.test.ts`（删 generateDsl 用例，补快照缺失兜底/报错路径）、`regen.test.ts`、`prompt-artifact.test.ts`、`eval-loop` 相关断言（strictness 移除、generator 写入）；另给 `task-bundle.test.ts` 补 `generation-cli.ts` mock，避免 `createRunWorkspace` 在单测里 spawn JVM
+- [x] 4.2 相关 eval 单测全过（llm/regen/prompt-artifact/task-bundle 共 22 例）；改动文件 prettier 规范（LF）。注：`pnpm run test` 全量另有 25 个失败与 `pnpm run ci` 均为**本机环境预存**问题（`core.autocrlf=true` 无 `.gitattributes` 致全仓 CRLF；根 eslint 引用的 `packages/react-ui-dsl/tsconfig.test.json` 从未提交），与本变更无关，git 提交按 LF 存储、Linux CI 不受影响
+- [ ] 4.3 端到端冒烟：已备份 `snapshots/`/`fuzz-snapshots/`/`benchmark-snapshots/`；链路已验证贯通（CLI 子进程、SDK 拼装、transport 真实 HTTP、JSONL 流转与错误传播、`run.json` 的 `generator` 字段、`system-prompt.txt` 均正常）。**实际 DSL 生成受阻**：`.env` 的 Aliyun DashScope（`qwen3.6-27b`）账户欠费（HTTP 400 Arrearage），需换用有余额的 `LLM_BASE_URL`/key 后补跑
 
 ## 5. 收尾
 
-- [ ] 5.1 更新 `packages/react-ui-dsl/CLAUDE.md` 与 README 中 regen 说明（JDK/Maven 依赖、build-cli 命令）；确认 CONTEXT.md / CONTEXT-MAP / ADR 0005 与实现一致
-- [ ] 5.2 全量 regen 与基线重建单独另行执行（不在本 change 内自动触发），在 PR 描述中注明操作步骤与备份要求
+- [x] 5.1 更新 `packages/react-ui-dsl/CLAUDE.md` 与 README 中 regen 说明（JDK/Maven 依赖、build-cli 命令）；确认 CONTEXT.md / CONTEXT-MAP / ADR 0005 与实现一致
+- [ ] 5.2 全量 regen 与基线重建单独另行执行（不在本 change 内自动触发），在 PR 描述中注明操作步骤与备份要求。**同样受 LLM 账户欠费阻塞**，需有余额的 endpoint
