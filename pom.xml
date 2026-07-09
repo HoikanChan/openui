@@ -13,6 +13,7 @@
 
   <modules>
     <module>packages/genui-java-sdk</module>
+    <module>packages/genui-eval-cli</module>
     <module>examples/genui-service</module>
   </modules>
 </project>

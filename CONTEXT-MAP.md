@@ -22,6 +22,10 @@
 | [openui-cli](packages/openui-cli/CONTEXT.md) | 脚手架 + 从组件库导出 system prompt 的 CLI | → react-lang(template) |
 | [genui-java-sdk](CONTEXT.md) | Java 后端 SDK:Generation Context 注册 + prompt 拼装(与 lang-core prompt 字节对齐);术语在系统词汇表 | 无上游(镜像 lang-core prompt 语义) |
 
+## 工具边界
+
+- `packages/genui-eval-cli` — **Eval Generation CLI**:包装 genui-java-sdk 生成能力的 Java 命令行工具,供 react-ui-dsl 的 eval regen 以子进程调用;术语在 [react-ui-dsl/CONTEXT.md](packages/react-ui-dsl/CONTEXT.md)。它是仓库自用工具,不是子领域,无独立 CONTEXT.md。
+
 ## Examples 边界
 
 - `examples/react-ui-dsl-demo` — react-ui-dsl 的前端演示(DSLEngine 消费方)。

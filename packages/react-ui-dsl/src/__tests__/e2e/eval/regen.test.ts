@@ -1,25 +1,26 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { existsSync, rmSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const { generateDsl } = vi.hoisted(() => ({
-  generateDsl: vi.fn(),
-}));
+// DSL generation runs through the Eval Generation CLI (Java SDK path).
+// Mock that boundary; regenFixtures still owns staging + atomic rename on top.
+const { runGenerationCli } = vi.hoisted(() => ({ runGenerationCli: vi.fn() }));
 
-vi.mock("../llm.ts", () => ({
-  generateDsl,
-  getConfiguredLlmModel: vi.fn(() => "test-model"),
-}));
+vi.mock("./generation-cli.ts", () => ({ runGenerationCli }));
+vi.mock("./run-manifest.ts", () => ({ markPhaseDone: vi.fn() }));
 
-vi.mock("./run-manifest.ts", () => ({
-  markPhaseDone: vi.fn(),
-}));
-
-import { regenFixtures, snapshotsDirForSuite } from "./regen.ts";
 import type { BenchmarkCase } from "../benchmark-loader.ts";
+import { regenFixtures, snapshotsDirForSuite } from "./regen.ts";
+
+interface CliResult {
+  id: string;
+  status: "ok" | "error";
+  dsl?: string;
+  error?: string;
+}
 
 const stagingBase = resolve(__dirname, ".regen-staging");
 const snapshotsDir = snapshotsDirForSuite("e2e");
@@ -28,11 +29,26 @@ function makeFixture(id: string): BenchmarkCase {
   return { id, prompt: `render ${id}`, dataModel: {}, evalHints: [], taxonomy: [] };
 }
 
+/** Simulate the CLI: emit one result per case (streamed via onResult) and return the map. */
+function mockCli(resultFor: (id: string) => Omit<CliResult, "id">): void {
+  runGenerationCli.mockImplementation(
+    async (cases: Array<{ id: string }>, options: { onResult?: (r: CliResult) => void }) => {
+      const results = new Map<string, CliResult>();
+      for (const c of cases) {
+        const result: CliResult = { id: c.id, ...resultFor(c.id) };
+        results.set(c.id, result);
+        options.onResult?.(result);
+      }
+      return results;
+    },
+  );
+}
+
 describe("regenFixtures", () => {
   const testRunId = `test_${Date.now()}`;
 
   beforeEach(() => {
-    generateDsl.mockReset();
+    vi.clearAllMocks();
     process.env["LLM_API_KEY"] = "test-key";
   });
 
@@ -45,12 +61,13 @@ describe("regenFixtures", () => {
 
   it("writes all generated DSL files to snapshots dir on full success", async () => {
     const fixtures = [makeFixture("f-a"), makeFixture("f-b")];
-    generateDsl.mockResolvedValue("root = Gauge()");
+    mockCli(() => ({ status: "ok", dsl: "root = Gauge()" }));
 
     const snapshotA = resolve(snapshotsDir, "f-a.dsl");
     const snapshotB = resolve(snapshotsDir, "f-b.dsl");
-    // clean up before and after
-    [snapshotA, snapshotB].forEach((p) => { if (existsSync(p)) rmSync(p); });
+    [snapshotA, snapshotB].forEach((p) => {
+      if (existsSync(p)) rmSync(p);
+    });
 
     try {
       const { success } = await regenFixtures(fixtures, { runId: testRunId, suite: "e2e" });
@@ -58,46 +75,47 @@ describe("regenFixtures", () => {
       expect(existsSync(snapshotA)).toBe(true);
       expect(existsSync(snapshotB)).toBe(true);
     } finally {
-      [snapshotA, snapshotB].forEach((p) => { if (existsSync(p)) rmSync(p); });
+      [snapshotA, snapshotB].forEach((p) => {
+        if (existsSync(p)) rmSync(p);
+      });
     }
   });
 
   it("throws and preserves staging when any fixture fails", async () => {
     const fixtures = [makeFixture("f-ok"), makeFixture("f-fail")];
-    generateDsl.mockImplementation(async ({ prompt }: { prompt: string }) => {
-      if (prompt.includes("f-fail")) throw new Error("api error");
-      return "root = Gauge()";
-    });
+    mockCli((id) =>
+      id === "f-fail"
+        ? { status: "error", error: "api error" }
+        : { status: "ok", dsl: "root = Gauge()" },
+    );
 
     const stagingDir = resolve(stagingBase, testRunId);
-    await expect(regenFixtures(fixtures, { runId: testRunId, suite: "e2e" })).rejects.toThrow("f-fail");
+    await expect(regenFixtures(fixtures, { runId: testRunId, suite: "e2e" })).rejects.toThrow(
+      "f-fail",
+    );
     // staging kept for debugging
     expect(existsSync(stagingDir)).toBe(true);
     // snapshot for f-ok must NOT have been written (atomic: all-or-nothing)
     expect(existsSync(resolve(snapshotsDir, "f-ok.dsl"))).toBe(false);
   });
 
-  it("respects EVAL_REGEN_CONCURRENCY cap", async () => {
+  it("passes the EVAL_REGEN_CONCURRENCY cap through to the CLI", async () => {
+    // Concurrency is now enforced inside the Java CLI; the Node side only forwards it.
     process.env["EVAL_REGEN_CONCURRENCY"] = "2";
-    let active = 0;
-    let peak = 0;
-
-    generateDsl.mockImplementation(async () => {
-      active++;
-      peak = Math.max(peak, active);
-      await new Promise((r) => setTimeout(r, 20));
-      active--;
-      return "root = X()";
-    });
+    mockCli(() => ({ status: "ok", dsl: "root = X()" }));
 
     const fixtures = Array.from({ length: 6 }, (_, i) => makeFixture(`fc-${i}`));
     const snapshotPaths = fixtures.map((f) => resolve(snapshotsDir, `${f.id}.dsl`));
 
     try {
       await regenFixtures(fixtures, { runId: testRunId, suite: "e2e" });
-      expect(peak).toBeLessThanOrEqual(2);
+      expect(runGenerationCli).toHaveBeenCalledOnce();
+      const options = runGenerationCli.mock.calls[0]?.[1] as { concurrency?: number };
+      expect(options.concurrency).toBe(2);
     } finally {
-      snapshotPaths.forEach((p) => { if (existsSync(p)) rmSync(p); });
+      snapshotPaths.forEach((p) => {
+        if (existsSync(p)) rmSync(p);
+      });
     }
   });
 });

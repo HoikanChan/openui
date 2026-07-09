@@ -1,37 +1,19 @@
 #!/usr/bin/env tsx
-import { createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync, renameSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer } from "node:http";
 import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
 import { build } from "vite";
-import type { E2EReportData, E2EReportEntry } from "./report";
-import {
-  createRunWorkspace,
-  generateRunId,
-  getReportDataPath,
-  getRunDir,
-  getTaskBundlePath,
-  listRunIds,
-  readRunManifest,
-  updateRunState,
-  markPhaseDone,
-  isPhaseComplete,
-} from "./eval/run-manifest";
-import type { PhaseProgress } from "./eval/types";
-import { captureFixtureScreenshots } from "./eval/screenshot";
-import { judgeFixtures, judgeFixturesIncremental, makeFailedFixtureScore } from "./eval/judge";
-import type { JudgeScore } from "./eval/types";
-import { aggregateFailingPatterns, computeOverallScore } from "./eval/failing-patterns";
-import { regenFixtures } from "./eval/regen";
 import { loadBenchmarkCases } from "./benchmark-loader";
-import { clearJudgeCache } from "./eval/judge-cache";
-import { clearReportAppCache, computeReportAppCacheKey, restoreReportAppCache, saveReportAppCache } from "./eval/report-app-cache";
-import { writeTaskBundle } from "./eval/task-bundle-writer";
-import { readResultBundle, hasResultBundle, ResultBundleError } from "./eval/result-bundle-reader";
-import { computeDelta, pickVerificationOutcome } from "./eval/delta-verifier";
-import { buildVerificationSummary, printVerificationSummary } from "./eval/verification-summary";
-import { appendIteration, formatHistorySummary, readEvalHistory } from "./eval/eval-history";
 import {
   forwardPromptCorrections,
   getPendingJudgeCorrections,
@@ -39,6 +21,36 @@ import {
   runCalibration,
   writeCorrections,
 } from "./eval/calibration-verifier";
+import { computeDelta, pickVerificationOutcome } from "./eval/delta-verifier";
+import { appendIteration, formatHistorySummary, readEvalHistory } from "./eval/eval-history";
+import { aggregateFailingPatterns, computeOverallScore } from "./eval/failing-patterns";
+import { judgeFixturesIncremental, makeFailedFixtureScore } from "./eval/judge";
+import { clearJudgeCache } from "./eval/judge-cache";
+import { regenFixtures } from "./eval/regen";
+import {
+  clearReportAppCache,
+  computeReportAppCacheKey,
+  restoreReportAppCache,
+  saveReportAppCache,
+} from "./eval/report-app-cache";
+import { hasResultBundle, readResultBundle, ResultBundleError } from "./eval/result-bundle-reader";
+import {
+  createRunWorkspace,
+  generateRunId,
+  getReportDataPath,
+  getRunDir,
+  getTaskBundlePath,
+  isPhaseComplete,
+  listRunIds,
+  markPhaseDone,
+  readRunManifest,
+  updateRunState,
+} from "./eval/run-manifest";
+import { captureFixtureScreenshots } from "./eval/screenshot";
+import { writeTaskBundle } from "./eval/task-bundle-writer";
+import type { JudgeScore, PhaseProgress } from "./eval/types";
+import { buildVerificationSummary, printVerificationSummary } from "./eval/verification-summary";
+import type { E2EReportData } from "./report";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(__dirname, "../../..");
@@ -57,10 +69,13 @@ const reportAppRoot = resolve(__dirname, "report-app");
     if (sep <= 0) continue;
     const key = line.slice(0, sep).trim();
     if (!key || process.env[key] !== undefined) continue;
-    const val = line.slice(sep + 1).trim().replace(/^(['"])(.*)\1$/, "$2");
+    const val = line
+      .slice(sep + 1)
+      .trim()
+      .replace(/^(['"])(.*)\1$/, "$2");
     process.env[key] = val;
   }
-}());
+})();
 
 type EvalSuite = "e2e" | "fuzz" | "benchmark";
 
@@ -80,7 +95,12 @@ const CONTENT_TYPES: Record<string, string> = {
 
 // ── Vitest runner ──────────────────────────────────────────────────────────
 
-function runVitest(reportDir: string, regen: boolean, suite: EvalSuite = "e2e", fixtureFilter?: string): void {
+function runVitest(
+  reportDir: string,
+  regen: boolean,
+  suite: EvalSuite = "e2e",
+  fixtureFilter?: string,
+): void {
   const testPath =
     suite === "fuzz"
       ? "src/__tests__/e2e/dsl-fuzz.test.tsx"
@@ -89,9 +109,10 @@ function runVitest(reportDir: string, regen: boolean, suite: EvalSuite = "e2e", 
         : "src/__tests__/e2e";
   // Call vitest binary directly to avoid pnpm's deps-status check which
   // runs `pnpm install` and triggers all workspace prepare scripts.
-  const vitestBin = process.platform === "win32"
-    ? resolve(packageRoot, "node_modules/.bin/vitest.cmd")
-    : resolve(packageRoot, "node_modules/.bin/vitest");
+  const vitestBin =
+    process.platform === "win32"
+      ? resolve(packageRoot, "node_modules/.bin/vitest.cmd")
+      : resolve(packageRoot, "node_modules/.bin/vitest");
   const args = ["run", testPath, "--config", resolve(packageRoot, "vitest.config.ts")];
   if (fixtureFilter) args.push("-t", fixtureFilter);
   const env: NodeJS.ProcessEnv = {
@@ -168,7 +189,11 @@ async function startReportServer(reportDir: string, port = 0): Promise<ReportSer
     const p = req.url === "/" ? "/index.html" : (req.url ?? "/index.html");
     const filePath = resolve(reportDir, `.${decodeURIComponent(p.split("?")[0]!)}`);
 
-    if (!filePath.startsWith(reportDir) || !existsSync(filePath) || statSync(filePath).isDirectory()) {
+    if (
+      !filePath.startsWith(reportDir) ||
+      !existsSync(filePath) ||
+      statSync(filePath).isDirectory()
+    ) {
       res.writeHead(existsSync(filePath) ? 403 : 404);
       res.end();
       return;
@@ -207,12 +232,9 @@ function writeReportData(reportDir: string, data: E2EReportData): void {
 
 // ── Phase context ─────────────────────────────────────────────────────────
 
-type Strictness = "standard" | "strict";
-
 interface PhaseContext {
   runId: string;
   suite: EvalSuite;
-  strictness: Strictness;
   reportDir: string;
   fixtureIds: string[];
   snapshotsDir: string;
@@ -226,11 +248,13 @@ async function runRegenPhase(ctx: PhaseContext): Promise<void> {
     return;
   }
 
-  const dataDir = resolve(__dirname, ctx.suite === "benchmark" ? "fuzz-data/benchmark" : "fuzz-data");
+  const dataDir = resolve(
+    __dirname,
+    ctx.suite === "benchmark" ? "fuzz-data/benchmark" : "fuzz-data",
+  );
   const fixtures = loadBenchmarkCases(dataDir);
-  const relevantFixtures = ctx.fixtureIds.length > 0
-    ? fixtures.filter((f) => ctx.fixtureIds.includes(f.id))
-    : fixtures;
+  const relevantFixtures =
+    ctx.fixtureIds.length > 0 ? fixtures.filter((f) => ctx.fixtureIds.includes(f.id)) : fixtures;
 
   if (relevantFixtures.length === 0) {
     console.log(`[regen] No fixtures to regenerate.`);
@@ -249,11 +273,14 @@ async function runRegenPhase(ctx: PhaseContext): Promise<void> {
     return;
   }
 
-  await regenFixtures(missingFixtures, {
-    runId: ctx.runId,
-    suite: ctx.suite,
-    strictness: ctx.strictness,
-  }, (done, total) => process.stdout.write(`\r  ${done}/${total}`));
+  await regenFixtures(
+    missingFixtures,
+    {
+      runId: ctx.runId,
+      suite: ctx.suite,
+    },
+    (done, total) => process.stdout.write(`\r  ${done}/${total}`),
+  );
   console.log();
   markPhaseDone(ctx.runId, "regen");
 }
@@ -277,7 +304,9 @@ async function runRenderPhase(ctx: PhaseContext, fixtureFilter?: string): Promis
   return reportData;
 }
 
-async function runScreenshotPhase(ctx: PhaseContext): Promise<{ results: { fixtureId: string; screenshotPath: string | null }[]; degraded: boolean }> {
+async function runScreenshotPhase(
+  ctx: PhaseContext,
+): Promise<{ results: { fixtureId: string; screenshotPath: string | null }[]; degraded: boolean }> {
   const screenshotsDir = resolve(getTaskBundlePath(ctx.runId), "screenshots");
   const hasScreenshots = ctx.fixtureIds.every((id) =>
     existsSync(resolve(screenshotsDir, `${id}.png`)),
@@ -288,7 +317,13 @@ async function runScreenshotPhase(ctx: PhaseContext): Promise<{ results: { fixtu
     if (!isPhaseComplete(ctx.runId, "screenshot")) {
       markPhaseDone(ctx.runId, "screenshot");
     }
-    return { results: ctx.fixtureIds.map((id) => ({ fixtureId: id, screenshotPath: resolve(screenshotsDir, `${id}.png`) })), degraded: false };
+    return {
+      results: ctx.fixtureIds.map((id) => ({
+        fixtureId: id,
+        screenshotPath: resolve(screenshotsDir, `${id}.png`),
+      })),
+      degraded: false,
+    };
   }
 
   console.log(`[screenshot] Building report app.`);
@@ -318,7 +353,9 @@ async function runJudgePhase(
   const forceRejudge = process.env["EVAL_FORCE_REJUDGE"] === "1";
   const existingScores = reportData.judge_scores ?? [];
   const judgedFixtureIds = new Set(existingScores.map((s) => s.fixtureId));
-  const needsJudge = screenshotResults.filter((r) => forceRejudge || !judgedFixtureIds.has(r.fixtureId));
+  const needsJudge = screenshotResults.filter(
+    (r) => forceRejudge || !judgedFixtureIds.has(r.fixtureId),
+  );
 
   if (needsJudge.length === 0) {
     console.log(`[judge] All fixtures already judged, skipping.`);
@@ -329,7 +366,13 @@ async function runJudgePhase(
   }
 
   console.log(`[judge] Judging ${needsJudge.length} fixtures.`);
-  const judgeInputs: { fixtureId: string; dsl: string; dataModel: Record<string, unknown>; screenshotPath: string | null; evalHints?: string[] }[] = [];
+  const judgeInputs: {
+    fixtureId: string;
+    dsl: string;
+    dataModel: Record<string, unknown>;
+    screenshotPath: string | null;
+    evalHints?: string[];
+  }[] = [];
   const failedScores: JudgeScore[] = [];
 
   for (const r of needsJudge) {
@@ -339,8 +382,14 @@ async function runJudgePhase(
       continue;
     }
     const snapshotPath = resolve(ctx.snapshotsDir, `${r.fixtureId}.dsl`);
-    const dsl = existsSync(snapshotPath) ? readFileSync(snapshotPath, "utf-8") : entry.dsl ?? "";
-    judgeInputs.push({ fixtureId: r.fixtureId, dsl, dataModel: entry.dataModel, screenshotPath: r.screenshotPath, evalHints: entry.evalHints });
+    const dsl = existsSync(snapshotPath) ? readFileSync(snapshotPath, "utf-8") : (entry.dsl ?? "");
+    judgeInputs.push({
+      fixtureId: r.fixtureId,
+      dsl,
+      dataModel: entry.dataModel,
+      screenshotPath: r.screenshotPath,
+      evalHints: entry.evalHints,
+    });
   }
 
   if (failedScores.length > 0) {
@@ -358,7 +407,9 @@ async function runJudgePhase(
         accumulatedScores.push(score);
         const overallScore = computeOverallScore([...accumulatedScores, ...failedScores]);
         const failingPatterns = aggregateFailingPatterns([...accumulatedScores, ...failedScores]);
-        const judgeMap = new Map([...accumulatedScores, ...failedScores].map((s) => [s.fixtureId, s]));
+        const judgeMap = new Map(
+          [...accumulatedScores, ...failedScores].map((s) => [s.fixtureId, s]),
+        );
         const snapshot: E2EReportData = {
           ...reportData,
           runId: ctx.runId,
@@ -386,7 +437,16 @@ async function runJudgePhase(
   await mutex; // ensure all callbacks have settled
   console.log();
 
-  const allScores = [...existingScores.filter((s) => !forceRejudge && !liveScores.some((n) => n.fixtureId === s.fixtureId) && !failedScores.some((f) => f.fixtureId === s.fixtureId)), ...liveScores, ...failedScores];
+  const allScores = [
+    ...existingScores.filter(
+      (s) =>
+        !forceRejudge &&
+        !liveScores.some((n) => n.fixtureId === s.fixtureId) &&
+        !failedScores.some((f) => f.fixtureId === s.fixtureId),
+    ),
+    ...liveScores,
+    ...failedScores,
+  ];
   const overallScore = computeOverallScore(allScores);
   const failingPatterns = aggregateFailingPatterns(allScores);
   const judgeMap = new Map(allScores.map((s) => [s.fixtureId, s]));
@@ -413,31 +473,25 @@ async function runJudgePhase(
 
 async function cmdStart(argv: string[]): Promise<void> {
   const regen = argv.includes("--regen");
-  const suiteArg = argv.find((a) => a.startsWith("--suite="))?.split("=")[1]
-    ?? (argv.includes("--suite") ? argv[argv.indexOf("--suite") + 1] : undefined);
-  const suite: EvalSuite = suiteArg === "fuzz" ? "fuzz" : suiteArg === "benchmark" ? "benchmark" : "e2e";
+  const suiteArg =
+    argv.find((a) => a.startsWith("--suite="))?.split("=")[1] ??
+    (argv.includes("--suite") ? argv[argv.indexOf("--suite") + 1] : undefined);
+  const suite: EvalSuite =
+    suiteArg === "fuzz" ? "fuzz" : suiteArg === "benchmark" ? "benchmark" : "e2e";
 
-  const fixtureArg = argv.find((a) => a.startsWith("--fixture="))?.split("=")[1]
-    ?? (argv.includes("--fixture") ? argv[argv.indexOf("--fixture") + 1] : undefined);
-
-  const strictnessArg = argv.find((a) => a.startsWith("--strictness="))?.split("=")[1]
-    ?? (argv.includes("--strictness") ? argv[argv.indexOf("--strictness") + 1] : undefined);
-  if (strictnessArg !== undefined && strictnessArg !== "standard" && strictnessArg !== "strict") {
-    console.error(`Invalid --strictness value: "${strictnessArg}". Must be "standard" or "strict".`);
-    process.exit(1);
-  }
-  const strictness: Strictness = strictnessArg === "strict" ? "strict" : "standard";
+  const fixtureArg =
+    argv.find((a) => a.startsWith("--fixture="))?.split("=")[1] ??
+    (argv.includes("--fixture") ? argv[argv.indexOf("--fixture") + 1] : undefined);
 
   const runId = generateRunId();
 
-  console.log(`\nStarting eval run ${runId} (suite=${suite}, strictness=${strictness})…`);
-  createRunWorkspace(runId, regen, suite, strictness);
+  console.log(`\nStarting eval run ${runId} (suite=${suite})…`);
+  createRunWorkspace(runId, regen, suite);
 
   const reportDir = getRunDir(runId);
   const ctx: PhaseContext = {
     runId,
     suite,
-    strictness,
     reportDir,
     fixtureIds: [],
     snapshotsDir: snapshotsDirForSuite(suite),
@@ -466,7 +520,14 @@ async function cmdStart(argv: string[]): Promise<void> {
   }
 
   console.log(`\n[eval] Generating task bundle…`);
-  writeTaskBundle({ runId, overallScore, judgeScores, failingPatterns, snapshotsDir: snapshotsDirForSuite(suite), pendingPromptCorrections: toInclude });
+  writeTaskBundle({
+    runId,
+    overallScore,
+    judgeScores,
+    failingPatterns,
+    snapshotsDir: snapshotsDirForSuite(suite),
+    pendingPromptCorrections: toInclude,
+  });
 
   updateRunState(runId, "waiting_for_agent", { degraded: reportData.degraded ?? false });
 
@@ -529,7 +590,9 @@ async function cmdStatus(argv: string[]): Promise<void> {
   if (manifest.verificationSummary) {
     const s = manifest.verificationSummary;
     console.log(`\n  Last verification: ${s.outcome}`);
-    console.log(`    ${s.scoreBefore.toFixed(1)} → ${s.scoreAfter.toFixed(1)} (${s.delta >= 0 ? "+" : ""}${s.delta.toFixed(1)})`);
+    console.log(
+      `    ${s.scoreBefore.toFixed(1)} → ${s.scoreAfter.toFixed(1)} (${s.delta >= 0 ? "+" : ""}${s.delta.toFixed(1)})`,
+    );
     if (s.regressions.length > 0) {
       console.log(`    Regressions: ${s.regressions.map((r) => r.fixtureId).join(", ")}`);
     }
@@ -545,7 +608,9 @@ async function cmdStatus(argv: string[]): Promise<void> {
   if (manifest.state === "waiting_for_agent" && resultBundleReady) {
     console.log(`\nNext step: pnpm eval verify ${runId}`);
   } else if (manifest.state === "waiting_for_agent") {
-    console.log(`\nNext step: choose an agent and follow ${getTaskBundlePath(runId)}/adapters/<agent>.md`);
+    console.log(
+      `\nNext step: choose an agent and follow ${getTaskBundlePath(runId)}/adapters/<agent>.md`,
+    );
   }
 }
 
@@ -559,7 +624,9 @@ async function cmdVerify(argv: string[]): Promise<void> {
   const manifest = readRunManifest(runId);
 
   if (!hasResultBundle(runId)) {
-    console.error(`No result-bundle found for run ${runId}. The agent must write result-bundle/ first.`);
+    console.error(
+      `No result-bundle found for run ${runId}. The agent must write result-bundle/ first.`,
+    );
     process.exit(1);
   }
 
@@ -578,7 +645,9 @@ async function cmdVerify(argv: string[]): Promise<void> {
 
   console.log(`  Agent: ${bundle.result.agentType ?? "unknown"}`);
   console.log(`  Touched files: ${bundle.touchedFiles.length}`);
-  console.log(`  Claimed affected fixtures: ${bundle.claimedAffectedFixtures.join(", ") || "none"}`);
+  console.log(
+    `  Claimed affected fixtures: ${bundle.claimedAffectedFixtures.join(", ") || "none"}`,
+  );
 
   const baselineReportData = readReportData(dirname(getReportDataPath(runId)));
   const baselineScores = baselineReportData.judge_scores ?? [];
@@ -606,8 +675,9 @@ async function cmdVerify(argv: string[]): Promise<void> {
   const verifyServer = await startReportServer(verifyDir);
   const fixtureIds = verifyReportData.entries.map((e) => e.id);
   const affectedIds = bundle.claimedAffectedFixtures;
-  const idsToProcess = affectedIds.length > 0 ? affectedIds.filter(id => fixtureIds.includes(id)) : fixtureIds;
-  
+  const idsToProcess =
+    affectedIds.length > 0 ? affectedIds.filter((id) => fixtureIds.includes(id)) : fixtureIds;
+
   const screenshotsDir = resolve(verifyDir, "screenshots");
 
   console.log(`[verify] Taking screenshots for ${idsToProcess.length} affected fixtures…`);
@@ -620,34 +690,50 @@ async function cmdVerify(argv: string[]): Promise<void> {
 
   console.log(`[verify] Judging affected fixtures…`);
   const snapshotsDir = snapshotsDirForSuite((manifest.suite ?? "e2e") as EvalSuite);
-  const verifyJudgeInputs: { fixtureId: string; dsl: string; dataModel: Record<string, unknown>; screenshotPath: string | null }[] = [];
+  const verifyJudgeInputs: {
+    fixtureId: string;
+    dsl: string;
+    dataModel: Record<string, unknown>;
+    screenshotPath: string | null;
+  }[] = [];
   const verifyFailedScores: JudgeScore[] = [];
   for (const r of results) {
     const entry = verifyReportData.entries.find((e) => e.id === r.fixtureId)!;
     if (entry.status === "failed") {
-      verifyFailedScores.push(makeFailedFixtureScore(r.fixtureId, r.screenshotPath, entry.failureReason));
+      verifyFailedScores.push(
+        makeFailedFixtureScore(r.fixtureId, r.screenshotPath, entry.failureReason),
+      );
       continue;
     }
     const snapshotPath = resolve(snapshotsDir, `${r.fixtureId}.dsl`);
-    const dsl = existsSync(snapshotPath) ? readFileSync(snapshotPath, "utf-8") : entry.dsl ?? "";
-    verifyJudgeInputs.push({ fixtureId: r.fixtureId, dsl, dataModel: entry.dataModel, screenshotPath: r.screenshotPath });
+    const dsl = existsSync(snapshotPath) ? readFileSync(snapshotPath, "utf-8") : (entry.dsl ?? "");
+    verifyJudgeInputs.push({
+      fixtureId: r.fixtureId,
+      dsl,
+      dataModel: entry.dataModel,
+      screenshotPath: r.screenshotPath,
+    });
   }
   if (verifyFailedScores.length > 0) {
-    console.log(`[verify] Skipping judge for ${verifyFailedScores.length} failed fixture(s); assigning 0 score.`);
+    console.log(
+      `[verify] Skipping judge for ${verifyFailedScores.length} failed fixture(s); assigning 0 score.`,
+    );
   }
 
-  const liveVerifyScores = await judgeFixturesIncremental(verifyJudgeInputs, async () => {}, (done, total) =>
-    process.stdout.write(`\r  ${done}/${total}`),
+  const liveVerifyScores = await judgeFixturesIncremental(
+    verifyJudgeInputs,
+    async () => {},
+    (done, total) => process.stdout.write(`\r  ${done}/${total}`),
   );
   console.log();
 
   const newlyJudgedScores = [...liveVerifyScores, ...verifyFailedScores];
-  const newJudgedMap = new Map(newlyJudgedScores.map(s => [s.fixtureId, s]));
-  
+  const newJudgedMap = new Map(newlyJudgedScores.map((s) => [s.fixtureId, s]));
+
   // Merge with baseline
-  const currentScores: JudgeScore[] = fixtureIds.map(id => {
+  const currentScores: JudgeScore[] = fixtureIds.map((id) => {
     if (newJudgedMap.has(id)) return newJudgedMap.get(id)!;
-    const baseline = baselineScores.find(s => s.fixtureId === id);
+    const baseline = baselineScores.find((s) => s.fixtureId === id);
     if (baseline) return baseline;
     return makeFailedFixtureScore(id, null, "missing from baseline and not re-judged");
   });
@@ -665,7 +751,10 @@ async function cmdVerify(argv: string[]): Promise<void> {
   const currentJudgeMap = new Map(currentScores.map((s) => [s.fixtureId, s]));
   const updatedReportData: E2EReportData = {
     ...baselineReportData,
-    entries: baselineReportData.entries.map((e) => ({ ...e, judgeScore: currentJudgeMap.get(e.id) })),
+    entries: baselineReportData.entries.map((e) => ({
+      ...e,
+      judgeScore: currentJudgeMap.get(e.id),
+    })),
     judge_scores: currentScores,
     failing_patterns: aggregateFailingPatterns(currentScores),
     delta: deltaResult.delta,
@@ -702,9 +791,7 @@ async function cmdJudge(argv: string[]): Promise<void> {
   const screenshotsDir = resolve(getTaskBundlePath(runId), "screenshots");
 
   // Check if screenshots already exist
-  const hasScreenshots = fixtureIds.every((id) =>
-    existsSync(resolve(screenshotsDir, `${id}.png`)),
-  );
+  const hasScreenshots = fixtureIds.every((id) => existsSync(resolve(screenshotsDir, `${id}.png`)));
 
   let screenshotResults: { fixtureId: string; screenshotPath: string | null }[];
 
@@ -737,7 +824,13 @@ async function cmdJudge(argv: string[]): Promise<void> {
 
   // Run judge on all fixtures
   console.log(`[judge] Judging ${fixtureIds.length} fixtures…`);
-  const judgeInputs: { fixtureId: string; dsl: string; dataModel: Record<string, unknown>; screenshotPath: string | null; evalHints?: string[] }[] = [];
+  const judgeInputs: {
+    fixtureId: string;
+    dsl: string;
+    dataModel: Record<string, unknown>;
+    screenshotPath: string | null;
+    evalHints?: string[];
+  }[] = [];
   const failedScores: JudgeScore[] = [];
 
   for (const r of screenshotResults) {
@@ -747,7 +840,7 @@ async function cmdJudge(argv: string[]): Promise<void> {
       continue;
     }
     const snapshotPath = resolve(snapshotsDirForSuite(suite), `${r.fixtureId}.dsl`);
-    const dsl = existsSync(snapshotPath) ? readFileSync(snapshotPath, "utf-8") : entry.dsl ?? "";
+    const dsl = existsSync(snapshotPath) ? readFileSync(snapshotPath, "utf-8") : (entry.dsl ?? "");
     judgeInputs.push({
       fixtureId: r.fixtureId,
       dsl,
@@ -758,7 +851,9 @@ async function cmdJudge(argv: string[]): Promise<void> {
   }
 
   if (failedScores.length > 0) {
-    console.log(`[judge] Skipping judge for ${failedScores.length} failed fixture(s); assigning 0 score.`);
+    console.log(
+      `[judge] Skipping judge for ${failedScores.length} failed fixture(s); assigning 0 score.`,
+    );
   }
 
   let mutex = Promise.resolve();
@@ -775,7 +870,10 @@ async function cmdJudge(argv: string[]): Promise<void> {
         const snapshot: E2EReportData = {
           ...reportData,
           summary: { ...reportData.summary, overallScore: computeOverallScore(allSoFar) },
-          entries: reportData.entries.map((e) => ({ ...e, judgeScore: new Map(allSoFar.map((s) => [s.fixtureId, s])).get(e.id) })),
+          entries: reportData.entries.map((e) => ({
+            ...e,
+            judgeScore: new Map(allSoFar.map((s) => [s.fixtureId, s])).get(e.id),
+          })),
           judge_scores: allSoFar,
           failing_patterns: aggregateFailingPatterns(allSoFar),
           canonicalPromptPath: manifest.canonicalPromptPath,
@@ -794,7 +892,12 @@ async function cmdJudge(argv: string[]): Promise<void> {
   console.log();
 
   const judgeScores: JudgeScore[] = [
-    ...existingScores.filter((s) => !forceRejudge && !liveScores.some((n) => n.fixtureId === s.fixtureId) && !failedScores.some((f) => f.fixtureId === s.fixtureId)),
+    ...existingScores.filter(
+      (s) =>
+        !forceRejudge &&
+        !liveScores.some((n) => n.fixtureId === s.fixtureId) &&
+        !failedScores.some((f) => f.fixtureId === s.fixtureId),
+    ),
     ...liveScores,
     ...failedScores,
   ];
@@ -852,7 +955,9 @@ async function cmdCalibrate(argv: string[]): Promise<void> {
 
   if (pendingJudge.length === 0) {
     console.log(`No pending judge corrections found for run ${runId}.`);
-    console.log(`Add corrections to: ${resolve(dirname(getReportDataPath(runId)), "../corrections.json")}`);
+    console.log(
+      `Add corrections to: ${resolve(dirname(getReportDataPath(runId)), "../corrections.json")}`,
+    );
     return;
   }
 
@@ -865,7 +970,9 @@ async function cmdCalibrate(argv: string[]): Promise<void> {
     console.log(`  ${rubricOverridePath}`);
     console.log(`\nPending corrections:`);
     for (const c of pendingJudge) {
-      console.log(`  [${c.fixtureId ?? "global"}] ${c.text_feedback ?? JSON.stringify(c.score_corrections)}`);
+      console.log(
+        `  [${c.fixtureId ?? "global"}] ${c.text_feedback ?? JSON.stringify(c.score_corrections)}`,
+      );
     }
     return;
   }
@@ -882,9 +989,7 @@ async function cmdCalibrate(argv: string[]): Promise<void> {
     baselineEntries: baselineReportData.entries,
   });
 
-  const remaining = corrections.filter(
-    (c) => !pendingJudge.some((p) => p.id === c.id),
-  );
+  const remaining = corrections.filter((c) => !pendingJudge.some((p) => p.id === c.id));
   writeCorrections(runId, [...remaining, ...result.updatedCorrections]);
 
   console.log(`\nCalibration complete:`);
@@ -901,18 +1006,13 @@ async function cmdCalibrate(argv: string[]): Promise<void> {
 }
 
 async function cmdRegen(argv: string[]): Promise<void> {
-  const suiteArg = argv.find((a) => a.startsWith("--suite="))?.split("=")[1]
-    ?? (argv.includes("--suite") ? argv[argv.indexOf("--suite") + 1] : undefined);
-  const suite: EvalSuite = suiteArg === "fuzz" ? "fuzz" : suiteArg === "benchmark" ? "benchmark" : "e2e";
+  const suiteArg =
+    argv.find((a) => a.startsWith("--suite="))?.split("=")[1] ??
+    (argv.includes("--suite") ? argv[argv.indexOf("--suite") + 1] : undefined);
+  const suite: EvalSuite =
+    suiteArg === "fuzz" ? "fuzz" : suiteArg === "benchmark" ? "benchmark" : "e2e";
   const suiteValueIdx = argv.includes("--suite") ? argv.indexOf("--suite") + 1 : -1;
   const runIdArg = argv.find((a, i) => !a.startsWith("--") && i !== suiteValueIdx);
-  const strictnessArg = argv.find((a) => a.startsWith("--strictness="))?.split("=")[1]
-    ?? (argv.includes("--strictness") ? argv[argv.indexOf("--strictness") + 1] : undefined);
-  if (strictnessArg !== undefined && strictnessArg !== "standard" && strictnessArg !== "strict") {
-    console.error(`Invalid --strictness value: "${strictnessArg}". Must be "standard" or "strict".`);
-    process.exit(1);
-  }
-  const regenStrictness: Strictness = strictnessArg === "strict" ? "strict" : "standard";
 
   let runId: string;
   if (runIdArg) {
@@ -920,7 +1020,7 @@ async function cmdRegen(argv: string[]): Promise<void> {
     readRunManifest(runId); // validate exists
   } else {
     runId = generateRunId();
-    createRunWorkspace(runId, true, suite, regenStrictness);
+    createRunWorkspace(runId, true, suite);
     console.log(`\nStarted new run: ${runId}`);
   }
 
@@ -929,7 +1029,6 @@ async function cmdRegen(argv: string[]): Promise<void> {
   const ctx: PhaseContext = {
     runId,
     suite: effectiveSuite,
-    strictness: (manifest.strictness as Strictness) ?? "standard",
     reportDir: getRunDir(runId),
     fixtureIds: [],
     snapshotsDir: snapshotsDirForSuite(effectiveSuite),
@@ -952,7 +1051,6 @@ async function cmdRender(argv: string[]): Promise<void> {
   const ctx: PhaseContext = {
     runId: runIdArg,
     suite,
-    strictness: (manifest.strictness as Strictness) ?? "standard",
     reportDir: getRunDir(runIdArg),
     fixtureIds: [],
     snapshotsDir: snapshotsDirForSuite(suite),
@@ -993,6 +1091,12 @@ async function main(): Promise<void> {
     case "render":
       await cmdRender(rest);
       break;
+    case "build-cli": {
+      const { ensureCliJar } = await import("./eval/generation-cli.ts");
+      const jar = ensureCliJar({ forceBuild: true });
+      console.log(`✓ Eval Generation CLI built: ${jar}`);
+      break;
+    }
     case "cache:clear":
       clearJudgeCache();
       clearReportAppCache();
@@ -1002,13 +1106,22 @@ async function main(): Promise<void> {
       console.log("Usage: pnpm eval <command> [options]");
       console.log("");
       console.log("Commands:");
-      console.log("  start [--regen] [--suite=<suite>]   Run full eval pipeline and generate task bundle");
+      console.log(
+        "  start [--regen] [--suite=<suite>]   Run full eval pipeline and generate task bundle",
+      );
       console.log("  status [<run-id>]                   Show run status or list all runs");
-      console.log("  regen [<run-id>] [--suite=<suite>]  Regenerate DSL snapshots (new or existing run)");
+      console.log(
+        "  regen [<run-id>] [--suite=<suite>]  Regenerate DSL snapshots (new or existing run)",
+      );
       console.log("  render <run-id>                     Run vitest render phase on existing run");
-      console.log("  judge <run-id>                      Run judge phase (with or without screenshots)");
+      console.log(
+        "  judge <run-id>                      Run judge phase (with or without screenshots)",
+      );
       console.log("  verify <run-id>                     Verify agent result bundle");
       console.log("  calibrate <run-id>                  Process pending judge corrections");
+      console.log(
+        "  build-cli                           (Re)build the Java Eval Generation CLI jar",
+      );
       console.log("  cache:clear                         Clear the judge hash cache");
       process.exit(cmd ? 1 : 0);
   }
