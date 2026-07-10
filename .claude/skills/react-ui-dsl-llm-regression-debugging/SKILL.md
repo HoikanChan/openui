@@ -34,7 +34,7 @@ Use the fixture-oriented regen flow from [packages/react-ui-dsl/README.md](C:/wo
 pnpm test:e2e:regen:fixture -- -t <fixture-id>
 ```
 
-Do not regenerate unrelated snapshots. Do not hand-edit `.dsl` snapshots.
+Regen generates DSL through the **Eval Generation CLI** (`packages/genui-eval-cli`, a Java wrapper around the Generation SDK — the production pipeline), so it needs a JDK (21+) and Maven; the CLI jar builds automatically on first use. There is no TypeScript generation path. Do not regenerate unrelated snapshots. Do not hand-edit `.dsl` snapshots.
 
 ## Classify the Failure
 
@@ -85,7 +85,7 @@ Keep the rule text explicit. For Table regressions, say the contract directly:
 - `@Render("v", "row", expr)` is required when the body needs the full row.
 - `format` is only for ISO date/time strings, never numeric fields like `salary` or `revenue`.
 
-Prefer fixing `dslLibrary.prompt()` instead of `packages/react-ui-dsl/src/__tests__/e2e/llm.ts` when the same prompt surface is used by demos, tests, and downstream integrations.
+Fix the prompt at the `dslLibrary` surface (`additionalRules`, `examples`, per-component prompt specs) so the fix reaches every consumer. These feed `dslLibrary.toSpec()`, the base contract the Java Generation SDK assembles the prompt from — which is exactly what regen generates through. Do **not** patch `packages/react-ui-dsl/src/__tests__/e2e/llm.ts`; it no longer assembles prompts (it just calls the Eval Generation CLI), and the old TS `dslLibrary.prompt()` assembly is deprecated and unused by regen.
 
 ## Known Table Smells
 

@@ -14,6 +14,10 @@ Measures rendering quality of LLM-generated DSL fixtures, produces a scored task
 pnpm --filter @cloudsop/openui-react-ui-dsl exec playwright install chromium
 ```
 
+**DSL generation requires a JDK (21+) and Maven.** Regen runs through the **Eval Generation CLI** (`packages/genui-eval-cli`), a Java wrapper around the Generation SDK — the same prompt-assembly / request / response pipeline production uses. There is no TypeScript generation fallback. The fat jar (`packages/genui-eval-cli/target/genui-eval-cli.jar`) builds automatically on the first regen; after editing the CLI's Java sources, rebuild it with `pnpm eval build-cli`. If `java`/`mvn` are missing from `PATH`, regen fails with an install-guidance error instead of silently skipping generation.
+
+Generation credentials live in `packages/react-ui-dsl/.env` (`LLM_API_KEY`, `LLM_BASE_URL`, optional `LLM_MODEL`, optional `HTTPS_PROXY`). `LLM_MODEL` selects the model only — it does **not** control the prompt.
+
 Configure a judge in `packages/react-ui-dsl/.env` — pick one:
 
 ```bash
@@ -68,7 +72,7 @@ Pick the suite that owns the fixture: e2e fixtures live under `snapshots/`, fuzz
 
 Each run executes this pipeline end-to-end inside `runs/<run-id>/`:
 
-1. Spawns vitest on the matching suite file (regenerating DSL snapshots if `--regen` is set, which calls the configured LLM with the current prompt).
+1. Spawns vitest on the matching suite file. If `--regen` is set, it first regenerates DSL snapshots through the **Eval Generation CLI** (`packages/genui-eval-cli`) — a Java wrapper around the Generation SDK that assembles the prompt from the current component contract (`dslLibrary.toSpec()`) and calls the configured LLM. This is the production generation pipeline, not a TS re-implementation; there is no TypeScript generation path.
 2. Writes `report-data.json` with the rendered fixture output.
 3. Builds the React `report-app` via vite into the run dir (`index.html` + `assets/`).
 4. Launches headless Chromium via Playwright, opens the built report, and **screenshots each fixture's `.preview-shell` to `task-bundle/screenshots/<fixture-id>.png`**.
@@ -134,6 +138,14 @@ pnpm eval calibrate <run-id>
 
 Re-runs the judge with a `calibrated-rubric.md` in the run workspace and checks alignment with `corrections.json` (±1 tolerance per dimension).
 
+### Rebuild the generation CLI
+
+```bash
+pnpm eval build-cli
+```
+
+Force-rebuilds the Java Eval Generation CLI fat jar. Regen builds it automatically when the jar is missing, but there is **no** mtime-based staleness detection — after editing the CLI's Java sources (`packages/genui-eval-cli`) or the Generation SDK, rebuild explicitly or regen keeps using the stale jar.
+
 ## Judge Dimensions
 
 Each fixture is scored on four 0–3 dimensions plus an overall 0–10:
@@ -169,8 +181,8 @@ Open the adapter doc for your agent (`adapters/claude-code.md`, etc.) — it is 
 
 Fix the root causes identified in `summary.md`. Typical targets:
 
-- `packages/react-ui-dsl/src/genui-lib/` — component implementations
-- The DSL generation prompt (via `LLM_MODEL` and regen) — not a source file, controlled by env
+- `packages/react-ui-dsl/src/genui-lib/` — component implementations and the DSL generation prompt surface (`additionalRules`, `examples`, and per-component prompt specs in `dslLibrary`).
+- The prompt is assembled by the Java Generation SDK from the base contract that `dslLibrary.toSpec()` exports — so edit `dslLibrary`, then `--regen` to pick up the change. `LLM_MODEL` picks the model only, never the prompt. (The old TS `dslLibrary.prompt()` / `llm.ts` assembly is deprecated and no longer used by regen.)
 
 ### 3. Write the result bundle
 
