@@ -1,0 +1,21 @@
+{
+  "supplementVersion": "supp-v1",
+  "components": {
+    "TopoChart": {
+      "description": "Network topology chart.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "nodes": { "type": "array", "items": { "type": "any" } },
+          "links": { "type": "array", "items": { "type": "any" } }
+        },
+        "required": ["nodes", "links"]
+      }
+    }
+  },
+  "componentGroups": [
+    { "name": "Charts", "components": ["TopoChart"], "notes": ["Prefer TopoChart for topology data."] }
+  ],
+  "examples": ["root = Stack([topo])\ntopo = TopoChart(data.nodes, data.links)"],
+  "additionalRules": ["Prefer TopoChart over Table for network element relations."]
+}
