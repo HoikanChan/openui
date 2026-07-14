@@ -1,8 +1,24 @@
 # GenUI Java SDK
 
-Java 21 SDK that assembles GenUI system prompts and drives an LLM to generate openui-lang UI from host data. This context covers the prompt-side data handling, in particular how large host data is characterized before being embedded in a prompt.
+Java 21 SDK that assembles GenUI system prompts and drives an LLM to generate openui-lang UI from host data. This context covers prompt-side data handling and the layering of the component library the prompt is assembled from.
 
 ## Language
+
+**Base Contract**:
+The frozen, frontend-exported description of the built-in component library (components, groups, examples, rules, builtins) that ships inside the SDK; the frontend is its single source of truth and the SDK only consumes it.
+_Avoid_: default contract, built-in schema
+
+**GenUI Base Supplement**:
+A host-authored, build-time addition to the Base Contract that applies globally to every request: new component specs are added, a same-name component spec **replaces** the base one wholesale (despite the "supplement" name), same-name component groups merge by union, and examples/rules append. The host is responsible for keeping supplemented specs in sync with what its frontend can actually render.
+_Avoid_: overlay, patch, base extension, custom components
+
+**Effective Base Contract**:
+The result of merging the GenUI Base Supplement into the Base Contract when the SDK is built; everything downstream — prompt assembly and GenUI Extension collision checks — sees only this merged view, never the two layers separately.
+_Avoid_: merged contract, final contract
+
+**GenUI Extension**:
+A per-request component/tool package selected by extensionId on top of the Effective Base Contract; strictly append-only — name collisions with the effective base are rejected, never overridden.
+_Avoid_: plugin, supplement (reserved for the global build-time GenUI Base Supplement layer)
 
 **Render Data Model**:
 The full host data the SDK forwards to the runtime as the seq=0 `dataModel` envelope; the rendered UI binds against this, so it is never sampled or reduced.
@@ -30,6 +46,8 @@ _Avoid_: annotations, metadata block
 
 ## Relationships
 
+- A **Base Contract** plus at most one **GenUI Base Supplement** yields the **Effective Base Contract** (build-time, global)
+- A **GenUI Extension** stacks on the **Effective Base Contract** per request (append-only); a **GenUI Base Supplement** may replace base entries, an Extension may not
 - A **Render Data Model** is reduced by **Characterization** into a **Prompt Data Model**
 - A **Prompt Data Model** is a same-shape data tree (**Sample Rows** in place of full arrays) plus a **Sidecar**
 - A **Sidecar** carries the **Enum Domain** and counts that **Sample Rows** alone cannot guarantee

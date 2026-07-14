@@ -8,6 +8,7 @@ import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentPropsSchema;
 import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
+import com.huawei.cloudsop.genui.core.contract.GenUIBaseSupplement;
 import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
@@ -33,11 +34,22 @@ public final class GenerationSdk {
     private final CharacterizationConfig characterization;
     private final Map<String, GenUIExtension> generations = new LinkedHashMap<>();
 
-    private GenerationSdk(GenerationContract baseContract, CharacterizationConfig characterization) {
+    private GenerationSdk(GenerationContract baseContract, GenUIBaseSupplement baseSupplement,
+            CharacterizationConfig characterization) {
         if (baseContract == null)
             throw new GenerationSdkException("baseContract is required");
         if (baseContract.contractVersion() == null || baseContract.contractVersion().isBlank()) {
             throw new GenerationSdkException("baseContract.contractVersion is required");
+        }
+        if (baseSupplement != null) {
+            // Validate the supplement's own components first so schema errors point at the supplement,
+            // not at the merged contract.
+            try {
+                validateComponents(baseSupplement.components(), "base supplement");
+            } catch (GenerationSdkException error) {
+                throw new GenerationSdkException("Invalid base supplement: " + error.getMessage(), error);
+            }
+            baseContract = baseSupplement.applyTo(baseContract);
         }
         this.baseContract = baseContract;
         this.characterization = characterization == null ? CharacterizationConfig.defaults() : characterization;
@@ -197,6 +209,7 @@ public final class GenerationSdk {
 
     public static final class Builder {
         private GenerationContract baseContract;
+        private GenUIBaseSupplement baseSupplement;
         private CharacterizationConfig characterization;
 
         private Builder() {
@@ -207,6 +220,15 @@ public final class GenerationSdk {
             return this;
         }
 
+        /**
+         * Global base supplement merged into the base contract at build time (at most one per SDK instance). Load it
+         * with {@code GenUIBaseSupplementLoader}; see {@link GenUIBaseSupplement} for the merge rules.
+         */
+        public Builder baseSupplement(GenUIBaseSupplement baseSupplement) {
+            this.baseSupplement = baseSupplement;
+            return this;
+        }
+
         public Builder characterization(CharacterizationConfig characterization) {
             this.characterization = characterization;
             return this;
@@ -214,7 +236,7 @@ public final class GenerationSdk {
 
         public GenerationSdk build() {
             return new GenerationSdk(baseContract == null ? GenerationContractLoader.loadDefault() : baseContract,
-                    characterization == null ? CharacterizationConfig.defaults() : characterization);
+                    baseSupplement, characterization == null ? CharacterizationConfig.defaults() : characterization);
         }
     }
 }

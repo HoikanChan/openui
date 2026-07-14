@@ -26,6 +26,76 @@ That command writes `src/main/resources/openui/base-contract.json`. The primary
 entrypoint, `GenerationSdk.create()`, loads this resource automatically. Tests
 can override it with `GenerationSdk.builder().baseContract(...).build()`.
 
+## Base Supplement (host global additions)
+
+A **GenUI Base Supplement** lets a host add its own components to the base
+contract — globally, for every request, without an `extensionId` — and replace
+the prompt docs of existing base components. The supplement is a single JSON
+document merged once at `GenerationSdk` build time; the merge result (the
+*Effective Base Contract*) is the only base that prompt assembly and
+`GenUIExtension` collision checks ever see. Without a supplement, behavior is
+byte-identical to before.
+
+```java
+GenerationSdk sdk = GenerationSdk.builder()
+    .baseSupplement(GenUIBaseSupplementLoader.fromResource("genui/company-supplement.json"))
+    .build();
+```
+
+JSON format — a subset of `base-contract.json` with the same component entry
+shapes (`description`+`propsSchema` or `signature`+`description`):
+
+```jsonc
+{
+  "supplementVersion": "2026.07",            // optional, informational only
+  "components": {
+    "TopoChart": {
+      "description": "Network topology chart. Bind nodes/links to host data.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "nodes": { "type": "array", "items": { "type": "any" } },
+          "links": { "type": "array", "items": { "type": "any" } }
+        },
+        "required": ["nodes", "links"]
+      }
+    }
+  },
+  "componentGroups": [
+    { "name": "Charts", "components": ["TopoChart"], "notes": ["Prefer TopoChart for topology data."] }
+  ],
+  "examples": ["root = Stack([topo])\ntopo = TopoChart(data.nodes, data.links)"],
+  "additionalRules": ["Prefer TopoChart over Table for network element relations."]
+}
+```
+
+Merge rules:
+
+| Section | Rule |
+|---|---|
+| `components` | Same name: **wholesale replacement** of the base spec (description and propsSchema together, never field-by-field), keeping the base position. New name: appended after base components. No deletion. |
+| `componentGroups` | Same name: **union** — order-preserving de-duplicated member union (base members first), notes appended. New group: appended. |
+| `examples` / `additionalRules` | Appended after the base entries. |
+| `contractVersion` / `root` / `tools` / `builtins` | Not allowed in the supplement; the base values always win. |
+
+Loading is strict: any top-level key outside
+`supplementVersion` / `components` / `componentGroups` / `examples` /
+`additionalRules` (including `tools`, `root`, `builtins`, `contractVersion`,
+or a typo like `additionalRule`) fails `fromJson` with an error listing the
+illegal keys. Supplement component schemas are validated at build time with
+errors attributed to the supplement. At most one supplement per SDK instance;
+merging multiple team packages is the host's preprocessing job.
+
+Host responsibilities:
+
+- **Every supplement component must already be registered in the host's
+  frontend renderer.** The SDK only shapes the prompt; a component the model
+  can name but the frontend cannot render fails at render time. Preferably
+  generate the supplement JSON from the host's frontend component registry.
+- **Review same-name replacement entries when upgrading the SDK.** A replaced
+  component keeps the host's spec wholesale, so upstream improvements to that
+  component's docs are shadowed until the supplement entry is refreshed.
+
 ## Prompt assembly authority & golden tests
 
 `PromptAssembler` is the authoritative GenUI prompt assembler (design D9) and is a

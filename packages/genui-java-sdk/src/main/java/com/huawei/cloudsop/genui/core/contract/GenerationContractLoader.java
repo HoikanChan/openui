@@ -58,7 +58,7 @@ public final class GenerationContractLoader {
         return result;
     }
 
-    private static Map<String, ComponentPromptSpec> componentMap(Object value) {
+    static Map<String, ComponentPromptSpec> componentMap(Object value) {
         LinkedHashMap<String, ComponentPromptSpec> result = new LinkedHashMap<>();
         if (value == null)
             return result;
@@ -74,7 +74,7 @@ public final class GenerationContractLoader {
         return result;
     }
 
-    private static List<ComponentGroup> componentGroups(Object value) {
+    static List<ComponentGroup> componentGroups(Object value) {
         ArrayList<ComponentGroup> result = new ArrayList<>();
         if (value == null)
             return result;
@@ -116,7 +116,7 @@ public final class GenerationContractLoader {
         return Json.asObject(value, "schema");
     }
 
-    private static List<String> strings(Object value) {
+    static List<String> strings(Object value) {
         ArrayList<String> result = new ArrayList<>();
         if (value == null)
             return result;
