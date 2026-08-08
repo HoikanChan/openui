@@ -474,6 +474,42 @@ function evaluateLazyBuiltin(
     if (!varName) return [];
     const template = node.args[2];
 
+        
+    // @Render template as @Each body — callable-template semantics.
+    // The materializer inlines named @Render statements into the template
+    // position with binder refs preserved. Unwrap it here: bind the render's
+    // OWN binders (item, index) and evaluate the body, instead of returning
+    // the raw Render node (which only makes sense in a component prop slot).
+    if (template.k === "Comp" && template.name === "Render" && template.args.length >= 2) {
+      const renderBinders = template.args
+        .slice(0, -1)
+        .map((a) => (a.k === "Str" ? a.v : a.k === "Ref" ? a.n : null));
+      const body = template.args.at(-1)!;
+      return arr.map((item, idx) => {
+        const binderValues: unknown[] = [item, idx];
+        let substituted = body;
+        for (const [i, binderName] of renderBinders.entries()) {
+          if (binderName != null) {
+            substituted = substituteRef(substituted, binderName, binderValues[i]);
+          }
+        }
+        const childCtx: EvaluationContext = {
+          ...context,
+          resolveRef: (refName: string) => {
+            const bi = renderBinders.indexOf(refName);
+            if (bi !== -1) return binderValues[bi];
+            if (refName === varName) return item;
+            return context.resolveRef(refName);
+          },
+        };
+        const result = evaluate(substituted, childCtx, schemaCtx);
+        if (schemaCtx && isElementNode(result)) {
+          return evaluateElementInline(result as ElementNode, childCtx, schemaCtx);
+        }
+        return result;
+      });
+    }
+    
     return arr.map((item, _idx) => {
       // Pre-substitute loop variable refs with concrete values in the template AST.
       // This captures the item for deferred expressions (Action steps evaluated at click time).
