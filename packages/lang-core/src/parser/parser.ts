@@ -220,7 +220,7 @@ function buildResult(
     unboundTemplateReferences: new Set(),
     unreached,
   };
-  const materialized = materializeValue(syms.get(entryId)!, ctx);
+  const materialized = materializeValue(syms.get(entryId)!, ctx, undefined, true);
 
   const root = isElementNode(materialized) ? materialized : null;
   if (root) root.statementId = entryId;

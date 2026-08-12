@@ -247,6 +247,13 @@ describe("unresolved references (streaming)", () => {
 // ── unbound template references ────────────────────────────────────────────────
 
 describe("unbound template references", () => {
+  it("keeps an ordinary named expression dependency nonfatal", () => {
+    const result = parse("root = Title(@Count(helper))\nhelper = missing", schema);
+
+    expect(result.meta.unresolved).toContain("missing");
+    expect(result.meta.errors.map(({ code }) => code)).not.toContain("unbound-template-reference");
+  });
+
   it("reports a free binding in an extracted template", () => {
     const result = parse("root = Stack([itemTpl])\nitemTpl = Title(item.name)", schema);
     const templateErrors = result.meta.errors.filter(
@@ -274,6 +281,37 @@ describe("unbound template references", () => {
 
     expect(result.meta.errors.map(({ code }) => code)).not.toContain("unbound-template-reference");
     expect(result.meta.unresolved).not.toContain("item");
+  });
+
+  it("resolves a binding through transitive extracted-template dependencies", () => {
+    const result = parse(
+      'root = Stack([@Each(data.items, "item", itemTpl)])\nitemTpl = Title(helper.name)\nhelper = item',
+      schema,
+      undefined,
+      { externalRefs: ["data"] },
+    );
+
+    expect(result.meta.errors.map(({ code }) => code)).not.toContain("unbound-template-reference");
+    expect(result.meta.unresolved).not.toContain("item");
+  });
+
+  it("attributes a transitive free binding to its Open Template", () => {
+    const result = parse(
+      "root = Stack([itemTpl])\nitemTpl = Title(helper.name)\nhelper = item",
+      schema,
+    );
+    const templateErrors = result.meta.errors.filter(
+      ({ code }) => code === "unbound-template-reference",
+    );
+
+    expect(templateErrors).toHaveLength(1);
+    expect(templateErrors[0]).toMatchObject({
+      component: "itemTpl",
+      statementId: "itemTpl",
+    });
+    expect(templateErrors[0].message).toContain('template "itemTpl"');
+    expect(templateErrors[0].message).toContain('binding "item"');
+    expect(templateErrors[0].message).not.toContain('template "helper"');
   });
 
   it("reports the same extracted-template error during streaming", () => {
