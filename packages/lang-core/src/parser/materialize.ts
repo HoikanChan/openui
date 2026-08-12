@@ -30,8 +30,12 @@ export interface MaterializeCtx {
   visited: Set<string>;
   partial: boolean;
   externalRefs?: Set<string>;
+  /** Statement selected as the materialization entry point. */
+  entryStatementId?: string;
   /** Tracks which statement is currently being materialized (for error attribution). */
   currentStatementId?: string;
+  /** Deduplicates hard template errors by template statement and missing binding. */
+  unboundTemplateReferences?: Set<string>;
   /** Statement IDs not yet reached — delete as they're touched. Remaining = orphaned. */
   unreached?: Set<string>;
 }
@@ -55,7 +59,11 @@ function resolveObjectSchema(schema: unknown): Record<string, unknown> | null {
     return direct as Record<string, unknown>;
   }
 
-  const variants = Array.isArray(direct.anyOf) ? direct.anyOf : Array.isArray(direct.oneOf) ? direct.oneOf : [];
+  const variants = Array.isArray(direct.anyOf)
+    ? direct.anyOf
+    : Array.isArray(direct.oneOf)
+      ? direct.oneOf
+      : [];
   for (const variant of variants) {
     const resolved = resolveObjectSchema(variant);
     if (resolved) return resolved;
@@ -85,13 +93,14 @@ function validateNestedObjectProps(
   for (const [key, nestedValue] of Object.entries(record)) {
     const nestedSchema = properties[key];
     if (!nestedSchema && !allowsAdditional) {
-      const isRemovedFormatProp = componentName === "Col" && pathPrefix === "/options" && key === "format";
+      const isRemovedFormatProp =
+        componentName === "Col" && pathPrefix === "/options" && key === "format";
       ctx.errors.push({
         code: "invalid-prop",
         component: componentName,
         path: `${pathPrefix}/${key}`,
         message: isRemovedFormatProp
-          ? 'The `format` prop on Col options was removed. Use @FormatDate/@FormatBytes/@FormatNumber/@FormatPercent/@FormatDuration in an expression or @Render(...) instead.'
+          ? "The `format` prop on Col options was removed. Use @FormatDate/@FormatBytes/@FormatNumber/@FormatPercent/@FormatDuration in an expression or @Render(...) instead."
           : `Unknown property "${key}" on ${componentName}${pathPrefix.replaceAll("/", ".")}`,
         statementId: ctx.currentStatementId,
       });
@@ -99,7 +108,14 @@ function validateNestedObjectProps(
     }
 
     if (nestedSchema) {
-      validateNestedObjectProps(componentName, paramName, nestedValue, nestedSchema, ctx, `${pathPrefix}/${key}`);
+      validateNestedObjectProps(
+        componentName,
+        paramName,
+        nestedValue,
+        nestedSchema,
+        ctx,
+        `${pathPrefix}/${key}`,
+      );
     }
   }
 }
@@ -122,6 +138,26 @@ function resolveRef(
     if (ctx.externalRefs?.has(name)) {
       return { k: "RuntimeRef", n: name, refType: "data" };
     }
+    if (
+      mode === "expr" &&
+      ctx.currentStatementId &&
+      ctx.entryStatementId &&
+      ctx.currentStatementId !== ctx.entryStatementId
+    ) {
+      const key = `${ctx.currentStatementId}\0${name}`;
+      const reported = (ctx.unboundTemplateReferences ??= new Set());
+      if (!reported.has(key)) {
+        const availableBindings = [...scopedRefs].sort();
+        ctx.errors.push({
+          code: "unbound-template-reference",
+          component: ctx.currentStatementId,
+          path: "",
+          message: `Extracted template "${ctx.currentStatementId}" references unbound binding "${name}"; available scoped bindings: ${availableBindings.length ? availableBindings.join(", ") : "(none)"}`,
+          statementId: ctx.currentStatementId,
+        });
+        reported.add(key);
+      }
+    }
     ctx.unres.push(name);
     return mode === "expr" ? { k: "Ph", n: name } : null;
   }
@@ -140,7 +176,9 @@ function resolveRef(
     // In expr mode, propagate scopedRefs so loop variables from @Each/@Render remain
     // visible inside named-statement templates (resolving via new Set() would drop them).
     const result =
-      mode === "value" ? materializeValue(target, ctx) : materializeExprInternal(target, ctx, scopedRefs);
+      mode === "value"
+        ? materializeValue(target, ctx)
+        : materializeExprInternal(target, ctx, scopedRefs);
     // Tag ElementNode with its source statement name
     if (mode === "value" && isElementNode(result)) {
       result.statementId = name;
@@ -179,7 +217,8 @@ function materializeLazyBuiltin(
   const nextScopedRefs = new Set(scopedRefs);
   for (const index of binderIndexes) {
     const binderArg = node.args[index];
-    const binderName = binderArg.k === "Ref" ? binderArg.n : binderArg.k === "Str" ? binderArg.v : null;
+    const binderName =
+      binderArg.k === "Ref" ? binderArg.n : binderArg.k === "Str" ? binderArg.v : null;
     if (!binderName) return null;
     nextScopedRefs.add(binderName);
   }
@@ -197,7 +236,9 @@ function materializeExprInternal(
 ): ASTNode {
   switch (node.k) {
     case "Ref":
-      return scopedRefs.has(node.n) ? node : (resolveRef(node.n, ctx, "expr", scopedRefs) as ASTNode);
+      return scopedRefs.has(node.n)
+        ? node
+        : (resolveRef(node.n, ctx, "expr", scopedRefs) as ASTNode);
 
     case "Ph":
       return node;

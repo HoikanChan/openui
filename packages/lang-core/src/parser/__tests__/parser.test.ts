@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { LibraryJSONSchema, ParamMap } from "../types";
 import { createParser, createStreamParser, createStreamingParser, parse } from "../parser";
+import type { LibraryJSONSchema, ParamMap } from "../types";
 
 // ── Test schema ──────────────────────────────────────────────────────────────
 
@@ -244,7 +244,108 @@ describe("unresolved references (streaming)", () => {
   });
 });
 
-// ── existing error rules ──────────────────────────────────────────────────────
+// ── unbound template references ────────────────────────────────────────────────
+
+describe("unbound template references", () => {
+  it("reports a free binding in an extracted template", () => {
+    const result = parse("root = Stack([itemTpl])\nitemTpl = Title(item.name)", schema);
+    const templateErrors = result.meta.errors.filter(
+      ({ code }) => code === "unbound-template-reference",
+    );
+    const [error] = templateErrors;
+
+    expect(templateErrors).toHaveLength(1);
+    expect(error).toMatchObject({
+      code: "unbound-template-reference",
+      component: "itemTpl",
+      statementId: "itemTpl",
+    });
+    expect(error?.message).toContain('template "itemTpl"');
+    expect(error?.message).toContain('binding "item"');
+  });
+
+  it("accepts an extracted @Each template when its use site supplies the binding", () => {
+    const result = parse(
+      'root = Stack([@Each(data.items, "item", itemTpl)])\nitemTpl = Title(item.name)',
+      schema,
+      undefined,
+      { externalRefs: ["data"] },
+    );
+
+    expect(result.meta.errors.map(({ code }) => code)).not.toContain("unbound-template-reference");
+    expect(result.meta.unresolved).not.toContain("item");
+  });
+
+  it("reports the same extracted-template error during streaming", () => {
+    const parser = createStreamParser(schema);
+    const result = parser.push("root = Stack([itemTpl])\nitemTpl = Title(item.name)\n");
+    const templateErrors = result.meta.errors.filter(
+      ({ code }) => code === "unbound-template-reference",
+    );
+
+    expect(templateErrors).toHaveLength(1);
+    expect(templateErrors).toContainEqual(
+      expect.objectContaining({
+        code: "unbound-template-reference",
+        component: "itemTpl",
+        statementId: "itemTpl",
+      }),
+    );
+  });
+
+  it("keeps a streaming root forward reference nonfatal", () => {
+    const parser = createStreamParser(schema);
+    const result = parser.push("root = Stack([future])\n");
+
+    expect(result.meta.unresolved).toContain("future");
+    expect(result.meta.errors.map(({ code }) => code)).not.toContain("unbound-template-reference");
+  });
+
+  it("resolves a streaming root forward reference when the statement arrives", () => {
+    const parser = createStreamParser(schema);
+    parser.push("root = Stack([future])\n");
+    const result = parser.push('future = Title("arrived")\n');
+
+    expect(result.meta.unresolved).not.toContain("future");
+    expect(result.meta.errors.map(({ code }) => code)).not.toContain("unbound-template-reference");
+    expect((result.root?.props.children as Array<{ props: { text: string } }>)[0].props.text).toBe(
+      "arrived",
+    );
+  });
+
+  it("keeps an ordinary missing named statement inside a named value nonfatal", () => {
+    const result = parse("root = Stack([section])\nsection = Stack([future])", schema);
+
+    expect(result.meta.unresolved).toContain("future");
+    expect(result.meta.errors.map(({ code }) => code)).not.toContain("unbound-template-reference");
+  });
+
+  it("deduplicates a missing binding represented in template args and mapped props", () => {
+    const result = parse(
+      'root = Stack([@Render("z", "a", itemTpl)])\nitemTpl = Title(item.name)',
+      schema,
+    );
+    const templateErrors = result.meta.errors.filter(
+      ({ code }) => code === "unbound-template-reference",
+    );
+    const render = (result.root?.props.children as Array<{ args: unknown[] }>)[0];
+    const template = render.args[2] as {
+      args: unknown[];
+      mappedProps: Record<string, unknown>;
+    };
+
+    expect(templateErrors).toHaveLength(1);
+    expect(templateErrors[0]).toMatchObject({
+      component: "itemTpl",
+      statementId: "itemTpl",
+    });
+    expect(templateErrors[0].message).toContain('binding "item"');
+    expect(templateErrors[0].message).toContain("available scoped bindings: a, z");
+    expect(template.mappedProps.text).toEqual(template.args[0]);
+  });
+});
+
+// ── existing error rules ────────────────────────────────────────────────────────
 
 describe("existing errors carry type and code", () => {
   it("missing-required has correct shape", () => {
@@ -362,7 +463,12 @@ function parseExpr(src: string) {
 describe("?? null-coalescing operator — parser", () => {
   it("basic a ?? b produces BinOp ??", () => {
     const ast = parseExpr("a ?? b");
-    expect(ast).toEqual({ k: "BinOp", op: "??", left: { k: "Ref", n: "a" }, right: { k: "Ref", n: "b" } });
+    expect(ast).toEqual({
+      k: "BinOp",
+      op: "??",
+      left: { k: "Ref", n: "a" },
+      right: { k: "Ref", n: "b" },
+    });
   });
 
   it("left-associative: a ?? b ?? c", () => {
