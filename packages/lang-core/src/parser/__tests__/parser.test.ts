@@ -271,6 +271,34 @@ describe("unbound template references", () => {
     expect(error?.message).toContain('binding "item"');
   });
 
+  it("reports a direct free binding in a named component prop", () => {
+    const result = parse("root = Stack([itemTpl])\nitemTpl = Title(item)", schema);
+    const templateErrors = result.meta.errors.filter(
+      ({ code }) => code === "unbound-template-reference",
+    );
+
+    expect(templateErrors).toHaveLength(1);
+    expect(templateErrors[0]).toMatchObject({
+      component: "itemTpl",
+      statementId: "itemTpl",
+    });
+    expect(templateErrors[0].message).toContain('binding "item"');
+  });
+
+  it("reports a direct free binding in a named template array", () => {
+    const result = parse("root = Stack([itemTpl])\nitemTpl = Stack([item])", schema);
+    const templateErrors = result.meta.errors.filter(
+      ({ code }) => code === "unbound-template-reference",
+    );
+
+    expect(templateErrors).toHaveLength(1);
+    expect(templateErrors[0]).toMatchObject({
+      component: "itemTpl",
+      statementId: "itemTpl",
+    });
+    expect(templateErrors[0].message).toContain('binding "item"');
+  });
+
   it("accepts an extracted @Each template when its use site supplies the binding", () => {
     const result = parse(
       'root = Stack([@Each(data.items, "item", itemTpl)])\nitemTpl = Title(item.name)',
@@ -338,6 +366,35 @@ describe("unbound template references", () => {
   it("supplies the nested @Each binding to its named template", () => {
     const result = parse(
       'root = Stack([outerTpl])\nouterTpl = Title(@Each(data.items, "item", innerTpl))\ninnerTpl = Title(item.name)',
+      schema,
+      undefined,
+      { externalRefs: ["data"] },
+    );
+
+    expect(result.meta.errors.map(({ code }) => code)).not.toContain("unbound-template-reference");
+    expect(result.meta.unresolved).not.toContain("item");
+  });
+
+  it("does not expose an @Each binder to its collection expression", () => {
+    const result = parse(
+      'root = Stack([outerTpl])\nouterTpl = Title(@Each(item.children, "item", innerTpl))\ninnerTpl = Title(item.name)',
+      schema,
+    );
+    const templateErrors = result.meta.errors.filter(
+      ({ code }) => code === "unbound-template-reference",
+    );
+
+    expect(templateErrors).toHaveLength(1);
+    expect(templateErrors[0]).toMatchObject({
+      component: "outerTpl",
+      statementId: "outerTpl",
+    });
+    expect(templateErrors[0].message).toContain('binding "item"');
+  });
+
+  it("uses the outer same-name binding for a nested @Each collection", () => {
+    const result = parse(
+      'root = Stack([@Each(data.items, "item", outerTpl)])\nouterTpl = Title(@Each(item.children, "item", innerTpl))\ninnerTpl = Title(item.name)',
       schema,
       undefined,
       { externalRefs: ["data"] },
@@ -423,35 +480,35 @@ describe("unbound template references", () => {
     );
   });
 
-  it("keeps an ordinary missing named statement inside a named value nonfatal", () => {
-    const result = parse("root = Stack([section])\nsection = Stack([future])", schema);
-
-    expect(result.meta.unresolved).toContain("future");
-    expect(result.meta.errors.map(({ code }) => code)).not.toContain("unbound-template-reference");
-  });
-
-  it("deduplicates a missing binding represented in template args and mapped props", () => {
+  it("reports distinct lexical binding scopes for the same Open Template", () => {
     const result = parse(
-      'root = Stack([@Render("z", "a", itemTpl)])\nitemTpl = Title(item.name)',
+      'root = Stack([@Render("a", itemTpl), @Render("b", itemTpl)])\nitemTpl = Title(item)',
       schema,
     );
     const templateErrors = result.meta.errors.filter(
       ({ code }) => code === "unbound-template-reference",
     );
-    const render = (result.root?.props.children as Array<{ args: unknown[] }>)[0];
-    const template = render.args[2] as {
-      args: unknown[];
-      mappedProps: Record<string, unknown>;
-    };
+
+    expect(templateErrors).toHaveLength(2);
+    expect(templateErrors.map(({ component }) => component)).toEqual(["itemTpl", "itemTpl"]);
+    expect(templateErrors.map(({ message }) => message)).toEqual([
+      expect.stringContaining("available scoped bindings: a"),
+      expect.stringContaining("available scoped bindings: b"),
+    ]);
+  });
+
+  it("deduplicates repeated free refs under the same lexical binding scope", () => {
+    const result = parse(
+      'root = Stack([@Render("a", itemTpl), @Render("a", itemTpl)])\nitemTpl = Title(item + item)',
+      schema,
+    );
+    const templateErrors = result.meta.errors.filter(
+      ({ code }) => code === "unbound-template-reference",
+    );
 
     expect(templateErrors).toHaveLength(1);
-    expect(templateErrors[0]).toMatchObject({
-      component: "itemTpl",
-      statementId: "itemTpl",
-    });
     expect(templateErrors[0].message).toContain('binding "item"');
-    expect(templateErrors[0].message).toContain("available scoped bindings: a, z");
-    expect(template.mappedProps.text).toEqual(template.args[0]);
+    expect(templateErrors[0].message).toContain("available scoped bindings: a");
   });
 });
 
