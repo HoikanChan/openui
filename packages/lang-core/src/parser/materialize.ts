@@ -7,6 +7,18 @@ import { isASTNode, isRuntimeExpr } from "./ast";
 import { isBuiltin, isReservedCall, LAZY_BUILTINS, RESERVED_CALLS } from "./builtins";
 import { isElementNode, type ParamMap, type ValidationError } from "./types";
 
+const UNRESOLVED_FREE_BINDING = Symbol("unresolved-free-binding");
+
+function containsUnresolvedFreeBinding(value: unknown): boolean {
+  if (value === UNRESOLVED_FREE_BINDING) return true;
+  if (value == null || typeof value !== "object") return false;
+  if (Array.isArray(value)) return value.some(containsUnresolvedFreeBinding);
+  if (isElementNode(value)) {
+    return Object.values(value.props).some(containsUnresolvedFreeBinding);
+  }
+  return Object.values(value as Record<string, unknown>).some(containsUnresolvedFreeBinding);
+}
+
 /**
  * Recursively check if a prop value contains any AST nodes that need runtime
  * evaluation. Walks into arrays, ElementNode children, and plain objects.
@@ -173,7 +185,8 @@ function resolveRef(
       }
     }
     ctx.unres.push(name);
-    return mode === "expr" ? { k: "Ph", n: name } : null;
+    if (mode === "expr") return { k: "Ph", n: name };
+    return frame.diagnosticOwner ? UNRESOLVED_FREE_BINDING : null;
   }
   const target = ctx.syms.get(name)!;
   // A named lazy-template body starts a new lexical owner. Ordinary named
@@ -399,6 +412,7 @@ function materializeValueInternal(
         // Drop unresolved placeholders from arrays
         if (e.k === "Ph") continue;
         const value = materializeValueInternal(e, ctx, frame);
+        if (value === UNRESOLVED_FREE_BINDING) continue;
         // Drop null entries from component/ref resolution (incomplete props, unresolved refs, unknown components)
         if (value === null && (e.k === "Comp" || e.k === "Ref")) continue;
         items.push(value);
@@ -506,6 +520,8 @@ function materializeValueInternal(
         });
         return null;
       }
+
+      if (Object.values(props).some(containsUnresolvedFreeBinding)) return null;
 
       const hasDynamicProps = Object.values(props).some((v) => containsDynamicValue(v));
       return { type: "element", typeName: name, props, partial: ctx.partial, hasDynamicProps };

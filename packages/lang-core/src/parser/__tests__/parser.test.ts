@@ -273,16 +273,16 @@ describe("unbound template references", () => {
 
   it("reports a direct free binding in a named component prop", () => {
     const result = parse("root = Stack([itemTpl])\nitemTpl = Title(item)", schema);
-    const templateErrors = result.meta.errors.filter(
-      ({ code }) => code === "unbound-template-reference",
-    );
 
-    expect(templateErrors).toHaveLength(1);
-    expect(templateErrors[0]).toMatchObject({
-      component: "itemTpl",
-      statementId: "itemTpl",
-    });
-    expect(templateErrors[0].message).toContain('binding "item"');
+    expect(result.meta.errors).toEqual([
+      expect.objectContaining({
+        code: "unbound-template-reference",
+        component: "itemTpl",
+        statementId: "itemTpl",
+        message: expect.stringContaining('binding "item"'),
+      }),
+    ]);
+    expect(result.root?.props.children).toEqual([]);
   });
 
   it("reports a direct free binding in a named template array", () => {
@@ -458,6 +458,29 @@ describe("unbound template references", () => {
         statementId: "itemTpl",
       }),
     );
+  });
+
+  // A missing identifier is syntactically ambiguous: it may be a free iterator
+  // binding or a statement that has not streamed yet. Report provisionally and
+  // rebuild/retract the diagnostic when later chunks add the declaration.
+  it("provisionally reports and retracts a transitive streaming template reference", () => {
+    const parser = createStreamParser(schema);
+    const provisional = parser.push("root = Stack([section])\nsection = Stack([future])\n");
+
+    expect(provisional.meta.unresolved).toContain("future");
+    expect(provisional.meta.errors).toEqual([
+      expect.objectContaining({
+        code: "unbound-template-reference",
+        component: "section",
+        statementId: "section",
+        message: expect.stringContaining('binding "future"'),
+      }),
+    ]);
+
+    const resolved = parser.push('future = Title("arrived")\n');
+
+    expect(resolved.meta.unresolved).not.toContain("future");
+    expect(resolved.meta.errors).toEqual([]);
   });
 
   it("keeps a streaming root forward reference nonfatal", () => {
