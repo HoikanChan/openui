@@ -159,10 +159,9 @@ function resolveRef(
     return mode === "expr" ? { k: "Ph", n: name } : null;
   }
   const target = ctx.syms.get(name)!;
-  // The first named statement reached from a template use site owns the lexical
-  // template context. Keep that owner stable while resolving its dependencies.
-  const nextOpenTemplateStatementId =
-    openTemplateStatementId ?? (entersOpenTemplate ? name : undefined);
+  // A named lazy-template body starts a new lexical owner. Ordinary named
+  // dependencies keep the current owner as resolution proceeds transitively.
+  const nextOpenTemplateStatementId = entersOpenTemplate ? name : openTemplateStatementId;
   ctx.unreached?.delete(name);
   // Query/Mutation declarations → RuntimeRef (resolved at runtime by evaluator)
   if (target.k === "Comp" && isReservedCall(target.name)) {
@@ -248,7 +247,7 @@ function materializeExprInternal(
   entersOpenTemplate = false,
 ): ASTNode {
   const recurse = (child: ASTNode) =>
-    materializeExprInternal(child, ctx, scopedRefs, openTemplateStatementId, entersOpenTemplate);
+    materializeExprInternal(child, ctx, scopedRefs, openTemplateStatementId);
 
   switch (node.k) {
     case "Ref":
