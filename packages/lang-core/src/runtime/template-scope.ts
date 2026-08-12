@@ -114,8 +114,13 @@ export function instantiateTemplate(
         ]),
       };
     case "Comp": {
+      if (node.name === "Each" && node.args.length < 3) return node;
+      if (node.name === "Render" && node.args.length < 2) return node;
+
+      // Deliberately instantiate both equivalent forms: evaluators read
+      // mappedProps while other AST consumers may still inspect positional args.
       const mappedProps = instantiateMappedProps(node.mappedProps, bindings, shadowed);
-      if (node.name === "Each" && node.args.length >= 3) {
+      if (node.name === "Each") {
         const binder = binderName(node.args[1]);
         const args = [
           instantiateTemplate(node.args[0], bindings, shadowed),
@@ -125,7 +130,7 @@ export function instantiateTemplate(
         ];
         return mappedProps === undefined ? { ...node, args } : { ...node, args, mappedProps };
       }
-      if (node.name === "Render" && node.args.length >= 2) {
+      if (node.name === "Render") {
         const binderArgs = node.args.slice(0, -1);
         const body = node.args.at(-1)!;
         const renderShadowed = withShadowed(shadowed, binderArgs.map(binderName));

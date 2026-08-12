@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { type ASTNode, isASTNode } from "../parser/ast";
-import { isElementNode } from "../parser/types";
+import { parse } from "../parser/parser";
+import { isElementNode, type ParamMap } from "../parser/types";
 import { evaluate, type EvaluationContext } from "../runtime/evaluator";
+import { instantiateTemplate } from "../runtime/template-scope";
 
 function createContext(
   refs: Record<string, unknown> = {},
@@ -39,15 +41,42 @@ function box(value: ASTNode): ASTNode {
   };
 }
 
-function getBoxRender(result: unknown, index = 0): Extract<ASTNode, { k: "Comp" }> {
+function getBoxRender(
+  result: unknown,
+  index = 0,
+  propName = "value",
+): Extract<ASTNode, { k: "Comp" }> {
   if (!Array.isArray(result) || !isElementNode(result[index])) {
     throw new Error("Expected an evaluated Box element");
   }
-  const renderNode = result[index].props.value;
+  const renderNode = result[index].props[propName];
   if (!isASTNode(renderNode) || renderNode.k !== "Comp" || renderNode.name !== "Render") {
     throw new Error("Expected the Box value to contain a Render AST");
   }
   return renderNode;
+}
+
+function invokeRender(
+  renderNode: Extract<ASTNode, { k: "Comp" }>,
+  values: readonly unknown[],
+  context: EvaluationContext,
+): unknown {
+  const binderNodes = renderNode.args.slice(0, -1);
+  const body = renderNode.args.at(-1);
+  if (body === undefined || binderNodes.length !== values.length) {
+    throw new Error("Render invocation does not match its binders");
+  }
+  const bindings = new Map<string, unknown>();
+  binderNodes.forEach((binder, index) => {
+    const name = binder.k === "Str" ? binder.v : binder.k === "Ref" ? binder.n : null;
+    if (name === null) throw new Error("Expected a Render binder name");
+    bindings.set(name, values[index]);
+  });
+
+  return evaluate(body, {
+    ...context,
+    resolveRef: (name) => (bindings.has(name) ? bindings.get(name) : context.resolveRef(name)),
+  });
 }
 
 describe("@Each template lexical scope", () => {
@@ -64,6 +93,90 @@ describe("@Each template lexical scope", () => {
     const node = each({ k: "Arr", els: [{ k: "Str", v: "outer" }] }, "item", nestedEach);
 
     expect(evaluate(node, createContext())).toEqual([["inner"]]);
+  });
+
+  it("captures an extracted template graph and evaluates deferred Render bindings live", () => {
+    const catalog: ParamMap = new Map([
+      ["Root", { params: [{ name: "children", required: true }] }],
+      [
+        "Box",
+        {
+          params: [
+            { name: "outerId", required: true },
+            { name: "render", required: true },
+          ],
+        },
+      ],
+      [
+        "Cell",
+        {
+          params: [
+            { name: "outerId", required: true },
+            { name: "value", required: true },
+            { name: "selected", required: true },
+          ],
+        },
+      ],
+    ]);
+    const parsed = parse(
+      `root = Root(@Each(rows, "row", rowTemplate))
+rows = [{id: "captured"}]
+rowTemplate = Box(row.id, deferredCell)
+deferredCell = @Render("value", Cell(row.id, value, $selected + ""))
+$selected = "declared"`,
+      catalog,
+    );
+    const eachNode = parsed.root?.props.children;
+    if (!isASTNode(eachNode)) throw new Error("Expected a materialized Each expression");
+
+    let selected = "before";
+    const context = createContext({ value: "global" }, () => selected);
+    const evaluatedRows = evaluate(eachNode, context);
+    if (!Array.isArray(evaluatedRows) || !isElementNode(evaluatedRows[0])) {
+      throw new Error("Expected the Each expression to evaluate a Box element");
+    }
+    const boxNode = evaluatedRows[0];
+    const renderNode = getBoxRender(evaluatedRows, 0, "render");
+    const body = renderNode.args.at(-1);
+    if (!isASTNode(body) || body.k !== "Comp" || body.name !== "Cell") {
+      throw new Error("Expected a materialized Cell Render body");
+    }
+
+    expect(parsed.meta.errors).toEqual([]);
+    expect(parsed.meta.unresolved).toEqual([]);
+    expect(parsed.meta.orphaned).toEqual([]);
+    expect(boxNode.props.outerId).toBe("captured");
+    expect(body.args).toEqual([
+      { k: "Str", v: "captured" },
+      { k: "Ref", n: "value" },
+      {
+        k: "BinOp",
+        op: "+",
+        left: { k: "StateRef", n: "$selected" },
+        right: { k: "Str", v: "" },
+      },
+    ]);
+    expect(body.mappedProps).toEqual({
+      outerId: body.args[0],
+      value: body.args[1],
+      selected: body.args[2],
+    });
+    expect(Object.values(body.mappedProps ?? {})).toEqual(body.args);
+
+    const before = invokeRender(renderNode, ["call-time"], context);
+    selected = "after";
+    const after = invokeRender(renderNode, ["call-time"], context);
+
+    expect(before).toMatchObject({
+      type: "element",
+      typeName: "Cell",
+      props: { outerId: "captured", value: "call-time", selected: "before" },
+    });
+    expect(after).toMatchObject({
+      type: "element",
+      typeName: "Cell",
+      props: { outerId: "captured", value: "call-time", selected: "after" },
+    });
   });
 
   it("captures an outer @Each binding in a nested deferred Render body", () => {
@@ -183,5 +296,32 @@ describe("@Each template lexical scope", () => {
         }),
       ),
     );
+  });
+});
+
+describe("malformed lazy template scope", () => {
+  it("preserves a malformed Each without capturing its arguments or mapped props", () => {
+    const node: ASTNode = {
+      k: "Comp",
+      name: "Each",
+      args: [
+        { k: "Ref", n: "item" },
+        { k: "Str", v: "item" },
+      ],
+      mappedProps: { value: { k: "Ref", n: "item" } },
+    };
+
+    expect(instantiateTemplate(node, new Map([["item", "captured"]]))).toBe(node);
+  });
+
+  it("preserves a malformed Render without capturing its arguments or mapped props", () => {
+    const node: ASTNode = {
+      k: "Comp",
+      name: "Render",
+      args: [{ k: "Ref", n: "item" }],
+      mappedProps: { value: { k: "Ref", n: "item" } },
+    };
+
+    expect(instantiateTemplate(node, new Map([["item", "captured"]]))).toBe(node);
   });
 });
