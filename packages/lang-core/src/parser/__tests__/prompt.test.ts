@@ -53,4 +53,27 @@ describe("generatePrompt dataModel support", () => {
     expect(prompt).toContain('@Render("v", expr) / @Render("v", "row", expr)');
     expect(prompt).not.toContain('/ Render("v", "row", expr)');
   });
+
+  it("allows Each templates to be extracted as named statements", () => {
+    const prompt = generatePrompt(baseSpec);
+
+    expect(prompt).toContain("The template may be inline or a named statement");
+    expect(prompt).toContain("transitive statement dependencies may reference item");
+    expect(prompt).not.toContain("Always inline the template");
+    expect(prompt).not.toContain("do NOT extract it to a separate statement");
+  });
+
+  it("documents streaming template references and Render's deferred-only role", () => {
+    const prompt = generatePrompt(baseSpec);
+
+    expect(prompt).toContain(
+      "While streaming, an unknown Open Template reference may produce a provisional diagnostic until a same-named statement arrives",
+    );
+    expect(prompt).toContain(
+      "At completion, every unresolved Open Template reference is a hard error",
+    );
+    expect(prompt).toContain(
+      "`@Render` is a deferred prop renderer, not a callable `@Each` template",
+    );
+  });
 });

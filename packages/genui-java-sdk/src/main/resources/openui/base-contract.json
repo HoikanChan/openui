@@ -1594,7 +1594,10 @@
     "Use openui-lang concatenation with `+` for display strings; do not use JavaScript conversion helpers.",
     "Never hardcode data values from the data model — always reference fields via data paths or derived variables. Accessing a field on an array extracts that field from every element: `filteredRows.fieldName` returns an array of values, useful for building Series.",
     "When host data is provided, never invent, backfill, or synthesize labels, rows, metrics, statuses, timestamps, percentages, or records that are absent. For null-dominant records, preserve real non-null fields and show missing ones with `?? \"No data\"` (or `\"Unknown\"`, `\"?\"`, or omit). ",
-    "For field names containing spaces, special characters, or non-ASCII text (e.g. Chinese field names), ALWAYS use bracket notation: `data.peer_interface_info[\"本端接口\"]` — never use dot notation like `data.peer_interface_info.本端接口`."
+    "For field names containing spaces, special characters, or non-ASCII text (e.g. Chinese field names), ALWAYS use bracket notation: `data.peer_interface_info[\"本端接口\"]` — never use dot notation like `data.peer_interface_info.本端接口`.",
+    "An @Each template may be inline or a named statement. Named template statements and their transitive dependencies may reference the declared iterator binding; do not use those statements outside a scope that provides the binding.",
+    "An Open Template reference unresolved during streaming is provisional and may resolve when a same-named statement arrives; at completion, every unresolved Open Template reference is a hard error.",
+    "@Render is a deferred prop renderer, not a callable @Each template."
   ],
   "builtins": [
     {
@@ -1704,7 +1707,7 @@
     },
     {
       "signature": "Each(array, varName, template)",
-      "description": "Evaluate template for each element. varName is the loop variable - use it ONLY inside the template expression (inline). Do NOT create a separate statement for the template.",
+      "description": "Evaluate a template once per array element. varName is the lexical iterator binding. The template may be inline or a named statement; named templates and their transitive statement dependencies may reference the iterator binding. Every iteration has an independent scope.",
       "templateBuiltin": true
     },
     {
