@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import type { Library } from "../library";
 import { type ASTNode, isASTNode } from "../parser/ast";
 import { parse } from "../parser/parser";
 import { isElementNode, type ParamMap } from "../parser/types";
+import { evaluateElementProps } from "../runtime/evaluate-tree";
 import { evaluate, type EvaluationContext } from "../runtime/evaluator";
 import { instantiateTemplate } from "../runtime/template-scope";
 
@@ -176,6 +178,140 @@ $selected = "declared"`,
       type: "element",
       typeName: "Cell",
       props: { outerId: "captured", value: "call-time", selected: "after" },
+    });
+  });
+
+  it("captures group values in extracted Table columns with deferred @Render bodies", () => {
+    const catalog: ParamMap = new Map([
+      ["Stack", { params: [{ name: "children", required: true }] }],
+      ["Tabs", { params: [{ name: "items", required: true }] }],
+      [
+        "TabItem",
+        {
+          params: [
+            { name: "value", required: true },
+            { name: "label", required: true },
+            { name: "content", required: true },
+          ],
+        },
+      ],
+      [
+        "Table",
+        {
+          params: [
+            { name: "columns", required: true },
+            { name: "rows", required: true },
+          ],
+        },
+      ],
+      [
+        "Col",
+        {
+          params: [
+            { name: "title", required: true },
+            { name: "field", required: true },
+            { name: "options", required: false },
+          ],
+        },
+      ],
+      ["TextContent", { params: [{ name: "text", required: true }] }],
+    ]);
+    const dsl = `root = Stack([modelTabs])
+modelTabs = Tabs(@Each(data.grouped_by_model, "group", modelTabTpl))
+modelTabTpl = TabItem(group.model, group.model + " (" + group.count + " devices)", [modelTable])
+modelTable = Table([modelCol, countCol, versionCol, nameCol, ipCol, vendorCol], group.devices)
+modelCol = Col("Model", "model", {cell: @Render("v", "row", TextContent(group.model))})
+countCol = Col("Count", "count", {cell: @Render("v", "row", TextContent("" + group.count))})
+versionCol = Col("Version", "version")
+nameCol = Col("Device Name", "name")
+ipCol = Col("IP", "ip")
+vendorCol = Col("Vendor", "vendor")`;
+    const data = {
+      grouped_by_model: [
+        {
+          model: "Model-X",
+          count: 2,
+          devices: [{ model: "row-model", count: 999, version: "1.0" }],
+        },
+      ],
+    };
+    const parsed = parse(dsl, catalog, "Stack", { externalRefs: ["data"] });
+    const library = {
+      components: Object.fromEntries(
+        [...catalog.keys()].map((name) => [name, { props: { shape: {} } }]),
+      ),
+    } as unknown as Library;
+
+    expect(parsed.meta.errors).toEqual([]);
+    expect(parsed.meta.unresolved).toEqual([]);
+    if (!parsed.root) throw new Error("Expected a parsed root element");
+
+    const evaluated = evaluateElementProps(parsed.root, {
+      ctx: createContext({ data }),
+      library,
+      store: null,
+    });
+    const children = evaluated.props.children;
+    if (!Array.isArray(children) || !isElementNode(children[0])) {
+      throw new Error("Expected the root to contain Tabs");
+    }
+    const tabs = children[0];
+    const items = tabs.props.items;
+    if (!Array.isArray(items) || !isElementNode(items[0])) {
+      throw new Error("Expected Tabs to contain an evaluated TabItem");
+    }
+    const tab = items[0];
+    const content = tab.props.content;
+    if (!Array.isArray(content) || !isElementNode(content[0])) {
+      throw new Error("Expected TabItem content to contain a Table");
+    }
+    const table = content[0];
+    const columns = table.props.columns;
+    if (!Array.isArray(columns) || !isElementNode(columns[0]) || !isElementNode(columns[1])) {
+      throw new Error("Expected the Table to contain model and count columns");
+    }
+    const [modelColumn, countColumn] = columns;
+    const getCellRender = (column: typeof modelColumn) => {
+      const options = column.props.options;
+      if (options === null || typeof options !== "object" || !("cell" in options)) {
+        throw new Error("Expected Col options.cell");
+      }
+      const cell = options.cell;
+      if (!isASTNode(cell) || cell.k !== "Comp" || cell.name !== "Render") {
+        throw new Error("Expected Col options.cell to remain a deferred Render");
+      }
+      return cell;
+    };
+    const modelRender = getCellRender(modelColumn);
+    const countRender = getCellRender(countColumn);
+    const modelBody = modelRender.args.at(-1);
+    const countBody = countRender.args.at(-1);
+
+    expect(table.props.rows).toEqual(data.grouped_by_model[0].devices);
+    expect(modelRender.args.slice(0, -1)).toEqual([
+      { k: "Str", v: "v" },
+      { k: "Str", v: "row" },
+    ]);
+    expect(countRender.args.slice(0, -1)).toEqual([
+      { k: "Str", v: "v" },
+      { k: "Str", v: "row" },
+    ]);
+    expect(modelBody).toMatchObject({
+      k: "Comp",
+      name: "TextContent",
+      mappedProps: { text: { k: "Str", v: "Model-X" } },
+    });
+    expect(countBody).toMatchObject({
+      k: "Comp",
+      name: "TextContent",
+      mappedProps: {
+        text: {
+          k: "BinOp",
+          op: "+",
+          left: { k: "Str", v: "" },
+          right: { k: "Num", v: 2 },
+        },
+      },
     });
   });
 
