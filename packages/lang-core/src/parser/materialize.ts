@@ -7,16 +7,14 @@ import { isASTNode, isRuntimeExpr } from "./ast";
 import { isBuiltin, isReservedCall, LAZY_BUILTINS, RESERVED_CALLS } from "./builtins";
 import { isElementNode, type ParamMap, type ValidationError } from "./types";
 
-const UNRESOLVED_FREE_BINDING = Symbol("unresolved-free-binding");
+const UNRESOLVED_TEMPLATE_REF = Symbol("unresolved-template-ref");
 
-function containsUnresolvedFreeBinding(value: unknown): boolean {
-  if (value === UNRESOLVED_FREE_BINDING) return true;
+function containsUnresolvedTemplateRef(value: unknown): boolean {
+  if (value === UNRESOLVED_TEMPLATE_REF) return true;
   if (value == null || typeof value !== "object") return false;
-  if (Array.isArray(value)) return value.some(containsUnresolvedFreeBinding);
-  if (isElementNode(value)) {
-    return Object.values(value.props).some(containsUnresolvedFreeBinding);
-  }
-  return Object.values(value as Record<string, unknown>).some(containsUnresolvedFreeBinding);
+  if (Array.isArray(value)) return value.some(containsUnresolvedTemplateRef);
+  if (isElementNode(value)) return Object.values(value.props).some(containsUnresolvedTemplateRef);
+  return Object.values(value as Record<string, unknown>).some(containsUnresolvedTemplateRef);
 }
 
 /**
@@ -42,11 +40,8 @@ export interface MaterializeCtx {
   visited: Set<string>;
   partial: boolean;
   externalRefs?: Set<string>;
-  /** Statement selected as the materialization entry point. */
-  entryStatementId?: string;
   /** Tracks which statement is currently being materialized (for error attribution). */
   currentStatementId?: string;
-  /** Deduplicates hard template errors by owner, missing binding, and lexical scope. */
   unboundTemplateReferences?: Set<string>;
   /** Statement IDs not yet reached — delete as they're touched. Remaining = orphaned. */
   unreached?: Set<string>;
@@ -71,11 +66,7 @@ function resolveObjectSchema(schema: unknown): Record<string, unknown> | null {
     return direct as Record<string, unknown>;
   }
 
-  const variants = Array.isArray(direct.anyOf)
-    ? direct.anyOf
-    : Array.isArray(direct.oneOf)
-      ? direct.oneOf
-      : [];
+  const variants = Array.isArray(direct.anyOf) ? direct.anyOf : Array.isArray(direct.oneOf) ? direct.oneOf : [];
   for (const variant of variants) {
     const resolved = resolveObjectSchema(variant);
     if (resolved) return resolved;
@@ -105,14 +96,13 @@ function validateNestedObjectProps(
   for (const [key, nestedValue] of Object.entries(record)) {
     const nestedSchema = properties[key];
     if (!nestedSchema && !allowsAdditional) {
-      const isRemovedFormatProp =
-        componentName === "Col" && pathPrefix === "/options" && key === "format";
+      const isRemovedFormatProp = componentName === "Col" && pathPrefix === "/options" && key === "format";
       ctx.errors.push({
         code: "invalid-prop",
         component: componentName,
         path: `${pathPrefix}/${key}`,
         message: isRemovedFormatProp
-          ? "The `format` prop on Col options was removed. Use @FormatDate/@FormatBytes/@FormatNumber/@FormatPercent/@FormatDuration in an expression or @Render(...) instead."
+          ? 'The `format` prop on Col options was removed. Use @FormatDate/@FormatBytes/@FormatNumber/@FormatPercent/@FormatDuration in an expression or @Render(...) instead.'
           : `Unknown property "${key}" on ${componentName}${pathPrefix.replaceAll("/", ".")}`,
         statementId: ctx.currentStatementId,
       });
@@ -120,14 +110,7 @@ function validateNestedObjectProps(
     }
 
     if (nestedSchema) {
-      validateNestedObjectProps(
-        componentName,
-        paramName,
-        nestedValue,
-        nestedSchema,
-        ctx,
-        `${pathPrefix}/${key}`,
-      );
+      validateNestedObjectProps(componentName, paramName, nestedValue, nestedSchema, ctx, `${pathPrefix}/${key}`);
     }
   }
 }
@@ -169,16 +152,14 @@ function resolveRef(
       return { k: "RuntimeRef", n: name, refType: "data" };
     }
     if (frame.diagnosticOwner) {
-      const availableBindings = [...scopedRefs].sort();
-      const bindingSignature = availableBindings.join("\0");
-      const key = `${frame.diagnosticOwner}\0${name}\0${bindingSignature}`;
+      const key = `${frame.diagnosticOwner}\0${name}`;
       const reported = (ctx.unboundTemplateReferences ??= new Set());
       if (!reported.has(key)) {
         ctx.errors.push({
           code: "unbound-template-reference",
           component: frame.diagnosticOwner,
           path: "",
-          message: `Extracted template "${frame.diagnosticOwner}" references unbound binding "${name}"; available scoped bindings: ${availableBindings.length ? availableBindings.join(", ") : "(none)"}`,
+          message: `Extracted template "${frame.diagnosticOwner}" references unbound binding "${name}"`,
           statementId: frame.diagnosticOwner,
         });
         reported.add(key);
@@ -186,7 +167,7 @@ function resolveRef(
     }
     ctx.unres.push(name);
     if (mode === "expr") return { k: "Ph", n: name };
-    return frame.diagnosticOwner ? UNRESOLVED_FREE_BINDING : null;
+    return frame.diagnosticOwner ? UNRESOLVED_TEMPLATE_REF : null;
   }
   const target = ctx.syms.get(name)!;
   // A named lazy-template body starts a new lexical owner. Ordinary named
@@ -412,7 +393,6 @@ function materializeValueInternal(
         // Drop unresolved placeholders from arrays
         if (e.k === "Ph") continue;
         const value = materializeValueInternal(e, ctx, frame);
-        if (value === UNRESOLVED_FREE_BINDING) continue;
         // Drop null entries from component/ref resolution (incomplete props, unresolved refs, unknown components)
         if (value === null && (e.k === "Comp" || e.k === "Ref")) continue;
         items.push(value);
@@ -521,7 +501,7 @@ function materializeValueInternal(
         return null;
       }
 
-      if (Object.values(props).some(containsUnresolvedFreeBinding)) return null;
+      if (Object.values(props).some(containsUnresolvedTemplateRef)) return null;
 
       const hasDynamicProps = Object.values(props).some((v) => containsDynamicValue(v));
       return { type: "element", typeName: name, props, partial: ctx.partial, hasDynamicProps };

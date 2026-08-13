@@ -215,7 +215,6 @@ function buildResult(
     visited: new Set(),
     partial: wasIncomplete,
     externalRefs: options?.externalRefs?.length ? new Set(options.externalRefs) : undefined,
-    entryStatementId: entryId,
     currentStatementId: entryId,
     unboundTemplateReferences: new Set(),
     unreached,

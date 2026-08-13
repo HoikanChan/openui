@@ -193,7 +193,6 @@ The template may be inline or a named statement; a named template and its transi
 INLINE: \`Col("Actions", @Each(rows, "t", Button("Edit", Action([@Set($id, t.id)]))))\`
 EXTRACTED: \`items = @Each(rows, "t", itemTpl)\` then \`itemTpl = TextContent(t.name)\`.
 Do not use an extracted template outside a lexical scope that provides every iterator binding it references.
-While streaming, an unknown Open Template reference may produce a provisional diagnostic until a same-named statement arrives. At completion, every unresolved Open Template reference is a hard error.
 
 IMPORTANT @Render rule: Use \`@Render("v", expr)\` or \`@Render("v", "row", expr)\` as a prop value when a component expects a render function (for example, a table cell renderer). \`@Render\` is a deferred prop renderer, not a callable \`@Each\` template. \`@Render\` outside a prop context renders as null.`;
 }
