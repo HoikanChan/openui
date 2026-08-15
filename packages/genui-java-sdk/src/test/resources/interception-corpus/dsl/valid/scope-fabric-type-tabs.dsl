@@ -1,0 +1,8 @@
+root = Stack([fabricTabs])
+fabricTabs = Tabs(@Each(data.data, "fabric", fabricTabTpl))
+fabricTabTpl = TabItem(fabric.fabricName, fabric.fabricName, [fabricCard])
+fabricCard = Card([fabricHeader, typeTable])
+fabricHeader = CardHeader("Device Types in " + fabric.fabricName, "Total Types: " + fabric.totalTypes)
+typeTable = Table([typeCol, countCol], fabric.types)
+typeCol = Col("Type", "type")
+countCol = Col("Count", "count")

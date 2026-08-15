@@ -86,6 +86,266 @@
       "expectedCodes": []
     },
     {
+      "id": "valid-scope-syslog-steps",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-01",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-syslog-steps.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-online-device-info",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-02",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-online-device-info.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-grouped-model-tabs",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-03",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-grouped-model-tabs.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-peer-interface-info",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-04",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-peer-interface-info.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-interface-bandwidth-tabs",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-05",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-interface-bandwidth-tabs.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-bd-interface-mapping",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-06",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-bd-interface-mapping.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-top-cpu-table",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-08",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-top-cpu-table.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-device-cpu-kpis",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-09",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-device-cpu-kpis.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-device-cpu-detail",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-10",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-device-cpu-detail.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-port-summary-table",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-11",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-port-summary-table.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-nested-device-version-cards",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-12",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-nested-device-version-cards.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-device-type-tabs-render-each",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-13",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-device-type-tabs-render-each.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-nested-device-version-compact",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-14",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-nested-device-version-compact.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-link-optical-tabs",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-15",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-link-optical-tabs.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-cpu-data-availability",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-16",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-cpu-data-availability.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-device-monitoring-logs",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-17",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-device-monitoring-logs.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-fabric-device-inventory",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-18",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-fabric-device-inventory.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-no-data-device-list",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-19",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-no-data-device-list.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-client-experience-trend",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-20",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-client-experience-trend.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-fabric-type-tabs",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-21",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-fabric-type-tabs.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-fault-location-details",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-22",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-fault-location-details.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-fib-usage-table",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-23",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-fib-usage-table.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-ospf-neighbors",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-24",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-ospf-neighbors.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-congestion-diagnosis",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-25",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-congestion-diagnosis.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-interface-status-table",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-26",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-interface-status-table.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-scope-wireless-health-dimensions",
+      "source": "harvested",
+      "origin": "user-supplied attachment pasted-text.txt#dsl-27",
+      "expectedClass": "valid-scope-control",
+      "dslFile": "dsl/valid/scope-wireless-health-dimensions.dsl",
+      "contractFile": "openui/base-contract.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
       "id": "unknown-component-datatable",
       "source": "mutated",
       "expectedClass": "unknown-component",
@@ -422,6 +682,519 @@
       "expectedOutcome": "valid",
       "expectedCodes": [],
       "note": "prose around a fenced block is tolerated; contrast with prose-chatter (unfenced)"
+    },
+    {
+      "id": "valid-ch-bar-axis-labels",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ch-bar-axis-labels.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ch-bar-grouped",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ch-bar-grouped.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ch-bar-inline-series",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ch-bar-inline-series.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ch-bar-no-axis",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ch-bar-no-axis.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ch-bar-raw-array",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ch-bar-raw-array.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ch-bar-stacked",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ch-bar-stacked.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ch-each-field-map",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ch-each-field-map.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ch-line-each-series",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ch-line-each-series.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ch-line-multi-series",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ch-line-multi-series.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ch-line-smooth-single",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ch-line-smooth-single.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ch-multi-chart-stack",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ch-multi-chart-stack.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ch-pie-basic",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ch-pie-basic.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ch-pie-donut",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ch-pie-donut.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-aggregates",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-aggregates.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-comparisons-logical",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-comparisons-logical.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-each-list",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-each-list.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-fenced-block",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-fenced-block.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-fenced-with-prose",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-fenced-with-prose.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-format-dates",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-format-dates.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-format-num-pct-bytes-dur",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-format-num-pct-bytes-dur.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-literals-arithmetic",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-literals-arithmetic.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-nullish-fallbacks",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-nullish-fallbacks.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-numeric-builtins",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-numeric-builtins.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-object-entries",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-object-entries.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-render-cell",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-render-cell.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-render-standalone",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-render-standalone.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-single-mixed-quotes",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-single-mixed-quotes.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-sort-filter",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-sort-filter.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-string-concat",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-string-concat.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-switch-mapping",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-switch-mapping.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-ex-ternary-chain",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/ex-ternary-chain.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-card-grid",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-card-grid.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-card-header-content",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-card-header-content.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-card-variant-size",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-card-variant-size.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-list-component-refs",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-list-component-refs.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-list-each-data",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-list-each-data.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-list-strings",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-list-strings.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-stack-multi-children",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-stack-multi-children.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-stack-nested",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-stack-nested.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-stack-row-alignment",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-stack-row-alignment.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-stack-single-child",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-stack-single-child.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-tabs-plain",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-tabs-plain.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-tabs-styled",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-tabs-styled.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-textcontent-expressions",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-textcontent-expressions.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-lc-textcontent-variants",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/lc-textcontent-variants.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-tb-basic-plain",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/tb-basic-plain.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-tb-cell-single-binder",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/tb-cell-single-binder.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-tb-cell-two-binders",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/tb-cell-two-binders.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-tb-format-bytes-percent-duration",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/tb-format-bytes-percent-duration.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-tb-format-number-date",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/tb-format-number-date.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-tb-inline-columns",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/tb-inline-columns.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-tb-many-columns",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/tb-many-columns.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-tb-root-direct-table",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/tb-root-direct-table.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-tb-sortable-cols",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/tb-sortable-cols.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-tb-stack-title",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/tb-stack-title.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-tb-switch-status",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/tb-switch-status.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
+    },
+    {
+      "id": "valid-tb-ternary-threshold",
+      "source": "authored",
+      "expectedClass": "valid-control",
+      "dslFile": "dsl/valid/tb-ternary-threshold.dsl",
+      "contractFile": "contracts/openui-shared.json",
+      "expectedOutcome": "valid",
+      "expectedCodes": []
     },
     {
       "id": "js-method-call-tostring",

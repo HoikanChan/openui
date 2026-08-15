@@ -18,7 +18,7 @@ class BaseContractFixtureTest {
     void loadsGeneratedDslEngineBaseContractResource() {
         GenerationContract contract = GenerationContractLoader.loadDefault();
 
-        assertEquals("@cloudsop/openui-react-ui-dsl@0.1.0", contract.contractVersion());
+        assertEquals("@cloudsop/openui-react-ui-dsl@0.1.11", contract.contractVersion());
         assertEquals("Stack", contract.root());
         assertTrue(contract.components().containsKey("Stack"));
         assertFalse(contract.components().get("Stack").propsSchema().isEmpty());

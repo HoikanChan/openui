@@ -1,0 +1,6 @@
+root = Stack([title, subtitle, revenueTable], "vertical", 12)
+title = TextContent("Quarterly Revenue", "large")
+subtitle = TextContent("All figures in USD", "small")
+revenueTable = Table([quarterCol, revenueCol], data.quarters)
+quarterCol = Col("Quarter", "quarter")
+revenueCol = Col("Revenue", "revenue", {cell: @Render("v", TextContent(@FormatNumber(v, 0, "en-US")))})

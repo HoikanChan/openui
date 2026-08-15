@@ -1,0 +1,5 @@
+root = Stack([cardRow], "column", "l", "start", "start")
+cardRow = Stack([usersCard, revenueCard, churnCard], "row", "m", "start", "start")
+usersCard = Card([CardHeader("Active Users"), TextContent(@FormatNumber(data.kpi.users, 0, "en-US"), "large")], "card", "standard")
+revenueCard = Card([CardHeader("Revenue"), TextContent("$" + @FormatNumber(data.kpi.revenue, 0, "en-US"), "large")], "card", "standard")
+churnCard = Card([CardHeader("Churn"), TextContent(@FormatPercent(data.kpi.churn, 1), "large")], "card", "standard")

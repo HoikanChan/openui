@@ -1,0 +1,25 @@
+root = Stack([titleCard, summaryRow, detailsCard, noDataCard], "column", "m")
+
+titleCard = Card([titleHeader], "card")
+titleHeader = CardHeader(data.title, "查询时间范围: " + data.summary.queryTimeRange)
+
+summaryRow = Stack([totalCard, withDataCard, avgCpuCard], "row", "m", "stretch")
+totalCard = Card([TextContent("设备总数", "small"), TextContent("" + data.summary.deviceTotal, "large-heavy")])
+withDataCard = Card([TextContent("有数据设备", "small"), TextContent("" + data.summary.deviceWithData, "large-heavy")])
+avgCpuCard = Card([TextContent("平均CPU利用率", "small"), TextContent(data.summary.avgCpuUsage, "large-heavy")])
+
+detailsCard = Card([detailsHeader, detailsTable], "card")
+detailsHeader = CardHeader("设备详情", "有CPU指标数据的设备列表")
+detailsTable = Table([nameCol, ipCol, fabricCol, cpuCol], data.deviceDetails)
+nameCol = Col("设备名称", "neName")
+ipCol = Col("IP地址", "neIp")
+fabricCol = Col("Fabric", "fabricName")
+cpuCol = Col("CPU利用率", "cpuUsage", {cell: @Render("v", TextContent(v, "default"))})
+
+noDataCard = Card([noDataHeader, noDataTable], "card")
+noDataHeader = CardHeader("无数据设备", "未获取到CPU指标数据的设备")
+noDataTable = Table([noNameCol, noIpCol, noFabricCol, reasonCol], data.deviceWithoutData)
+noNameCol = Col("设备名称", "neName")
+noIpCol = Col("IP地址", "neIp")
+noFabricCol = Col("Fabric", "fabricName")
+reasonCol = Col("原因", "reason", {cell: @Render("v", Tag(v, "warning"))})

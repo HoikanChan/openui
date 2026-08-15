@@ -64,6 +64,10 @@ public final class ReaskPromptBuilder {
 
     private static final Pattern COMPONENT_CALL = Pattern.compile("(?<![@A-Za-z0-9_])([A-Z][A-Za-z0-9_]*)\\s*\\(");
 
+    /** `@Each(...)` whose template body carries a `name = value` statement (a JS block, not one expression). */
+    private static final Pattern EACH_BLOCK_STATEMENT = Pattern
+            .compile("@Each\\s*\\([\\s\\S]*\\{[\\s\\S]*[\\r\\n]\\s*[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*[^=]");
+
     private ReaskPromptBuilder() {
     }
 
@@ -225,38 +229,46 @@ public final class ReaskPromptBuilder {
     }
 
     /**
-     * 定向改写示例。回放实验（V1 14/26 → V2 ~16/26）表明：在通用契约之上，针对无效语句里检出的具体 JavaScript
-     * 惯性泄漏给出 WRONG→RIGHT 对照，能稳定再修好 2~3 例。仅在检出对应模式时输出，避免噪声淹没提示。
+     * 定向改写。回放实验（V1 14/26 → V2 ~16/26）表明：针对无效语句里检出的 JavaScript 惯性泄漏给出改写指引能稳定再
+     * 修好 2~3 例；但 V3 证明堆砌冗长示例反而降分。故本节把每种泄漏压成单行 {@code WRONG → RIGHT} 映射，且只在真正
+     * 检出该模式时输出——这些模式（{@code .map}/JS 方法/{@code ===}/{@code .includes}/{@code @Each} 块语句/编造组件）
+     * 本质都是同一类“JS 习惯”，用一张按需填充的紧凑清单覆盖，而非逐点堆例。
      */
     private static void appendTargetedRewrites(StringBuilder sb, String invalidStatement, List<ValidationIssue> issues) {
         if (invalidStatement == null) {
             invalidStatement = "";
         }
-        List<String> blocks = new ArrayList<>();
+        List<String> rules = new ArrayList<>();
         if (invalidStatement.contains("=>") || invalidStatement.matches("(?s).*\\.map\\s*\\(.*")) {
-            blocks.add("JavaScript array methods are INVALID. Use array pluck or @Each:\n"
-                    + "WRONG: series = data.items.baseline.map(item => item.value)\n"
-                    + "RIGHT: series = data.items.baseline.value\n"
-                    + "RIGHT: series = @Each(data.items.baseline, \"item\", item.value)");
+            rules.add("Array `arr.map(x => x.f)` → pluck `arr.f`, or `@Each(arr, \"x\", x.f)`.");
         }
         if (invalidStatement.matches("(?s).*\\.(toString|toFixed|join)\\s*\\(.*")) {
-            blocks.add("JavaScript string/number methods are INVALID. Use concatenation or builtins:\n"
-                    + "WRONG: label = value.toString()   RIGHT: label = \"\" + value\n"
-                    + "WRONG: pct = value.toFixed(1)     RIGHT: pct = @FormatNumber(value, 1)");
+            rules.add("`x.toString()` → `\"\" + x`; `x.toFixed(1)` → `@FormatNumber(x, 1)`.");
+        }
+        if (invalidStatement.contains("===") || invalidStatement.contains("!==")) {
+            rules.add("Strict equality `===` / `!==` → `==` / `!=`.");
+        }
+        if (invalidStatement.matches("(?s).*\\.includes\\s*\\(.*")) {
+            rules.add("`arr.includes(x)` → spell out membership: `x == a || x == b`.");
+        }
+        if (EACH_BLOCK_STATEMENT.matcher(invalidStatement).find()) {
+            rules.add("`@Each` template is ONE expression, not a JS block: `@Each(items, \"d\", "
+                    + "{id: d.id, name: d.name})` — inline logic, no `x = y` statements inside.");
         }
         boolean unknownComponent = issues != null && issues.stream().anyMatch(
                 i -> i != null && "unknown-component".equals(i.code()));
         if (unknownComponent) {
-            blocks.add("Only components listed under the signatures section exist. Never invent helpers "
-                    + "(e.g. a lowercase cardHeader(...)); inline the expression or use a defined component.");
+            rules.add("Only components in the signatures section exist — never invent helpers "
+                    + "(e.g. lowercase `cardHeader(...)`); inline the expression or reuse a defined component.");
         }
-        if (blocks.isEmpty()) {
+        if (rules.isEmpty()) {
             return;
         }
-        sb.append("## Targeted rewrite examples\n");
-        for (String block : blocks) {
-            sb.append(block).append("\n\n");
+        sb.append("## Rewrite these JavaScript patterns (openui-lang has no JS methods/operators)\n");
+        for (String rule : rules) {
+            sb.append("- ").append(rule).append('\n');
         }
+        sb.append('\n');
     }
 
     private static void appendCompactSyntaxRules(StringBuilder sb) {

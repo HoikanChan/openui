@@ -1,0 +1,6 @@
+root = Stack([fileTable])
+fileTable = Table([nameCol, sizeCol, usageCol, elapsedCol], data.files)
+nameCol = Col("File", "name")
+sizeCol = Col("Size", "size", {cell: @Render("v", TextContent(@FormatBytes(v)))})
+usageCol = Col("Usage", "usage", {cell: @Render("v", TextContent(@FormatPercent(v)))})
+elapsedCol = Col("Elapsed", "elapsed", {cell: @Render("v", TextContent(@FormatDuration(v)))})

@@ -1,0 +1,8 @@
+root = Stack([employeeTable])
+employeeTable = Table([idCol, nameCol, deptCol, salaryCol, joinedCol, ratioCol], data.employees)
+idCol = Col("ID", "id")
+nameCol = Col("Name", "name", {sortable: true})
+deptCol = Col("Department", "department")
+salaryCol = Col("Salary", "salary", {sortable: true, cell: @Render("v", TextContent(@FormatNumber(v, 0, "en-US") + " USD"))})
+joinedCol = Col("Joined", "joinedAt", {cell: @Render("v", TextContent(@FormatDate(v, "date")))})
+ratioCol = Col("Bonus", "bonusRatio", {cell: @Render("v", TextContent(@FormatPercent(v)))})

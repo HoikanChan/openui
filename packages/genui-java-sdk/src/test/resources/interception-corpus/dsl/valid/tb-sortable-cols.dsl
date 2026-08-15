@@ -1,0 +1,5 @@
+root = Stack([usersTable])
+usersTable = Table([nameCol, emailCol, ageCol], data.users)
+nameCol = Col("Name", "name", {sortable: true})
+emailCol = Col("Email", "email")
+ageCol = Col("Age", "age", {sortable: true})

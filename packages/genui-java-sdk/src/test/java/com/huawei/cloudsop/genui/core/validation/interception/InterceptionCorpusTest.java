@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
+import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
@@ -110,6 +111,9 @@ class InterceptionCorpusTest {
     }
 
     static GenerationContract loadContract(String contractFile) {
+        if ("openui/base-contract.json".equals(contractFile)) {
+            return GenerationContractLoader.loadDefault();
+        }
         Map<String, Object> raw = Json.asObject(Json.parse(read(ROOT + contractFile)), contractFile);
         Map<String, Object> components = Json.asObject(raw.get("components"), contractFile + ".components");
         LinkedHashMap<String, ComponentPromptSpec> specs = new LinkedHashMap<>();

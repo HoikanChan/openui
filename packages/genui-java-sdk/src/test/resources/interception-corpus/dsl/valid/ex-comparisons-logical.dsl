@@ -1,0 +1,5 @@
+root = Stack([statusText, rangeText, limitText, flagText])
+statusText = TextContent(data.score >= 90 && data.active ? "Excellent" : "Needs review")
+rangeText = TextContent(data.temp < 0 || data.temp > 100 ? "Out of range" : "Normal")
+limitText = TextContent(data.usage <= data.limit ? "within limit" : "over limit")
+flagText = TextContent(data.a == data.b ? "match" : (data.a != data.c ? "partial" : "none"))

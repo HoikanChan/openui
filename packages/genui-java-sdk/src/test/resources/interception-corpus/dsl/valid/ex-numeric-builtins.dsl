@@ -1,0 +1,5 @@
+root = Stack([rounded, absolute, floored, ceiled])
+rounded = TextContent("Rounded: " + @Round(data.value))
+absolute = TextContent("Abs: " + @Abs(data.delta))
+floored = TextContent("Floor: " + @Floor(data.value))
+ceiled = TextContent("Ceil: " + @Ceil(data.value))

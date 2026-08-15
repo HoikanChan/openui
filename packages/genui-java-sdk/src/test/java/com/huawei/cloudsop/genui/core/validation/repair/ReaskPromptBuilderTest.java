@@ -124,6 +124,36 @@ class ReaskPromptBuilderTest {
     }
 
     @Test
+    void targetedRewritesFireOnlyForJavaScriptPatternsDetectedInTheStatement() {
+        // tc-014-roam-quality: one statement leaks both `===` and `.includes(` (JS-habit class).
+        ValidationIssue syntax = new ValidationIssue("syntax-unexpected-token", ValidationSeverity.ERROR, "syntax",
+                "Unexpected token EQUALS", "valueCol", null, null, 4, 40, null, false);
+        String stmt = "valueCol = Col(\"数值\", \"value\", {cell: @Render(\"v\", \"row\", "
+                + "TextContent(row.value + ([\"a\", \"b\"].includes(row.key) ? \"%\" : "
+                + "(row.key === \"avg_roam_time\" ? \"ms\" : \"\"))))})";
+        String text = join(ReaskPromptBuilder.buildRepairAndContinue("x", "root = Stack([valueCol])", stmt,
+                List.of(syntax), null));
+
+        assertTrue(text.contains("`===` / `!==` → `==` / `!=`"), "strict-equality rewrite present");
+        assertTrue(text.contains("spell out membership"), "includes membership rewrite present");
+        assertFalse(text.contains("@FormatNumber"), ".toString/.toFixed rewrite must not fire when absent");
+    }
+
+    @Test
+    void targetedRewritesFlagEachBlockStatementButNotPlainEach() {
+        // @Each template written as a JS block (name = value statements) → mode 6 in the error catalog.
+        String block = "rows = @Each(data.devices, \"d\", {\n  id = d.id\n  name = d.name\n})";
+        String textBlock = join(ReaskPromptBuilder.buildRepairAndContinue("x", "root = Stack([])", block,
+                List.of(), null));
+        assertTrue(textBlock.contains("`@Each` template is ONE expression"), "block-statement @Each flagged");
+
+        // A valid single-expression @Each must NOT trip the block detector.
+        String ok = "rows = @Each(data.devices, \"d\", {id: d.id, name: d.name})";
+        String textOk = join(ReaskPromptBuilder.buildRepairAndContinue("x", "root = Stack([])", ok, List.of(), null));
+        assertFalse(textOk.contains("`@Each` template is ONE expression"), "expression @Each not flagged");
+    }
+
+    @Test
     void twoMessagesSystemThenUser() {
         List<ChatMessage> messages = ReaskPromptBuilder.buildFullRepair("x", "root = Stack([])", List.of(), null);
         assertEquals(2, messages.size());

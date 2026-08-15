@@ -1,0 +1,8 @@
+root = Stack([firstText, lastText, filteredTable])
+sortedValues = @Sort(data.values)
+firstText = TextContent("First value: " + @First(sortedValues))
+lastText = TextContent("Last value: " + @Last(sortedValues))
+activeRows = @Filter(data.rows)
+filteredTable = Table([nameCol, scoreCol], activeRows)
+nameCol = Col("Name", "name")
+scoreCol = Col("Score", "score")

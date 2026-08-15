@@ -1,0 +1,6 @@
+root = Stack([txnTable])
+txnTable = Table([refCol, amountCol, createdCol, settledCol], data.transactions)
+refCol = Col("Reference", "ref")
+amountCol = Col("Amount", "amount", {cell: @Render("v", TextContent(@FormatNumber(v, 2, "en-US")))})
+createdCol = Col("Created", "createdAt", {cell: @Render("v", TextContent(@FormatDate(v, "date")))})
+settledCol = Col("Settled", "settledAt", {cell: @Render("v", TextContent(@FormatDate(v, "dateTime")))})
