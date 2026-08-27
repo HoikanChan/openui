@@ -1,5 +1,5 @@
 {
-  "contractVersion": "@cloudsop/openui-react-ui-dsl@0.1.11",
+  "contractVersion": "@cloudsop/openui-react-ui-dsl@0.1.0",
   "root": "Stack",
   "components": {
     "Stack": {
@@ -334,7 +334,14 @@
           "tags": {
             "type": "array",
             "items": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ]
             }
           }
         },
@@ -522,7 +529,7 @@
       }
     },
     "DescField": {
-      "description": "Declarative descriptions field with label, direct value expression, and optional span. Must be used inside Descriptions; when orphaned, auto-renders as a single-field Descriptions.",
+      "description": "Declarative descriptions field with label, direct value expression, and optional span. Must be used inside Descriptions.",
       "propsSchema": {
         "type": "object",
         "properties": {
@@ -814,9 +821,6 @@
           "label": {
             "type": "string"
           },
-          "description": {
-            "type": "string"
-          },
           "defaultChecked": {
             "type": "boolean"
           }
@@ -1071,10 +1075,20 @@
         "type": "object",
         "properties": {
           "labels": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            ]
           },
           "series": {
             "type": "array",
@@ -1109,10 +1123,20 @@
         "type": "object",
         "properties": {
           "labels": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            ]
           },
           "series": {
             "type": "array",
@@ -1183,10 +1207,20 @@
         "type": "object",
         "properties": {
           "labels": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            ]
           },
           "series": {
             "type": "array",
@@ -1253,7 +1287,7 @@
       }
     },
     "ScatterChart": {
-      "description": "Scatter points; use for correlations like latency vs packet loss or throughput vs error rate. Pass xType='time' when X values are epoch millisecond timestamps to enable automatic date axis formatting.",
+      "description": "Scatter points; use for correlations like latency vs packet loss or throughput vs error rate. When X values are epoch timestamps, pass xType='time' for automatic date formatting; otherwise pass raw numbers and xType defaults to 'value'.",
       "propsSchema": {
         "type": "object",
         "properties": {
@@ -1481,9 +1515,10 @@
       "notes": [
         "- Cell renderer: `Col(title, field, {cell: @Render(\"v\", expr)})` — `v` is the cell value.",
         "- When the renderer needs other row fields, declare the second binder: `@Render(\"v\", \"row\", expr)`. Keep all logic that combines `v` and `row` inside that single template — do not reference `row` unless you declared it.",
-        "- Do not add a chart that simply re-pairs record names with one numeric field from a Table. Use charts when the data is chart-ready or a trend/distribution is the user's request.",
-        "- For nested arrays, use Table expandRow when there are too many outer items for Tabs.",
-        "- When a Table field is a string array, render it with `TagBlock` instead of displaying the raw array or joining it into plain text."
+        "- Prefer displaying source values as-is; do not add unnecessary transformations, classifications, or semantic styling.",
+        "- Numeric cells: format and display the value directly by default. NEVER branch on `v` (e.g. `v > 0`, `v < 0`) for Tag/color/status styling unless explicitly requested.",
+        "- Object maps: `@ObjectEntries(obj)` → `{key, value}[]` rows. The key becomes field `\"key\"`, the value becomes field `\"value\"`. In Col: `Col(\"ID\", \"key\")` for the key, `Col(\"Status\", \"value.status\")` for nested values. Original field names like `\"id\"` or `\"status\"` do NOT exist after @ObjectEntries — always use `\"key\"` and `\"value.xxx\"`. Do NOT `@Each` on objects.",
+        "- ALWAYS render categorical/enum-valued columns (fields with a small fixed set of discrete text values) with @Switch + Tag, mapping each value to a colored Tag. NEVER render such columns as plain text. Example: `@Switch(v, {\"critical\": Tag(\"严重\", \"danger\"), \"major\": Tag(\"主要\", \"warning\"), \"minor\": Tag(\"一般\", \"info\")}, Tag(\"Unknown\"))`."
       ]
     },
     {
@@ -1494,10 +1529,7 @@
       ],
       "notes": [
         "- Prefer Descriptions for single-record detail views; reserve Table for arrays of records.",
-        "- DescField ONLY lives inside Descriptions — never use DescField as a direct child of Card, Stack, or any other component.",
-        "- To show multiple field groups, use separate Descriptions calls side-by-side: Descriptions([field1, field2], \"Group A\", null, 2) + Descriptions([field3, field4], \"Group B\", null, 2).",
-        "- When Descriptions will contain 6+ fields, set `columns=2` to avoid crowding (long device names, ports, IPs need horizontal space).",
-        "- The `format` prop on `DescField` was removed. Wrap values with `@FormatX(...)` directly."
+        "- To show multiple field groups, use separate Descriptions calls side-by-side: Stack([descA, descB], \"row\")"
       ]
     },
     {
@@ -1512,7 +1544,9 @@
       ],
       "notes": [
         "- Only use chart components when the data model exposes chart-ready fields matching the signature. For raw row records, prefer Table or Descriptions.",
-        "- For positional tuple arrays like `[timestamp, value]`, project the index first: `@Each(data.samples, \"item\", @FormatDate(item[0], \"dateTime\"))` for labels, `@Each(data.samples, \"item\", item[1])` for values.",
+        "- LineChart, BarChart, AreaChart accept number[] (epoch timestamps) as labels. When labels are timestamps, pass the RAW timestamp array directly — the chart auto-formats them (same-day → time, cross-day → date). NEVER wrap timestamp labels with @FormatDate; @FormatDate is for Table cells and Descriptions only.",
+        "- Charts always use a category (equal-spacing) axis. Do NOT pass xType or any axis-type parameter — it is not supported.",
+        "- For positional tuple arrays like [timestamp, value], project the index first: @Each(data.samples, \"item\", item[0]) for labels, @Each(data.samples, \"item\", item[1]) for values. Pass the raw timestamp array — do not @FormatDate the labels.",
         "- When a multi-series LineChart is built by partitioning a flat array (e.g. `@Filter` over an entity field), derive the labels axis from one of the partitioned slices, NOT the unpartitioned source — the unpartitioned array has length N × entityCount while each filtered series has only N values, which leaves the right side blank.",
         "- If per-entity timestamps do not align across slices, use ScatterChart with Point pairs (or one LineChart per entity) so each series carries its own X axis.",
         "- Do not invent labels, series, categories, or missing time points just to make a chart render."
@@ -1535,7 +1569,7 @@
         "Point"
       ],
       "notes": [
-        "- When X values are epoch millisecond timestamps, pass `xType='time'` (4th arg) so the X axis is formatted as dates instead of raw numbers."
+        "- When X values are epoch timestamps, pass them as raw numbers — the chart will format them automatically. Do NOT use @FormatDate on coordinate values."
       ]
     },
     {
@@ -1581,12 +1615,13 @@
   ],
   "tools": [],
   "examples": [
-    "root = Stack([kpiRow, tableCard])\nkpiRow = Stack([countKpi, avgKpi, activeKpi], \"row\", \"m\", \"stretch\", \"start\", true)\ncountKpi = Card([TextContent(\"Total Employees\", \"small\"), TextContent(\"\" + @Count(data.employees), \"large-heavy\")])\navgKpi = Card([TextContent(\"Avg Salary\", \"small\"), TextContent(\"\" + @FormatNumber(@Avg(data.employees.salary), 1), \"large-heavy\")])\nactiveKpi = Card([TextContent(\"Active\", \"small\"), TextContent(\"\" + @Count(@Filter(data.employees, \"active\", \"==\", 1)), \"large-heavy\")])\ntableCard = Card([tableHeader, employeeTable])\ntableHeader = CardHeader(\"Employee Directory\", \"Salary, status and 7-day trend\")\nemployeeTable = Table([nameCol, salaryCol, joinedCol, statusCol, perfCol], data.employees)\nnameCol = Col(\"Name\", \"name\", {cell: @Render(\"v\", \"row\", Link(\"http://localhost:5173/\" + row.id, v))})\nsalaryCol = Col(\"Salary\", \"salary\", {cell: @Render(\"v\", TextContent(@FormatNumber(v, 1)))})\njoinedCol = Col(\"Joined\", \"joinedAt\", {cell: @Render(\"v\", TextContent(@FormatDate(v, \"date\")))})\nstatusCol = Col(\"Status\", \"active\", {cell: @Render(\"v\", @Switch(v, {\"1\": Tag(\"Active\", \"success\"), \"0\": Tag(\"Inactive\", \"danger\")}, Tag(\"Unknown\")))})\nperfCol = Col(\"Performance\", \"perfRatio\", {cell: @Render(\"v\", TextContent(@FormatPercent(v, 1)))})\nskillsCol = Col(\"Skills\", \"skills\", {cell: @Render(\"v\", @Count(v) > 0 ? TagBlock(v) : TextContent(\"No data\"))})",
-    "root = Stack([kpiCard])\nkpiCard = Card([kpiHeader, kpiChart])\nkpiHeader = CardHeader(\"Latency Trend\", \"Hourly samples, last 6 hours\")\ntimestampLabels = @Each(data.samples, \"item\", @FormatDate(item[0], \"dateTime\"))\nsampleValues = @Each(data.samples, \"item\", item[1])\nkpiChart = LineChart(timestampLabels, [Series(\"Latency\", sampleValues)], \"smooth\", \"Time\", \"ms\")",
-    "root = Stack([trendCard])\ntrendCard = Card([trendHeader, trendChart])\ntrendHeader = CardHeader(\"Group Comparison\", \"Value trend by group\")\ngroupASlice = @Filter(data.records, \"groupKey\", \"==\", \"group-a\")\ngroupBSlice = @Filter(data.records, \"groupKey\", \"==\", \"group-b\")\ntrendLabels = @FormatDate(groupASlice.timestamp, \"dateTime\")\ngroupASeries = Series(\"Group A\", groupASlice.value)\ngroupBSeries = Series(\"Group B\", groupBSlice.value)\ntrendChart = LineChart(trendLabels, [groupASeries, groupBSeries], \"smooth\", \"Time\", \"Value\")",
+    "root = Stack([kpiRow, tableCard])\nkpiRow = Stack([countKpi, avgKpi, activeKpi], \"row\", \"m\", \"stretch\", \"start\", true)\ncountKpi = Card([TextContent(\"Total Employees\", \"small\"), TextContent(\"\" + @Count(data.employees), \"large-heavy\")])\navgKpi = Card([TextContent(\"Avg Salary\", \"small\"), TextContent(\"\" + @FormatNumber(@Avg(data.employees.salary), 1), \"large-heavy\")])\nactiveKpi = Card([TextContent(\"Active\", \"small\"), TextContent(\"\" + @Count(@Filter(data.employees, \"active\", \"==\", 1)), \"large-heavy\")])\ntableCard = Card([tableHeader, employeeTable])\ntableHeader = CardHeader(\"Employee Directory\", \"Salary, status and 7-day trend\")\nemployeeTable = Table([nameCol, salaryCol, joinedCol, statusCol, perfCol, skillsCol], data.employees)\nnameCol = Col(\"Name\", \"name\", {cell: @Render(\"v\", \"row\", Link(\"http://localhost:5173/\" + row.id, v))})\nsalaryCol = Col(\"Salary\", \"salary\", {cell: @Render(\"v\", TextContent(@FormatNumber(v, 1)))})\njoinedCol = Col(\"Joined\", \"joinedAt\", {cell: @Render(\"v\", TextContent(@FormatDate(v, \"date\")))})\nstatusCol = Col(\"Status\", \"active\", {cell: @Render(\"v\", @Switch(v, {\"1\": Tag(\"Active\", \"success\"), \"0\": Tag(\"Inactive\", \"danger\")}, Tag(\"Unknown\")))})\nperfCol = Col(\"Performance\", \"perfRatio\", {cell: @Render(\"v\", TextContent(@FormatPercent(v, 1)))})",
+    "root = Stack([kpiCard])\nkpiCard = Card([kpiHeader, kpiChart])\nkpiHeader = CardHeader(\"Latency Trend\", \"Hourly samples, last 6 hours\")\ntimestampLabels = @Each(data.samples, \"item\", item[0])\nsampleValues = @Each(data.samples, \"item\", item[1])\nkpiChart = LineChart(timestampLabels, [Series(\"Latency\", sampleValues)], \"smooth\", \"Time\", \"ms\")",
+    "root = Stack([trendCard])\ntrendCard = Card([trendHeader, trendChart])\ntrendHeader = CardHeader(\"Group Comparison\", \"Value trend by group\")\ngroupASlice = @Filter(data.records, \"groupKey\", \"==\", \"group-a\")\ngroupBSlice = @Filter(data.records, \"groupKey\", \"==\", \"group-b\")\ntrendLabels = groupASlice.timestamp\ngroupASeries = Series(\"Group A\", groupASlice.value)\ngroupBSeries = Series(\"Group B\", groupBSlice.value)\ntrendChart = LineChart(trendLabels, [groupASeries, groupBSeries], \"smooth\", \"Time\", \"Value\")",
     "root = Stack([detail])\ndetail = Descriptions([DescField(\"Name\", data.user.name ?? \"No data\"), DescField(\"Region\", data.user.region ?? \"No data\")], \"Profile\")",
-    "root = Stack([reportHeader, dimCards])\nreportHeader = CardHeader(\"网络健康报告\", \"综合健康分: \" + data.healthScore)\ndimCards = Stack(@Each(data.data, \"dim\", dimTpl))\ndimTpl = Card([CardHeader(dim.key, \"得分: \" + dim.value.rootValue + \" · 排名: \" + dim.value.rank), LineChart(@Each(dim.value.baseline, \"b\", @FormatDate(b.timestamp, \"date\")), [Series(\"Baseline\", dim.value.baseline.value), Series(\"Essential\", dim.value.essential.value)], \"smooth\", \"时间\", \"数值\"), Stack([Table([Col(\"区域\", \"regionName\"), Col(\"数值\", \"value\"), Col(\"层级\", \"level\")], dim.value.rankList), Table([Col(\"子指标\", \"key\"), Col(\"数值\", \"value\")], dim.value.subValues)], \"row\", \"m\")])",
-    " # Nested Array Example\nroot = Stack([summaryCard, modelTabs])\nmodelTabs = Tabs(@Each(data.grouped_by_model, \"group\", modelTabTpl))\nmodelTabTpl = TabItem(group.model, group.model + \" (\" + group.count + \")\",[table])\ntable = Table([Col(\"Device Name\", \"name\"), Col(\"IP\", \"ip\"), Col(\"Version\", \"version\"), Col(\"Vendor\", \"vendor\")], group.devices)"
+    "root = Stack([reportHeader, dimCards])\nreportHeader = CardHeader(\"网络健康报告\", \"综合健康分: \" + data.healthScore)\ndimCards = Stack(@Each(data.data, \"dim\", dimTpl))\ndimTpl = Card([CardHeader(dim.key, \"得分: \" + dim.value.rootValue + \" · 排名: \" + dim.value.rank), LineChart(@Each(dim.value.baseline, \"b\", b.timestamp), [Series(\"Baseline\", dim.value.baseline.value), Series(\"Essential\", dim.value.essential.value)], \"smooth\", \"时间\", \"数值\"), Stack([Table([Col(\"区域\", \"regionName\"), Col(\"数值\", \"value\"), Col(\"层级\", \"level\")], dim.value.rankList), Table([Col(\"子指标\", \"key\"), Col(\"数值\", \"value\")], dim.value.subValues)], \"row\", \"m\")])",
+    " # Nested Array Example\nroot = Stack([summaryCard, modelTabs])\nmodelTabs = Tabs(@Each(data.grouped_by_model, \"group\", modelTabTpl))\nmodelTabTpl = TabItem(group.model, group.model + \" (\" + group.count + \")\",[table])\ntable = Table([Col(\"Device Name\", \"name\"), Col(\"IP\", \"ip\"), Col(\"Version\", \"version\"), Col(\"Vendor\", \"vendor\")], group.devices)",
+    "root = Stack([deviceCard, regionCard])\ndeviceCard = Card([deviceHeader, deviceTable])\ndeviceHeader = CardHeader(\"Devices by ID\", \"Status of managed devices\")\ndeviceRows = @ObjectEntries(data.devicesById)\ndeviceTable = Table([Col(\"Device\", \"key\"), Col(\"Status\", \"value.status\")], deviceRows)\nregionCard = Card([regionHeader, regionChart])\nregionHeader = CardHeader(\"Regions\", \"Device count by region\")\nregionChart = PieChart(@ObjectKeys(data.devicesByRegion), @Each(@ObjectEntries(data.devicesByRegion), \"entry\", entry.value))"
   ],
   "additionalRules": [
     "JS globals do not exist: String(), Number(), Date(), Math.*, JSON.* are parse errors. `+` auto-converts: write `\"Total: \" + data.count`, never `String(...)`.",
@@ -1594,7 +1629,10 @@
     "Use openui-lang concatenation with `+` for display strings; do not use JavaScript conversion helpers.",
     "Never hardcode data values from the data model — always reference fields via data paths or derived variables. Accessing a field on an array extracts that field from every element: `filteredRows.fieldName` returns an array of values, useful for building Series.",
     "When host data is provided, never invent, backfill, or synthesize labels, rows, metrics, statuses, timestamps, percentages, or records that are absent. For null-dominant records, preserve real non-null fields and show missing ones with `?? \"No data\"` (or `\"Unknown\"`, `\"?\"`, or omit). ",
-    "For field names containing spaces, special characters, or non-ASCII text (e.g. Chinese field names), ALWAYS use bracket notation: `data.peer_interface_info[\"本端接口\"]` — never use dot notation like `data.peer_interface_info.本端接口`."
+    "For field names containing spaces, special characters, or non-ASCII text (e.g. Chinese field names), ALWAYS use bracket notation: `data.peer_interface_info[\"本端接口\"]` — never use dot notation like `data.peer_interface_info.本端接口`.",
+    "NEVER nest @Render inside @Render — it crashes at runtime. This means: (1) NEVER define a standalone variable like `tpl = @Render(...)` and then use it inside `{cell: @Render(\"v\", tpl)}`; (2) NEVER call @Render inside the body of another @Render. All render logic MUST be a single @Render with the full expression inlined. WRONG: `severityTpl = @Render(\"v\", @Switch(v, {\"紧急\": Tag(\"紧急\", \"danger\")}, Tag(v, \"neutral\")))` → `Col(..., {cell: @Render(\"v\", severityTpl)})`. RIGHT: `Col(..., {cell: @Render(\"v\", @Switch(v, {\"紧急\": Tag(\"紧急\", \"danger\")}, Tag(v, \"neutral\")))})`.",
+    "When Table cell needs computed values (e.g. sum of filtered array), inline the expression directly: `{cell: @Render(\"v\", \"row\", @Sum(@Filter(v, \"status\", \"==\", \"在线\").count))}` — do NOT split into separate variable definitions that wrap @Render.",
+    "@Each only iterates arrays, never objects. For object maps use `@ObjectEntries(obj)` → `{key, value}[]` or `@ObjectKeys(obj)` → `string[]`. After @ObjectEntries, original field names do NOT exist — access the key via `\"key\"` and nested properties via `\"value.xxx\"` (e.g. `\"value.status\"`, NOT `\"status\"`)."
   ],
   "builtins": [
     {
@@ -1644,12 +1682,12 @@
     },
     {
       "signature": "ObjectEntries(obj) -> {key: string, value: any}[]",
-      "description": "Convert a plain object map into ordered rows of {key, value}. Returns [] for null, arrays, and unsupported inputs.",
+      "description": "Convert a plain object map into ordered rows of {key, value}. Access the object key via \"key\" and the original value via \"value\" (e.g. \"value.status\"). Original field names are NOT available — always use \"key\" and \"value.xxx\". Returns [] for null, arrays, and unsupported inputs.",
       "templateBuiltin": false
     },
     {
       "signature": "ObjectKeys(obj) -> string[]",
-      "description": "Return the ordered keys of a plain object map. Returns [] for null, arrays, and unsupported inputs.",
+      "description": "Return the ordered keys of a plain object map as a string array. Returns [] for null, arrays, and unsupported inputs.",
       "templateBuiltin": false
     },
     {
