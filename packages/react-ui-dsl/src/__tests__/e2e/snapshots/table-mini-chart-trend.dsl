@@ -1,6 +1,0 @@
-root = Stack([portListTitle, portTable])
-portListTitle = TextContent("Port List", "large")
-portTable = Table([nameCol, statusCol, trendCol], data.ports)
-nameCol = Col("Port Name", "name")
-statusCol = Col("Status", "status", {cell: @Render("v", Tag(v, v == "Up" ? "success" : "danger"))})
-trendCol = Col("Trend", "trend", {cell: @Render("v", MiniChart("line", v))})
