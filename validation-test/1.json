@@ -1,0 +1,150 @@
+[
+  {
+    "id": "rw-046-CPU-CPU-cpu_usage",
+    "dsl": "root = Stack([cpuCard, memCard])\ncpuCard = Card([cpuHeader, cpuChart])\ncpuHeader = CardHeader(\"CPU利用率趋势\", \"近1小时\")\ncpuLabels = @Each(data.devices[0].cpu_data, \"item\", @FormatDate(item.timestamp, \"time\"))\ncpuSeries1 = Series(data.devices[0].neIp, @Each(data.devices[0].cpu_data, \"item\", item.value))\ncpuSeries2 = Series(data.devices[1].neIp, @Each(data.devices[1].cpu_data, \"item\", item.value))\ncpuChart = LineChart(cpuLabels, [cpuSeries1, cpuSeries2], \"smooth\", \"时间\", \"%\")\nmemCard = Card([memHeader, memChart])\nmemHeader = CardHeader(\"内存利用率趋势\", \"近1小时\")\nmemLabels = @Each(data.devices[0].mem_data, \"item\", @FormatDate(item.timestamp, \"time\"))\nmemSeries1 = Series(data.devices[0].neIp, @Each(data.devices[0].mem_data, \"item\", item.value))\nmemSeries2 = Series(data.devices[1].neIp, @Each(data.devices[1].mem_data, \"item\", item.value))\nmemChart = LineChart(memLabels, [memSeries1, memSeries2], \"smooth\", \"时间\", \"%\")",
+    "dataModel": {
+      "devices": [
+        {
+          "neName": "O05-17F-Leaf2-Simu6-0001",
+          "mem_data": [{ "value": 70, "timestamp": 1785927600000 }],
+          "neIp": "197.197.5.1",
+          "cpu_data": [{ "value": 70, "timestamp": 1785927600000 }]
+        },
+        {
+          "neName": "O05-17F-Leaf2-Simu6-0002",
+          "mem_data": [{ "value": 70, "timestamp": 1785927600000 }],
+          "neIp": "197.197.5.2",
+          "cpu_data": [{ "value": 70, "timestamp": 1785927600000 }]
+        }
+      ]
+    }
+  },
+  {
+    "id": "rw-064-GE1-Eth-Trunk101-Spine1",
+    "dsl": "root = Stack([titleCard, tableCard])\n\ntitleCard = CardHeader(\"接口归属关系\", \"物理接口 → 聚合口 → 设备\")\n\ntableCard = Card([table])\n\ntable = Table([typeCol, nameCol, ipCol], rows)\n\ntypeCol = Col(\"类型\", \"type\")\nnameCol = Col(\"名称\", \"name\")\nipCol = Col(\"IP 地址\", \"ip\")\n\nrows = [\n  {\n    \"type\": \"物理接口\",\n    \"name\": data.physical_interface[\"interface-name\"],\n    \"ip\": data.physical_interface[\"device-ip\"]\n  },\n  {\n    \"type\": \"聚合口\",\n    \"name\": data.aggregate_interface[\"interface-name\"],\n    \"ip\": data.aggregate_interface[\"device-ip\"]\n  },\n  {\n    \"type\": \"设备\",\n    \"name\": data.device[\"device-name\"],\n    \"ip\": data.device[\"device-ip\"]\n  }\n]",
+    "dataModel": {
+      "aggregate_interface": { "device-ip": "10.136.193.102", "interface-name": "Eth-Trunk101" },
+      "physical_interface": { "device-ip": "10.136.193.102", "interface-name": "25GE1/0/1" },
+      "device": { "device-ip": "10.136.193.102", "device-name": "Spine1" }
+    }
+  },
+  {
+    "id": "rw-068-BGP-Peer-BGP",
+    "dsl": "root = Stack([bgpCard])\n\nbgpCard = Card([bgpHeader, bgpTable])\nbgpHeader = CardHeader(\"BGP Peer邻居信息\", \"设备: 10.136.193.108\")\nallPeers = @Each(data.overlay_bgp_peers, \"p\", p) + @Each(data.underlay_bgp_peers, \"p\", p)\nbgpTable = Table([typeCol, localIpCol, localIfCol, peerIpCol, peerIfCol], allPeers)\n\ntypeCol = Col(\"BGP类型\", \"bgp_type\", {cell: @Render(\"v\", @Switch(v, {\"Overlay BGP\": Tag(\"Overlay BGP\", \"info\"), \"Underlay BGP\": Tag(\"Underlay BGP\", \"success\")}, Tag(v)))})\nlocalIpCol = Col(\"本端设备IP\", \"local_device_ip\")\nlocalIfCol = Col(\"本端接口\", \"local_interface\")\npeerIpCol = Col(\"对端设备IP\", \"peer_device_ip\")\npeerIfCol = Col(\"对端接口\", \"peer_interface\")",
+    "dataModel": {
+      "overlay_bgp_peers": [
+        {
+          "peer_interface": "LoopBack1",
+          "peer_device_ip": "10.136.193.102",
+          "bgp_type": "Overlay BGP",
+          "local_interface": "LoopBack1",
+          "local_device_ip": "10.136.193.108"
+        }
+      ],
+      "underlay_bgp_peers": []
+    }
+  },
+  {
+    "id": "rw-079-CPU-O05-17F-Leaf2-Simu6-0001-IP",
+    "dsl": "root = Stack([infoCard, chartCard], \"column\", \"m\")\n\ninfoCard = Card([infoHeader, infoDesc], \"card\")\ninfoHeader = CardHeader(\"设备 CPU 利用率趋势\", data.deviceName)\ninfoDesc = Descriptions([nameField, ipField, rangeField], \"设备信息\", 2, true)\nnameField = DescField(\"设备名称\", data.deviceName)\nipField = DescField(\"设备IP\", data.deviceIp)\nrangeField = DescField(\"时间范围\", data.timeRange)\n\nchartCard = Card([chartHeader, cpuChart], \"card\")\nchartHeader = CardHeader(\"CPU 利用率变化\", \"近30分钟趋势 (每10秒采样)\")\n\ntimeLabels = @Each(data.trendData, \"item\", @FormatDate(item.timestamp, \"time\"))\ncpuValues = @Each(data.trendData, \"item\", item.cpu_usage)\ncpuSeries = Series(\"CPU 利用率\", cpuValues)\n\ncpuChart = LineChart(timeLabels, [cpuSeries], \"smooth\", \"时间\", \"CPU 利用率 (%)\")",
+    "dataModel": {
+      "deviceIp": "197.197.5.1",
+      "trendData": [
+        { "cpu_usage": 70, "timestamp": 1785991260000 },
+        { "cpu_usage": 70, "timestamp": 1785991320000 },
+        { "cpu_usage": 70, "timestamp": 1785991380000 },
+        { "cpu_usage": 70, "timestamp": 1785991440000 },
+        { "cpu_usage": 70, "timestamp": 1785991500000 },
+        { "cpu_usage": 70, "timestamp": 1785991560000 },
+        { "cpu_usage": 70, "timestamp": 1785991620000 }
+      ],
+      "deviceName": "O05-17F-Leaf2-Simu6-0001",
+      "timeRange": "2026-08-06 12:11:09 ~ 2026-08-06 13:11:09 (近30分钟)"
+    }
+  },
+  {
+    "id": "rw-080-Fabric-default1-ServerLeaf",
+    "dsl": "root = Stack([headerCard, tableCard])\n\nheaderCard = CardHeader(\"Fabric \\\"default1\\\" ServerLeaf 400GE端口在线情况统计\", \"设备级端口状态汇总\")\n\ntableCard = Card([table])\n\ntable = Table([nameCol, totalCol, adminCol, upCol, inactiveCol], tableRows)\n\nnameCol = Col(\"设备名称\", \"name\")\ntotalCol = Col(\"400GE端口总数\", \"totalPorts\")\nadminCol = Col(\"adminStatus=active\", \"adminActive\")\nupCol = Col(\"operStatus=Up\", \"operUp\")\ninactiveCol = Col(\"operStatus=inactive\", \"operInactive\")\n\ntableRows = @Each(data.perDevice, \"d\", {\n  \"name\": d.neName,\n  \"totalPorts\": d.totalPorts,\n  \"adminActive\": d.adminActive,\n  \"operUp\": d.operUp,\n  \"operInactive\": d.operInactive\n})",
+    "dataModel": {
+      "summary": {
+        "totalPorts": 870,
+        "totalDevices": 10,
+        "totalAdminActive": 710,
+        "totalOperInactive": 870,
+        "totalOperUp": 0
+      },
+      "perDevice": [
+        {
+          "totalPorts": 87,
+          "operInactive": 87,
+          "operUp": 0,
+          "neName": "O05-17F-Leaf2-Simu6-0001",
+          "adminActive": 71
+        },
+        {
+          "totalPorts": 87,
+          "operInactive": 87,
+          "operUp": 0,
+          "neName": "O05-17F-Leaf2-Simu6-0002",
+          "adminActive": 71
+        },
+        {
+          "totalPorts": 87,
+          "operInactive": 87,
+          "operUp": 0,
+          "neName": "O05-17F-Leaf2-Simu6-0003",
+          "adminActive": 71
+        },
+        {
+          "totalPorts": 87,
+          "operInactive": 87,
+          "operUp": 0,
+          "neName": "O05-17F-Leaf2-Simu6-0004",
+          "adminActive": 71
+        },
+        {
+          "totalPorts": 87,
+          "operInactive": 87,
+          "operUp": 0,
+          "neName": "O05-17F-Leaf2-Simu6-0005",
+          "adminActive": 71
+        },
+        {
+          "totalPorts": 87,
+          "operInactive": 87,
+          "operUp": 0,
+          "neName": "O05-17F-Leaf2-Simu6-0006",
+          "adminActive": 71
+        },
+        {
+          "totalPorts": 87,
+          "operInactive": 87,
+          "operUp": 0,
+          "neName": "O05-17F-Leaf2-Simu6-0007",
+          "adminActive": 71
+        },
+        {
+          "totalPorts": 87,
+          "operInactive": 87,
+          "operUp": 0,
+          "neName": "O05-17F-Leaf2-Simu6-0008",
+          "adminActive": 71
+        },
+        {
+          "totalPorts": 87,
+          "operInactive": 87,
+          "operUp": 0,
+          "neName": "O05-17F-Leaf2-Simu6-0009",
+          "adminActive": 71
+        },
+        {
+          "totalPorts": 87,
+          "operInactive": 87,
+          "operUp": 0,
+          "neName": "O05-17F-Leaf2-Simu6-0010",
+          "adminActive": 71
+        }
+      ]
+    }
+  }
+]
