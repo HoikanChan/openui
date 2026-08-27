@@ -3,7 +3,7 @@ import { isASTNode, walkAST } from "./ast";
 import { isBuiltin, RESERVED_CALLS } from "./builtins";
 import { parseExpression } from "./expressions";
 import { tokenize } from "./lexer";
-import { materializeValue, type MaterializeCtx } from "./materialize";
+import { materializeEntryValue, materializeValue, type MaterializeCtx } from "./materialize";
 import { autoClose, split, type RawStmt } from "./statements";
 import { T } from "./tokens";
 import {
@@ -216,9 +216,10 @@ function buildResult(
     partial: wasIncomplete,
     externalRefs: options?.externalRefs?.length ? new Set(options.externalRefs) : undefined,
     currentStatementId: entryId,
+    unboundTemplateReferences: new Set(),
     unreached,
   };
-  const materialized = materializeValue(syms.get(entryId)!, ctx);
+  const materialized = materializeEntryValue(syms.get(entryId)!, ctx);
 
   const root = isElementNode(materialized) ? materialized : null;
   if (root) root.statementId = entryId;

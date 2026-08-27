@@ -7,6 +7,16 @@ import { isASTNode, isRuntimeExpr } from "./ast";
 import { isBuiltin, isReservedCall, LAZY_BUILTINS, RESERVED_CALLS } from "./builtins";
 import { isElementNode, type ParamMap, type ValidationError } from "./types";
 
+const UNRESOLVED_TEMPLATE_REF = Symbol("unresolved-template-ref");
+
+function containsUnresolvedTemplateRef(value: unknown): boolean {
+  if (value === UNRESOLVED_TEMPLATE_REF) return true;
+  if (value == null || typeof value !== "object") return false;
+  if (Array.isArray(value)) return value.some(containsUnresolvedTemplateRef);
+  if (isElementNode(value)) return Object.values(value.props).some(containsUnresolvedTemplateRef);
+  return Object.values(value as Record<string, unknown>).some(containsUnresolvedTemplateRef);
+}
+
 /**
  * Recursively check if a prop value contains any AST nodes that need runtime
  * evaluation. Walks into arrays, ElementNode children, and plain objects.
@@ -32,6 +42,7 @@ export interface MaterializeCtx {
   externalRefs?: Set<string>;
   /** Tracks which statement is currently being materialized (for error attribution). */
   currentStatementId?: string;
+  unboundTemplateReferences?: Set<string>;
   /** Statement IDs not yet reached — delete as they're touched. Remaining = orphaned. */
   unreached?: Set<string>;
 }
@@ -104,6 +115,23 @@ function validateNestedObjectProps(
   }
 }
 
+interface MaterializeFrame {
+  /** Root named Open Template responsible for free-binding diagnostics. */
+  diagnosticOwner?: string;
+  /** Only the current node may start a new named Open Template. */
+  startsOpenTemplate?: boolean;
+}
+
+const EMPTY_FRAME: MaterializeFrame = {};
+
+function continueFrame(frame: MaterializeFrame): MaterializeFrame {
+  return frame.diagnosticOwner ? { diagnosticOwner: frame.diagnosticOwner } : EMPTY_FRAME;
+}
+
+function templateBodyFrame(frame: MaterializeFrame): MaterializeFrame {
+  return { diagnosticOwner: frame.diagnosticOwner, startsOpenTemplate: true };
+}
+
 /**
  * Resolve a Ref node: inline from symbol table, detect cycles, emit RuntimeRef
  * for Query/Mutation declarations. Shared by materializeValue and materializeExpr.
@@ -112,7 +140,8 @@ function resolveRef(
   name: string,
   ctx: MaterializeCtx,
   mode: "value" | "expr",
-  scopedRefs: ReadonlySet<string> = new Set(),
+  scopedRefs: ReadonlySet<string>,
+  frame: MaterializeFrame,
 ): unknown | ASTNode {
   if (ctx.visited.has(name)) {
     ctx.unres.push(name);
@@ -122,10 +151,28 @@ function resolveRef(
     if (ctx.externalRefs?.has(name)) {
       return { k: "RuntimeRef", n: name, refType: "data" };
     }
+    if (frame.diagnosticOwner) {
+      const key = `${frame.diagnosticOwner}\0${name}`;
+      const reported = (ctx.unboundTemplateReferences ??= new Set());
+      if (!reported.has(key)) {
+        ctx.errors.push({
+          code: "unbound-template-reference",
+          component: frame.diagnosticOwner,
+          path: "",
+          message: `Extracted template "${frame.diagnosticOwner}" references unbound binding "${name}"`,
+          statementId: frame.diagnosticOwner,
+        });
+        reported.add(key);
+      }
+    }
     ctx.unres.push(name);
-    return mode === "expr" ? { k: "Ph", n: name } : null;
+    if (mode === "expr") return { k: "Ph", n: name };
+    return frame.diagnosticOwner ? UNRESOLVED_TEMPLATE_REF : null;
   }
   const target = ctx.syms.get(name)!;
+  // A named lazy-template body starts a new lexical owner. Ordinary named
+  // dependencies keep the current owner as resolution proceeds transitively.
+  const nextFrame = frame.startsOpenTemplate ? { diagnosticOwner: name } : continueFrame(frame);
   ctx.unreached?.delete(name);
   // Query/Mutation declarations → RuntimeRef (resolved at runtime by evaluator)
   if (target.k === "Comp" && isReservedCall(target.name)) {
@@ -140,7 +187,9 @@ function resolveRef(
     // In expr mode, propagate scopedRefs so loop variables from @Each/@Render remain
     // visible inside named-statement templates (resolving via new Set() would drop them).
     const result =
-      mode === "value" ? materializeValue(target, ctx) : materializeExprInternal(target, ctx, scopedRefs);
+      mode === "value"
+        ? materializeValueInternal(target, ctx, nextFrame)
+        : materializeExprInternal(target, ctx, scopedRefs, nextFrame);
     // Tag ElementNode with its source statement name
     if (mode === "value" && isElementNode(result)) {
       result.statementId = name;
@@ -161,51 +210,76 @@ function materializeLazyBuiltin(
   node: ASTNode & { k: "Comp" },
   ctx: MaterializeCtx,
   scopedRefs: ReadonlySet<string>,
+  frame: MaterializeFrame,
 ): ASTNode | null {
   if (!LAZY_BUILTINS.has(node.name)) return null;
 
-  const binderIndexes =
-    node.name === "Each"
-      ? node.args.length >= 3
-        ? [1]
-        : []
-      : node.name === "Render"
-        ? node.args.length >= 2
-          ? node.args.slice(0, -1).map((_, index) => index)
-          : []
-        : [];
-  if (binderIndexes.length === 0) return null;
+  const binderName = (arg: ASTNode): string | null =>
+    arg.k === "Ref" ? arg.n : arg.k === "Str" ? arg.v : null;
+  const incomingFrame = continueFrame(frame);
 
-  const nextScopedRefs = new Set(scopedRefs);
-  for (const index of binderIndexes) {
-    const binderArg = node.args[index];
-    const binderName = binderArg.k === "Ref" ? binderArg.n : binderArg.k === "Str" ? binderArg.v : null;
-    if (!binderName) return null;
-    nextScopedRefs.add(binderName);
+  if (node.name === "Each") {
+    if (node.args.length < 3) return null;
+    const name = binderName(node.args[1]);
+    if (!name) return null;
+
+    const bodyScopedRefs = new Set(scopedRefs);
+    bodyScopedRefs.add(name);
+    return {
+      ...node,
+      args: node.args.map((arg, index) => {
+        if (index === 1) return arg;
+        if (index === 2) {
+          return materializeExprInternal(arg, ctx, bodyScopedRefs, templateBodyFrame(frame));
+        }
+        return materializeExprInternal(arg, ctx, scopedRefs, incomingFrame);
+      }),
+    };
   }
 
-  const recursedArgs = node.args.map((a, i) =>
-    binderIndexes.includes(i) ? a : materializeExprInternal(a, ctx, nextScopedRefs),
-  );
-  return { ...node, args: recursedArgs };
+  if (node.name === "Render") {
+    if (node.args.length < 2) return null;
+    const bodyIndex = node.args.length - 1;
+    const names = node.args.slice(0, bodyIndex).map(binderName);
+    if (names.some((name) => !name)) return null;
+
+    const bodyScopedRefs = new Set(scopedRefs);
+    for (const name of names) bodyScopedRefs.add(name!);
+    return {
+      ...node,
+      args: node.args.map((arg, index) =>
+        index === bodyIndex
+          ? materializeExprInternal(arg, ctx, bodyScopedRefs, templateBodyFrame(frame))
+          : arg,
+      ),
+    };
+  }
+
+  return null;
 }
 
 function materializeExprInternal(
   node: ASTNode,
   ctx: MaterializeCtx,
   scopedRefs: ReadonlySet<string>,
+  frame: MaterializeFrame,
 ): ASTNode {
+  const recurse = (child: ASTNode) =>
+    materializeExprInternal(child, ctx, scopedRefs, continueFrame(frame));
+
   switch (node.k) {
     case "Ref":
-      return scopedRefs.has(node.n) ? node : (resolveRef(node.n, ctx, "expr", scopedRefs) as ASTNode);
+      return scopedRefs.has(node.n)
+        ? node
+        : (resolveRef(node.n, ctx, "expr", scopedRefs, frame) as ASTNode);
 
     case "Ph":
       return node;
 
     case "Comp": {
-      const lazy = materializeLazyBuiltin(node, ctx, scopedRefs);
+      const lazy = materializeLazyBuiltin(node, ctx, scopedRefs, frame);
       if (lazy) return lazy;
-      const recursedArgs = node.args.map((a) => materializeExprInternal(a, ctx, scopedRefs));
+      const recursedArgs = node.args.map(recurse);
       // Builtins, reserved calls, and action calls: recurse args, keep as-is
       if (isBuiltin(node.name) || isReservedCall(node.name)) {
         return { ...node, args: recursedArgs };
@@ -231,39 +305,37 @@ function materializeExprInternal(
     }
 
     case "Arr":
-      return { ...node, els: node.els.map((e) => materializeExprInternal(e, ctx, scopedRefs)) };
+      return { ...node, els: node.els.map(recurse) };
     case "Obj":
       return {
         ...node,
-        entries: node.entries.map(
-          ([k, v]) => [k, materializeExprInternal(v, ctx, scopedRefs)] as [string, ASTNode],
-        ),
+        entries: node.entries.map(([k, v]) => [k, recurse(v)] as [string, ASTNode]),
       };
     case "BinOp":
       return {
         ...node,
-        left: materializeExprInternal(node.left, ctx, scopedRefs),
-        right: materializeExprInternal(node.right, ctx, scopedRefs),
+        left: recurse(node.left),
+        right: recurse(node.right),
       };
     case "UnaryOp":
-      return { ...node, operand: materializeExprInternal(node.operand, ctx, scopedRefs) };
+      return { ...node, operand: recurse(node.operand) };
     case "Ternary":
       return {
         ...node,
-        cond: materializeExprInternal(node.cond, ctx, scopedRefs),
-        then: materializeExprInternal(node.then, ctx, scopedRefs),
-        else: materializeExprInternal(node.else, ctx, scopedRefs),
+        cond: recurse(node.cond),
+        then: recurse(node.then),
+        else: recurse(node.else),
       };
     case "Member":
-      return { ...node, obj: materializeExprInternal(node.obj, ctx, scopedRefs) };
+      return { ...node, obj: recurse(node.obj) };
     case "Index":
       return {
         ...node,
-        obj: materializeExprInternal(node.obj, ctx, scopedRefs),
-        index: materializeExprInternal(node.index, ctx, scopedRefs),
+        obj: recurse(node.obj),
+        index: recurse(node.index),
       };
     case "Assign":
-      return { ...node, value: materializeExprInternal(node.value, ctx, scopedRefs) };
+      return { ...node, value: recurse(node.value) };
 
     // Literals, StateRef, RuntimeRef — pass through unchanged
     default:
@@ -277,7 +349,7 @@ function materializeExprInternal(
  * Returns ASTNode — structure preserved for runtime evaluation by the evaluator.
  */
 export function materializeExpr(node: ASTNode, ctx: MaterializeCtx): ASTNode {
-  return materializeExprInternal(node, ctx, new Set());
+  return materializeExprInternal(node, ctx, new Set(), EMPTY_FRAME);
 }
 
 /**
@@ -292,11 +364,15 @@ export function materializeExpr(node: ASTNode, ctx: MaterializeCtx): ASTNode {
  *   - Plain values for literals, arrays, objects
  *   - null for placeholders
  */
-export function materializeValue(node: ASTNode, ctx: MaterializeCtx): unknown {
+function materializeValueInternal(
+  node: ASTNode,
+  ctx: MaterializeCtx,
+  frame: MaterializeFrame,
+): unknown {
   switch (node.k) {
     // ── Ref resolution ───────────────────────────────────────────────────
     case "Ref":
-      return resolveRef(node.n, ctx, "value");
+      return resolveRef(node.n, ctx, "value", new Set(), frame);
 
     // ── Literals → plain values ──────────────────────────────────────────
     case "Str":
@@ -316,7 +392,7 @@ export function materializeValue(node: ASTNode, ctx: MaterializeCtx): unknown {
       for (const e of node.els) {
         // Drop unresolved placeholders from arrays
         if (e.k === "Ph") continue;
-        const value = materializeValue(e, ctx);
+        const value = materializeValueInternal(e, ctx, frame);
         // Drop null entries from component/ref resolution (incomplete props, unresolved refs, unknown components)
         if (value === null && (e.k === "Comp" || e.k === "Ref")) continue;
         items.push(value);
@@ -325,7 +401,9 @@ export function materializeValue(node: ASTNode, ctx: MaterializeCtx): unknown {
     }
     case "Obj": {
       const o: Record<string, unknown> = {};
-      for (const [k, v] of node.entries) o[k] = materializeValue(v, ctx);
+      for (const [k, v] of node.entries) {
+        o[k] = materializeValueInternal(v, ctx, frame);
+      }
       return o;
     }
 
@@ -335,9 +413,12 @@ export function materializeValue(node: ASTNode, ctx: MaterializeCtx): unknown {
 
       // Builtins (Sum, Count, Filter, Action, etc.) → preserve as ASTNode for runtime
       if (isBuiltin(name)) {
-        const lazy = materializeLazyBuiltin(node, ctx, new Set());
+        const lazy = materializeLazyBuiltin(node, ctx, new Set(), frame);
         if (lazy) return lazy;
-        return { ...node, args: args.map((a) => materializeExpr(a, ctx)) };
+        return {
+          ...node,
+          args: args.map((a) => materializeExprInternal(a, ctx, new Set(), continueFrame(frame))),
+        };
       }
 
       // Inline Query/Mutation (not from a statement-level declaration) → validation error
@@ -358,7 +439,7 @@ export function materializeValue(node: ASTNode, ctx: MaterializeCtx): unknown {
       if (def) {
         // Catalog component: map positional args → named props
         for (let i = 0; i < def.params.length && i < args.length; i++) {
-          props[def.params[i].name] = materializeValue(args[i], ctx);
+          props[def.params[i].name] = materializeValueInternal(args[i], ctx, frame);
           validateNestedObjectProps(
             name,
             def.params[i].name,
@@ -420,6 +501,8 @@ export function materializeValue(node: ASTNode, ctx: MaterializeCtx): unknown {
         return null;
       }
 
+      if (Object.values(props).some(containsUnresolvedTemplateRef)) return null;
+
       const hasDynamicProps = Object.values(props).some((v) => containsDynamicValue(v));
       return { type: "element", typeName: name, props, partial: ctx.partial, hasDynamicProps };
     }
@@ -427,10 +510,19 @@ export function materializeValue(node: ASTNode, ctx: MaterializeCtx): unknown {
     // ── Runtime expression nodes → preserve as ASTNode, normalize children ─
     default: {
       if (isRuntimeExpr(node)) {
-        return materializeExpr(node, ctx);
+        return materializeExprInternal(node, ctx, new Set(), continueFrame(frame));
       }
       // Unreachable for well-formed AST, but preserve the value defensively.
       return node;
     }
   }
+}
+
+export function materializeValue(node: ASTNode, ctx: MaterializeCtx): unknown {
+  return materializeValueInternal(node, ctx, EMPTY_FRAME);
+}
+
+/** Materialize the parser entry tree, where named value refs may begin Open Templates. */
+export function materializeEntryValue(node: ASTNode, ctx: MaterializeCtx): unknown {
+  return materializeValueInternal(node, ctx, { startsOpenTemplate: true });
 }
