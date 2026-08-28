@@ -146,6 +146,24 @@ class ValidationModelTest {
   }
 
   @Test
+  void resultExposesActionableIssuesWithoutChangingRawIssues() {
+    ValidationIssue generic =
+        new ValidationIssue(
+            "type-prop-mismatch", ValidationSeverity.ERROR, "type", "generic", "table", "Table",
+            "/rows", 1, 1, null, false);
+    ValidationIssue specific =
+        new ValidationIssue(
+            "type-table-row-shape-mismatch", ValidationSeverity.ERROR, "type", "specific", "table",
+            "Table", "/rows", 1, 1, null, false);
+    ValidationResult result =
+        ValidationResult.invalid(
+            List.of(generic, specific), new ValidationMetadata(1, "table", ValidationMode.FINAL, null));
+
+    assertEquals(List.of(generic, specific), result.issues());
+    assertEquals(List.of(specific), result.actionableIssues());
+  }
+
+  @Test
   void resultValidFactorySetsStatusAndConvenienceMethods() {
     ValidationMetadata meta = new ValidationMetadata(2, "Root", ValidationMode.FINAL, null);
     ValidationResult result = ValidationResult.valid("dsl-text", List.of(), meta);

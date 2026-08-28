@@ -174,6 +174,7 @@ public final class ProgramTypeValidator {
                                         + right.get().displayName() + ".",
                                 statementId, null, null,
                                 "Compare compatible scalar values; use @Each/@Filter for arrays.");
+                        return Optional.empty();
                     }
                     return Optional.of(new Primitive(PrimitiveKind.BOOLEAN));
                 }
@@ -190,6 +191,7 @@ public final class ProgramTypeValidator {
                                         + right.get().displayName() + ".",
                                 statementId, null, null,
                                 "Use scalar operands; use @Each or a data builtin for arrays and objects.");
+                        return Optional.empty();
                     }
                     boolean stringResult = left.get().displayName().equals("string")
                             || right.get().displayName().equals("string");

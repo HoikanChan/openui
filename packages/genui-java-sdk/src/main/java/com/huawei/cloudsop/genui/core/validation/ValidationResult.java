@@ -33,6 +33,16 @@ public record ValidationResult(
     return issues.stream().anyMatch(i -> i.severity() == ValidationSeverity.ERROR);
   }
 
+  /**
+   * Low-noise diagnostics for repair and user-facing reports.
+   *
+   * <p>{@link #issues()} remains the complete parser-parity view. This view removes exact duplicates
+   * and diagnostics dominated by a more actionable root cause.
+   */
+  public List<ValidationIssue> actionableIssues() {
+    return ValidationIssueReducer.actionable(issues);
+  }
+
   // -----------------------------------------------------------------------
   // Static factories
   // -----------------------------------------------------------------------

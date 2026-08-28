@@ -4,6 +4,8 @@
 > 现在可通过 `ValidationRequest.dataModel(...)` 显式启用数据感知的 FINAL 静态校验，已能拦截
 > `data.*` 缺失/非法遍历、可证明的 prop/slot/builtin/operator 类型错误，以及 Table/Col 字段错误。
 > 未传 `dataModel` 时仍保留本文 corpus 的历史兼容行为；显式空 map 代表真实的空数据模型。
+> `ValidationResult.issues()` 保留完整诊断；`actionableIssues()` 统一去除语法、Table row shape
+> 和 root 级联噪音，Repair 与用户报告使用后者。
 
 ## 结论摘要
 
@@ -117,7 +119,7 @@
 
 ## 拦截报告示例：validator 实际能产出什么
 
-`ValidationResult.issues()` 的每条 `ValidationIssue` 携带 `code`、`severity`、`source`（syntax/contract/reference/root）、`message`、`statementId`、`component`、`path`、`line:column`、`hint`、`retryable`。以下均为对 corpus 样本的真实运行输出（非手写示意）。
+`ValidationResult.issues()` 的每条 `ValidationIssue` 携带 `code`、`severity`、`source`（syntax/contract/reference/root）、`message`、`statementId`、`component`、`path`、`line:column`、`hint`、`retryable`。`actionableIssues()` 保持这些结构不变，只进行稳定的 dominance reduction：同一语法坏语句保留首个语法根因、Table row shape 压过同路径的通用 prop mismatch、有其他根因时移除 root tail，并保留不同 statement/path 的独立错误。以下均为对 corpus 样本的真实运行输出（非手写示意）。
 
 ### 单条错误的形态
 

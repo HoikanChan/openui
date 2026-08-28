@@ -159,6 +159,24 @@ class ReaskPromptBuilderTest {
   }
 
   @Test
+  void suppressedIssueDoesNotAddComponentSignatureNoise() {
+    ValidationIssue derivedComponentIssue =
+        new ValidationIssue(
+            "type-prop-mismatch", ValidationSeverity.ERROR, "type", "derived component mismatch",
+            "kpiValue", "Card", "/gap", 3, 5, null, false);
+    String text =
+        join(
+            ReaskPromptBuilder.buildFullRepair(
+                "x",
+                "root = Stack([])",
+                List.of(syntaxError("kpiValue"), derivedComponentIssue),
+                contractWith("Card", "Card(children: Component[])")));
+
+    assertFalse(text.contains("derived component mismatch"));
+    assertFalse(text.contains("Card(children: Component[])"));
+  }
+
+  @Test
   void rootCauseHintedUnresolvedRefSurvivesSuppression() {
     // `Math.abs(v).toFixed(1)` → same statement carries a syntax ERROR and an unresolved-ref
     // whose hint IS the root-cause explanation (JS global → @Abs). It must not be suppressed.

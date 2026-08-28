@@ -1,6 +1,7 @@
 package com.huawei.cloudsop.genui.core.validation.type;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -210,6 +211,18 @@ class StaticTypeValidationTest {
                 Map.of("left", List.of(1), "right", List.of(2)));
 
         issue(result, "type-operator-mismatch");
+    }
+
+    @Test
+    void operatorMismatchDoesNotCreateDownstreamPropNoise() {
+        String dsl = "root = Table([nameCol], rows)\n"
+                + "nameCol = Col(\"Name\", \"name\")\n"
+                + "rows = data.left + []";
+        ValidationResult result = validate(dsl, Map.of("left", List.of(Map.of("name", "Ada"))));
+
+        issue(result, "type-operator-mismatch");
+        assertFalse(result.issues().stream().anyMatch(candidate -> "type-prop-mismatch".equals(candidate.code())),
+                () -> "downstream mismatch should be suppressed: " + result.issues());
     }
 
     @Test

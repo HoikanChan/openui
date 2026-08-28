@@ -100,7 +100,8 @@ returns a backward-compatible `GenUiGenerationResult(dsl, dataModel)`, leaving
 valid result returns the extracted DSL plus the populated `validationStatus()`
 and `validationResult()`. Any `INVALID` result throws
 `GenerationValidationException`; callers can inspect
-`e.validationResult().issues()` for the blocking diagnostics.
+`e.validationResult().actionableIssues()` for the low-noise blocking diagnostics.
+The complete parser-parity view remains available through `issues()`.
 
 Final validation is data-aware. The generator forwards the concrete response
 data through initial validation and every repair attempt, so the validator can
@@ -130,6 +131,12 @@ that template is referenced outside the declaring builtin call.
 Empty, heterogeneous, or unsupported evidence is handled
 conservatively instead of guessing a type.
 
+`ValidationResult` deliberately exposes two issue views:
+
+- `issues()` is the immutable raw diagnostic stream for debugging, telemetry, and TS parity.
+- `actionableIssues()` preserves independent errors but removes exact duplicates and diagnostics
+  dominated by syntax, Table row-shape, or root-cause issues. Repair prompts use this view.
+
 ```java
 try {
   GenUiGenerationResult result = generator.generate(request);
@@ -138,7 +145,7 @@ try {
   }
 } catch (GenerationValidationException e) {
   ValidationResult result = e.validationResult();
-  log.warn("Generated DSL failed validation: {}", result.issues());
+  log.warn("Generated DSL failed validation: {}", result.actionableIssues());
 }
 ```
 
