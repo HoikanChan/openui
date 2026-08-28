@@ -114,6 +114,18 @@ class StaticTypeValidationTest {
     }
 
     @Test
+    void rejectsNonStringTemplateBinders() {
+        ValidationResult each = validate("root = Stack(@Each(data.users, 1, TextContent(\"x\")))",
+                Map.of("users", List.of(Map.of("name", "Ada"))));
+        ValidationResult render = validate("root = Table([nameCol], data.users)\n"
+                + "nameCol = Col(\"Name\", \"name\", {cell: @Render(1, TextContent(\"x\"))})",
+                Map.of("users", List.of(Map.of("name", "Ada"))));
+
+        issue(each, "builtin-argument-type-mismatch");
+        issue(render, "builtin-argument-type-mismatch");
+    }
+
+    @Test
     void reportsBuiltinArgumentMismatch() {
         ValidationResult result = validate("root = TextContent(@Count(data.total))", Map.of("total", 3));
 
@@ -154,6 +166,17 @@ class StaticTypeValidationTest {
 
         ValidationResult result = validate(dsl,
                 Map.of("users", List.of(Map.of("profile", Map.of("status", "active")))));
+
+        issue(result, "type-table-column-missing");
+    }
+
+    @Test
+    void validatesTableColumnFieldReachedThroughAReference() {
+        String dsl = "root = Table([nameCol], data.users)\n"
+                + "nameCol = Col(\"Name\", field)\n"
+                + "field = \"missing\"";
+
+        ValidationResult result = validate(dsl, Map.of("users", List.of(Map.of("name", "Ada"))));
 
         issue(result, "type-table-column-missing");
     }

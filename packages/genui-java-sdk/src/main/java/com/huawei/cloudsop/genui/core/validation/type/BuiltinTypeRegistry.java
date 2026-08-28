@@ -212,7 +212,12 @@ final class BuiltinTypeRegistry {
             context.reportArgumentMismatch(call.name(), 0, "array", input.get());
             return Optional.empty();
         }
-        if (call.args().size() < 3 || !(call.args().get(1) instanceof AstNode.Str binder)) {
+        if (call.args().size() < 3) {
+            return Optional.empty();
+        }
+        if (!(call.args().get(1) instanceof AstNode.Str binder)) {
+            argument(call, 1, scope, context).ifPresent(actual -> context.reportArgumentMismatch(
+                    call.name(), 1, "binder string literal", actual));
             return Optional.empty();
         }
         Map<String, ValueType> nestedScope = new LinkedHashMap<>(scope);
@@ -226,12 +231,20 @@ final class BuiltinTypeRegistry {
         }
         int bodyIndex = call.args().size() - 1;
         Map<String, ValueType> nestedScope = new LinkedHashMap<>(scope);
+        boolean validBinders = true;
         for (int index = 0; index < bodyIndex; index++) {
             if (call.args().get(index) instanceof AstNode.Str binder) {
                 nestedScope.put(binder.v(), null);
+            } else {
+                validBinders = false;
+                int argumentIndex = index;
+                argument(call, index, scope, context).ifPresent(actual -> context.reportArgumentMismatch(
+                        call.name(), argumentIndex, "binder string literal", actual));
             }
         }
-        return context.infer(call.args().get(bodyIndex), nestedScope).map(TemplateType::new);
+        return validBinders
+                ? context.infer(call.args().get(bodyIndex), nestedScope).map(TemplateType::new)
+                : Optional.empty();
     }
 
     private static Optional<ValueType> argument(AstNode.Comp call, int index, Map<String, ValueType> scope,

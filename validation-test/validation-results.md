@@ -5,9 +5,9 @@
 - Contract: 当前 Java SDK `openui/base-contract.json`
 - 总用例数: 49
 - 状态统计: `{INVALID=26, VALID=23}`
-- 原始 Issue 总数: 89
+- 原始 Issue 总数: 90
 - 可操作 Issue 总数: 60
-- 原始 Issue 统计: `{component-slot-type-mismatch=1, missing-required=1, root-missing=1, syntax-missing-assignment=2, syntax-unclosed-bracket=6, syntax-unexpected-token=10, type-chart-duplicate-series-value=1, type-chart-insufficient-data=4, type-operator-mismatch=2, type-prop-mismatch=35, type-table-column-missing=10, type-table-row-shape-mismatch=3, unknown-component=6, unresolved-ref=7}`
+- 原始 Issue 统计: `{builtin-argument-type-mismatch=1, component-slot-type-mismatch=1, missing-required=1, root-missing=1, syntax-missing-assignment=2, syntax-unclosed-bracket=6, syntax-unexpected-token=10, type-chart-duplicate-series-value=1, type-chart-insufficient-data=4, type-operator-mismatch=2, type-prop-mismatch=35, type-table-column-missing=10, type-table-row-shape-mismatch=3, unknown-component=6, unresolved-ref=7}`
 - 可操作 Issue 统计: `{component-slot-type-mismatch=1, syntax-missing-assignment=2, syntax-unexpected-token=4, type-chart-duplicate-series-value=1, type-chart-insufficient-data=4, type-operator-mismatch=2, type-prop-mismatch=26, type-table-column-missing=10, type-table-row-shape-mismatch=3, unknown-component=6, unresolved-ref=1}`
 - 标注覆盖: `{DETECTED=18, MISSED=7, IGNORED=23, UNLABELED=1}`
 
@@ -14424,7 +14424,7 @@ issues=[]
 
 - 来源: `4.json` 第 8 条
 - 状态: `INVALID`
-- 原始 Issue 数: 18
+- 原始 Issue 数: 19
 - 可操作 Issue 数: 2
 
 - `error_detail.txt` 标注: 区域排名详情数据丢失。
@@ -14819,6 +14819,19 @@ column=1
 retryable=false
 message=unresolved reference "subCard"
 hint=define a statement named "subCard" earlier in the document
+
+issue[18]
+code=builtin-argument-type-mismatch
+severity=ERROR
+source=type
+statementId=rankTable
+component=<null>
+path=/args/1
+line=20
+column=1
+retryable=false
+message=@Render argument 1 expects binder string literal, but received Component<TextContent>.
+hint=Use a value compatible with binder string literal.
 ````
 
 </details>

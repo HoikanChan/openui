@@ -378,7 +378,11 @@ public final class ProgramTypeValidator {
             for (AstNode column : arrayElements(table.args().get(0), new HashSet<>())) {
                 AstNode resolvedColumn = resolveNode(column, new HashSet<>());
                 if (!(resolvedColumn instanceof AstNode.Comp call) || !"Col".equals(call.name())
-                        || call.args().size() < 2 || !(call.args().get(1) instanceof AstNode.Str field)) {
+                        || call.args().size() < 2) {
+                    continue;
+                }
+                AstNode resolvedField = resolveNode(call.args().get(1), new HashSet<>());
+                if (!(resolvedField instanceof AstNode.Str field)) {
                     continue;
                 }
                 Optional<ValueType> valueType = fieldType(rowType.get(), field.v());
