@@ -12,7 +12,6 @@ import com.huawei.cloudsop.genui.core.validation.type.ValueType.UnionType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -113,7 +112,7 @@ final class BuiltinTypeRegistry {
         Optional<ValueType> input = argument(call, 0, scope, context);
         input.ifPresent(actual -> {
             boolean numericArray = isArrayLike(actual)
-                    && arrayElementType(actual).map(BuiltinTypeRegistry::isNumber).orElse(true);
+                    && arrayElementType(actual).map(ValueTypes::isNumber).orElse(true);
             if (!numericArray) {
                 context.reportArgumentMismatch(call.name(), 0, "number[]", actual);
             }
@@ -142,7 +141,7 @@ final class BuiltinTypeRegistry {
         }
         ValueType valueType = object.fields().isEmpty()
                 ? new Primitive(PrimitiveKind.NULL)
-                : union(new ArrayList<>(object.fields().values()));
+                : ValueTypes.union(new ArrayList<>(object.fields().values()));
         return Optional.of(new ArrayType(new ObjectType(Map.of("key", stringType(), "value", valueType))));
     }
 
@@ -159,7 +158,7 @@ final class BuiltinTypeRegistry {
     private Optional<ValueType> numericScalar(AstNode.Comp call, Map<String, ValueType> scope, Context context) {
         Optional<ValueType> input = argument(call, 0, scope, context);
         input.ifPresent(actual -> {
-            if (!isNumber(actual)) {
+            if (!ValueTypes.isNumber(actual)) {
                 context.reportArgumentMismatch(call.name(), 0, "number", actual);
             }
         });
@@ -167,16 +166,24 @@ final class BuiltinTypeRegistry {
     }
 
     private Optional<ValueType> switchResult(AstNode.Comp call, Map<String, ValueType> scope, Context context) {
+        argument(call, 0, scope, context);
         List<ValueType> results = new ArrayList<>();
+        boolean fullyProven = call.args().size() > 1 && call.args().get(1) instanceof AstNode.Obj;
         if (call.args().size() > 1 && call.args().get(1) instanceof AstNode.Obj cases) {
             for (AstNode.Obj.Entry entry : cases.entries()) {
-                context.infer(entry.value(), scope).ifPresent(results::add);
+                Optional<ValueType> result = context.infer(entry.value(), scope);
+                fullyProven &= result.isPresent();
+                result.ifPresent(results::add);
             }
         }
         if (call.args().size() > 2) {
-            context.infer(call.args().get(2), scope).ifPresent(results::add);
+            Optional<ValueType> defaultResult = context.infer(call.args().get(2), scope);
+            fullyProven &= defaultResult.isPresent();
+            defaultResult.ifPresent(results::add);
+        } else {
+            results.add(new Primitive(PrimitiveKind.NULL));
         }
-        return results.isEmpty() ? Optional.empty() : Optional.of(union(results));
+        return fullyProven && !results.isEmpty() ? Optional.of(ValueTypes.union(results)) : Optional.empty();
     }
 
     private Optional<ValueType> formatDate(AstNode.Comp call, Map<String, ValueType> scope, Context context) {
@@ -232,16 +239,6 @@ final class BuiltinTypeRegistry {
         return index >= call.args().size() ? Optional.empty() : context.infer(call.args().get(index), scope);
     }
 
-    private static boolean isNumber(ValueType type) {
-        if (type instanceof Primitive primitive) {
-            return primitive.kind() == PrimitiveKind.NUMBER;
-        }
-        if (type instanceof UnionType union) {
-            return union.alternatives().stream().allMatch(BuiltinTypeRegistry::isNumber);
-        }
-        return false;
-    }
-
     private static boolean isArrayLike(ValueType type) {
         if (type instanceof ArrayType || type instanceof EmptyArrayType) {
             return true;
@@ -260,7 +257,7 @@ final class BuiltinTypeRegistry {
         if (type instanceof UnionType union && isArrayLike(union)) {
             List<ValueType> elements = union.alternatives().stream().map(BuiltinTypeRegistry::arrayElementType)
                     .flatMap(Optional::stream).toList();
-            return elements.isEmpty() ? Optional.empty() : Optional.of(union(elements));
+            return elements.isEmpty() ? Optional.empty() : Optional.of(ValueTypes.union(elements));
         }
         return Optional.empty();
     }
@@ -271,18 +268,6 @@ final class BuiltinTypeRegistry {
 
     private static ValueType stringType() {
         return new Primitive(PrimitiveKind.STRING);
-    }
-
-    private static ValueType union(List<ValueType> values) {
-        Set<ValueType> distinct = new LinkedHashSet<>();
-        for (ValueType value : values) {
-            if (value instanceof UnionType union) {
-                distinct.addAll(union.alternatives());
-            } else {
-                distinct.add(value);
-            }
-        }
-        return distinct.size() == 1 ? distinct.iterator().next() : new UnionType(List.copyOf(distinct));
     }
 
     private static Map.Entry<String, Arity> arity(String name, int minimum, int maximum) {

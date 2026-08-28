@@ -209,4 +209,6 @@ BUILD SUCCESS
 - 这是离线 corpus，不等价于真实 LLM 分布；live LLM e2e 仍依赖 genui-service 的 `LlmProperties` endpoint/key。
 - 共享 contract 只覆盖本 corpus 中需要的组件，不代表完整 DSLEngine contract；真实产物中的旧组件名在完整 contract 下同样是 `unknown-component`（重命名后的必然结果），但拦截码分布可能不同。
 - 数据路径类错误只有在调用方提供具体 dataModel 时才能拦截；没有运行时数据证据时会保守放行，因此不要在任何对外口径中声称 100% 拦截。
+- 当前 base contract 尚未导出 `slotOnly` 组件元数据，因此 Java 侧还不能拦截 Slot-Only 组件出现在 root 或 Open Render Slot；元数据进入 `GenerationContract` 后应在 catalog/type seam 补齐。
+- builtin registry 已覆盖全部当前名称、参数数量和主要输入/返回类型，但 `Filter` 字段/操作符/比较值、`Sort` 方向及部分 formatter 次级参数还没有逐项做语义约束；这些错误当前可能依赖下游 prop/Table 检查才能暴露。
 - 本报告不覆盖视觉质量、布局合理性、格式化质量（Poor value formatting 等）；这些属于 GenUI eval/render 层。

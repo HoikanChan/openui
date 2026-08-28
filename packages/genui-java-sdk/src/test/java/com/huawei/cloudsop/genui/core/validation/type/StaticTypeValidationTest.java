@@ -174,6 +174,24 @@ class StaticTypeValidationTest {
     }
 
     @Test
+    void switchWithUnprovenBranchDoesNotCreateDownstreamPropMismatch() {
+        String dsl = "root = Point(@Switch(data.mode, {a: data.missing}, \"two\"), 0)";
+        ValidationResult result = validate(dsl, Map.of("mode", "a"));
+
+        issue(result, "type-data-path-missing");
+        assertFalse(result.issues().stream().anyMatch(candidate -> "type-prop-mismatch".equals(candidate.code())),
+                () -> "an unproven Switch branch must not fabricate a result type: " + result.issues());
+    }
+
+    @Test
+    void componentStringPropsRemainStrict() {
+        ValidationResult result = validate("root = CardHeader(true)", Map.of("present", true));
+
+        ValidationIssue mismatch = issue(result, "type-prop-mismatch");
+        assertEquals("/title", mismatch.path());
+    }
+
+    @Test
     void rejectsExplicitEmptyTypedComponentSlot() {
         ValidationResult result = validate("root = Descriptions([])", Map.of("present", true));
 

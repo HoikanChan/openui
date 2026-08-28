@@ -56,8 +56,8 @@
 
 ### Task 5: Verify, commit, and review
 
-- [ ] Run `mvn -q -f packages/genui-java-sdk/pom.xml -Dtest='*,!PromptGoldenTest' test`.
-- [ ] Run `mvn -q -f packages/genui-java-sdk/pom.xml -DskipTests package` and `git diff --check`.
-- [ ] Stage only Java SDK Validation work and intentional validation-test artifacts; leave unrelated workspace changes unstaged.
-- [ ] Commit the implementation.
-- [ ] Run the requested two-axis code review against pre-change commit `4d0da71d50b8272d63027cbba7eae2d1967fcdcb` and fix material findings before final handoff.
+- [x] Run `mvn -q -f packages/genui-java-sdk/pom.xml -Dtest='*,!PromptGoldenTest' test`.
+- [x] Run `mvn -q -f packages/genui-java-sdk/pom.xml -DskipTests package` and `git diff --check`.
+- [x] Stage only Java SDK Validation work and intentional validation-test artifacts; leave unrelated workspace changes unstaged.
+- [x] Commit the implementation.
+- [x] Run the requested two-axis code review against pre-change commit `4d0da71d50b8272d63027cbba7eae2d1967fcdcb` and fix material findings before final handoff.

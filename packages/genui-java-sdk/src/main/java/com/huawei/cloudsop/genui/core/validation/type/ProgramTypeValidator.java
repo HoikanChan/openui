@@ -108,7 +108,7 @@ public final class ProgramTypeValidator {
                     infer(element, statementId, scope, resolving).ifPresent(elementTypes::add);
                 }
                 return elementTypes.size() == array.els().size()
-                        ? Optional.of(new ArrayType(union(elementTypes)))
+                        ? Optional.of(new ArrayType(ValueTypes.union(elementTypes)))
                         : Optional.empty();
             }
             if (node instanceof AstNode.Obj object) {
@@ -160,7 +160,7 @@ public final class ProgramTypeValidator {
                 Optional<ValueType> thenType = infer(ternary.then(), statementId, scope, resolving);
                 Optional<ValueType> elseType = infer(ternary.otherwise(), statementId, scope, resolving);
                 return thenType.isPresent() && elseType.isPresent()
-                        ? Optional.of(union(List.of(thenType.get(), elseType.get())))
+                        ? Optional.of(ValueTypes.union(List.of(thenType.get(), elseType.get())))
                         : Optional.empty();
             }
             if (node instanceof AstNode.BinOp binary) {
@@ -179,12 +179,12 @@ public final class ProgramTypeValidator {
                     return Optional.of(new Primitive(PrimitiveKind.BOOLEAN));
                 }
                 if ("??".equals(binary.op()) && left.isPresent() && right.isPresent()) {
-                    return Optional.of(union(List.of(left.get(), right.get())));
+                    return Optional.of(ValueTypes.union(List.of(left.get(), right.get())));
                 }
                 if (left.isPresent() && right.isPresent()) {
                     boolean arithmeticMismatch = "+".equals(binary.op())
                             ? isComposite(left.get()) || isComposite(right.get())
-                            : !isNumber(left.get()) || !isNumber(right.get());
+                            : !ValueTypes.isNumber(left.get()) || !ValueTypes.isNumber(right.get());
                     if (arithmeticMismatch) {
                         emit("type-operator-mismatch",
                                 "Operator " + binary.op() + " cannot combine " + left.get().displayName() + " with "
@@ -508,7 +508,7 @@ public final class ProgramTypeValidator {
         if (type instanceof UnionType union) {
             List<ValueType> elements = union.alternatives().stream().map(ProgramTypeValidator::rowElementType)
                     .flatMap(Optional::stream).toList();
-            return elements.isEmpty() ? Optional.empty() : Optional.of(union(elements));
+            return elements.isEmpty() ? Optional.empty() : Optional.of(ValueTypes.union(elements));
         }
         return Optional.empty();
     }
@@ -532,7 +532,7 @@ public final class ProgramTypeValidator {
         if (type instanceof UnionType union) {
             List<ValueType> present = union.alternatives().stream().map(alternative -> field(alternative, name))
                     .flatMap(Optional::stream).toList();
-            return present.isEmpty() ? Optional.empty() : Optional.of(union(present));
+            return present.isEmpty() ? Optional.empty() : Optional.of(ValueTypes.union(present));
         }
         return Optional.empty();
     }
@@ -567,15 +567,6 @@ public final class ProgramTypeValidator {
                 && union.alternatives().stream().allMatch(ProgramTypeValidator::isObjectShape);
     }
 
-    private static boolean isNumber(ValueType type) {
-        if (type instanceof Primitive primitive) {
-            return primitive.kind() == PrimitiveKind.NUMBER;
-        }
-        return type instanceof UnionType union
-                && !union.alternatives().isEmpty()
-                && union.alternatives().stream().allMatch(ProgramTypeValidator::isNumber);
-    }
-
     private static boolean isDerivedExpression(AstNode node) {
         return node instanceof AstNode.Comp || node instanceof AstNode.Member || node instanceof AstNode.Index
                 || node instanceof AstNode.BinOp || node instanceof AstNode.UnaryOp || node instanceof AstNode.Ternary;
@@ -596,19 +587,6 @@ public final class ProgramTypeValidator {
         }
         return type instanceof ArrayType || type instanceof EmptyArrayType || type instanceof ObjectType
                 || type instanceof ComponentType || type instanceof ValueType.TemplateType;
-    }
-
-    private static ValueType union(List<ValueType> values) {
-        List<ValueType> flattened = new ArrayList<>();
-        for (ValueType value : values) {
-            if (value instanceof UnionType union) {
-                flattened.addAll(union.alternatives());
-            } else {
-                flattened.add(value);
-            }
-        }
-        List<ValueType> distinct = flattened.stream().distinct().toList();
-        return distinct.size() == 1 ? distinct.getFirst() : new UnionType(distinct);
     }
 
     private static Optional<DataPath> dataPath(AstNode node) {

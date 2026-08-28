@@ -85,14 +85,7 @@ final class TypeAssignability {
             return primitiveConstraint.kind() == PrimitiveKind.STRING ? Result.MATCH : Result.MISMATCH;
         }
         if (expected instanceof PrimitiveConstraint primitiveConstraint && actual instanceof Primitive primitive) {
-            if (primitive.kind() == primitiveConstraint.kind()) {
-                return Result.MATCH;
-            }
-            if (primitiveConstraint.kind() == PrimitiveKind.STRING
-                    && (primitive.kind() == PrimitiveKind.NUMBER || primitive.kind() == PrimitiveKind.BOOLEAN)) {
-                return Result.MATCH;
-            }
-            return Result.MISMATCH;
+            return primitive.kind() == primitiveConstraint.kind() ? Result.MATCH : Result.MISMATCH;
         }
         return Result.MISMATCH;
     }
