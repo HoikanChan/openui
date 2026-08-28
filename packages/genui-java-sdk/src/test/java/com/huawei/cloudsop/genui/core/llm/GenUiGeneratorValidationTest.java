@@ -16,6 +16,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -290,12 +291,18 @@ class GenUiGeneratorValidationTest {
         GenUiValidationConfig.finalOnly(),
         capturingValidator);
 
-    generator.generate(UiGenerationRequest.builder().userInput("x").build());
+    generator.generate(
+        UiGenerationRequest.builder()
+            .userInput("x")
+            .response(Map.of("total", 3))
+            .build());
 
     ValidationRequest req = capturedRequest.get();
     assertNotNull(req, "validator must have been called");
     assertNotNull(req.contract(), "validator must receive a non-null merged contract");
     assertEquals(ValidationMode.FINAL, req.mode(), "mode must be FINAL for sync generate()");
+    assertEquals(
+        Map.of("total", 3), req.dataModel(), "validator must receive the Render Data Model");
     assertTrue(req.contract().components().containsKey("Stack"),
         "merged contract must include Stack from base contract");
   }

@@ -17,6 +17,8 @@ import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /** Attempt-budget and timeout behavior of {@link RepairCoordinator#repairFull}. */
@@ -98,6 +100,40 @@ class RepairCoordinatorTest {
 
     assertFalse(outcome.repaired());
     assertEquals(1, outcome.attempts(), "stops at the failing attempt");
+  }
+
+  @Test
+  void fullRepairRevalidationPreservesRenderDataModel() {
+    ScriptedPosts transport = ScriptedPosts.of(syncResponse("root = Stack([])"));
+    AtomicReference<com.huawei.cloudsop.genui.core.validation.ValidationRequest> captured =
+        new AtomicReference<>();
+    var validator =
+        (com.huawei.cloudsop.genui.core.validation.OpenuiLangValidator)
+            request -> {
+              captured.set(request);
+              return com.huawei.cloudsop.genui.core.validation.ValidationResult.valid(
+                  request.dsl(),
+                  List.of(),
+                  new com.huawei.cloudsop.genui.core.validation.ValidationMetadata(
+                      1,
+                      "root",
+                      com.huawei.cloudsop.genui.core.validation.ValidationMode.FINAL,
+                      null));
+            };
+    RepairCoordinator coordinator =
+        new RepairCoordinator(
+                transport, validator, RepairPolicy.of(RepairPolicyKind.FINAL_REPAIR, 1))
+            .withBodyBuilder((messages, stream) -> "{}");
+
+    coordinator.repairFull(
+        "intent",
+        "root = Bogus()",
+        invalidSeed(),
+        baseContract(),
+        "Stack",
+        Map.of("total", 3));
+
+    assertEquals(Map.of("total", 3), captured.get().dataModel());
   }
 
   private static final class ScriptedPosts implements LlmTransport {

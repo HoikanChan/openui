@@ -288,8 +288,14 @@ public final class ProgramAnalyzer {
   }
 
   private Object materializeValue(AstNode node, WalkCtx ctx) {
+    return materializeValue(node, ctx, Set.of());
+  }
+
+  private Object materializeValue(AstNode node, WalkCtx ctx, Set<String> scopedRefs) {
     if (node == null) return null;
-    if (node instanceof AstNode.Ref ref) return resolveRef(ref.n(), ctx);
+    if (node instanceof AstNode.Ref ref) {
+      return scopedRefs.contains(ref.n()) ? DYNAMIC : resolveRef(ref.n(), ctx, scopedRefs);
+    }
     if (node instanceof AstNode.Str str) return str.v();
     if (node instanceof AstNode.Num num) return num.v();
     if (node instanceof AstNode.Bool bool) return bool.v();
@@ -299,7 +305,7 @@ public final class ProgramAnalyzer {
       List<Object> items = new ArrayList<>();
       for (AstNode e : arr.els()) {
         if (e instanceof AstNode.Ph) continue;
-        Object value = materializeValue(e, ctx);
+        Object value = materializeValue(e, ctx, scopedRefs);
         if (value == null && (e instanceof AstNode.Comp || e instanceof AstNode.Ref)) continue;
         items.add(value);
       }
@@ -308,16 +314,16 @@ public final class ProgramAnalyzer {
     if (node instanceof AstNode.Obj obj) {
       LinkedHashMap<String, Object> map = new LinkedHashMap<>();
       for (AstNode.Obj.Entry entry : obj.entries()) {
-        map.put(entry.key(), materializeValue(entry.value(), ctx));
+        map.put(entry.key(), materializeValue(entry.value(), ctx, scopedRefs));
       }
       return map;
     }
     if (node instanceof AstNode.Comp comp) {
-      return materializeComp(comp, ctx);
+      return materializeComp(comp, ctx, scopedRefs);
     }
     // Runtime-expression nodes (BinOp, Ternary, Member, StateRef, RuntimeRef, ...): walk children
     // for nested refs/components but produce no plain value (treated as dynamic → non-null marker).
-    walkExpr(node, ctx);
+    walkExpr(node, ctx, scopedRefs);
     return DYNAMIC;
   }
 
@@ -325,11 +331,15 @@ public final class ProgramAnalyzer {
   private static final Object DYNAMIC = new Object();
 
   private Object materializeComp(AstNode.Comp comp, WalkCtx ctx) {
+    return materializeComp(comp, ctx, Set.of());
+  }
+
+  private Object materializeComp(AstNode.Comp comp, WalkCtx ctx, Set<String> scopedRefs) {
     String name = comp.name();
 
     if (Builtins.isBuiltin(name)) {
       // Builtin: recurse args for nested refs/components; not a renderable element.
-      for (AstNode a : comp.args()) walkExpr(a, ctx);
+      walkBuiltinArgs(comp, ctx, scopedRefs);
       return DYNAMIC;
     }
 
@@ -362,14 +372,14 @@ public final class ProgramAnalyzer {
           ctx.currentStatementId,
           contractRetryable(ctx, "unknown-component"));
       // Still walk args so nested unresolved refs / unknown components are reported.
-      for (AstNode a : comp.args()) walkExpr(a, ctx);
+      for (AstNode a : comp.args()) walkExpr(a, ctx, scopedRefs);
       return null;
     }
 
     // Materialize positional args → values (for contract + nested checks).
     List<Object> argValues = new ArrayList<>();
     for (AstNode a : comp.args()) {
-      argValues.add(materializeValue(a, ctx));
+      argValues.add(materializeValue(a, ctx, scopedRefs));
     }
 
     // For the remaining contract checks (missing-required, null-required, excess-args, invalid-prop)
@@ -382,7 +392,7 @@ public final class ProgramAnalyzer {
   }
 
   /** Resolve a Ref: inline from symbol table, track cycles + unresolved. Mirrors resolveRef. */
-  private Object resolveRef(String name, WalkCtx ctx) {
+  private Object resolveRef(String name, WalkCtx ctx, Set<String> scopedRefs) {
     if (ctx.visited.contains(name)) {
       ctx.unresolved.add(new UnresolvedRef(name, ctx.currentStatementId));
       return null;
@@ -401,7 +411,7 @@ public final class ProgramAnalyzer {
     String prev = ctx.currentStatementId;
     ctx.currentStatementId = name;
     try {
-      return materializeValue(target, ctx);
+      return materializeValue(target, ctx, scopedRefs);
     } finally {
       ctx.currentStatementId = prev;
       ctx.visited.remove(name);
@@ -410,51 +420,79 @@ public final class ProgramAnalyzer {
 
   /** Walk a runtime-expression subtree solely to surface nested refs / unknown components. */
   private void walkExpr(AstNode node, WalkCtx ctx) {
+    walkExpr(node, ctx, Set.of());
+  }
+
+  /** Walk with binder names that are valid only inside a lazy builtin template body. */
+  private void walkExpr(AstNode node, WalkCtx ctx, Set<String> scopedRefs) {
     if (node == null) return;
     if (node instanceof AstNode.Ref ref) {
-      resolveRef(ref.n(), ctx);
+      if (!scopedRefs.contains(ref.n())) resolveRef(ref.n(), ctx, scopedRefs);
       return;
     }
     if (node instanceof AstNode.Comp comp) {
-      materializeComp(comp, ctx);
+      materializeComp(comp, ctx, scopedRefs);
       return;
     }
     if (node instanceof AstNode.Arr arr) {
-      for (AstNode e : arr.els()) walkExpr(e, ctx);
+      for (AstNode e : arr.els()) walkExpr(e, ctx, scopedRefs);
       return;
     }
     if (node instanceof AstNode.Obj obj) {
-      for (AstNode.Obj.Entry e : obj.entries()) walkExpr(e.value(), ctx);
+      for (AstNode.Obj.Entry e : obj.entries()) walkExpr(e.value(), ctx, scopedRefs);
       return;
     }
     if (node instanceof AstNode.BinOp binOp) {
-      walkExpr(binOp.left(), ctx);
-      walkExpr(binOp.right(), ctx);
+      walkExpr(binOp.left(), ctx, scopedRefs);
+      walkExpr(binOp.right(), ctx, scopedRefs);
       return;
     }
     if (node instanceof AstNode.UnaryOp unaryOp) {
-      walkExpr(unaryOp.operand(), ctx);
+      walkExpr(unaryOp.operand(), ctx, scopedRefs);
       return;
     }
     if (node instanceof AstNode.Ternary ternary) {
-      walkExpr(ternary.cond(), ctx);
-      walkExpr(ternary.then(), ctx);
-      walkExpr(ternary.otherwise(), ctx);
+      walkExpr(ternary.cond(), ctx, scopedRefs);
+      walkExpr(ternary.then(), ctx, scopedRefs);
+      walkExpr(ternary.otherwise(), ctx, scopedRefs);
       return;
     }
     if (node instanceof AstNode.Member member) {
-      walkExpr(member.obj(), ctx);
+      walkExpr(member.obj(), ctx, scopedRefs);
       return;
     }
     if (node instanceof AstNode.Index index) {
-      walkExpr(index.obj(), ctx);
-      walkExpr(index.index(), ctx);
+      walkExpr(index.obj(), ctx, scopedRefs);
+      walkExpr(index.index(), ctx, scopedRefs);
       return;
     }
     if (node instanceof AstNode.Assign assign) {
-      walkExpr(assign.value(), ctx);
+      walkExpr(assign.value(), ctx, scopedRefs);
     }
     // Literals, StateRef, RuntimeRef, Ph → nothing to resolve.
+  }
+
+  private void walkBuiltinArgs(AstNode.Comp comp, WalkCtx ctx, Set<String> scopedRefs) {
+    if ("Each".equals(comp.name()) && comp.args().size() >= 3) {
+      walkExpr(comp.args().get(0), ctx, scopedRefs);
+      Set<String> bodyScope = new HashSet<>(scopedRefs);
+      if (comp.args().get(1) instanceof AstNode.Str binder) bodyScope.add(binder.v());
+      walkExpr(comp.args().get(2), ctx, bodyScope);
+      for (int index = 3; index < comp.args().size(); index++) {
+        walkExpr(comp.args().get(index), ctx, scopedRefs);
+      }
+      return;
+    }
+    if ("Render".equals(comp.name()) && comp.args().size() >= 2) {
+      int bodyIndex = comp.args().size() - 1;
+      Set<String> bodyScope = new HashSet<>(scopedRefs);
+      for (int index = 0; index < bodyIndex; index++) {
+        if (comp.args().get(index) instanceof AstNode.Str binder) bodyScope.add(binder.v());
+      }
+      walkExpr(comp.args().get(bodyIndex), ctx, bodyScope);
+      return;
+    }
+    for (AstNode argument : comp.args()) walkExpr(argument, ctx, scopedRefs);
   }
 
   // ───────────────────────────────────────────────────────────────────────────

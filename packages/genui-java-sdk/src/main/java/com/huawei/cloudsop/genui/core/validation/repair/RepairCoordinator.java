@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -66,6 +67,17 @@ public final class RepairCoordinator {
       ValidationResult initialResult,
       GenerationContract contract,
       String rootName) {
+    return repairFull(userIntent, invalidDsl, initialResult, contract, rootName, null);
+  }
+
+  /** Full repair that preserves the Render Data Model across every re-validation attempt. */
+  public FullRepairOutcome repairFull(
+      String userIntent,
+      String invalidDsl,
+      ValidationResult initialResult,
+      GenerationContract contract,
+      String rootName,
+      Map<String, Object> dataModel) {
     String currentDsl = invalidDsl;
     ValidationResult currentResult = initialResult;
     long deadlineNanos = deadline(policy.timeout());
@@ -95,7 +107,7 @@ public final class RepairCoordinator {
         return FullRepairOutcome.failed(currentDsl, currentResult, attempt);
       }
 
-      ValidationResult revalidated = validateFinal(extracted, contract, rootName);
+      ValidationResult revalidated = validateFinal(extracted, contract, rootName, dataModel);
       currentDsl = extracted;
       currentResult = revalidated;
 
@@ -182,12 +194,17 @@ public final class RepairCoordinator {
 
   // ── internals ─────────────────────────────────────────────────────────────
 
-  private ValidationResult validateFinal(String dsl, GenerationContract contract, String rootName) {
+  private ValidationResult validateFinal(
+      String dsl,
+      GenerationContract contract,
+      String rootName,
+      Map<String, Object> dataModel) {
     ValidationRequest request =
         ValidationRequest.builder()
             .dsl(dsl)
             .contract(contract)
             .rootName(rootName)
+            .dataModel(dataModel)
             .mode(ValidationMode.FINAL)
             .build();
     return validator.validate(request);

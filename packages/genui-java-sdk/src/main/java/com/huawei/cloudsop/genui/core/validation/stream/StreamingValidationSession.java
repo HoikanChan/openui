@@ -6,7 +6,10 @@ import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -36,6 +39,7 @@ public final class StreamingValidationSession {
   private final OpenuiLangValidator validator;
   private final GenerationContract contract;
   private final String rootName;
+  private final Map<String, Object> dataModel;
 
   /** Concatenated accepted+emitted statements — the symbol context passed to the validator. */
   private final StringBuilder acceptedPrefix = new StringBuilder();
@@ -51,9 +55,21 @@ public final class StreamingValidationSession {
 
   public StreamingValidationSession(
       OpenuiLangValidator validator, GenerationContract contract, String rootName) {
+    this(validator, contract, rootName, null);
+  }
+
+  public StreamingValidationSession(
+      OpenuiLangValidator validator,
+      GenerationContract contract,
+      String rootName,
+      Map<String, Object> dataModel) {
     this.validator = Objects.requireNonNull(validator, "validator");
     this.contract = contract;
     this.rootName = rootName;
+    this.dataModel =
+        dataModel == null
+            ? null
+            : Collections.unmodifiableMap(new LinkedHashMap<>(dataModel));
   }
 
   /** Feed one raw LLM delta; return the ordered gate decisions produced by it. */
@@ -164,6 +180,7 @@ public final class StreamingValidationSession {
             .dsl(dsl)
             .contract(contract)
             .rootName(rootName)
+            .dataModel(dataModel)
             .mode(mode)
             .build();
     return validator.validate(request);

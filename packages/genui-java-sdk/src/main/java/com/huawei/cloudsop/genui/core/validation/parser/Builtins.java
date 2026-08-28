@@ -69,6 +69,11 @@ public final class Builtins {
     return RESERVED_CALLS.contains(name);
   }
 
+  /** Data and lazy/template builtin names covered by static expression typing. */
+  public static Set<String> typeCheckedNames() {
+    return union(DATA_BUILTINS, LAZY_BUILTINS);
+  }
+
   private static Set<String> union(Set<String> a, Set<String> b) {
     var s = new java.util.HashSet<>(a);
     s.addAll(b);

@@ -6,6 +6,9 @@ import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
 import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalysis;
 import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalyzer;
+import com.huawei.cloudsop.genui.core.validation.type.ProgramTypeValidator;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 
@@ -18,6 +21,7 @@ import java.util.Objects;
  *   <li>Build a {@link ContractCatalog} from the request contract (null → empty catalog, so every
  *       component is reported as unknown-component; not a supported "syntax-only" mode).</li>
  *   <li>Run {@link ProgramAnalyzer#analyze(Program, ValidationMode, String, java.util.Set)}.</li>
+ *   <li>When concrete data was supplied, run {@link ProgramTypeValidator} over the final program.</li>
  *   <li>Map issues to {@link ValidationStatus}: {@code INVALID} if any issue is
  *       {@link ValidationSeverity#ERROR}; {@code PARTIAL} only in
  *       {@link ValidationMode#STREAMING} with non-ERROR issues; else {@code VALID}.</li>
@@ -51,8 +55,12 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
 
     // 3. Semantic analysis.
     ProgramAnalyzer analyzer = new ProgramAnalyzer(catalog);
-    ProgramAnalysis analysis = analyzer.analyze(
-        program, request.mode(), request.rootName(), request.externalRefs());
+    LinkedHashSet<String> externalRefs = new LinkedHashSet<>(request.externalRefs());
+    if (request.dataModel() != null) {
+      externalRefs.add("data");
+    }
+    ProgramAnalysis analysis =
+        analyzer.analyze(program, request.mode(), request.rootName(), externalRefs);
 
     // The normalized DSL is the preprocessed text (with whitespace trimmed / auto-close applied in
     // STREAMING). OpenuiParser internally calls OpenuiPreprocessor.process() but does not expose the
@@ -62,7 +70,10 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
         .text();
 
     // 4. Compute status from issue severities.
-    List<ValidationIssue> issues = analysis.issues();
+    List<ValidationIssue> issues = new ArrayList<>(analysis.issues());
+    issues.addAll(
+        new ProgramTypeValidator()
+            .validate(program, catalog, request.dataModel(), request.mode()));
     boolean hasError = issues.stream().anyMatch(i -> i.severity() == ValidationSeverity.ERROR);
 
     ValidationMetadata metadata = new ValidationMetadata(

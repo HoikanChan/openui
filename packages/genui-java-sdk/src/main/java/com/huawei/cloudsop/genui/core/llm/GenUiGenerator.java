@@ -125,7 +125,8 @@ public final class GenUiGenerator {
                 GenerationContract merged = sdk.mergedContract(promptRequest);
 
                 ValidationRequest validationRequest = ValidationRequest.builder().dsl(extracted).contract(merged)
-                        .rootName(merged.root()).mode(ValidationMode.FINAL).build();
+                        .rootName(merged.root()).dataModel(effectiveRequest.response()).mode(ValidationMode.FINAL)
+                        .build();
 
                 ValidationResult validationResult = validator.validate(validationRequest);
 
@@ -136,7 +137,8 @@ public final class GenUiGenerator {
                     RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
                     if (policy.kind() == RepairPolicyKind.FINAL_REPAIR) {
                         RepairCoordinator.FullRepairOutcome outcome = repairCoordinator(policy).repairFull(
-                                userMessage(effectiveRequest), extracted, validationResult, merged, merged.root());
+                                userMessage(effectiveRequest), extracted, validationResult, merged, merged.root(),
+                                effectiveRequest.response());
                         if (outcome.repaired()) {
                             return new GenUiGenerationResult(outcome.dsl(), effectiveRequest.response(),
                                     ValidationStatus.VALID, markRepaired(outcome.result()));
@@ -265,7 +267,8 @@ public final class GenUiGenerator {
         int[] nextSeq = {1};
 
         GenerationContract merged = sdk.mergedContract(toPromptRequest(effectiveRequest));
-        StreamingValidationSession session = new StreamingValidationSession(validator, merged, merged.root());
+        StreamingValidationSession session =
+                new StreamingValidationSession(validator, merged, merged.root(), dataModel);
         RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
 
         String body = buildRequestBody(effectiveRequest, true);
@@ -407,7 +410,7 @@ public final class GenUiGenerator {
     private ValidationResult finalValidate(UiGenerationRequest request, String dsl) {
         GenerationContract merged = sdk.mergedContract(toPromptRequest(request));
         ValidationRequest validationRequest = ValidationRequest.builder().dsl(dsl).contract(merged)
-                .rootName(merged.root()).mode(ValidationMode.FINAL).build();
+                .rootName(merged.root()).dataModel(request.response()).mode(ValidationMode.FINAL).build();
         return validator.validate(validationRequest);
     }
 

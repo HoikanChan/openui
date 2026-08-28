@@ -246,6 +246,29 @@ class ValidationModelTest {
     assertEquals("MyRoot", request.rootName());
     assertEquals("req-123", request.requestId());
     assertNull(request.contract());
+    assertNull(request.dataModel());
+  }
+
+  @Test
+  void requestBuilderPreservesImmutableRenderDataModel() {
+    ValidationRequest request =
+        ValidationRequest.builder()
+            .dsl("root = Stack([])")
+            .mode(ValidationMode.FINAL)
+            .dataModel(Map.of("total", 3))
+            .build();
+
+    assertEquals(Map.of("total", 3), request.dataModel());
+    assertThrows(UnsupportedOperationException.class, () -> request.dataModel().put("other", 4));
+  }
+
+  @Test
+  void legacyRequestConstructorKeepsDataModelAbsent() {
+    ValidationRequest request =
+        new ValidationRequest(
+            "root = Stack([])", null, null, Set.of("data"), ValidationMode.FINAL, "legacy");
+
+    assertNull(request.dataModel());
   }
 
   // -----------------------------------------------------------------------
