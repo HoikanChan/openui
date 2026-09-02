@@ -111,15 +111,28 @@
 ### 第 9 页：业务接入从“开发页面”变成“注册领域能力”
 
 - 时间：2 分钟。
-- 本页结论：SmartCanvas 用前后端一致的组件契约降低业务扩展成本，并用 Extension 隔离不同业务域。
+- 本页结论：同一个业务拓展包通过后端契约注册和前端 PIU 实现注册两条链路接入 SmartCanvas，分别解决“模型能生成什么”和“前端如何渲染”。
 - 页面内容：
-  - 前端定义真实组件，并通过工具链导出后端可注册的契约。
-  - Generation Extension 汇集组件、工具、模板、示例和附加规则。
-  - `extensionId` 选择业务域能力，避免所有组件和规则进入同一个 Prompt。
-  - Base Supplement 承载企业公共组件，业务 Extension 承载领域差异。
-- 讲述重点：契约只有在“模型知道怎么生成”和“前端知道怎么渲染”两端一致时才有效。
-- 已有依据：CLI Extension 导出、Java SDK Extension 注册、Base Supplement。
-- 后续风险：仍需建设契约版本、兼容性检查和扩展发布治理。
+  - 后端生成链路：业务将组件契约、工具、模板、示例和规则组成的拓展包注册到 NetGraph Pub 服务；SmartCanvas 后台按 `extensionId` 读取契约并组织 Prompt，让模型知道可使用哪些领域能力。
+  - 前端运行链路：拓展包声明 `sourcePiu`，SmartCanvas 拉起业务 PIU；业务 PIU 通过 `smart-canvas:extend` 事件 emit 组件和工具的前端实现，注册到 SmartCanvas 运行时。
+  - 模型输出的 OpenUI DSL 只携带组件名、字段映射和数据引用；Renderer 再按同名组件找到 PIU 注册的真实实现。
+  - 两条链路以 `extensionId`、组件名和契约版本对齐，缺少任意一侧都不能形成可用的业务扩展。
+- 简图：采用上下双泳道，避免画成严格串行流程。
+
+```text
+                         后端：让模型知道“能生成什么”
+业务拓展包 ─ 契约 / 工具 / 规则 ─→ NetGraph Pub ─→ SmartCanvas 后台 ─→ Prompt / LLM ─→ OpenUI DSL
+    │                                                                                         │
+    │                    extensionId · 组件名 · 契约版本保持一致                              │
+    │                                                                                         ↓
+    └─ sourcePiu / 前端实现 ─→ 业务 PIU ── emit smart-canvas:extend ─→ SmartCanvas 运行库 ─→ Renderer
+                         前端：让画布知道“组件如何渲染”
+```
+
+- PPT 绘制建议：只使用两条水平箭头和六个节点；中间用一条浅色横带标注 `extensionId / component name / version`，OpenUI DSL 到 Renderer 使用一条向下连接线。
+- 讲述重点：后台不保存 React 实现，前端也不负责组织模型 Prompt；前后端通过同源契约协作而不是彼此耦合。
+- 已有依据：Extension JSON、Java SDK 注册、`sourcePiu`、PIU `smart-canvas:extend` 运行时扩展链路。
+- 后续风险：需要继续建设契约版本、前后端兼容性检查和拓展包发布治理。
 - 转场：扩展能力解决“能生成什么”，大数据问题则决定模型“需要看到什么”。
 
 ### 第 10 页：大数据场景的关键是让模型看结构，让运行时拿全量
@@ -135,19 +148,35 @@
 - 依据：`packages/genui-java-sdk/README.md`、CharacterizationEffectTest。
 - 转场：减少输入解决了规模问题，但模型输出依然可能在语法、契约或业务表达上犯错。
 
-### 第 11 页：生成正确性至少包含三个层次
+### 第 11 页：一张 Table，体现 DSL 如何从“传数据”走向“声明意图”
 
 - 时间：2 分钟。
-- 本页结论：语法正确、契约正确和业务表达正确是不同问题，必须采用不同治理手段。
+- 本页结论：可商用 DSL 不应让模型重复生成全量数据和底层组件配置，而应让模型声明数据引用、字段映射和受控的渲染意图。
 - 页面内容：
-  1. 语法层：DSL 是否可以解析。
-  2. 契约层：组件是否存在，参数数量与类型是否匹配，引用和数据路径是否有效。
-  3. 表达层：组件选择是否合适，信息是否完整，格式和布局是否清楚。
+  - 原来的问题：Table 生成同时携带完整数据、列配置和底层渲染细节，导致 Token 随数据量增长，模型容易写错配置，也难以安全表达自定义单元格。
+  - 第一步改造——数据引用：Table 直接绑定运行时数据 `data.orders`，全量数据不再复制到生成结果。
+  - 第二步改造——字段映射：每个 `Col` 只声明列名和字段路径，运行时负责把 DSL 映射为真实 Table 配置。
+  - 第三步改造——受控自定义渲染：`@Render` 把当前值 `v` 和当前行 `row` 绑定到一个受控组件表达式，不允许模型注入任意 JavaScript。
+- 页面中的真实示例：
+
+```openui
+ordersTable = Table([idCol, statusCol], data.orders)
+idCol = Col("订单号", "id")
+statusCol = Col("状态", "status", {
+  cell: @Render("v", "row", Tag(v, v == "paid" ? "success" : "warning"))
+})
+```
+
+- 示例拆解：
+  - `data.orders`：数据仍由业务运行时提供，模型只建立引用。
+  - `Col("订单号", "id")`：用字段映射替代完整列对象和数据搬运。
+  - `@Render("v", "row", ...)`：在明确的变量作用域内组合已注册组件，可实现状态标签、格式化、链接、小趋势图等定制单元格。
 - 讲述重点：
-  - 当前 Parser 和组件 Schema 已能发现或隔离部分语法、组件与参数问题。
-  - 完整的服务端后置校验、自动修复和有界反思属于后续重点，不能表述为已经完全交付。
-  - 即使 DSL 能渲染，也可能生成“技术上正确、业务上错误”的界面。
-- 转场：第三层质量无法仅靠单元测试，需要一套面向最终渲染结果的 Eval。
+  - 这个改造同时降低 Token、稳定 Schema，并保留业务所需的表现力。
+  - 表现力来自 DSL 算子和组件契约，而不是重新开放任意代码执行。
+  - 它也带来新的正确性要求：字段路径必须存在、`@Render` 变量作用域必须正确、返回组件必须符合契约。
+- 已有依据：Table / Col 组件式 DSL、DataModel 绑定、`@Render` lazy builtin 与单元格渲染 E2E Fixture。
+- 转场：这类改造是否真的让结果更正确、更完整、更易用，不能只看 Parser 通过，需要用最终渲染结果做 Eval。
 
 ### 第 12 页：Eval 把主观体验变成可回归的工程指标
 
