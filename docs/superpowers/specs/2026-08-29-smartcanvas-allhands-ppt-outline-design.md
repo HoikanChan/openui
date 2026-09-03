@@ -57,7 +57,48 @@
   - Declarative：模型组合受控组件，兼顾动态布局和企业设计体系。
   - Open-ended：模型生成 HTML、CSS、JS，自由但带来安全、风格、时延和稳定性成本。
 - 讲述重点：三种路线没有绝对优劣，应按场景选择；SmartCanvas 的默认路径是 Declarative，未来可考虑在受控沙箱中提供局部 Open-ended 逃生口。
-- 转场：选定声明式路线后，DSL 本身就会直接影响生成成本和用户体验。
+- 转场：先把三条路线逐一展开，再回到 SmartCanvas 的技术选型。
+
+### 新增第 5 页：Static 用预制组件换取确定性
+
+- 时间：1.5 分钟。
+- 本页结论：Static 让模型只选择已经注册的组件并填写 Props，因此视觉、安全和行为都由宿主预先确定。
+- 页面内容：
+  - 单一运行链路：用户意图 → Tool Call → 组件注册表 → Props 校验 → 预制组件。
+  - 代码锚点：`packages/react-headless/src/stream/processStreamedMessage.ts` 对 `TOOL_CALL_START` 与 `TOOL_CALL_ARGS` 的增量处理。
+  - 适用边界：客服卡片、金融看板等答案形态有限且需要强一致性的场景。
+  - 主要代价：每一种新答案形态都需要新增组件，能力目录随研发迭代而增长。
+- 视觉：左侧画运行链路，右侧放精简事件处理代码；不使用多卡片布局。
+- 转场：Static 只能“选择一个组件”，Declarative 则允许模型用同一套组件目录组织完整界面。
+
+### 新增第 6 页：Declarative 的三种格式共享架构，取舍不同
+
+- 时间：2 分钟。
+- 本页结论：OpenUI、A2UI 与 json-render 都让模型组合受控组件，但分别优化紧凑表达、跨端协商和多目标渲染。
+- 页面内容：按文章顺序，每种格式独占一行。
+  - `OpenUI Lang`：行式 DSL，`id = Component(args)`；支持前向引用和骨架渐进显示；组件 Schema 可生成模型 Prompt。
+  - `A2UI`：通过 `createSurface`、`updateComponents`、`updateDataModel` 分离结构与数据；强调 Catalog 协商以及 Flutter、Angular、Lit 等客户端。
+  - `json-render`：对扁平元素树流式发送 JSON Patch；突出 Web、Email、PDF、Terminal 等渲染目标覆盖。
+- 代码：每行只保留一条最能代表 wire format 的示例，避免三段完整代码造成拥挤。
+- 页尾判断：共同安全边界是“模型只能调用 Catalog 已注册的能力”；SmartCanvas 选择 OpenUI，重点在紧凑输出与流式首屏。
+- 外部依据：OpenUI《The State of Generative UI in 2026》Generation / Declarative 章节。
+- 转场：当 Catalog 无法覆盖一次性创意界面时，才进入 Open-ended。
+
+### 新增第 7 页：Open-ended 自由度最高，也最考验首屏时延
+
+- 时间：1.5 分钟。
+- 本页结论：模型直接生成 HTML、CSS 与 JavaScript，适合一次性、探索式或创意输出，但不应让用户等待完整页面生成后才看到结果。
+- 页面内容：
+  - 左侧预留 16:9 截图框，标注“案例截图待补：Claude Artifact / 灵光”，不生成或伪造产品截图。
+  - 右侧展示链路：Prompt → HTML/CSS/JS → Sandbox iframe → Interactive artifact。
+  - 明确代价：输出 Token 多、完整页面生成慢、运行结果波动、无法自然继承宿主设计 Token，并需要严格沙箱隔离。
+  - 工程红线：`3 秒内出现首屏`。首屏以可感知的壳、骨架或首个可用区域为准，不等待所有脚本和内容完成。
+  - 达成方式：预构建 Artifact Shell；HTML 分段/流式到达；首屏关键结构优先；非关键脚本与数据延后；超时则显示可操作降级界面。
+- 说明：本页不绑定当前仓库实现，待演讲者确定 Claude Artifact 或灵光案例后替换截图占位框。
+- 外部依据：OpenUI 文章对 Open-ended 的延迟、风格一致性、沙箱和运行波动分析；`3 秒`为本次分享提出的产品体验目标，不表述为文章数据或当前实测成绩。
+- 转场：自由度越高，延迟与治理成本越大；这进一步解释 SmartCanvas 为什么把 Declarative 作为默认路径。
+
+> 插页后，原第 5–14 页顺延为第 8–17 页；其内容和相对顺序保持不变。
 
 ### 第 5 页：声明式方案相似，格式效率却会产生真实成本
 
