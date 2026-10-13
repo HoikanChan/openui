@@ -79,6 +79,15 @@ public final class Builtins {
         return LAZY_BUILTINS.contains(name);
     }
 
+    /**
+     * 静态表达式类型校验所覆盖的数据类与惰性/模板类内置函数名集合。
+     *
+     * @return 内置函数名集合
+     */
+    public static Set<String> typeCheckedNames() {
+        return union(DATA_BUILTINS, LAZY_BUILTINS);
+    }
+
     private static Set<String> union(Set<String> a, Set<String> b) {
         var s = new java.util.HashSet<>(a);
         s.addAll(b);

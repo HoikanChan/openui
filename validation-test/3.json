@@ -1,0 +1,2030 @@
+[
+  {
+    "id": "rw-209-IP",
+    "dsl": "root = Stack([alertCallout, infoCard, statsCard, tableCard], \"column\", \"m\")\n\nalertCallout = TextCallout(\"danger\", \"严重异常：所有接口丢包率均为 33.33%\", \"检测到全部 \" + data.summary.total_interfaces + \" 个接口的接收/发送丢包率均为 33.33%，属于严重网络故障，请立即排查。\")\n\ninfoCard = Card([infoHeader, infoDesc], \"card\")\ninfoHeader = CardHeader(\"设备基本信息\", null)\ninfoDesc = Descriptions([DescField(\"设备名称\", data.summary.device_name), DescField(\"设备 IP\", data.summary.device_ip), DescField(\"时间范围\", data.summary.time_range), DescField(\"接口总数\", data.summary.total_interfaces)], null, 2, true)\n\nstatsCard = Card([statsHeader, statsRow], \"card\")\nstatsHeader = CardHeader(\"丢包率统计概览\", null)\nstatsRow = Stack([recvStats, sendStats], \"row\", \"m\", \"stretch\")\nrecvStats = Card([TextContent(\"接收丢包率 (%)\", \"small-heavy\"), Stack([TextContent(\"平均: \" + data.summary.recv_drop_packet_rate.avg, \"default\"), TextContent(\"最小: \" + data.summary.recv_drop_packet_rate.min, \"default\"), TextContent(\"最大: \" + data.summary.recv_drop_packet_rate.max, \"default\")], \"column\", \"none\")])\nsendStats = Card([TextContent(\"发送丢包率 (%)\", \"small-heavy\"), Stack([TextContent(\"平均: \" + data.summary.send_drop_packet_rate.avg, \"default\"), TextContent(\"最小: \" + data.summary.send_drop_packet_rate.min, \"default\"), TextContent(\"最大: \" + data.summary.send_drop_packet_rate.max, \"default\")], \"column\", \"none\")])\n\ntableCard = Card([tableHeader, interfaceTable], \"card\")\ntableHeader = CardHeader(\"接口丢包率明细\", \"按接口名称排序\")\nsortedInterfaces = @Sort(data.interfaces, \"ifName\", \"asc\")\ninterfaceTable = Table([nameCol, recvCol, sendCol], sortedInterfaces)\nnameCol = Col(\"接口名称\", \"ifName\")\nrecvCol = Col(\"接收丢包率 (%)\", \"recv_drop_rate\", {cell: @Render(\"v\", v > 0 ? Tag(v + \"%\", \"danger\") : TextContent(v + \"%\"))})\nsendCol = Col(\"发送丢包率 (%)\", \"send_drop_rate\", {cell: @Render(\"v\", v > 0 ? Tag(v + \"%\", \"danger\") : TextContent(v + \"%\"))})",
+    "dataModel": {
+      "summary": {
+        "device_ip": "197.197.5.1",
+        "device_name": "O05-17F-Leaf2-Simu6-0001",
+        "time_range": "2026-08-08 20:01:06 ~ 20:31:06 (近30分钟)",
+        "recv_drop_packet_rate": { "unit": "%", "avg": 33.33, "min": 33.33, "max": 33.33 },
+        "total_interfaces": 64,
+        "send_drop_packet_rate": { "unit": "%", "avg": 33.33, "min": 33.33, "max": 33.33 }
+      },
+      "interfaces": [
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/17", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/18", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/19", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/20", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/21", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/22", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/23", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/24", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/26", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/27", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/28", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/29", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/30", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/31", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/32", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/41", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/42", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/43", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/44", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/45", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/46", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/47", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/48", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/49", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/50", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/51", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/52", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/53", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/54", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/55", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/56", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/59", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/60", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/61", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/62", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/69", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/70", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/71", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/72", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/77", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/78", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/79", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/80", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/85", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/86", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/87", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/88", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/89", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/90", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/91", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/92", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/93", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/94", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/95", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/96", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/97", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/98", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/99", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/100", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/101", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/102", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/103", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/104", "send_drop_rate": 33.33 },
+        { "recv_drop_rate": 33.33, "ifName": "400GE1/0/105", "send_drop_rate": 33.33 }
+      ]
+    }
+  },
+  {
+    "id": "rw-211-bps-Top5-bps",
+    "dsl": "root = Stack([noteCard, infoCard, inTableCard, outTableCard], \"column\", \"m\")\n\nnoteCard = TextCallout(\"info\", \"查询说明\", data.note)\n\ninfoCard = Descriptions([DescField(\"设备名称\", data.device.neName), DescField(\"设备IP\", data.device.neIp), DescField(\"接口总数\", data.total_interfaces), DescField(\"统计时间\", data.timeRange)], \"设备与查询信息\")\n\ninTableCard = Card([inHeader, inTable])\ninHeader = CardHeader(\"接收速率 (bps) Top5\", \"\")\ninTable = Table([inRankCol, inIfNameCol, inRateCol], data.input_byte_rate_top5)\ninRankCol = Col(\"排名\", \"rank\")\ninIfNameCol = Col(\"接口名称\", \"ifName\")\ninRateCol = Col(\"接收速率 (bps)\", \"input_byte_rate\")\n\noutTableCard = Card([outHeader, outTable])\noutHeader = CardHeader(\"发送速率 (bps) Top5\", \"\")\noutTable = Table([outRankCol, outIfNameCol, outRateCol], data.output_byte_rate_top5)\noutRankCol = Col(\"排名\", \"rank\")\noutIfNameCol = Col(\"接口名称\", \"ifName\")\noutRateCol = Col(\"发送速率 (bps)\", \"output_byte_rate\")",
+    "dataModel": {
+      "note": "该设备全部64个接口的接收速率和发送速率完全一致，均为 8.53 bps（极低流量），Top5仅为排序前5项展示。",
+      "input_byte_rate_top5": [
+        { "unit": "bps", "ifName": "400GE1/0/100", "rank": 1, "input_byte_rate": 8.53 },
+        { "unit": "bps", "ifName": "400GE1/0/101", "rank": 2, "input_byte_rate": 8.53 },
+        { "unit": "bps", "ifName": "400GE1/0/102", "rank": 3, "input_byte_rate": 8.53 },
+        { "unit": "bps", "ifName": "400GE1/0/103", "rank": 4, "input_byte_rate": 8.53 },
+        { "unit": "bps", "ifName": "400GE1/0/104", "rank": 5, "input_byte_rate": 8.53 }
+      ],
+      "output_byte_rate_top5": [
+        { "output_byte_rate": 8.53, "unit": "bps", "ifName": "400GE1/0/100", "rank": 1 },
+        { "output_byte_rate": 8.53, "unit": "bps", "ifName": "400GE1/0/101", "rank": 2 },
+        { "output_byte_rate": 8.53, "unit": "bps", "ifName": "400GE1/0/102", "rank": 3 },
+        { "output_byte_rate": 8.53, "unit": "bps", "ifName": "400GE1/0/103", "rank": 4 },
+        { "output_byte_rate": 8.53, "unit": "bps", "ifName": "400GE1/0/104", "rank": 5 }
+      ],
+      "device": { "neName": "O05-17F-Leaf2-Simu6-0001", "neIp": "197.197.5.1" },
+      "total_interfaces": 64,
+      "timeRange": "近30分钟 (2026-08-08T20:04:49 ~ 20:34:49+08:00)"
+    }
+  },
+  {
+    "id": "rw-215-O05-17F-Leaf2-Simu6-0001-IP-Fabric",
+    "dsl": "root = Stack([header, infoCard, slotCard, healthCard, chartsRow], \"column\", \"m\")\nheader = CardHeader(\"O05-17F-Leaf2-Simu6-0001\", \"设备全景信息仪表板\")\ninfoCard = Card([infoHeader, infoDesc], \"card\")\ninfoHeader = CardHeader(\"设备基本信息\", \"\")\ninfoDesc = Descriptions([nameField, ipField, stateField, typeField, roleField, vendorField, versionField, fabricField, macField, esnField], \"设备详情\", 2, true)\nnameField = DescField(\"名称\", data.device.neName)\nipField = DescField(\"IP 地址\", data.device.neIp)\nstateField = DescField(\"状态\", data.device.neState == \"Online\" ? Tag(\"在线\", \"success\") : Tag(\"离线\", \"danger\"))\ntypeField = DescField(\"型号\", data.device.neType)\nroleField = DescField(\"角色\", data.device.neRole)\nvendorField = DescField(\"厂商\", data.device.neVendor)\nversionField = DescField(\"版本\", data.device.neVersion)\nfabricField = DescField(\"Fabric\", data.device.fabricName)\nmacField = DescField(\"MAC 地址\", data.device.neMac)\nesnField = DescField(\"ESN\", data.device.neEsn)\n\nslotCard = Card([slotHeader, slotDesc], \"card\")\nslotHeader = CardHeader(\"单板信息\", \"\")\nslotDesc = Descriptions([slotNameField, softVerField, hardVerField, slotAdminField, slotOperField], \"单板详情\", 2, true)\nslotNameField = DescField(\"单板名称\", data.slot.slotName)\nsoftVerField = DescField(\"软件版本\", data.slot.softVersion)\nhardVerField = DescField(\"硬件版本\", data.slot.hardVersion)\nslotAdminField = DescField(\"管理状态\", data.slot.adminStatus == \"active\" ? Tag(\"Active\", \"success\") : Tag(\"Inactive\", \"warning\"))\nslotOperField = DescField(\"运行状态\", data.slot.operStatus == \"active\" ? Tag(\"Active\", \"success\") : Tag(\"Inactive\", \"warning\"))\n\nhealthCard = Card([healthHeader, healthContent], \"card\")\nhealthHeader = CardHeader(\"设备健康概览\", \"\")\nhealthContent = Stack([healthStatus, healthDesc], \"column\", \"s\")\nhealthStatus = Tag(data.healthSummary.deviceHealth == \"Normal\" ? \"健康\" : \"异常\", data.healthSummary.deviceHealth == \"Normal\" ? \"success\" : \"danger\")\nhealthDesc = TextContent(data.healthSummary.description)\n\nchartsRow = Stack([portAdminPie, portOperPie, speedBar, opticAdminPie, opticOperPie], \"row\", \"m\", \"start\", \"start\", true)\n\nportAdminPie = Card([portAdminHeader, portAdminChart], \"card\")\nportAdminHeader = CardHeader(\"端口管理状态\", \"\")\nportAdminChart = PieChart([\"Active\", \"Inactive\"], [data.portStats.adminStatus.active, data.portStats.adminStatus.inactive], \"donut\")\n\nportOperPie = Card([portOperHeader, portOperChart], \"card\")\nportOperHeader = CardHeader(\"端口运行状态\", \"\")\nportOperChart = PieChart([\"Active\", \"Inactive\"], [data.portStats.operStatus.active, data.portStats.operStatus.inactive], \"donut\")\n\nspeedBar = Card([speedHeader, speedChart], \"card\")\nspeedHeader = CardHeader(\"端口速率分布\", \"\")\nspeedChart = BarChart([\"400GE\", \"200GE\", \"10GE\", \"1GE\"], [Series(\"端口数\", [data.portStats.speedDistribution[\"400GE\"], data.portStats.speedDistribution[\"200GE\"], data.portStats.speedDistribution[\"10GE\"], data.portStats.speedDistribution[\"1GE\"]])], \"grouped\", \"速率\", \"数量\")\n\nopticAdminPie = Card([opticAdminHeader, opticAdminChart], \"card\")\nopticAdminHeader = CardHeader(\"光模块管理状态\", \"\")\nopticAdminChart = PieChart([\"Active\", \"Inactive\"], [data.opticalStats.adminStatus.active, data.opticalStats.adminStatus.inactive], \"donut\")\n\nopticOperPie = Card([opticOperHeader, opticOperChart], \"card\")\nopticOperHeader = CardHeader(\"光模块运行状态\", \"\")\nopticOperChart = PieChart([\"Active\", \"Inactive\"], [data.opticalStats.operStatus.active, data.opticalStats.operStatus.inactive], \"donut\")",
+    "dataModel": {
+      "opticalStats": {
+        "vendorDistribution": { "HUAWEI": 171 },
+        "total": 171,
+        "adminStatus": { "inactive": 16, "active": 155 },
+        "operStatus": { "inactive": 91, "active": 80 }
+      },
+      "healthSummary": {
+        "portsDown": 91,
+        "opticsUp": 80,
+        "description": "设备在线运行正常，81个端口运行中，90个端口未使用/待机",
+        "deviceHealth": "Normal",
+        "opticsDown": 91,
+        "portsUp": 81
+      },
+      "slot": {
+        "slotName": "CE9866-128DQ 1",
+        "softVersion": "V300R026C00",
+        "hardVersion": "CEM32DQP01 VER B",
+        "adminStatus": "active",
+        "operStatus": "active"
+      },
+      "device": {
+        "neState": "Online",
+        "neEsn": "2102350FMLN0H8023425",
+        "neVendor": "Huawei",
+        "neMac": "97-55-46-F9-00-01",
+        "neRole": "ServerLeaf",
+        "neName": "O05-17F-Leaf2-Simu6-0001",
+        "neIp": "197.197.5.1",
+        "neType": "CE9866-128DQ",
+        "neVersion": "1.26 V300R026C00",
+        "neResId": "0e85d60e-d01d-4290-9a86-ea4865a31be0",
+        "neCategory": "EnterpriseSwitch",
+        "fabricName": "default1"
+      },
+      "portStats": {
+        "total": 172,
+        "adminStatus": { "inactive": 16, "active": 156 },
+        "operStatus": { "inactive": 91, "active": 81 },
+        "speedDistribution": { "400GE": 87, "200GE": 82, "10GE": 2, "1GE": 1 }
+      }
+    }
+  },
+  {
+    "id": "rw-217-query",
+    "dsl": "root = Stack([headerCard, linkTableCard], \"column\", \"m\")\n\nheaderCard = Card([headerTitle, headerSubtitle])\nheaderTitle = TextContent(\"设备链路信息\", \"large-heavy\")\nheaderSubtitle = TextContent(\"设备: \" + data.device + \" | IP: \" + data.device_ip + \" | 总链路数: \" + data.total_links)\n\nlinkTableCard = Card([table])\ntable = Table([indexCol, localPortCol, localDeviceCol, remotePortCol, remoteDeviceCol, linkTypeCol, speedCol, adminStatusCol, operStatusCol], data.links)\n\nindexCol = IndexCol(\"序号\")\nlocalPortCol = Col(\"本端端口\", \"local_port\")\nlocalDeviceCol = Col(\"本端设备\", \"local_device\")\nremotePortCol = Col(\"对端端口\", \"remote_port\")\nremoteDeviceCol = Col(\"对端设备\", \"remote_device\")\nlinkTypeCol = Col(\"链路类型\", \"link_type\")\nspeedCol = Col(\"速率\", \"speed\")\nadminStatusCol = Col(\"管理状态\", \"admin_status\", {cell: @Render(\"v\", @Switch(v, {\"UP\": Tag(\"UP\", \"success\"), \"DOWN\": Tag(\"DOWN\", \"danger\")}, Tag(v, \"neutral\")))})\noperStatusCol = Col(\"运营状态\", \"oper_status\", {cell: @Render(\"v\", @Switch(v, {\"UP\": Tag(\"UP\", \"success\"), \"DOWN\": Tag(\"DOWN\", \"danger\")}, Tag(v, \"neutral\")))})",
+    "dataModel": {
+      "device_ip": "197.197.5.1",
+      "total_links": 9,
+      "links": [
+        {
+          "local_device": "O05-17F-Leaf2-Simu6-0001",
+          "link_type": "二层链路",
+          "remote_device": "O05-17F-Leaf2-Simu6-0002",
+          "local_port": "400GE1/0/65:1",
+          "remote_port": "400GE1/0/37:1",
+          "index": 1,
+          "link_status": "unknown",
+          "admin_status": "UP",
+          "oper_status": "UP",
+          "speed": "200G"
+        },
+        {
+          "local_device": "O05-17F-Leaf2-Simu6-0001",
+          "link_type": "二层链路",
+          "remote_device": "O05-17F-Leaf2-Simu6-0002",
+          "local_port": "400GE1/0/66:2",
+          "remote_port": "400GE1/0/34:2",
+          "index": 2,
+          "link_status": "unknown",
+          "admin_status": "UP",
+          "oper_status": "UP",
+          "speed": "200G"
+        },
+        {
+          "local_device": "O05-17F-Leaf2-Simu6-0001",
+          "link_type": "二层链路",
+          "remote_device": "O05-17F-Leaf2-Simu6-0002",
+          "local_port": "400GE1/0/67:2",
+          "remote_port": "400GE1/0/35:2",
+          "index": 3,
+          "link_status": "unknown",
+          "admin_status": "UP",
+          "oper_status": "UP",
+          "speed": "200G"
+        },
+        {
+          "local_device": "O05-17F-Leaf2-Simu6-0001",
+          "link_type": "二层链路",
+          "remote_device": "O05-17F-Leaf2-Simu6-0002",
+          "local_port": "400GE1/0/66:1",
+          "remote_port": "400GE1/0/38:1",
+          "index": 4,
+          "link_status": "unknown",
+          "admin_status": "UP",
+          "oper_status": "UP",
+          "speed": "200G"
+        },
+        {
+          "local_device": "O05-17F-Leaf2-Simu6-0001",
+          "link_type": "二层链路",
+          "remote_device": "O05-17F-Leaf2-Simu6-0002",
+          "local_port": "400GE1/0/65:2",
+          "remote_port": "400GE1/0/37:2",
+          "index": 5,
+          "link_status": "unknown",
+          "admin_status": "UP",
+          "oper_status": "UP",
+          "speed": "200G"
+        },
+        {
+          "local_device": "O05-17F-Leaf2-Simu6-0001",
+          "link_type": "二层链路",
+          "remote_device": "O05-17F-Leaf2-Simu6-0002",
+          "local_port": "400GE1/0/67:1",
+          "remote_port": "400GE1/0/39:1",
+          "index": 6,
+          "link_status": "unknown",
+          "admin_status": "UP",
+          "oper_status": "UP",
+          "speed": "200G"
+        },
+        {
+          "local_device": "O05-17F-Leaf2-Simu6-0001",
+          "link_type": "二层链路",
+          "remote_device": "PE-10.136.193.112",
+          "local_port": "400GE1/0/100",
+          "remote_port": "100GE1/0/1",
+          "index": 7,
+          "link_status": "unknown",
+          "admin_status": "UP",
+          "oper_status": "DOWN",
+          "speed": "100G"
+        },
+        {
+          "local_device": "O05-17F-Leaf2-Simu6-0001",
+          "link_type": "二层链路",
+          "remote_device": "O05-17F-Leaf2-Simu6-0002",
+          "local_port": "400GE1/0/68:1",
+          "remote_port": "400GE1/0/36:1",
+          "index": 8,
+          "link_status": "unknown",
+          "admin_status": "UP",
+          "oper_status": "UP",
+          "speed": "200G"
+        },
+        {
+          "local_device": "O05-17F-Leaf2-Simu6-0001",
+          "link_type": "二层链路",
+          "remote_device": "O05-17F-Leaf2-Simu6-0002",
+          "local_port": "400GE1/0/68:2",
+          "remote_port": "400GE1/0/36:2",
+          "index": 9,
+          "link_status": "unknown",
+          "admin_status": "UP",
+          "oper_status": "UP",
+          "speed": "200G"
+        }
+      ],
+      "device": "O05-17F-Leaf2-Simu6-0001"
+    }
+  },
+  {
+    "id": "rw-220-IP-Emergency-Serious",
+    "dsl": "root = Stack([infoCard, chartRow, alertCard], \"column\", \"m\", \"start\", \"start\", false)\n\ninfoCard = Card([infoHeader, infoDesc], \"card\", \"column\", \"m\", \"start\", \"start\", false)\ninfoHeader = CardHeader(\"设备日志概览\", data.device_name)\ninfoDesc = Descriptions([nameField, ipField, timeField, totalField], \"基本信息\", 2, true)\nnameField = DescField(\"设备名\", data.device_name)\nipField = DescField(\"IP 地址\", data.device_ip)\ntimeField = DescField(\"时间范围\", data.time_range)\ntotalField = DescField(\"总日志数\", data.total)\n\nchartRow = Stack([pieCard, barCard], \"row\", \"m\", \"stretch\", \"start\", false)\n\npieCard = Card([pieHeader, pieChart], \"card\", \"column\", \"s\", \"start\", \"start\", false)\npieHeader = CardHeader(\"日志级别分布\", \"\")\npieChart = PieChart(pieLabels, pieValues, \"donut\")\npieLabels = @ObjectKeys(data.severity_distribution)\npieValues = @Each(@ObjectEntries(data.severity_distribution), \"entry\", entry.value)\n\nbarCard = Card([barHeader, barChart], \"card\", \"column\", \"s\", \"start\", \"start\", false)\nbarHeader = CardHeader(\"Top 10 日志摘要\", \"按数量降序\")\nbarChart = HorizontalBarChart(barLabels, [Series(\"数量\", barValues)], \"grouped\", \"日志摘要\", \"数量\")\nsortedBrief = @Sort(data.brief_top10, \"count\", \"desc\")\nbarLabels = @Each(sortedBrief, \"item\", item.brief)\nbarValues = @Each(sortedBrief, \"item\", item.count)\n\nalertCard = Card([alertHeader, alertTable], \"card\", \"column\", \"m\", \"start\", \"start\", false)\nalertHeader = CardHeader(\"重点告警 (Emergency)\", \"需要立即关注的严重告警\")\nalertTable = Table([briefCol, countCol, descCol], emergencyRows)\nemergencyRows = @Filter(data.brief_top10, \"severity\", \"==\", \"Emergency\")\nbriefCol = Col(\"摘要\", \"brief\")\ncountCol = Col(\"数量\", \"count\")\ndescCol = Col(\"描述\", \"description\")",
+    "dataModel": {
+      "device_ip": "197.197.5.1",
+      "total": 518,
+      "device_name": "O05-17F-Leaf2-Simu6-0001",
+      "time_range": "2026-08-08 20:03:14 ~ 21:03:14 (CST)",
+      "brief_top10": [
+        {
+          "brief": "hwBoardResThresholdExceed_active",
+          "severity": "Serious",
+          "count": 148,
+          "description": "转发资源达到告警阈值（IPv4 FIB/IPv6 FIB/ND/ARP表项超限）"
+        },
+        {
+          "brief": "hwStorageUtilizationRisingAlarm_active",
+          "severity": "Serious",
+          "count": 74,
+          "description": "存储空间使用率超过阈值（≥90%）"
+        },
+        {
+          "brief": "hwARPHostConflict_active",
+          "severity": "Serious",
+          "count": 37,
+          "description": "主机访问接口频繁变化（ARP冲突）"
+        },
+        {
+          "brief": "hwMacHashConflict",
+          "severity": "Warning",
+          "count": 37,
+          "description": "MAC地址哈希冲突"
+        },
+        {
+          "brief": "hwGtlDefaultValue_active",
+          "severity": "Emergency",
+          "count": 37,
+          "description": "License已过期，License值恢复默认"
+        },
+        {
+          "brief": "hwCPUUtilizationRisingAlarm_active",
+          "severity": "Emergency",
+          "count": 37,
+          "description": "CPU使用率超过阈值（≥90%）"
+        },
+        {
+          "brief": "IPv4VxlanTunnelDown_active",
+          "severity": "Serious",
+          "count": 37,
+          "description": "VXLAN隧道状态变为DOWN（源10.1.1.1→目的10.100.1.1）"
+        },
+        {
+          "brief": "LACP_STATE_DOWN",
+          "severity": "Warning",
+          "count": 37,
+          "description": "LACP状态DOWN（端口400GE1/0/100，Eth-Trunk101）"
+        },
+        {
+          "brief": "linkDown_active",
+          "severity": "Serious",
+          "count": 37,
+          "description": "接口物理链路DOWN（400GE1/0/100）"
+        },
+        {
+          "brief": "hwMacUsageRaisingInfo_active",
+          "severity": "Warning",
+          "count": 37,
+          "description": "MAC使用率达到阈值（89%，阈值80%）"
+        }
+      ],
+      "severity_distribution": { "Serious": 333, "Warning": 111, "Emergency": 74 }
+    }
+  },
+  {
+    "id": "rw-225-spine189-bps-bps",
+    "dsl": "root = Stack([header, tableCard])\nheader = CardHeader(\"spine189 接口收发速率\", \"近30分钟平均值 (bps)\")\noutputData = data.queryInterfaceMetrics[0].telemetryData\ninputData = data.queryInterfaceMetrics[1].telemetryData\nmergedRows = @Each(outputData, \"out\", @Each(inputData, \"in\", out.ifName == in.ifName && out.output_byte_rate > 0 && in.input_byte_rate > 0 ? {ifName: out.ifName, inputRate: in.input_byte_rate, outputRate: out.output_byte_rate} : null))\nflatRows = mergedRows[0]\ntableCard = Card([interfaceTable])\ninterfaceTable = Table([nameCol, inCol, outCol], flatRows)\nnameCol = Col(\"接口名称\", \"ifName\")\ninCol = Col(\"接收速率(bps)\", \"inputRate\", {cell: @Render(\"v\", TextContent(@FormatNumber(v, 2)))})\noutCol = Col(\"发送速率(bps)\", \"outputRate\", {cell: @Render(\"v\", TextContent(@FormatNumber(v, 2)))})",
+    "dataModel": {
+      "queryInterfaceMetrics": [
+        {
+          "telemetryTotal": 54,
+          "telemetryData": [
+            {
+              "output_byte_rate": 15187.165714285715,
+              "ifName": "25GE1/0/11",
+              "metricValue": 15187.165714285715,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 15187.165714285715,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/11",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 11867.405714285716,
+              "ifName": "25GE1/0/18",
+              "metricValue": 11867.405714285716,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 11867.405714285716,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/18",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 11866.64,
+              "ifName": "25GE1/0/24",
+              "metricValue": 11866.64,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 11866.64,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/24",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 8064.948571428572,
+              "ifName": "25GE1/0/20",
+              "metricValue": 8064.948571428572,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 8064.948571428572,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/20",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 914.6457142857142,
+              "ifName": "25GE1/0/2",
+              "metricValue": 914.6457142857142,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 914.6457142857142,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/2",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "100GE1/0/1",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|100GE1/0/1",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "100GE1/0/2",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|100GE1/0/2",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "100GE1/0/3",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|100GE1/0/3",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "100GE1/0/4",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|100GE1/0/4",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "100GE1/0/5",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|100GE1/0/5",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "100GE1/0/6",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|100GE1/0/6",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/1",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/1",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/10",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/10",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/12",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/12",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/13",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/13",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/14",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/14",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/15",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/15",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/16",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/16",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/17",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/17",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/19",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/19",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/21",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/21",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/22",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/22",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/23",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/23",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/25",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/25",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/26",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/26",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/27",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/27",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/28",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/28",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/29",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/29",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/3",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/3",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/30",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/30",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/31",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/31",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/32",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/32",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/33",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/33",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/34",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/34",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/35",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/35",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/36",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/36",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/37",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/37",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/38",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/38",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/39",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/39",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/4",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/4",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/40",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/40",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/41",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/41",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/42",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/42",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/43",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/43",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/44",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/44",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/45",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/45",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/46",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/46",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/47",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/47",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/48",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/48",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/5",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/5",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/6",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/6",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/7",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/7",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/8",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/8",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "output_byte_rate": 0,
+              "ifName": "25GE1/0/9",
+              "metricValue": 0,
+              "output_bandwidth_effcnt": 140,
+              "output_byte_rate_filter": 0,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/9",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            }
+          ]
+        },
+        {
+          "telemetryTotal": 54,
+          "telemetryData": [
+            {
+              "ifName": "25GE1/0/11",
+              "metricValue": 8357.651428571427,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 8357.651428571427,
+              "input_byte_rate": 8357.651428571427,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/11",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/20",
+              "metricValue": 3858.3657142857146,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 3858.3657142857146,
+              "input_byte_rate": 3858.3657142857146,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/20",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/2",
+              "metricValue": 1252.6857142857143,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 1252.6857142857143,
+              "input_byte_rate": 1252.6857142857143,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/2",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "100GE1/0/1",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|100GE1/0/1",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "100GE1/0/2",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|100GE1/0/2",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "100GE1/0/3",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|100GE1/0/3",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "100GE1/0/4",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|100GE1/0/4",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "100GE1/0/5",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|100GE1/0/5",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "100GE1/0/6",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|100GE1/0/6",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/1",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/1",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/10",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/10",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/12",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/12",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/13",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/13",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/14",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/14",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/15",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/15",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/16",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/16",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/17",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/17",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/18",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/18",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/19",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/19",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/21",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/21",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/22",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/22",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/23",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/23",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/24",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/24",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/25",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/25",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/26",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/26",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/27",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/27",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/28",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/28",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/29",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/29",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/3",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/3",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/30",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/30",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/31",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/31",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/32",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/32",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/33",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/33",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/34",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/34",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/35",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/35",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/36",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/36",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/37",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/37",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/38",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/38",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/39",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/39",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/4",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/4",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/40",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/40",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/41",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/41",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/42",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/42",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/43",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/43",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/44",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/44",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/45",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/45",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/46",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/46",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/47",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/47",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/48",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/48",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/5",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/5",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/6",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/6",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/7",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/7",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/8",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/8",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            },
+            {
+              "ifName": "25GE1/0/9",
+              "metricValue": 0,
+              "input_bandwidth_effcnt": 140,
+              "neName": "spine189",
+              "neIp": "10.136.194.189",
+              "mac": "6C-EB-B6-51-37-C1",
+              "input_byte_rate_filter": 0,
+              "input_byte_rate": 0,
+              "if_query_id": "6C-EB-B6-51-37-C1|25GE1/0/9",
+              "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "rw-228-CPU-Top-IP",
+    "dsl": "root = Stack([header, tableCard])\n\nheader = CardHeader(\"CPU利用率 Top 5 设备排名\", \"按CPU利用率降序排列\")\n\nsortedData = @Sort(data.queryNetworkDeviceMetrics.telemetryData, \"cpu_usage\", \"desc\")\ntop5Data = @Each(sortedData, \"item\", @If(@Index(sortedData, \"item\") < 5, item, null))\n\ntableCard = Card([table])\n\ntable = Table([nameCol, ipCol, cpuCol], top5Data)\n\nnameCol = Col(\"设备名称\", \"neName\")\nipCol = Col(\"设备IP\", \"neIp\")\ncpuCol = Col(\"CPU利用率 (%)\", \"cpu_usage\", {cell: @Render(\"v\", TextContent(@FormatNumber(v, 2) + \"%\"))})",
+    "dataModel": {
+      "queryNetworkDeviceMetrics": {
+        "telemetryTotal": 6,
+        "telemetryData": [
+          {
+            "cpu_usage_filter": 23.428571428571427,
+            "metricValue": 23.428571428571427,
+            "neName": "pod13_spine_193.163",
+            "cpu_usage": 23.428571428571427,
+            "cpu_effcnt": 28,
+            "neIp": "10.136.193.163",
+            "mac": "C8-A7-76-B9-26-91",
+            "ne_dn": "dc0d76fd-e595-4752-8989-14e087873a38"
+          },
+          {
+            "cpu_usage_filter": 19.080593849416754,
+            "metricValue": 19.080593849416754,
+            "neName": "pod13_serverleaf_161",
+            "cpu_usage": 19.080593849416754,
+            "cpu_effcnt": 943,
+            "neIp": "10.136.193.161",
+            "mac": "1C-20-DB-DE-3F-61",
+            "ne_dn": "b9a61499-ff08-4d9d-aba8-db3bc4506352"
+          },
+          {
+            "cpu_usage_filter": 17.185185185185187,
+            "metricValue": 17.185185185185187,
+            "neName": "serverleaf2",
+            "cpu_usage": 17.185185185185187,
+            "cpu_effcnt": 27,
+            "neIp": "10.136.193.108",
+            "mac": "70-C7-F2-7D-95-21",
+            "ne_dn": "7ae1696e-c238-45e3-9c4e-11ed9985f73c"
+          },
+          {
+            "cpu_usage_filter": 16.928571428571427,
+            "metricValue": 16.928571428571427,
+            "neName": "spine189",
+            "cpu_usage": 16.928571428571427,
+            "cpu_effcnt": 28,
+            "neIp": "10.136.194.189",
+            "mac": "6C-EB-B6-51-37-C1",
+            "ne_dn": "5e10fa4c-9c38-4ece-949d-e6dd65a60c50"
+          },
+          {
+            "cpu_usage_filter": 16.375,
+            "metricValue": 16.375,
+            "neName": "Serverleaf_193.160",
+            "cpu_usage": 16.375,
+            "cpu_effcnt": 16,
+            "neIp": "10.136.193.160",
+            "mac": "C8-A7-76-C8-4C-71",
+            "ne_dn": "d566e9ff-1177-43f4-a1f2-1b673a22e9ca"
+          },
+          {
+            "cpu_usage_filter": 13,
+            "metricValue": 13,
+            "neName": "Server Leaf188",
+            "cpu_usage": 13,
+            "cpu_effcnt": 13,
+            "neIp": "10.136.194.188",
+            "mac": "6C-EB-B6-51-35-91",
+            "ne_dn": "6f2fd000-5060-44c2-a12c-c5c26ea10733"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "rw-241-O05-17F-Leaf2-Simu6-0001-down-lane",
+    "dsl": "root = Stack([summaryCard, moduleCard, laneCard], \"column\", \"m\")\n\nsummaryCard = Card([summaryText])\nsummaryText = TextContent(data.summary.description)\n\nmoduleCard = Card([moduleHeader, moduleTable])\nmoduleHeader = CardHeader(\"光模块维度指标\", \"端口与温度\")\nmoduleTable = Table([modulePortCol, moduleTempCol], data.opticalModuleMetrics)\nmodulePortCol = Col(\"端口\", \"port\")\nmoduleTempCol = Col(\"温度(℃)\", \"temperature\", {cell: @Render(\"v\", v != null ? TextContent(\"\" + v) : TextContent(\"无数据\"))})\n\nlaneRows = @Each(data.opticalModuleMetrics, \"mod\", @Each(mod.lanes, \"lane\", {port: mod.port, laneId: lane.laneId, tx_power_dbm: lane.tx_power_dbm, rx_power_dbm: lane.rx_power_dbm, bias_cur: lane.bias_cur}))\n\nlaneCard = Card([laneHeader, laneTable])\nlaneHeader = CardHeader(\"通道维度指标\", \"端口、laneId、发送功率、接收功率、偏置电流\")\nlaneTable = Table([lanePortCol, laneIdCol, laneTxCol, laneRxCol, laneBiasCol], laneRows)\nlanePortCol = Col(\"端口\", \"port\")\nlaneIdCol = Col(\"laneId\", \"laneId\")\nlaneTxCol = Col(\"发送功率(dBm)\", \"tx_power_dbm\")\nlaneRxCol = Col(\"接收功率(dBm)\", \"rx_power_dbm\")\nlaneBiasCol = Col(\"偏置电流(mA)\", \"bias_cur\")",
+    "dataModel": {
+      "summary": {
+        "description": "设备 O05-17F-Leaf2-Simu6-0001 上 7 个运行状态为 down 的光模块性能指标详情，查询时间为近 30 分钟。6 个端口有完整数据，400GE1/0/124 无性能数据上报。",
+        "metrics": ["温度(℃)", "发送功率(dBm)", "接收功率(dBm)", "偏置电流(mA)"]
+      },
+      "opticalModuleMetrics": [
+        {
+          "port": "400GE1/0/104",
+          "temperature": 37.62,
+          "lanes": [
+            { "laneId": 0, "tx_power_dbm": -3, "bias_cur": 12.05, "rx_power_dbm": -3 },
+            { "laneId": 1, "tx_power_dbm": -3.1, "bias_cur": 12.05, "rx_power_dbm": -3.1 },
+            { "laneId": 2, "tx_power_dbm": -3.5, "bias_cur": 12.05, "rx_power_dbm": -3.5 },
+            { "laneId": 3, "tx_power_dbm": -3.6, "bias_cur": 12.05, "rx_power_dbm": -3.6 }
+          ]
+        },
+        {
+          "port": "400GE1/0/60",
+          "temperature": 37.62,
+          "lanes": [
+            { "laneId": 0, "tx_power_dbm": -3, "bias_cur": 12.05, "rx_power_dbm": -3 },
+            { "laneId": 1, "tx_power_dbm": -3.1, "bias_cur": 12.05, "rx_power_dbm": -3.1 },
+            { "laneId": 2, "tx_power_dbm": -3.5, "bias_cur": 12.05, "rx_power_dbm": -3.5 },
+            { "laneId": 3, "tx_power_dbm": -3.6, "bias_cur": 12.05, "rx_power_dbm": -3.6 }
+          ]
+        },
+        {
+          "port": "400GE1/0/46",
+          "temperature": 37.62,
+          "lanes": [
+            { "laneId": 0, "tx_power_dbm": -3, "bias_cur": 12.05, "rx_power_dbm": -3 },
+            { "laneId": 1, "tx_power_dbm": -3.1, "bias_cur": 12.05, "rx_power_dbm": -3.1 },
+            { "laneId": 2, "tx_power_dbm": -3.5, "bias_cur": 12.05, "rx_power_dbm": -3.5 },
+            { "laneId": 3, "tx_power_dbm": -3.6, "bias_cur": 12.05, "rx_power_dbm": -3.6 }
+          ]
+        },
+        {
+          "port": "400GE1/0/49",
+          "temperature": 37.62,
+          "lanes": [
+            { "laneId": 0, "tx_power_dbm": -3, "bias_cur": 12.05, "rx_power_dbm": -3 },
+            { "laneId": 1, "tx_power_dbm": -3.1, "bias_cur": 12.05, "rx_power_dbm": -3.1 },
+            { "laneId": 2, "tx_power_dbm": -3.5, "bias_cur": 12.05, "rx_power_dbm": -3.5 },
+            { "laneId": 3, "tx_power_dbm": -3.6, "bias_cur": 12.05, "rx_power_dbm": -3.6 }
+          ]
+        },
+        {
+          "port": "400GE1/0/71",
+          "temperature": 37.62,
+          "lanes": [
+            { "laneId": 0, "tx_power_dbm": -3, "bias_cur": 12.05, "rx_power_dbm": -3 },
+            { "laneId": 1, "tx_power_dbm": -3.1, "bias_cur": 12.05, "rx_power_dbm": -3.1 },
+            { "laneId": 2, "tx_power_dbm": -3.5, "bias_cur": 12.05, "rx_power_dbm": -3.5 },
+            { "laneId": 3, "tx_power_dbm": -3.6, "bias_cur": 12.05, "rx_power_dbm": -3.6 }
+          ]
+        },
+        {
+          "port": "400GE1/0/100",
+          "temperature": 37.62,
+          "lanes": [
+            { "laneId": 0, "tx_power_dbm": -3, "bias_cur": 12.05, "rx_power_dbm": -3 },
+            { "laneId": 1, "tx_power_dbm": -3.1, "bias_cur": 12.05, "rx_power_dbm": -3.1 },
+            { "laneId": 2, "tx_power_dbm": -3.5, "bias_cur": 12.05, "rx_power_dbm": -3.5 },
+            { "laneId": 3, "tx_power_dbm": -3.6, "bias_cur": 12.05, "rx_power_dbm": -3.6 }
+          ]
+        },
+        { "note": "无性能数据上报", "port": "400GE1/0/124", "temperature": null, "lanes": [] }
+      ]
+    }
+  },
+  {
+    "id": "rw-246-O05-17F-Leaf2-Simu6-0001-CPU-CPU",
+    "dsl": "root = Stack([gaugeCard])\n\ngaugeCard = Card([gaugeHeader, gaugeChart])\ngaugeHeader = CardHeader(data.title, data.subtitle)\ngaugeChart = GaugeChart([gaugeReading], 0, 100)\ngaugeReading = {name: \"CPU利用率\", value: data.data.cpuUsage}",
+    "dataModel": {
+      "data": {
+        "deviceIp": "197.197.5.1",
+        "cpuUsage": 70,
+        "unit": "%",
+        "deviceName": "O05-17F-Leaf2-Simu6-0001",
+        "timeRange": "近30分钟平均值"
+      },
+      "subtitle": "设备：O05-17F-Leaf2-Simu6-0001 | 时间范围：近30分钟",
+      "options": { "max": 100, "threshold": 80, "warningThreshold": 60 },
+      "title": "设备CPU利用率",
+      "type": "gauge"
+    }
+  },
+  {
+    "id": "rw-249-O05-17F-Leaf2-Simu6-0001-O05-17F-Leaf2-S",
+    "dsl": "root = Stack([summaryCard, queryInfoCard, deviceCards])\n\nsummaryCard = Card([summaryHeader, summaryText])\nsummaryHeader = CardHeader(\"日志查询结果\", \"\")\nsummaryText = TextContent(data.summary)\n\nqueryInfoCard = Card([queryInfo], variant=\"sunk\")\nqueryInfo = Descriptions([\n  DescField(\"查询类型\", data.queryCondition.queryLogType),\n  DescField(\"设备名称\", @Each(data.queryCondition.deviceNames, \"name\", Tag(name, \"neutral\"))),\n  DescField(\"时间范围\", data.queryCondition.timeRange)\n], \"查询条件\", 1, true)\n\ndeviceCards = Stack(@Each(data.devices, \"device\", deviceCardTpl), \"column\", \"m\")\ndeviceCardTpl = Card([deviceHeader, emptyText])\ndeviceHeader = CardHeader(device.neName, \"日志数量: \" + device.logCount)\nemptyText = TextContent(\"暂无日志数据\")",
+    "dataModel": {
+      "summary": "在指定时间范围内，两台设备均未查询到日志数据。",
+      "queryCondition": {
+        "queryLogType": "all（所有日志）",
+        "deviceNames": ["O05-17F-Leaf2-Simu6-0001", "O05-17F-Leaf2-Simu6-0002"],
+        "timeRange": "2026-08-12 15:03:02 ~ 16:03:02（近1小时）"
+      },
+      "devices": [
+        { "logCount": 0, "neName": "O05-17F-Leaf2-Simu6-0001", "syslogResult": [] },
+        { "logCount": 0, "neName": "O05-17F-Leaf2-Simu6-0002", "syslogResult": [] }
+      ]
+    }
+  },
+  {
+    "id": "rw-283-CPU-CPU",
+    "dsl": "root = Stack([titleCard, detailCard])\n\ntitleCard = Card([titleText, descText])\ntitleText = TextContent(data.title, \"large-heavy\")\ndescText = TextContent(data.description, \"small\")\n\ndetailCard = Card([descList])\ndescList = Descriptions([nameField, cpuField, timeField], \"详细信息\")\nnameField = DescField(\"设备名称\", data.deviceName)\ncpuField = DescField(\"CPU利用率\", data.cpuUsage + \"%\")\ntimeField = DescField(\"时间范围\", data.timeRange)",
+    "dataModel": {
+      "cpuUsage": 70,
+      "description": "近30分钟平均CPU利用率",
+      "title": "设备CPU利用率查询结果",
+      "deviceName": "O05-17F-Leaf2-Simu6-0001",
+      "timeRange": "2026-08-12 17:00:49 ~ 2026-08-12 17:30:49 (UTC+8)"
+    }
+  },
+  {
+    "id": "rw-290-default1-Fabric-CPU",
+    "dsl": "root = Stack([summaryCard, deviceTableCard])\n\nsummaryCard = Card([summaryHeader, summaryContent])\nsummaryHeader = CardHeader(\"Fabric CPU利用率统计\", data.fabricName + \" · \" + data.timeRange)\nsummaryContent = Stack([summaryRow], \"row\", \"m\", \"start\", \"start\", true)\nsummaryRow = Stack([avgCard, countCard], \"row\", \"m\", \"center\", \"center\")\navgCard = Card([TextContent(\"平均CPU利用率\", \"small\"), TextContent(data.averageCpuUsage + \"%\", \"large-heavy\")])\ncountCard = Card([TextContent(\"设备数量\", \"small\"), TextContent(\"\" + data.deviceCount, \"large-heavy\")])\n\ndeviceTableCard = Card([tableHeader, deviceTable])\ntableHeader = CardHeader(\"设备列表\", \"共 \" + data.deviceCount + \" 台设备\")\ndeviceTable = Table([nameCol, ipCol, cpuCol], data.deviceList)\nnameCol = Col(\"设备名称\", \"neName\")\nipCol = Col(\"IP地址\", \"neIp\")\ncpuCol = Col(\"CPU利用率\", \"cpu_usage\", {cell: @Render(\"v\", TextContent(v + \"%\"))})",
+    "dataModel": {
+      "metricName": "CPU利用率",
+      "averageCpuUsage": 70,
+      "deviceCount": 10,
+      "deviceList": [
+        { "neName": "O05-17F-Leaf2-Simu6-0001", "cpu_usage": 70, "neIp": "197.197.5.1" },
+        { "neName": "O05-17F-Leaf2-Simu6-0002", "cpu_usage": 70, "neIp": "197.197.5.2" },
+        { "neName": "O05-17F-Leaf2-Simu6-0003", "cpu_usage": 70, "neIp": "197.197.5.3" },
+        { "neName": "O05-17F-Leaf2-Simu6-0004", "cpu_usage": 70, "neIp": "197.197.5.4" },
+        { "neName": "O05-17F-Leaf2-Simu6-0005", "cpu_usage": 70, "neIp": "197.197.5.5" },
+        { "neName": "O05-17F-Leaf2-Simu6-0006", "cpu_usage": 70, "neIp": "197.197.5.6" },
+        { "neName": "O05-17F-Leaf2-Simu6-0007", "cpu_usage": 70, "neIp": "197.197.5.7" },
+        { "neName": "O05-17F-Leaf2-Simu6-0008", "cpu_usage": 70, "neIp": "197.197.5.8" },
+        { "neName": "O05-17F-Leaf2-Simu6-0009", "cpu_usage": 70, "neIp": "197.197.5.9" },
+        { "neName": "O05-17F-Leaf2-Simu6-0010", "cpu_usage": 70, "neIp": "197.197.5.10" }
+      ],
+      "fabricName": "default1",
+      "metricUnit": "%",
+      "timeRange": "近30分钟 (2026-08-12 17:20 ~ 17:50)"
+    }
+  },
+  {
+    "id": "rw-297-O05-17F-Leaf2-Simu6-0001-CPU-CPU",
+    "dsl": "root = Stack([chartCard])\nchartCard = Card([chartHeader, cpuChart])\nchartHeader = CardHeader(\"设备CPU利用率趋势\", \"197.197.5.1 (O05-17F-Leaf2-Simu6-0001) · 近1小时\")\ntimeLabels = @Each(data.data, \"item\", item.timestamp)\ncpuValues = @Each(data.data, \"item\", item.value)\ncpuSeries = Series(\"CPU利用率\", cpuValues)\ncpuChart = LineChart(timeLabels, [cpuSeries], \"smooth\", \"时间\", \"CPU利用率(%)\")",
+    "dataModel": {
+      "summary": "CPU利用率保持在70.0%",
+      "deviceIp": "197.197.5.1",
+      "unit": "%",
+      "data": [
+        { "value": 70, "timestamp": "2026-08-12 17:05:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:06:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:07:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:08:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:09:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:12:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:13:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:14:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:15:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:16:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:17:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:18:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:19:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:20:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:21:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:22:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:23:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:24:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:28:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:29:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:30:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:31:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:32:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:33:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:34:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:35:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:36:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:37:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:38:00" },
+        { "value": 70, "timestamp": "2026-08-12 17:39:00" }
+      ],
+      "metric": "cpu_usage",
+      "chartType": "trend_chart",
+      "title": "设备CPU利用率趋势",
+      "deviceName": "O05-17F-Leaf2-Simu6-0001",
+      "timeRange": "近1小时"
+    }
+  },
+  {
+    "id": "rw-299-CPU-IP-MAC",
+    "dsl": "root = Stack([titleCard, infoCard, metricCard, timeCard], \"column\", \"m\")\n\ntitleCard = Card([titleText])\ntitleText = TextContent(data.title, \"large-heavy\")\n\ninfoCard = Card([infoHeader, infoDescriptions])\ninfoHeader = CardHeader(\"设备信息\")\ninfoDescriptions = Descriptions([nameField, ipField, macField], columns=1)\nnameField = DescField(\"设备名称\", data.deviceInfo.neName ?? \"无数据\")\nipField = DescField(\"设备IP\", data.deviceInfo.neIp ?? \"无数据\")\nmacField = DescField(\"MAC地址\", data.deviceInfo.mac ?? \"无数据\")\n\nmetricCard = Card([metricHeader, metricValue])\nmetricHeader = CardHeader(\"CPU利用率\")\nmetricValue = TextContent(data.metricData.metricValue + data.metricData.unit, \"large-heavy\")\n\ntimeCard = Card([timeHeader, timeDescriptions])\ntimeHeader = CardHeader(\"查询时间范围\")\ntimeDescriptions = Descriptions([rangeField, startField, endField], columns=1)\nrangeField = DescField(\"时间范围\", data.queryCondition.timeRange ?? \"无数据\")\nstartField = DescField(\"开始时间\", @FormatDate(data.queryCondition.startTime, \"dateTime\"))\nendField = DescField(\"结束时间\", @FormatDate(data.queryCondition.endTime, \"dateTime\"))",
+    "dataModel": {
+      "queryCondition": {
+        "startTime": 1786527542000,
+        "endTime": 1786529342000,
+        "timeRange": "近30分钟"
+      },
+      "title": "设备CPU利用率查询结果",
+      "deviceInfo": {
+        "neName": "O05-17F-Leaf2-Simu6-0001",
+        "neIp": "197.197.5.1",
+        "mac": "97-55-46-F9-00-01"
+      },
+      "metricData": {
+        "unit": "%",
+        "aggregationType": "平均值",
+        "metricName": "CPU利用率",
+        "metricValue": 70
+      }
+    }
+  },
+  {
+    "id": "rw-302-Fabric-default1",
+    "dsl": "root = Stack([summaryCard, roleCard, vendorCard, stateCard, deviceTableCard], \"column\", \"m\")\n\nsummaryCard = Card([summaryHeader, summaryContent])\nsummaryHeader = CardHeader(\"Fabric 设备统计\", \"Fabric: \" + data.fabricName)\nsummaryContent = Stack([totalDevices], \"row\", \"m\", \"start\", \"start\")\ntotalDevices = Card([TextContent(\"设备总数\", \"small\"), TextContent(\"\" + data.total, \"large-heavy\")])\n\nroleCard = Card([roleHeader, roleChart])\nroleHeader = CardHeader(\"角色分布\", \"\")\nroleLabels = @Each(data.devices, \"d\", d.role)\nroleChart = PieChart(roleLabels, @Each(data.devices, \"d\", 1), \"donut\")\n\nvendorCard = Card([vendorHeader, vendorChart])\nvendorHeader = CardHeader(\"厂商分布\", \"\")\nvendorLabels = @Each(data.devices, \"d\", d.vendor)\nvendorChart = PieChart(vendorLabels, @Each(data.devices, \"d\", 1), \"donut\")\n\nstateCard = Card([stateHeader, stateChart])\nstateHeader = CardHeader(\"状态分布\", \"\")\nstateLabels = @Each(data.devices, \"d\", d.state)\nstateChart = PieChart(stateLabels, @Each(data.devices, \"d\", 1), \"donut\")\n\ndeviceTableCard = Card([deviceTableHeader, deviceTable])\ndeviceTableHeader = CardHeader(\"设备列表\", \"\")\ndeviceTable = Table([nameCol, roleCol, vendorCol, typeCol, ipCol, stateCol], data.devices)\n\nnameCol = Col(\"设备名称\", \"name\")\nroleCol = Col(\"角色\", \"role\", {cell: @Render(\"v\", Tag(v, \"info\"))})\nvendorCol = Col(\"厂商\", \"vendor\")\ntypeCol = Col(\"型号\", \"type\")\nipCol = Col(\"IP 地址\", \"ip\")\nstateCol = Col(\"状态\", \"state\", {cell: @Render(\"v\", @Switch(v, {\"在线\": Tag(\"在线\", \"success\"), \"离线\": Tag(\"离线\", \"danger\")}, Tag(v, \"neutral\")))})",
+    "dataModel": {
+      "total": 10,
+      "devices": [
+        {
+          "role": "ServerLeaf",
+          "vendor": "Huawei",
+          "ip": "197.197.5.1",
+          "name": "O05-17F-Leaf2-Simu6-0001",
+          "state": "在线",
+          "type": "CE9866-128DQ"
+        },
+        {
+          "role": "ServerLeaf",
+          "vendor": "Huawei",
+          "ip": "197.197.5.2",
+          "name": "O05-17F-Leaf2-Simu6-0002",
+          "state": "在线",
+          "type": "CE9866-128DQ"
+        },
+        {
+          "role": "ServerLeaf",
+          "vendor": "Huawei",
+          "ip": "197.197.5.3",
+          "name": "O05-17F-Leaf2-Simu6-0003",
+          "state": "在线",
+          "type": "CE9866-128DQ"
+        },
+        {
+          "role": "ServerLeaf",
+          "vendor": "Huawei",
+          "ip": "197.197.5.4",
+          "name": "O05-17F-Leaf2-Simu6-0004",
+          "state": "在线",
+          "type": "CE9866-128DQ"
+        },
+        {
+          "role": "ServerLeaf",
+          "vendor": "Huawei",
+          "ip": "197.197.5.5",
+          "name": "O05-17F-Leaf2-Simu6-0005",
+          "state": "在线",
+          "type": "CE9866-128DQ"
+        },
+        {
+          "role": "ServerLeaf",
+          "vendor": "Huawei",
+          "ip": "197.197.5.6",
+          "name": "O05-17F-Leaf2-Simu6-0006",
+          "state": "在线",
+          "type": "CE9866-128DQ"
+        },
+        {
+          "role": "ServerLeaf",
+          "vendor": "Huawei",
+          "ip": "197.197.5.7",
+          "name": "O05-17F-Leaf2-Simu6-0007",
+          "state": "在线",
+          "type": "CE9866-128DQ"
+        },
+        {
+          "role": "ServerLeaf",
+          "vendor": "Huawei",
+          "ip": "197.197.5.8",
+          "name": "O05-17F-Leaf2-Simu6-0008",
+          "state": "在线",
+          "type": "CE9866-128DQ"
+        },
+        {
+          "role": "ServerLeaf",
+          "vendor": "Huawei",
+          "ip": "197.197.5.9",
+          "name": "O05-17F-Leaf2-Simu6-0009",
+          "state": "在线",
+          "type": "CE9866-128DQ"
+        },
+        {
+          "role": "ServerLeaf",
+          "vendor": "Huawei",
+          "ip": "197.197.5.10",
+          "name": "O05-17F-Leaf2-Simu6-0010",
+          "state": "在线",
+          "type": "CE9866-128DQ"
+        }
+      ],
+      "fabricName": "default1"
+    }
+  }
+]

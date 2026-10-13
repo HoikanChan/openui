@@ -54,6 +54,18 @@ public record ValidationResult(ValidationStatus status, String normalizedDsl, Li
         return issues.stream().anyMatch(i -> i.severity() == ValidationSeverity.ERROR);
     }
 
+    /**
+     * 面向修复与用户侧报告的低噪声诊断视图。
+     *
+     * <p>
+     * {@link #issues()} 保留与 TS 解析器对齐的完整视图；本视图去除完全重复项，以及被更具可操作性根因覆盖的诊断。
+     *
+     * @return 去噪后的问题列表
+     */
+    public List<ValidationIssue> actionableIssues() {
+        return ValidationIssueReducer.actionable(issues);
+    }
+
     // -----------------------------------------------------------------------
     // Static factories
     // -----------------------------------------------------------------------

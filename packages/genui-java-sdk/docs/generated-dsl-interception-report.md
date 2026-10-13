@@ -1,5 +1,12 @@
 # Generated DSL Validation 拦截实践报告
 
+> 当前状态（2026-08）：本报告主体记录的是仅有语法/contract 校验时的基线。Java SDK
+> 现在可通过 `ValidationRequest.dataModel(...)` 显式启用数据感知的 FINAL 静态校验，已能拦截
+> `data.*` 缺失/非法遍历、可证明的 prop/slot/builtin/operator 类型错误，以及 Table/Col 字段错误。
+> 未传 `dataModel` 时仍保留本文 corpus 的历史兼容行为；显式空 map 代表真实的空数据模型。
+> `ValidationResult.issues()` 保留完整诊断；`actionableIssues()` 统一去除语法、Table row shape
+> 和 root 级联噪音，Repair 与用户报告使用后者。
+
 ## 结论摘要
 
 本报告为 `DefaultOpenuiLangValidator` 建立了一组可重复执行的离线拦截 corpus，并在第二轮扩充中加入了从真实 eval 数据（`packages/react-ui-dsl/src/__tests__/e2e/eval/runs`，2038 个 `.dsl` 产物）挖掘出的"差模型典型错误路径"：JS 方法调用、JS 全局对象、箭头函数、发明的 builtin/组件名、prose 夹杂，以及**已确认无法拦截**的数据路径类错误。
@@ -112,7 +119,7 @@
 
 ## 拦截报告示例：validator 实际能产出什么
 
-`ValidationResult.issues()` 的每条 `ValidationIssue` 携带 `code`、`severity`、`source`（syntax/contract/reference/root）、`message`、`statementId`、`component`、`path`、`line:column`、`hint`、`retryable`。以下均为对 corpus 样本的真实运行输出（非手写示意）。
+`ValidationResult.issues()` 的每条 `ValidationIssue` 携带 `code`、`severity`、`source`（syntax/contract/reference/root）、`message`、`statementId`、`component`、`path`、`line:column`、`hint`、`retryable`。`actionableIssues()` 保持这些结构不变，只进行稳定的 dominance reduction：同一语法坏语句保留首个语法根因、Table row shape 压过同路径的通用 prop mismatch、有其他根因时移除 root tail，并保留不同 statement/path 的独立错误。以下均为对 corpus 样本的真实运行输出（非手写示意）。
 
 ### 单条错误的形态
 
@@ -173,7 +180,9 @@ status=INVALID  issues=41
 
 manifest 用 `expectedOutcome: "missed"` + 期望码钉住这三类：一旦未来 validator 具备 dataModel 对照或收紧调用语法，`InterceptionCorpusTest` 会失败报警，强制同步更新本报告。
 
-**建议的后续能力**（不在本 change 范围）：在 `ValidationRequest` 增加可选 dataModel schema，对 `data.*` 路径做存在性对照，可同时消灭第 1、2 类漏拦截；第 3 类需上游 lang-core 语法收紧或 eval 层渲染兜底。
+**当前能力更新**：`ValidationRequest` 已支持传入具体 dataModel，并按真实数据证据检查
+`data.*` 路径，因此第 1、2 类在数据模型可用时已经能够拦截。未传模型时继续 fail-open，
+以兼容只做语法/contract 校验的旧调用。第 3 类仍需上游 lang-core 语法收紧或 eval 层渲染兜底。
 
 另注：`excess-args` 按当前 validator 规则属于 blocking issue，但底层 TS materialize 语义会丢弃多余参数后继续渲染。这里将其作为拦截命中是为了保护生成质量和迁移安全；后续若产品语义调整为 warning，应同步更新 corpus 和报告。
 
@@ -199,5 +208,7 @@ BUILD SUCCESS
 
 - 这是离线 corpus，不等价于真实 LLM 分布；live LLM e2e 仍依赖 genui-service 的 `LlmProperties` endpoint/key。
 - 共享 contract 只覆盖本 corpus 中需要的组件，不代表完整 DSLEngine contract；真实产物中的旧组件名在完整 contract 下同样是 `unknown-component`（重命名后的必然结果），但拦截码分布可能不同。
-- 数据路径类错误（eval failing-patterns 中最高频的 Missing data fields 家族的一部分）**在当前架构下不可拦截**，已作为 known-miss 钉住；不要在任何对外口径中声称 100% 拦截。
+- 数据路径类错误只有在调用方提供具体 dataModel 时才能拦截；没有运行时数据证据时会保守放行，因此不要在任何对外口径中声称 100% 拦截。
+- 当前 base contract 尚未导出 `slotOnly` 组件元数据，因此 Java 侧还不能拦截 Slot-Only 组件出现在 root 或 Open Render Slot；元数据进入 `GenerationContract` 后应在 catalog/type seam 补齐。
+- builtin registry 已覆盖全部当前名称、参数数量和主要输入/返回类型，但 `Filter` 字段/操作符/比较值、`Sort` 方向及部分 formatter 次级参数还没有逐项做语义约束；这些错误当前可能依赖下游 prop/Table 检查才能暴露。
 - 本报告不覆盖视觉质量、布局合理性、格式化质量（Poor value formatting 等）；这些属于 GenUI eval/render 层。

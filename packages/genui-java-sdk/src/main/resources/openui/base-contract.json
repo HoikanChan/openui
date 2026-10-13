@@ -334,7 +334,14 @@
           "tags": {
             "type": "array",
             "items": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ]
             }
           }
         },
@@ -522,7 +529,7 @@
       }
     },
     "DescField": {
-      "description": "Declarative descriptions field with label, direct value expression, and optional span. Must be used inside Descriptions; when orphaned, auto-renders as a single-field Descriptions.",
+      "description": "Declarative descriptions field with label, direct value expression, and optional span. Must be used inside Descriptions.",
       "propsSchema": {
         "type": "object",
         "properties": {
@@ -814,9 +821,6 @@
           "label": {
             "type": "string"
           },
-          "description": {
-            "type": "string"
-          },
           "defaultChecked": {
             "type": "boolean"
           }
@@ -1071,10 +1075,20 @@
         "type": "object",
         "properties": {
           "labels": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            ]
           },
           "series": {
             "type": "array",
@@ -1109,10 +1123,20 @@
         "type": "object",
         "properties": {
           "labels": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            ]
           },
           "series": {
             "type": "array",
@@ -1183,10 +1207,20 @@
         "type": "object",
         "properties": {
           "labels": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            ]
           },
           "series": {
             "type": "array",
@@ -1253,7 +1287,7 @@
       }
     },
     "ScatterChart": {
-      "description": "Scatter points; use for correlations like latency vs packet loss or throughput vs error rate. Pass xType='time' when X values are epoch millisecond timestamps to enable automatic date axis formatting.",
+      "description": "Scatter points; use for correlations like latency vs packet loss or throughput vs error rate. When X values are epoch timestamps, pass xType='time' for automatic date formatting; otherwise pass raw numbers and xType defaults to 'value'.",
       "propsSchema": {
         "type": "object",
         "properties": {

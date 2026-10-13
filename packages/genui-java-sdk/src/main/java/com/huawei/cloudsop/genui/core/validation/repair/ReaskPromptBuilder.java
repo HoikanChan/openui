@@ -9,8 +9,8 @@ import com.huawei.cloudsop.genui.core.contract.ComponentPropsSchema;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.llm.protocol.ChatMessage;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
+import com.huawei.cloudsop.genui.core.validation.ValidationIssueReducer;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
-import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -36,15 +36,14 @@ import java.util.regex.Pattern;
  * 绝不使用原始解析器异常文本。组件签名提示来自合并后的 {@link GenerationContract}，通过
  * {@link ComponentPropsSchema#formatSignature} 生成。
  *
- * <h2>级联抑制放在本类，而非校验器中（设计决策 11.4）</h2>
+ * <h2>修复消费可操作问题视图（原设计决策 11.4，机制迁移至 {@link ValidationIssueReducer}）</h2>
  *
  * <p>
  * 一次解析失败会扩散出派生噪声：该语句的表达式被拆解为虚假的 {@code excess-args}/{@code null-required}
  * 参数问题，模板片段暴露为 {@code unresolved-ref}，根节点停止物化（{@code root-not-renderable}）。本类仅在
- * “提示词视图”这一层过滤这些噪声 —— {@code ValidationResult} 本身保持完整。不要为了“整洁”把抑制逻辑挪进校验器：
- * 拦截语料库断言的是针对完整校验器输出的期望编码子集，TS 对齐测试数据镜像的是未抑制的 TS 解析器；一旦校验器
- * 开始丢弃问题，两者都会失败。例外：其 hint 本身就是根因（JS 全局函数 / 缺少 '@'，参见
- * {@link RepairHints#isRootCauseHint}）的 {@code unresolved-ref} 不会被抑制 —— 移除它会只剩下 token
+ * “提示词视图”这一层经 {@link ValidationIssueReducer#actionable} 过滤这些噪声 —— {@code ValidationResult}
+ * 本身保持完整，拦截语料库与 TS 对齐测试继续断言完整输出。reducer 同时保留这样的 {@code unresolved-ref}：其
+ * hint 本身就是根因（JS 全局函数 / 缺少 '@'，参见 {@code RepairHints#isRootCauseHint}）—— 移除它会只剩下 token
  * 层面的症状。
  *
  * @since 2026
@@ -56,11 +55,6 @@ public final class ReaskPromptBuilder {
 
     /** 机器可解析的标记，供测试/日志识别修复类系统消息（接续修复）。 */
     public static final String CONTINUE_REPAIR_MARKER = "[REPAIR:CONTINUE]";
-
-    /** 同一语句语法失败所派生出的问题编码（是症状，不是根因）。 */
-    private static final Set<String> DERIVED_CODES = Set.of("excess-args", "null-required", "unresolved-ref");
-
-    private static final String ROOT_NOT_RENDERABLE = "root-not-renderable";
 
     private static final Pattern COMPONENT_CALL = Pattern.compile("(?<![@A-Za-z0-9_])([A-Z][A-Za-z0-9_]*)\\s*\\(");
 
@@ -115,7 +109,9 @@ public final class ReaskPromptBuilder {
                 + "Do not explain.\n\n");
         appendCompactSyntaxRules(system);
         appendSyntaxRepairHints(system, issues);
-        appendIssues(system, issues);
+        // 提示词视图消费 ValidationIssueReducer 的可操作子集（去重 + 级联抑制），完整 issues 仍可经
+        // ValidationResult.issues() 获取 —— 分层原理见类级 Javadoc。
+        appendIssues(system, ValidationIssueReducer.actionable(issues));
         appendInvalidStatementSignatures(system, invalidDsl, issues, contract);
 
         StringBuilder user = new StringBuilder();
@@ -179,7 +175,9 @@ public final class ReaskPromptBuilder {
         appendCompletionContract(system, acceptedPrefix);
         appendCompactSyntaxRules(system);
         appendSyntaxRepairHints(system, issues);
-        appendIssues(system, issues);
+        // 同 buildFullRepair：提示词视图消费 actionable 子集；targeted rewrites / 签名提示仍基于完整 issues
+        // （其内部检测逻辑依赖未被 reducer 过滤的模式与组件名）。
+        appendIssues(system, ValidationIssueReducer.actionable(issues));
         appendTargetedRewrites(system, invalidStatement, issues);
         appendInvalidStatementSignatures(system, invalidStatement, issues, contract);
 
@@ -288,7 +286,7 @@ public final class ReaskPromptBuilder {
             return;
         }
         LinkedHashSet<String> hints = new LinkedHashSet<>();
-        for (ValidationIssue issue : suppressCascades(issues)) {
+        for (ValidationIssue issue : ValidationIssueReducer.actionable(issues)) {
             if (issue == null || issue.severity() != ValidationSeverity.ERROR || issue.code() == null
                     || !issue.code().startsWith("syntax-")) {
                 continue;
@@ -329,7 +327,7 @@ public final class ReaskPromptBuilder {
             sb.append("- (no structured issues supplied)\n");
             return;
         }
-        for (ValidationIssue issue : suppressCascades(issues)) {
+        for (ValidationIssue issue : issues) {
             if (issue == null || issue.severity() != ValidationSeverity.ERROR) {
                 continue; // 机器可读：只有阻塞级别的问题才驱动修复
             }
@@ -346,46 +344,6 @@ public final class ReaskPromptBuilder {
             }
             sb.append('\n');
         }
-    }
-
-    /**
-     * 提示词视图级联过滤器（分层原理见类级 Javadoc）：
-     *
-     * <ol>
-     * <li>语句级：某语句已有阻塞级语法问题时，其派生编码会被丢弃，携带根因提示的 unresolved-ref 除外；
-     * <li>根节点收尾：只要还存在其他阻塞级问题，{@code root-not-renderable} 就会被丢弃 —— 那个其他问题已经
-     * 解释了根节点为何未能物化。
-     * </ol>
-     */
-    private static List<ValidationIssue> suppressCascades(List<ValidationIssue> issues) {
-        Set<String> syntaxBrokenStmts = new LinkedHashSet<>();
-        for (ValidationIssue issue : issues) {
-            if (issue != null && issue.severity() == ValidationSeverity.ERROR && "syntax".equals(issue.source())
-                    && issue.statementId() != null) {
-                syntaxBrokenStmts.add(issue.statementId());
-            }
-        }
-        List<ValidationIssue> kept = new ArrayList<>();
-        boolean keptOtherError = false;
-        for (ValidationIssue issue : issues) {
-            if (issue == null) {
-                continue;
-            }
-            boolean derivedOnBrokenStmt = issue.severity() == ValidationSeverity.ERROR
-                    && DERIVED_CODES.contains(issue.code()) && issue.statementId() != null
-                    && syntaxBrokenStmts.contains(issue.statementId()) && !RepairHints.isRootCauseHint(issue.hint());
-            if (derivedOnBrokenStmt) {
-                continue;
-            }
-            kept.add(issue);
-            if (issue.severity() == ValidationSeverity.ERROR && !ROOT_NOT_RENDERABLE.equals(issue.code())) {
-                keptOtherError = true;
-            }
-        }
-        if (keptOtherError) {
-            kept.removeIf(i -> ROOT_NOT_RENDERABLE.equals(i.code()));
-        }
-        return kept;
     }
 
     /**

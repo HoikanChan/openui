@@ -134,7 +134,8 @@ public final class GenUiGenerator {
                 Set<String> externalRefs = externalRefsFor(promptRequest);
 
                 ValidationRequest validationRequest = ValidationRequest.builder().dsl(extracted).contract(merged)
-                        .rootName(merged.root()).externalRefs(externalRefs).mode(ValidationMode.FINAL).build();
+                        .rootName(merged.root()).externalRefs(externalRefs).dataModel(dataModelFor(effectiveRequest))
+                        .mode(ValidationMode.FINAL).build();
 
                 ValidationResult validationResult = validator.validate(validationRequest);
 
@@ -144,7 +145,8 @@ public final class GenUiGenerator {
                     // NONE never repairs — both fall through to the throw below.
                     RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
                     if (policy.kind() == RepairPolicyKind.FINAL_REPAIR) {
-                        RepairCoordinator.FullRepairOutcome outcome = repairCoordinator(policy, externalRefs)
+                        RepairCoordinator.FullRepairOutcome outcome = repairCoordinator(policy, externalRefs,
+                                dataModelFor(effectiveRequest))
                                 .repairFull(userMessage(effectiveRequest), extracted, validationResult, merged,
                                         merged.root(), requestBody.systemPrompt());
                         if (outcome.repaired()) {
@@ -177,8 +179,17 @@ public final class GenUiGenerator {
 
     /** Build a repair coordinator bound to this generator's transport/validator + a policy. */
     private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs) {
+        return repairCoordinator(policy, externalRefs, null);
+    }
+
+    /**
+     * Build a repair coordinator that also carries the render data model, so every re-validation attempt runs the
+     * same data-path/prop type validation as the initial FINAL gate.
+     */
+    private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs,
+            Map<String, Object> dataModel) {
         return new RepairCoordinator(transport, validator, policy).withBodyBuilder(this::buildBodyFromMessages)
-                .withExternalRefs(externalRefs);
+                .withExternalRefs(externalRefs).withDataModel(dataModel);
     }
 
     /**
@@ -188,6 +199,16 @@ public final class GenUiGenerator {
      */
     private static Set<String> externalRefsFor(GenUIPromptRequest promptRequest) {
         return promptRequest.dataModel() == null ? Set.of() : Set.of("data");
+    }
+
+    /**
+     * Render Data Model for validation, or {@code null} when the request carries none. {@code
+     * UiGenerationRequest.response()} normalizes absent to an EMPTY map (never null), while {@code
+     * ValidationRequest.dataModel} distinguishes null (no model → type validation off, {@code data} unresolved) from
+     * an empty map (concrete empty model). Translate at this seam so absent stays "no model".
+     */
+    private static Map<String, Object> dataModelFor(UiGenerationRequest request) {
+        return request.response().isEmpty() ? null : request.response();
     }
 
     /** Serialize repair chat messages into a transport body, reusing the generation request shape. */
@@ -294,7 +315,7 @@ public final class GenUiGenerator {
         GenerationContract merged = sdk.mergedContract(promptRequest);
         Set<String> externalRefs = externalRefsFor(promptRequest);
         StreamingValidationSession session = new StreamingValidationSession(validator, merged, merged.root(),
-                externalRefs);
+                externalRefs, dataModelFor(effectiveRequest));
         RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
 
         RequestBody requestBody = buildRequest(effectiveRequest, true);
@@ -439,8 +460,8 @@ public final class GenUiGenerator {
         GenUIPromptRequest promptRequest = toPromptRequest(request);
         GenerationContract merged = sdk.mergedContract(promptRequest);
         ValidationRequest validationRequest = ValidationRequest.builder().dsl(dsl).contract(merged)
-                .rootName(merged.root()).externalRefs(externalRefsFor(promptRequest)).mode(ValidationMode.FINAL)
-                .build();
+                .rootName(merged.root()).externalRefs(externalRefsFor(promptRequest))
+                .dataModel(dataModelFor(request)).mode(ValidationMode.FINAL).build();
         return validator.validate(validationRequest);
     }
 

@@ -123,6 +123,19 @@ class ValidationModelTest {
     }
 
     @Test
+    void resultExposesActionableIssuesWithoutChangingRawIssues() {
+        ValidationIssue generic = new ValidationIssue("type-prop-mismatch", ValidationSeverity.ERROR, "type", "generic",
+                "table", "Table", "/rows", 1, 1, null, false);
+        ValidationIssue specific = new ValidationIssue("type-table-row-shape-mismatch", ValidationSeverity.ERROR,
+                "type", "specific", "table", "Table", "/rows", 1, 1, null, false);
+        ValidationResult result = ValidationResult.invalid(List.of(generic, specific),
+                new ValidationMetadata(1, "table", ValidationMode.FINAL, null));
+
+        assertEquals(List.of(generic, specific), result.issues());
+        assertEquals(List.of(specific), result.actionableIssues());
+    }
+
+    @Test
     void resultValidFactorySetsStatusAndConvenienceMethods() {
         ValidationMetadata meta = new ValidationMetadata(2, "Root", ValidationMode.FINAL, null);
         ValidationResult result = ValidationResult.valid("dsl-text", List.of(), meta);
@@ -204,6 +217,24 @@ class ValidationModelTest {
         assertEquals("MyRoot", request.rootName());
         assertEquals("req-123", request.requestId());
         assertNull(request.contract());
+        assertNull(request.dataModel());
+    }
+
+    @Test
+    void requestBuilderPreservesImmutableRenderDataModel() {
+        ValidationRequest request = ValidationRequest.builder().dsl("root = Stack([])").mode(ValidationMode.FINAL)
+                .dataModel(java.util.Map.of("total", 3)).build();
+
+        assertEquals(java.util.Map.of("total", 3), request.dataModel());
+        assertThrows(UnsupportedOperationException.class, () -> request.dataModel().put("other", 4));
+    }
+
+    @Test
+    void legacyRequestConstructorKeepsDataModelAbsent() {
+        ValidationRequest request = new ValidationRequest("root = Stack([])", null, null, Set.of("data"),
+                ValidationMode.FINAL, "legacy");
+
+        assertNull(request.dataModel());
     }
 
     // -----------------------------------------------------------------------

@@ -170,7 +170,42 @@ returns a backward-compatible `GenUiGenerationResult(dsl, dataModel)`, leaving
 valid result returns the extracted DSL plus the populated `validationStatus()`
 and `validationResult()`. Any `INVALID` result throws
 `GenerationValidationException`; callers can inspect
-`e.validationResult().issues()` for the blocking diagnostics.
+`e.validationResult().actionableIssues()` for the low-noise blocking diagnostics.
+The complete parser-parity view remains available through `issues()`.
+
+Final validation is data-aware. The generator forwards the concrete response
+data through initial validation and every repair attempt, so the validator can
+check generated `data.*` paths and proven expression types against the same
+model the renderer receives. Lower-level callers enable this pass explicitly:
+
+```java
+ValidationResult result = DefaultOpenuiLangValidator.INSTANCE.validate(
+    ValidationRequest.builder()
+        .dsl(generatedDsl)
+        .contract(contract)
+        .dataModel(renderDataModel)
+        .mode(ValidationMode.FINAL)
+        .build());
+```
+
+A missing `dataModel` keeps the legacy syntax/contract-only behavior. Passing
+`Map.of()` means a concrete empty model and therefore makes every `data.*` path
+missing. The MVP reports stable issue families for observable errors including
+missing/invalid data paths, component prop and slot type mismatches, builtin
+arity/type mismatches, obvious operator mismatches, and missing Table/Col
+fields or non-flat row shapes. It also checks proven chart cardinality (label/value
+lengths and single-point trend lines) and duplicate derived category expressions.
+`@Each`/`@Render` binders remain in scope through separately declared template
+statements reached from the builtin body; the same binder is still unresolved when
+that template is referenced outside the declaring builtin call.
+Empty, heterogeneous, or unsupported evidence is handled
+conservatively instead of guessing a type.
+
+`ValidationResult` deliberately exposes two issue views:
+
+- `issues()` is the immutable raw diagnostic stream for debugging, telemetry, and TS parity.
+- `actionableIssues()` preserves independent errors but removes exact duplicates and diagnostics
+  dominated by syntax, Table row-shape, or root-cause issues. Repair prompts use this view.
 
 ```java
 try {
@@ -180,7 +215,7 @@ try {
   }
 } catch (GenerationValidationException e) {
   ValidationResult result = e.validationResult();
-  log.warn("Generated DSL failed validation: {}", result.issues());
+  log.warn("Generated DSL failed validation: {}", result.actionableIssues());
 }
 ```
 

@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -41,9 +42,16 @@ import java.util.Set;
 public final class RepairCoordinator {
 
     private final LlmTransport transport;
+
     private final OpenuiLangValidator validator;
+
     private final RepairPolicy policy;
+
     private Set<String> externalRefs = Set.of();
+
+    /** 修复复验所携带的渲染数据模型；非空时类型校验（数据路径/prop 类型）在每轮复验中生效。 */
+    private Map<String, Object> dataModel;
+
     private BodyBuilder bodyBuilder = (messages, stream) -> {
         throw new IllegalStateException("BodyBuilder not configured");
     };
@@ -233,6 +241,7 @@ public final class RepairCoordinator {
      */
     @FunctionalInterface
     public interface StreamConsumer {
+
         /**
          * 消费接续流。
          *
@@ -270,6 +279,18 @@ public final class RepairCoordinator {
     }
 
     /**
+     * 配置修复复验所携带的渲染数据模型。设置后每轮修复复验都会运行数据路径/prop 类型校验（与初次生成校验同源）； 未设置时修复复验不做数据类型校验。
+     *
+     * @param dataModel
+     *            渲染数据模型；{@code null} 表示不启用
+     * @return 本实例，便于链式调用
+     */
+    public RepairCoordinator withDataModel(Map<String, Object> dataModel) {
+        this.dataModel = dataModel;
+        return this;
+    }
+
+    /**
      * 获取当前使用的修复策略。
      *
      * @return 修复策略
@@ -282,7 +303,7 @@ public final class RepairCoordinator {
 
     private ValidationResult validateFinal(String dsl, GenerationContract contract, String rootName) {
         ValidationRequest request = ValidationRequest.builder().dsl(dsl).contract(contract).rootName(rootName)
-                .externalRefs(externalRefs).mode(ValidationMode.FINAL).build();
+                .externalRefs(externalRefs).dataModel(dataModel).mode(ValidationMode.FINAL).build();
         return validator.validate(request);
     }
 

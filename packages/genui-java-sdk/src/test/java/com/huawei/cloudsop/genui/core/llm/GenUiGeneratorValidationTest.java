@@ -269,12 +269,14 @@ class GenUiGeneratorValidationTest {
         GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport,
                 GenUiValidationConfig.finalOnly(), capturingValidator);
 
-        generator.generate(UiGenerationRequest.builder().userInput("x").build());
+        generator.generate(UiGenerationRequest.builder().userInput("x").response(java.util.Map.of("total", 3)).build());
 
         ValidationRequest req = capturedRequest.get();
         assertNotNull(req, "validator must have been called");
         assertNotNull(req.contract(), "validator must receive a non-null merged contract");
         assertEquals(ValidationMode.FINAL, req.mode(), "mode must be FINAL for sync generate()");
+        assertEquals(java.util.Map.of("total", 3), req.dataModel(),
+                "validator must receive the Render Data Model");
         assertTrue(req.contract().components().containsKey("Stack"),
                 "merged contract must include Stack from base contract");
     }

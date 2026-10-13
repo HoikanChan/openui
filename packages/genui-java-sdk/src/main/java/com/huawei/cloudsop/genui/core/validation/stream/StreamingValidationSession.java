@@ -11,7 +11,10 @@ import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -42,6 +45,7 @@ public final class StreamingValidationSession {
     private final GenerationContract contract;
     private final String rootName;
     private final Set<String> externalRefs;
+    private final Map<String, Object> dataModel;
 
     /** Concatenated accepted+emitted statements — the symbol context passed to the validator. */
     private final StringBuilder acceptedPrefix = new StringBuilder();
@@ -56,7 +60,7 @@ public final class StreamingValidationSession {
     private ValidationResult withheldResult;
 
     /**
-     * 构造流式校验 session（无外部引用）。
+     * 构造流式校验 session（无外部引用、无数据模型）。
      *
      * @param validator
      *            用于逐条语句校验的校验器
@@ -66,7 +70,7 @@ public final class StreamingValidationSession {
      *            预期的根组件名，可为 {@code null}
      */
     public StreamingValidationSession(OpenuiLangValidator validator, GenerationContract contract, String rootName) {
-        this(validator, contract, rootName, Set.of());
+        this(validator, contract, rootName, Set.of(), null);
     }
 
     /**
@@ -83,10 +87,30 @@ public final class StreamingValidationSession {
      */
     public StreamingValidationSession(OpenuiLangValidator validator, GenerationContract contract, String rootName,
             Set<String> externalRefs) {
+        this(validator, contract, rootName, externalRefs, null);
+    }
+
+    /**
+     * 构造流式校验 session，同时携带渲染数据模型（逐语句校验即启用数据路径/prop 类型校验）。
+     *
+     * @param validator
+     *            用于逐条语句校验的校验器
+     * @param contract
+     *            合并合约，可为 {@code null}
+     * @param rootName
+     *            预期的根组件名，可为 {@code null}
+     * @param externalRefs
+     *            运行时才解析的外部引用名集合，可为 {@code null}
+     * @param dataModel
+     *            渲染数据模型；{@code null} 表示不启用数据类型校验
+     */
+    public StreamingValidationSession(OpenuiLangValidator validator, GenerationContract contract, String rootName,
+            Set<String> externalRefs, Map<String, Object> dataModel) {
         this.validator = Objects.requireNonNull(validator, "validator");
         this.contract = contract;
         this.rootName = rootName;
         this.externalRefs = externalRefs == null ? Set.of() : Set.copyOf(externalRefs);
+        this.dataModel = dataModel == null ? null : Collections.unmodifiableMap(new LinkedHashMap<>(dataModel));
     }
 
     /**
@@ -197,7 +221,7 @@ public final class StreamingValidationSession {
 
     private ValidationResult validate(String dsl, ValidationMode mode) {
         ValidationRequest request = ValidationRequest.builder().dsl(dsl).contract(contract).rootName(rootName)
-                .externalRefs(externalRefs).mode(mode).build();
+                .externalRefs(externalRefs).dataModel(dataModel).mode(mode).build();
         return validator.validate(request);
     }
 

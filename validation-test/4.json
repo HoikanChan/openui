@@ -1,0 +1,556 @@
+[
+  {
+    "id": "rw-303-O05-17F-Leaf2-Simu6-0001-CPU",
+    "dsl": "root = Stack([infoCard, cpuGaugeCard])\n\ninfoCard = Card([infoHeader, infoDescriptions])\ninfoHeader = CardHeader(data.title, null)\ninfoDescriptions = Descriptions([ipField, nameField, rangeField], \"设备信息\")\nipField = DescField(\"设备 IP\", data.data.device_ip)\nnameField = DescField(\"设备名称\", data.data.device_name)\nrangeField = DescField(\"时间范围\", data.data.time_range)\n\ncpuGaugeCard = Card([cpuHeader, cpuGauge])\ncpuHeader = CardHeader(\"CPU 利用率\", \"当前负载情况\")\ncpuGauge = GaugeChart([cpuReading], 0, 100)\ncpuReading = {name: \"CPU\", value: data.data.cpu_usage}",
+    "dataModel": {
+      "data": {
+        "device_ip": "197.197.5.1",
+        "device_name": "O05-17F-Leaf2-Simu6-0001",
+        "unit": "%",
+        "time_range": "近30分钟（最新值)",
+        "cpu_usage": 70
+      },
+      "title": "设备 CPU 利用率查询结果"
+    }
+  },
+  {
+    "id": "rw-313-serverleaf1-IP-Server",
+    "dsl": "root = Stack([infoCard, chartRow, timeInfo], \"column\", \"m\", \"start\", \"start\", false)\ninfoCard = Card([infoHeader, infoDesc], \"card\", \"column\", \"m\", \"start\", \"start\", false)\ninfoHeader = CardHeader(\"设备基本信息\", \"serverleaf1\")\ninfoDesc = Descriptions([nameField, ipField, statusField, roleField, typeField, vendorField, fabricField, esnField, macField, versionField, categoryField], \"设备详情\", 2, true)\nnameField = DescField(\"设备名称\", data.deviceInfo.neName)\nipField = DescField(\"IP地址\", data.deviceInfo.neIp)\nstatusField = DescField(\"运行状态\", data.deviceInfo.neState)\nroleField = DescField(\"角色\", data.deviceInfo.neRole)\ntypeField = DescField(\"设备款型\", data.deviceInfo.neType)\nvendorField = DescField(\"厂商\", data.deviceInfo.neVendor)\nfabricField = DescField(\"所属Fabric\", data.deviceInfo.fabricName)\nesnField = DescField(\"ESN\", data.deviceInfo.neEsn)\nmacField = DescField(\"MAC地址\", data.deviceInfo.neMac)\nversionField = DescField(\"版本\", data.deviceInfo.neVersion)\ncategoryField = DescField(\"类别\", data.deviceInfo.neCategory)\nchartRow = Stack([pieCard, barCard], \"row\", \"m\", \"stretch\", \"start\", false)\npieCard = Card([pieHeader, pieChart], \"card\", \"column\", \"s\", \"start\", \"start\", false)\npieHeader = CardHeader(\"异常日志级别分布\", \"总计: \" + data.logSummary.totalLogs + \" 条\")\npieChart = PieChart(@Each(data.logSummary.severityStats, \"item\", item.name), @Each(data.logSummary.severityStats, \"item\", item.count), \"donut\")\nbarCard = Card([barHeader, barChart], \"card\", \"column\", \"s\", \"start\", \"start\", false)\nbarHeader = CardHeader(\"异常类型 TOP10\", \"按日志摘要统计\")\nbarChart = HorizontalBarChart(@Each(data.top10Briefs, \"item\", item.name), [Series(\"数量\", @Each(data.top10Briefs, \"item\", item.count))], \"grouped\", \"数量\", \"日志摘要\")\ntimeInfo = TextContent(\"数据说明：查询时间为 \" + data.logSummary.timeRange, \"small\")",
+    "dataModel": {
+      "logSummary": {
+        "totalLogs": 394,
+        "severityStats": [
+          { "color": "#F5A623", "name": "Warning", "count": 351 },
+          { "color": "#E04B4B", "name": "Error", "count": 25 },
+          { "color": "#7B68EE", "name": "Serious", "count": 18 }
+        ],
+        "timeRange": "2026-08-12 06:38:20 ~ 18:38:20 (近12小时)"
+      },
+      "top10Briefs": [
+        { "name": "ospfIfConfigError", "count": 300 },
+        { "name": "ifconfigerror", "count": 25 },
+        { "name": "OSPFV3_CONFLICT_ROUTERID_INTF", "count": 17 },
+        { "name": "linkDown_clear", "count": 8 },
+        { "name": "hwLldpInterfaceRemTablesChange", "count": 5 },
+        { "name": "hwLldpInterfaceNeighborChange", "count": 5 },
+        { "name": "hwStormSuppressAlarm_clear", "count": 3 },
+        { "name": "hwStormSuppressAlarm_active", "count": 3 },
+        { "name": "hwIfMonitorOutputRateRising_active", "count": 3 },
+        { "name": "hwMstpiPortStateForwarding", "count": 3 }
+      ],
+      "deviceInfo": {
+        "neState": "在线",
+        "neEsn": "2102352CHS10K1000023",
+        "neVendor": "华为",
+        "neMac": "70-C7-F2-7D-95-41",
+        "neRole": "Server Leaf",
+        "neName": "serverleaf1",
+        "neIp": "10.136.193.107",
+        "neType": "CE6857-48S6CQ-EI",
+        "neVersion": "8.25 V200R025C00SPC500",
+        "neCategory": "交换机",
+        "fabricName": "pod11"
+      }
+    }
+  },
+  {
+    "id": "rw-321-default1-ServerLeaf",
+    "dsl": "root\n根 ```  \n\n。\n\nRoot",
+    "dataModel": {
+      "total": 10,
+      "data": [{ "name": "CE9866-128DQ", "value": 10 }],
+      "scope": "Fabric: default1，角色: ServerLeaf",
+      "title": "default1域 ServerLeaf 设备款型分布"
+    }
+  },
+  {
+    "id": "mae-preva-check-002",
+    "dsl": "root = Stack([summaryCard, detailsCard, downloadCard], \"column\", \"m\")\n\nsummaryCard = Card([summaryHeader, summaryBody], \"column\", \"s\")\nsummaryHeader = CardHeader(\"金桥区参数核查结果\", \"核查时间: \" + data.data.checkTime)\nsummaryBody = Stack([statusTag, regionTag], \"row\", \"m\", \"center\", \"start\")\nstatusTag = Tag(data.data.checkResult, data.data.checkResult == \"PASS\" ? \"success\" : \"danger\")\nregionTag = Tag(\"区域: \" + data.data.regionName, \"info\")\n\ndetailsCard = Card([detailsHeader, detailsTable], \"column\", \"s\")\ndetailsHeader = CardHeader(\"核查详情\", \"共 \" + @Count(data.data.details) + \" 项参数\")\ndetailsTable = Table([paramCol, currentCol, expectedCol, statusCol], data.data.details)\nparamCol = Col(\"参数名称\", \"paramName\")\ncurrentCol = Col(\"当前值\", \"currentValue\")\nexpectedCol = Col(\"期望值\", \"expectedValue\")\nstatusCol = Col(\"状态\", \"status\", {cell: @Render(\"v\", @Switch(v, {\"PASS\": Tag(\"通过\", \"success\"), \"FAIL\": Tag(\"失败\", \"danger\")}, Tag(v, \"neutral\")))})\n\ndownloadCard = Card([downloadBtn], \"column\", \"s\")\ndownloadBtn = Button(\"下载核查报告\", Action([@OpenUrl(data.data.resultURL)]), \"primary\")",
+    "dataModel": {
+      "code": "0",
+      "message": "success",
+      "data": {
+        "intentInstanceId": 301,
+        "regionId": 100,
+        "regionName": "金桥区",
+        "checkTime": "2026-07-14 02:00:00",
+        "checkResult": "PASS",
+        "details": [
+          {
+            "paramName": "concertStartTime",
+            "currentValue": "2026-07-14 19:00:00",
+            "expectedValue": "2026-07-14 19:00:00",
+            "status": "PASS"
+          },
+          {
+            "paramName": "concertEndTime",
+            "currentValue": "2026-07-14 22:00:00",
+            "expectedValue": "2026-07-14 22:00:00",
+            "status": "PASS"
+          },
+          {
+            "paramName": "occupancy",
+            "currentValue": 50000,
+            "expectedValue": 50000,
+            "status": "PASS"
+          }
+        ],
+        "resultURL": "/files/intent_301_result.zip"
+      }
+    }
+  },
+  {
+    "id": "mae-valuearea-activation-004",
+    "dsl": "root = Stack([statusCard, capacityCard, detailCard], \"column\", \"m\")\n\nstatusCard = Card([statusHeader, statusContent], \"card\", \"column\", \"m\", \"start\", \"start\")\nstatusHeader = CardHeader(\"金桥区价值区域评估\", \"开通状态查询\")\nstatusContent = Stack([statusRow, licenseRow], \"column\", \"s\")\nstatusRow = Stack([statusLabel, statusValue], \"row\", \"m\", \"center\")\nstatusLabel = TextContent(\"是否可以开通\", \"default\")\nstatusValue = Tag(\"可以开通\", \"success\")\nlicenseRow = Stack([licenseLabel, licenseValue], \"row\", \"m\", \"center\")\nlicenseLabel = TextContent(\"是否拥有License\", \"default\")\nlicenseValue = Tag(\"是\", \"success\")\n\ncapacityCard = Card([capacityHeader, capacityGrid], \"card\", \"column\", \"m\", \"start\", \"start\")\ncapacityHeader = CardHeader(\"容量概览\", \"当前资源使用情况\")\ncapacityGrid = Stack([totalCapCard, availCapCard, maxCellCard, availCellCard], \"row\", \"m\", \"stretch\", \"start\", true)\ntotalCapCard = Card([totalCapLabel, totalCapValue], \"card\", \"column\", \"none\", \"center\", \"center\")\ntotalCapLabel = TextContent(\"总License容量\", \"small\")\ntotalCapValue = TextContent(\"\" + data.data.totalLicenseCapacity, \"large-heavy\")\navailCapCard = Card([availCapLabel, availCapValue], \"card\", \"column\", \"none\", \"center\", \"center\")\navailCapLabel = TextContent(\"可用License容量\", \"small\")\navailCapValue = TextContent(\"\" + data.data.avaliableLicenseCapacity, \"large-heavy\")\nmaxCellCard = Card([maxCellLabel, maxCellValue], \"card\", \"column\", \"none\", \"center\", \"center\")\nmaxCellLabel = TextContent(\"最大激活小区容量\", \"small\")\nmaxCellValue = TextContent(\"\" + data.data.maxActivateCellCapacity, \"large-heavy\")\navailCellCard = Card([availCellLabel, availCellValue], \"card\", \"column\", \"none\", \"center\", \"center\")\navailCellLabel = TextContent(\"可用激活小区容量\", \"small\")\navailCellValue = TextContent(\"\" + data.data.avaliableActivateCellCapaticy, \"large-heavy\")\n\ndetailCard = Card([detailHeader, detailList], \"card\", \"column\", \"m\", \"start\", \"start\")\ndetailHeader = CardHeader(\"详细信息\", \"区域ID与具体参数\")\ndetailList = Descriptions([regionIdField, totalField, availField, maxField, availCellField], \"区域详情\", 1, true)\nregionIdField = DescField(\"区域ID\", data.data.regionId)\ntotalField = DescField(\"总License容量\", data.data.totalLicenseCapacity)\navailField = DescField(\"可用License容量\", data.data.avaliableLicenseCapacity)\nmaxField = DescField(\"最大激活小区容量\", data.data.maxActivateCellCapacity)\navailCellField = DescField(\"可用激活小区容量\", data.data.avaliableActivateCellCapaticy)",
+    "dataModel": {
+      "code": "0",
+      "message": "success",
+      "data": {
+        "regionId": 100,
+        "canActivate": true,
+        "hasLicense": true,
+        "totalLicenseCapacity": 10000,
+        "avaliableLicenseCapacity": 5000,
+        "maxActivateCellCapacity": 10000,
+        "avaliableActivateCellCapaticy": 5000
+      }
+    }
+  },
+  {
+    "id": "mae-valuearea-activation-006",
+    "dsl": "root = Stack([statusCard, capacityCard, licenseCard], \"column\", \"m\")\n\nstatusCard = Card([statusHeader, statusContent], \"card\", \"column\", \"m\", \"start\", \"start\")\nstatusHeader = CardHeader(\"青浦区价值区域评估\", \"开通状态\")\nstatusContent = Stack([statusRow], \"row\", \"m\", \"center\", \"start\")\nstatusRow = Stack([statusLabel, statusTag], \"row\", \"s\", \"center\", \"start\")\nstatusLabel = TextContent(\"当前状态\", \"default\")\nstatusTag = Tag(\"可以开通\", \"success\")\n\ncapacityCard = Card([capacityHeader, capacityBody], \"card\", \"column\", \"m\", \"start\", \"start\")\ncapacityHeader = CardHeader(\"容量信息\", \"当前可用资源\")\ncapacityBody = Descriptions([\n  DescField(\"区域ID\", data.data.regionId),\n  DescField(\"最大激活小区容量\", data.data.maxActivateCellCapacity),\n  DescField(\"可用激活小区容量\", data.data.avaliableActivateCellCapaticy)\n], null, 1, true)\n\nlicenseCard = Card([licenseHeader, licenseBody], \"card\", \"column\", \"m\", \"start\", \"start\")\nlicenseHeader = CardHeader(\"License 信息\", \"许可证使用情况\")\nlicenseBody = Descriptions([\n  DescField(\"是否持有 License\", data.data.hasLicense ? \"是\" : \"否\"),\n  DescField(\"总 License 容量\", data.data.totalLicenseCapacity),\n  DescField(\"可用 License 容量\", data.data.avaliableLicenseCapacity)\n], null, 1, true)",
+    "dataModel": {
+      "code": "0",
+      "message": "success",
+      "data": {
+        "regionId": 200,
+        "canActivate": true,
+        "hasLicense": true,
+        "totalLicenseCapacity": 10000,
+        "avaliableLicenseCapacity": 4000,
+        "maxActivateCellCapacity": 8000,
+        "avaliableActivateCellCapaticy": 3000
+      }
+    }
+  },
+  {
+    "id": "tc-010-campus-client-apis-6",
+    "dsl": "root = Stack([kpiRow, chartCard, tableCard])\n\nkpiRow = Stack([totalCountCard, topReasonCard], \"row\", \"m\", \"stretch\", \"start\", false)\ntotalCountCard = Card([TextContent(\"总离线次数\", \"small\"), TextContent(\"\" + @Sum(data.data.num), \"large-heavy\")])\ntopReasonItem = @First(@Sort(data.data, \"num\", \"desc\"))\ntopReasonCard = Card([TextContent(\"主要离线原因\", \"small\"), TextContent(topReasonItem.errMsg, \"large-heavy\")])\n\nchartCard = Card([chartHeader, chart])\nchartHeader = CardHeader(\"离线原因分布\", \"按数量排序\")\nchartLabels = @Each(@Sort(data.data, \"num\", \"desc\"), \"item\", item.errMsg)\nchartValues = @Each(@Sort(data.data, \"num\", \"desc\"), \"item\", item.num)\nchart = HorizontalBarChart(chartLabels, [Series(\"次数\", chartValues)], \"grouped\", \"离线原因\", \"次数\")\n\ntableCard = Card([tableHeader, table])\ntableHeader = CardHeader(\"离线原因详情\", \"错误码与具体原因统计\")\ntable = Table([errCodeCol, errMsgCol, numCol], data.data)\nerrCodeCol = Col(\"错误码\", \"errCode\")\nerrMsgCol = Col(\"错误原因\", \"errMsg\")\nnumCol = Col(\"数量\", \"num\", {cell: @Render(\"v\", TextContent(@FormatNumber(v)))})",
+    "dataModel": {
+      "resultCode": 0,
+      "errorDes": "Operation successful.",
+      "errorReson": "Success",
+      "errorDetail": "The offline statistics data was retrieved successfully.",
+      "errorAdvice": "None",
+      "data": [
+        { "errCode": "0", "errMsg": "正常下线", "num": 3420 },
+        { "errCode": "201001", "errMsg": "认证失败", "num": 125 },
+        { "errCode": "201002", "errMsg": "DHCP获取超时", "num": 45 },
+        { "errCode": "201003", "errMsg": "信号强度弱断开", "num": 89 },
+        { "errCode": "201004", "errMsg": "IP地址冲突", "num": 12 },
+        { "errCode": "201005", "errMsg": "认证服务器无响应", "num": 8 },
+        { "errCode": "201006", "errMsg": "用户手动下线", "num": 567 },
+        { "errCode": "201007", "errMsg": "AP设备重启", "num": 30 }
+      ]
+    }
+  },
+  {
+    "id": "tc-031-throughput-quality",
+    "dsl": "root = Stack([header, summaryCard, kpiRow, trendCard, rankCard, subCard])\n\nheader = CardHeader(\"区域吞吐质量指标\", \"综合健康分: \" + data.healthScore)\n\nsummaryCard = TextContent(data.summary)\n\nkpiRow = Stack([rootValueCard, rankCardSmall], \"row\", \"m\", \"stretch\", \"start\", false)\nrootValueCard = Card([TextContent(\"当前吞吐量\", \"small\"), TextContent(\"\" + data.data[0].value.rootValue + \" Mbps\", \"large-heavy\")])\nrankCardSmall = Card([TextContent(\"区域排名\", \"small\"), TextContent(\"第 \" + data.data[0].value.rank + \" 名\", \"large-heavy\")])\n\ntrendCard = Card([trendHeader, trendChart])\ntrendHeader = CardHeader(\"吞吐量趋势\", \"Baseline vs Essential\")\ntrendLabels = @Each(data.data[0].value.baseline, \"item\", @FormatDate(item.timestamp, \"dateTime\"))\nbaselineSeries = Series(\"Baseline\", @Each(data.data[0].value.baseline, \"item\", item.value))\nessentialSeries = Series(\"Essential\", @Each(data.data[0].value.essential, \"item\", item.value))\ntrendChart = LineChart(trendLabels, [baselineSeries, essentialSeries], \"smooth\", \"时间\", \"Mbps\")\n\nrankCard = Card([rankHeader, rankTable])\nrankHeader = CardHeader(\"区域排名详情\", \"按吞吐量排序\")\nrankTable = Table([Col(\"区域ID\", \"regionId\"), Col(\"区域名称\", \"regionName\"), Col(\"吞吐量 (Mbps)\", \"value\", {cell: @Render(\"v\", TextContent(\"\" + v + \" Mbps\")})], data.data[0].value.rankList)\n\nsubCard = Card([subHeader, subTable])\nsubHeader = CardHeader(\"细分指标\", \"峰值、平均及最小吞吐量\")\nsubTable = Table([Col(\"指标\", \"key\"), Col(\"数值\", \"value\")], data.data[0].value.subValues)",
+    "dataModel": {
+      "resultCode": 200,
+      "errorDes": "操作成功",
+      "errorReson": "请求处理完成",
+      "errorDetail": "无异常",
+      "errorAdvice": "无需操作",
+      "detailUrl": "/rest/campuswlanqualityservice/v1/intent/detail/throughput/20240101",
+      "healthScore": 85.6,
+      "data": [
+        {
+          "key": "throughput",
+          "value": {
+            "rootValue": 120.5,
+            "rank": 1,
+            "rankList": [
+              { "regionId": "RGN-001", "regionName": "主教学楼", "value": 150.3 },
+              { "regionId": "RGN-002", "regionName": "实验楼", "value": 135.7 },
+              { "regionId": "RGN-003", "regionName": "图书馆", "value": 118.2 }
+            ],
+            "subValues": [
+              { "key": "peakThroughput", "value": "180.4 Mbps" },
+              { "key": "averageThroughput", "value": "132.1 Mbps" },
+              { "key": "minThroughput", "value": "95.8 Mbps" }
+            ],
+            "baseline": [
+              { "timestamp": 1709116800, "value": 115.2 },
+              { "timestamp": 1709203200, "value": 118.7 },
+              { "timestamp": 1709289600, "value": 122.4 }
+            ],
+            "essential": [
+              { "timestamp": 1709116800, "value": 112.5 },
+              { "timestamp": 1709203200, "value": 119.3 },
+              { "timestamp": 1709289600, "value": 125.8 }
+            ]
+          }
+        }
+      ],
+      "charts": [
+        {
+          "en": "{\"title\":{\"text\":\"Throughput Trend\"},\"xAxis\":{\"type\":\"time\"},\"yAxis\":{\"type\":\"value\"},\"series\":[{\"data\":[[1709116800000,115.2],[1709203200000,118.7],[1709289600000,122.4]],\"type\":\"line\"}]}",
+          "zh": "{\"title\":{\"text\":\"吞吐量趋势\"},\"xAxis\":{\"type\":\"time\"},\"yAxis\":{\"type\":\"value\"},\"series\":[{\"data\":[[1709116800000,115.2],[1709203200000,118.7],[1709289600000,122.4]],\"type\":\"line\"}]}"
+        }
+      ],
+      "summary": "区域吞吐量整体表现良好，主教学楼区域吞吐量最高达150.3 Mbps，建议持续监控实验楼区域网络负载。"
+    }
+  },
+  {
+    "id": "tc-035-device-info-4",
+    "dsl": "root = Stack([header, summaryRow, chartCard, tableCard], \"column\", \"m\")\n\nheader = CardHeader(\"设备分布概览\", data.deployScene)\n\nsummaryRow = Stack([totalCard, typesCard], \"row\", \"m\", \"stretch\")\ntotalCard = Card([TextContent(\"设备总数\", \"small\"), TextContent(\"\" + data.distributionTotal, \"large-heavy\")])\ntypesCard = Card([TextContent(\"分布项数\", \"small\"), TextContent(\"\" + @Count(data.distributionData), \"large-heavy\")])\n\nchartCard = Card([chartHeader, chart])\nchartHeader = CardHeader(\"分布详情\", \"按型号、状态、角色统计\")\nchartLabels = @Each(data.distributionData, \"item\", item.type)\nchartValues = @Each(data.distributionData, \"item\", item.count)\nchart = HorizontalBarChart(chartLabels, [Series(\"数量\", chartValues)], \"grouped\", \"类型\", \"数量\")\n\ntableCard = Card([tableHeader, table])\ntableHeader = CardHeader(\"详细列表\", \"\")\ntable = Table([typeCol, countCol], data.distributionData)\ntypeCol = Col(\"类型\", \"type\")\ncountCol = Col(\"数量\", \"count\", {cell: @Render(\"v\", TextContent(@FormatNumber(v)))})",
+    "dataModel": {
+      "status_code": 200,
+      "error_code": 0,
+      "error_msg": "Successful.",
+      "distributionTotal": 258,
+      "distributionData": [
+        { "count": 85, "type": "华为 S5735-L24P4S-A" },
+        { "count": 60, "type": "思科 Catalyst 9280X" },
+        { "count": 45, "type": "华三 S6850-64Q-G4C" },
+        { "count": 32, "type": "状态-在线" },
+        { "count": 30, "type": "状态-离线" },
+        { "count": 7, "type": "角色-核心交换机" },
+        { "count": 9, "type": "角色-接入交换机" }
+      ],
+      "deployScene": "数据中心网络部署"
+    }
+  },
+  {
+    "id": "tc-037-device-info-6",
+    "dsl": "root = Stack([statusCard, countCard, tableCard], \"column\", \"m\")\n\nstatusCard = Card([statusHeader, statusContent], \"card\")\nstatusHeader = CardHeader(\"查询结果\", \"站点或区域列表\")\nstatusContent = Stack([statusCodeRow, errorMsgRow], \"column\", \"s\")\nstatusCodeRow = Stack([statusLabel, statusValue], \"row\", \"m\", \"center\")\nstatusLabel = TextContent(\"状态码:\", \"small\")\nstatusValue = Tag(\"\" + data.status_code, \"success\")\nerrorMsgRow = Stack([errorLabel, errorValue], \"row\", \"m\", \"center\")\nerrorLabel = TextContent(\"消息:\", \"small\")\nerrorValue = TextContent(data.error_msg, \"default\")\n\ncountCard = Card([countContent], \"card\")\ncountContent = Stack([countLabel, countValue], \"row\", \"m\", \"center\")\ncountLabel = TextContent(\"总数:\", \"small\")\ncountValue = TextContent(\"\" + data.page_count, \"large-heavy\")\n\ntableCard = Card([tableHeader, positionTable], \"card\")\ntableHeader = CardHeader(\"区域详情\", \"共 \" + data.page_count + \" 条记录\")\npositionTable = Table([idCol, nameCol, typeCol, parentCol, floorCol, pathCol, remarkCol], data.data)\n\nidCol = Col(\"ID\", \"id\", {cell: @Render(\"v\", TextContent(v, \"small\"))})\nnameCol = Col(\"名称\", \"name\", {cell: @Render(\"v\", TextContent(v, \"default\"))})\ntypeCol = Col(\"类型\", \"type\", {cell: @Render(\"v\", @Switch(v, {\"site\": Tag(\"站点\", \"info\"), \"region\": Tag(\"区域\", \"success\"), \"building\": Tag(\"楼宇\", \"warning\"), \"floor\": Tag(\"楼层\", \"neutral\")}, Tag(v, \"neutral\")))})\nparentCol = Col(\"父节点\", \"parent_name\", {cell: @Render(\"v\", TextContent(v ?? \"无\", \"small\"))})\nfloorCol = Col(\"楼层\", \"floor_no\", {cell: @Render(\"v\", TextContent(v ?? \"无\", \"small\"))})\npathCol = Col(\"全路径\", \"fullPath\", {cell: @Render(\"v\", TextContent(v, \"small\"))})\nremarkCol = Col(\"备注\", \"remark\", {cell: @Render(\"v\", TextContent(v ?? \"无\", \"small\"))})",
+    "dataModel": {
+      "status_code": 200,
+      "error_code": 0,
+      "error_msg": "Successful.",
+      "page_count": 5,
+      "data": [
+        {
+          "id": "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8",
+          "name": "总部大楼",
+          "parent_id": "00000000-0000-0000-0000-000000000000",
+          "parent_name": "根节点",
+          "parent_type": "site",
+          "type": "building",
+          "remark": "公司总部主楼",
+          "floor_no": "1F",
+          "fullPath": "总部/总部大楼",
+          "position_id_path": [
+            "00000000-0000-0000-0000-000000000000",
+            "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8"
+          ],
+          "latitude": "40.7128",
+          "longitude": "-74.0060"
+        },
+        {
+          "id": "b2c3d4e5-f6g7-8901-h2i3-j4k5l6m7n8o9",
+          "name": "研发中心",
+          "parent_id": "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8",
+          "parent_name": "总部大楼",
+          "parent_type": "building",
+          "type": "region",
+          "remark": "研发部门办公区",
+          "floor_no": "3F",
+          "fullPath": "总部/总部大楼/研发中心",
+          "position_id_path": [
+            "00000000-0000-0000-0000-000000000000",
+            "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8",
+            "b2c3d4e5-f6g7-8901-h2i3-j4k5l6m7n8o9"
+          ],
+          "latitude": "40.7135",
+          "longitude": "-74.0055"
+        },
+        {
+          "id": "c3d4e5f6-g7h8-9012-i3j4-k5l6m7n8o9p0",
+          "name": "3F实验室",
+          "parent_id": "b2c3d4e5-f6g7-8901-h2i3-j4k5l6m7n8o9",
+          "parent_name": "研发中心",
+          "parent_type": "region",
+          "type": "floor",
+          "remark": "AI实验室所在楼层",
+          "floor_no": "3F-2",
+          "fullPath": "总部/总部大楼/研发中心/3F实验室",
+          "position_id_path": [
+            "00000000-0000-0000-0000-000000000000",
+            "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8",
+            "b2c3d4e5-f6g7-8901-h2i3-j4k5l6m7n8o9",
+            "c3d4e5f6-g7h8-9012-i3j4-k5l6m7n8o9p0"
+          ],
+          "latitude": "40.7137",
+          "longitude": "-74.0053"
+        },
+        {
+          "id": "d4e5f6g7-h8i9-0123-j4k5-l6m7n8o9p0q1",
+          "name": "数据中心",
+          "parent_id": "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8",
+          "parent_name": "总部大楼",
+          "parent_type": "building",
+          "type": "room",
+          "remark": "服务器机房",
+          "floor_no": "B1",
+          "fullPath": "总部/总部大楼/数据中心",
+          "position_id_path": [
+            "00000000-0000-0000-0000-000000000000",
+            "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8",
+            "d4e5f6g7-h8i9-0123-j4k5-l6m7n8o9p0q1"
+          ],
+          "latitude": "40.7125",
+          "longitude": "-74.0065"
+        },
+        {
+          "id": "e5f6g7h8-i9j0-1234-k5l6-m7n8o9p0q1r2",
+          "name": "会议室A",
+          "parent_id": "c3d4e5f6-g7h8-9012-i3j4-k5l6m7n8o9p0",
+          "parent_name": "3F实验室",
+          "parent_type": "floor",
+          "type": "room",
+          "remark": "容纳20人的多功能会议室",
+          "floor_no": "3F-2",
+          "fullPath": "总部/总部大楼/研发中心/3F实验室/会议室A",
+          "position_id_path": [
+            "00000000-0000-0000-0000-000000000000",
+            "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8",
+            "b2c3d4e5-f6g7-8901-h2i3-j4k5l6m7n8o9",
+            "c3d4e5f6-g7h8-9012-i3j4-k5l6m7n8o9p0",
+            "e5f6g7h8-i9j0-1234-k5l6-m7n8o9p0q1r2"
+          ],
+          "latitude": "40.7136",
+          "longitude": "-74.0054"
+        }
+      ]
+    }
+  },
+  {
+    "id": "ncet-003",
+    "dsl": "root = Stack([header, powerCard, tableCard], \"column\", \"m\")\n\nheader = CardHeader(\"历史光功率查询结果\", \"NE: \" + neName + \" | 端口: \" + portName)\n\nneName = data.externalAttributes.historyOpticalPower[0].neName\nportName = data.externalAttributes.historyOpticalPower[0].portName\npowerData = data.externalAttributes.historyOpticalPower[0].historyOpticalPowerEvents[0].eventValues\n\npowerCard = Card([chartHeader, powerChart], \"column\", \"m\")\nchartHeader = CardHeader(\"光功率趋势 (dBm)\", \"时间范围: \" + startTimeStr + \" 至 \" + endTimeStr)\n\nstartTimeStr = @FormatDate(data.externalAttributes.historyOpticalPower[0].startTime, \"dateTime\")\nendTimeStr = @FormatDate(data.externalAttributes.historyOpticalPower[0].endTime, \"dateTime\")\n\ntimeLabels = @Each(powerData, \"item\", @FormatDate(item.endTime, \"dateTime\"))\npowerValues = @Each(powerData, \"item\", @parseFloat(item.value))\npowerSeries = Series(\"光功率 (dBm)\", powerValues)\npowerChart = LineChart(timeLabels, [powerSeries], \"smooth\", \"时间\", \"光功率 (dBm)\")\n\ntableCard = Card([tableHeader, powerTable], \"column\", \"m\")\ntableHeader = CardHeader(\"详细数据\", \"包含最大值、最小值和当前值\")\npowerTable = Table([timeCol, valueCol, maxCol, minCol], powerData)\n\ntimeCol = Col(\"时间\", \"endTime\", {cell: @Render(\"v\", TextContent(@FormatDate(v, \"dateTime\")))})\nvalueCol = Col(\"当前值 (dBm)\", \"value\", {cell: @Render(\"v\", v ? TextContent(v) : TextContent(\"无数据\"))})\nmaxCol = Col(\"最大值 (dBm)\", \"maxValue\", {cell: @Render(\"v\", v ? TextContent(v) : TextContent(\"无数据\"))})\nminCol = Col(\"最小值 (dBm)\", \"minValue\", {cell: @Render(\"v\", v ? TextContent(v) : TextContent(\"无数据\"))})",
+    "dataModel": {
+      "errors": {
+        "error": [{ "errorInfo": { "errorCode": "0", "errorParas": [] }, "errorMessage": "" }]
+      },
+      "externalAttributes": {
+        "historyOpticalPower": [
+          {
+            "endTime": "1784268900000",
+            "historyOpticalPowerEvents": [
+              {
+                "eventId": 15882,
+                "eventName": "信道光功率当前值(dBm)【NE(20-211)-子架0(subrack)-3-15OPM8-1(IN1)-OCH:1】",
+                "eventValues": [
+                  {
+                    "endTime": "1784259900000",
+                    "maxValue": "-60.00",
+                    "minValue": "-60.00",
+                    "value": "-60.00"
+                  },
+                  {
+                    "endTime": "1784260800000",
+                    "maxValue": "-60.00",
+                    "minValue": "-60.00",
+                    "value": "-60.00"
+                  },
+                  {
+                    "endTime": "1784261700000",
+                    "maxValue": "-60.00",
+                    "minValue": "-60.00",
+                    "value": "-60.00"
+                  },
+                  {
+                    "endTime": "1784262600000",
+                    "maxValue": "-60.00",
+                    "minValue": "-60.00",
+                    "value": "-60.00"
+                  },
+                  { "endTime": "1784263500000" },
+                  {
+                    "endTime": "1784264400000",
+                    "maxValue": "-60.00",
+                    "minValue": "-60.00",
+                    "value": "-60.00"
+                  },
+                  {
+                    "endTime": "1784265300000",
+                    "maxValue": "-60.00",
+                    "minValue": "-60.00",
+                    "value": "-60.00"
+                  },
+                  {
+                    "endTime": "1784266200000",
+                    "maxValue": "-60.00",
+                    "minValue": "-60.00",
+                    "value": "-60.00"
+                  },
+                  {
+                    "endTime": "1784267100000",
+                    "maxValue": "-60.00",
+                    "minValue": "-60.00",
+                    "value": "-60.00"
+                  },
+                  {
+                    "endTime": "1784268000000",
+                    "maxValue": "-60.00",
+                    "minValue": "-60.00",
+                    "value": "-60.00"
+                  },
+                  {
+                    "endTime": "1784268900000",
+                    "maxValue": "-60.00",
+                    "minValue": "-60.00",
+                    "value": "-60.00"
+                  }
+                ],
+                "range": "[-60.0, -23.7]"
+              }
+            ],
+            "neId": "167772507",
+            "neName": "NE(20-211)",
+            "portId": "1",
+            "portName": "Shelf0-3-15OPM8-1(IN1)",
+            "shelfId": "0",
+            "slotId": "3",
+            "startTime": "1784259900000"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "id": "ncet-014",
+    "dsl": "root = Stack([summaryCard, alarmTableCard])\n\nsummaryCard = Card([summaryHeader, summaryStats], \"column\", \"s\")\nsummaryHeader = CardHeader(\"业务告警概览\", \"当前活动告警统计\")\nsummaryStats = Stack([totalCountStat, criticalCountStat], \"row\", \"m\", \"start\", \"start\", true)\ntotalCountStat = Card([TextContent(\"总告警数\", \"small\"), TextContent(\"\" + @Count(allAlarms), \"large-heavy\")])\ncriticalCountStat = Card([TextContent(\"紧急告警\", \"small\"), TextContent(\"\" + @Count(@Filter(allAlarms, \"severity\", \"==\", \"紧急\")), \"large-heavy\")])\n\nalarmTableCard = Card([alarmTableHeader, alarmTable])\nalarmTableHeader = CardHeader(\"告警详情\", \"按服务分组的当前告警列表\")\nalarmTable = Table([serviceCol, alarmNameCol, severityCol, locationCol, occurTimeCol, statusCol, causeCol], allAlarms)\n\nserviceCol = Col(\"服务名称\", \"serviceName\", {cell: @Render(\"v\", TextContent(v))})\nalarmNameCol = Col(\"告警名称\", \"alarmName\", {cell: @Render(\"v\", TextContent(v))})\nseverityCol = Col(\"严重级别\", \"severity\", {cell: @Render(\"v\", @Switch(v, {\"紧急\": Tag(\"紧急\", \"danger\"), \"重要\": Tag(\"重要\", \"warning\"), \"次要\": Tag(\"次要\", \"info\"), \"提示\": Tag(\"提示\", \"neutral\")}, Tag(v, \"neutral\")))})\nlocationCol = Col(\"位置信息\", \"locationInfo\", {cell: @Render(\"v\", TextContent(v))})\noccurTimeCol = Col(\"发生时间\", \"occurUtc\", {cell: @Render(\"v\", TextContent(v))})\nstatusCol = Col(\"状态\", \"cleared\", {cell: @Render(\"v\", @Switch(v, {\"未清除\": Tag(\"未清除\", \"danger\"), \"已清除\": Tag(\"已清除\", \"success\")}, Tag(v, \"neutral\")))})\ncauseCol = Col(\"可能原因\", \"probableCause\", {cell: @Render(\"v\", TextContent(v))})\n\nallAlarms = @Each(data.externalAttributes.serviceAlarmDetails, \"service\", @Each(service.alarmUOs, \"alarm\", {serviceName: service.serviceName, alarmName: alarm.alarmName, severity: alarm.severity, locationInfo: alarm.locationInfo, occurUtc: alarm.occurUtc, cleared: alarm.cleared, probableCause: alarm.probableCause}))",
+    "dataModel": {
+      "errors": { "error": [{ "errorInfo": { "errorCode": "0", "errorParas": [] } }] },
+      "externalAttributes": {
+        "serviceAlarmDetails": [
+          {
+            "serviceUuid": "c11d2b50-1fa9-425b-887a-07d4e278c21a",
+            "serviceName": "广州增城区专线FE0160KA",
+            "alarmUOs": [
+              {
+                "alarmId": "12345",
+                "alarmCsn": "67890",
+                "incidentCsn": ["100001"],
+                "alarmSource": "NE(9-208)",
+                "locationInfo": "Shelf0-16-PORT-2",
+                "alarmName": "LOS",
+                "severity": "紧急",
+                "severityValue": "1",
+                "clearUtc": "",
+                "occurUtc": "2025-06-15 10:30:00",
+                "lastOccurUtc": "2025-06-15 10:30:00",
+                "cleared": "未清除",
+                "acknowledged": "未确认",
+                "additionalInformation": "光信号丢失",
+                "arrivedOn": "2025-06-15 10:30:05",
+                "probableCause": "光纤中断",
+                "alarmCount": "1",
+                "hasBoard": "true",
+                "alarmDataType": "CURRENT",
+                "productName": "OTN"
+              }
+            ]
+          }
+        ],
+        "isTruncated": "false"
+      }
+    }
+  },
+  {
+    "id": "rw-003-grouped",
+    "dsl": "root = Stack([summaryCard, modelTabs], \"column\", \"m\")\n\nsummaryCard = Card([summaryHeader, summaryContent], \"card\", \"column\", \"m\", \"center\", \"center\")\nsummaryHeader = CardHeader(\"Online Devices Summary\", \"Fabric: \" + data.fabric)\nsummaryContent = TextContent(\"Total Online Devices: \" + data.total_count, \"large-heavy\")\n\nmodelTabs = Tabs(@Each(data.grouped_by_model, \"group\", modelTabTpl))\n\nmodelTabTpl = TabItem(group.model, group.model + \" (\" + group.count + \" devices)\", [modelTable])\n\nmodelTable = Table([modelCol, countCol, versionCol, nameCol, ipCol, vendorCol], group.devices)\n\nmodelCol = Col(\"Model\", \"model\")\ncountCol = Col(\"Count\", \"count\")\nversionCol = Col(\"Version\", \"version\")\nnameCol = Col(\"Device Name\", \"name\")\nipCol = Col(\"IP\", \"ip\")\nvendorCol = Col(\"Vendor\", \"vendor\")",
+    "dataModel": {
+      "total_count": 7,
+      "fabric": "pod1",
+      "grouped_by_model": [
+        {
+          "devices": [
+            {
+              "vendor": "Huawei",
+              "ip": "10.137.16.139",
+              "name": "DC1-spine-02",
+              "version": "8.25 V200R025C00SPC500"
+            },
+            {
+              "vendor": "Huawei",
+              "ip": "10.137.16.138",
+              "name": "DC1-spine-01",
+              "version": "8.25 V200R025C00SPC500"
+            }
+          ],
+          "count": 2,
+          "model": "CE12804S"
+        },
+        {
+          "devices": [
+            {
+              "vendor": "Huawei",
+              "ip": "10.137.16.137",
+              "name": "serverleaf02_1",
+              "version": "8.23 V200R023C00SPC500"
+            }
+          ],
+          "count": 1,
+          "model": "CE6865-48S8CQ-EI"
+        },
+        {
+          "devices": [
+            {
+              "vendor": "Huawei",
+              "ip": "10.137.16.135",
+              "name": "serverleaf01_1",
+              "version": "8.25 V200R025C00SPC500"
+            },
+            {
+              "vendor": "Huawei",
+              "ip": "10.137.16.136",
+              "name": "serverleaf01_2",
+              "version": "8.25 V200R025C00SPC500"
+            }
+          ],
+          "count": 2,
+          "model": "CE6857-48S6CQ-EI"
+        },
+        {
+          "devices": [
+            {
+              "vendor": "Huawei",
+              "ip": "10.137.16.140",
+              "name": "borderleaf01_1",
+              "version": "8.25 V200R025C00SPC500"
+            },
+            {
+              "vendor": "Huawei",
+              "ip": "10.137.16.141",
+              "name": "borderleaf01_2",
+              "version": "8.25 V200R025C00SPC500"
+            }
+          ],
+          "count": 2,
+          "model": "CE8861-4C-EI"
+        }
+      ]
+    }
+  },
+  {
+    "id": "rw-246-O05-17F-Leaf2-Simu6-0001-CPU-CPU",
+    "dsl": "root = Stack([gaugeCard])\n\ngaugeCard = Card([gaugeHeader, gaugeChart])\ngaugeHeader = CardHeader(data.title, data.subtitle)\ngaugeChart = GaugeChart([gaugeReading], 0, 100)\ngaugeReading = {name: \"CPU利用率\", value: data.data.cpuUsage}",
+    "dataModel": {
+      "data": {
+        "deviceIp": "197.197.5.1",
+        "cpuUsage": 70,
+        "unit": "%",
+        "deviceName": "O05-17F-Leaf2-Simu6-0001",
+        "timeRange": "近30分钟平均值"
+      },
+      "subtitle": "设备：O05-17F-Leaf2-Simu6-0001 | 时间范围：近30分钟",
+      "options": { "max": 100, "threshold": 80, "warningThreshold": 60 },
+      "title": "设备CPU利用率",
+      "type": "gauge"
+    }
+  }
+]
