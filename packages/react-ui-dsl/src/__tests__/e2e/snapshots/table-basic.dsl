@@ -1,6 +1,0 @@
-root = Stack([header, breakdownTable])
-header = TextContent("Regional Sales Breakdown", "large")
-breakdownTable = Table([regionCol, revenueCol, updatedCol], data.report.breakdown)
-regionCol = Col("Region", "region")
-revenueCol = Col("Revenue", "revenue", {cell: @Render("v", TextContent(@FormatNumber(v, 0, "en-US") + " USD"))})
-updatedCol = Col("Updated", "updatedAt", {cell: @Render("v", TextContent(@FormatDate(v, "dateTime")))})

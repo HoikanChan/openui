@@ -2,33 +2,28 @@
 
 这是一个 monorepo,每个 package 是独立的子领域(bounded context)。各自有自己的术语表 `CONTEXT.md`。本文件只指路、说边界,不重复术语定义。
 
+> **本文件描述 validation-iteration 分支的收缩后形态。** 前端包(react-lang / react-headless / react-ui / react-ui-dsl / openui-cli)与前端演示 examples 已从本分支删除,完整形态见 master。背景与删除决策:[repair-bench 设计](docs/superpowers/specs/2026-10-13-repair-bench-design.md)。
+
 ## 跨上下文核心概念
 
 以下几个概念跨多个 package 出现,语义统一,各 package 各自展开:
 
-- **OpenUI Lang / Stream IR** — 模型生成的、可流式的 UI 中间表示语言。在 [lang-core/CONTEXT.md](packages/lang-core/CONTEXT.md) 定义,被 react-lang / react-ui-dsl / openui-cli 复用。
-- **Library** — 组件库定义(组件名 + props schema + 渲染实现 + 描述)。在 lang-core 定义无渲染版本,在 react-lang 扩展为带 React 渲染实现的版本。
-- **Renderer** — 把 Stream IR 流式渲染成 React 树的运行时,定义在 [react-lang/CONTEXT.md](packages/react-lang/CONTEXT.md)。
+- **OpenUI Lang / Stream IR** — 模型生成的、可流式的 UI 中间表示语言。在 [lang-core/CONTEXT.md](packages/lang-core/CONTEXT.md) 定义。渲染侧消费方(react-lang / react-ui-dsl)已随前端删除,仅保留内核与 Java 侧镜像。
+- **Library** — 组件库定义(组件名 + props schema + 描述;渲染实现字段在前端包,已删)。lang-core 中的无渲染版本是 Java Generation Contract 的对齐基线。
 
 ## Package 边界
 
 | Package | 角色 | 依赖方向 |
 |---|---|---|
-| [lang-core](packages/lang-core/CONTEXT.md) | 框架无关的 Lang 内核:parser / runtime / prompt 生成 / 校验 | 无上游 |
-| [react-lang](packages/react-lang/CONTEXT.md) | React 渲染运行时:Renderer、hooks、表单校验 | → lang-core |
-| [react-headless](packages/react-headless/CONTEXT.md) | 无头聊天状态层:thread、stream 适配器、消息格式 | 独立(不依赖 lang) |
-| [react-ui](packages/react-ui/CONTEXT.md) | 预制 UI 组件库 + Shell/CopilotShell 布局 + genui-lib 标准库 | → react-lang, react-headless |
-| [react-ui-dsl](packages/react-ui-dsl/CONTEXT.md) | 基于 Ant Design v5 + ECharts 的 DSL 组件库(供 NOE Mate / eview 场景) | → react-lang |
-| [openui-cli](packages/openui-cli/CONTEXT.md) | 脚手架 + 从组件库导出 system prompt 的 CLI | → react-lang(template) |
-| [genui-java-sdk](CONTEXT.md) | Java 后端 SDK:Generation Context 注册 + prompt 拼装(与 lang-core prompt 字节对齐);术语在系统词汇表 | 无上游(镜像 lang-core prompt 语义) |
+| [lang-core](packages/lang-core/CONTEXT.md) | 框架无关的 Lang 内核:parser / runtime / prompt 生成 / 校验;Java parser 的跨语言对齐 oracle 来源 | 无上游 |
+| [genui-java-sdk](CONTEXT.md) | Java 后端 SDK:Generation Contract 注册 + prompt 拼装(与 lang-core prompt 字节对齐)+ validation/repair;术语在系统词汇表 | 无上游(镜像 lang-core prompt 语义) |
 
 ## 工具边界
 
-- `packages/genui-eval-cli` — **Eval Generation CLI**:包装 genui-java-sdk 生成能力的 Java 命令行工具,供 react-ui-dsl 的 eval regen 以子进程调用;术语在 [react-ui-dsl/CONTEXT.md](packages/react-ui-dsl/CONTEXT.md)。它是仓库自用工具,不是子领域,无独立 CONTEXT.md。
+- `packages/genui-eval-cli` — **Eval Generation CLI**:包装 genui-java-sdk 生成能力的 Java 命令行工具,repair-bench 基准的扩展点;术语在系统词汇表。它是仓库自用工具,不是子领域,无独立 CONTEXT.md。
 
 ## Examples 边界
 
-- `examples/react-ui-dsl-demo` — react-ui-dsl 的前端演示(DSLEngine 消费方)。
 - `examples/genui-service` — **GenUI Service**:genui-java-sdk 的 REST 参考实现(SmartCanvasService 契约的可运行模板),供公司内部仿照搭建;术语在[系统词汇表](CONTEXT.md)。
 
 ## 不在术语表里的东西

@@ -1,5 +1,0 @@
-root = Stack([chartTitle, trafficChart])
-chartTitle = TextContent("Interface Traffic", "large")
-inboundSeries = Series("Inbound", data.series[0].values)
-outboundSeries = Series("Outbound", data.series[1].values)
-trafficChart = BarChart(data.labels, [inboundSeries, outboundSeries], "grouped", "Interface", "Traffic (bps)")
