@@ -94,11 +94,11 @@ Use @-prefixed built-in functions (@Count, @Sum, @Avg, @Min, @Max, @Round) on Qu
 @Abs(number) -> number — Absolute value
 @Floor(number) -> number — Round down to nearest integer
 @Ceil(number) -> number — Round up to nearest integer
-@FormatDate(value, style?, locale?) -> string | string[] — Format a date-like value for display. Styles: "date", "dateTime", "time", or "relative". Accepts an array and maps over each element. Returns "" for nullish input and String(value) for invalid dates.
+@FormatDate(value, style?) -> string | string[] — Format a date-like value for display. `value` accepts a Unix timestamp in seconds OR milliseconds (auto-detected), an ISO 8601 string; also maps over arrays. `style` accepts "date", "dateTime", "time", or "relative", defaults to "date".
 @FormatBytes(value) -> string — Format a byte count into a compact SI string (KB, MB, GB). Returns "" for nullish input.
-@FormatNumber(value, decimals?, locale?) -> string — Format a scalar number as a locale-aware display string. Uses the renderer locale by default and returns raw input for invalid values.
-@FormatPercent(value, decimals?, locale?) -> string — Format a ratio such as 0.125 as a locale-aware percentage display string, with optional decimal precision and locale override.
-@FormatDuration(value, unit?, locale?) -> string — Format an elapsed duration into a compact display string. Input defaults to seconds and also supports explicit "ms" input.
+@FormatNumber(value, decimals?) -> string — Format a scalar number as a locale-aware display string. Returns raw input for invalid values.
+@FormatPercent(value, decimals?) -> string — Format a ratio (e.g. 0.125) as a locale-aware percentage string that already includes the % symbol (e.g. "12.5%"). Do NOT append + "%" to the result.
+@FormatDuration(value, unit?) -> string — Format an elapsed duration into a compact display string. Input defaults to seconds and also supports explicit "ms" input.
 
 Builtins compose — output of one is input to the next:
 `@Count(@Filter(data.rows, "field", "==", "val"))` for KPIs/chart values, `@Round(@Avg(data.rows.score), 1)`.

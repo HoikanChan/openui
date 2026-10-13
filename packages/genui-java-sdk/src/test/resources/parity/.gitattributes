@@ -1,0 +1,2 @@
+# Cross-language parity oracle is generated + byte-compared on regen; pin LF so Windows checkouts don't churn.
+*.json text eol=lf

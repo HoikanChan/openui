@@ -27,6 +27,7 @@
   "scripts": {
     "test": "vitest run",
     "generate:prompt-golden": "tsx scripts/generate-prompt-golden.mts",
+    "generate:validation-oracle": "tsx scripts/generate-validation-oracle.mts",
     "build": "tsdown",
     "watch": "tsdown --watch",
     "typecheck": "tsc --noEmit",

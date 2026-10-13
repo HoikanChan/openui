@@ -1752,3 +1752,1757 @@
     }
   ]
 }
+{
+  "contractVersion": "@cloudsop/openui-react-ui-dsl@0.1.0",
+  "root": "Stack",
+  "components": {
+    "Stack": {
+      "description": "Flex container. direction: \"row\"|\"column\" (default \"column\"). gap: \"none\"|\"xs\"|\"s\"|\"m\"|\"l\"|\"xl\"|\"2xl\" (default \"m\"). align: \"start\"|\"center\"|\"end\"|\"stretch\"|\"baseline\". justify: \"start\"|\"center\"|\"end\"|\"between\"|\"around\"|\"evenly\".",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "any"
+            }
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "row",
+              "column"
+            ]
+          },
+          "gap": {
+            "type": "string",
+            "enum": [
+              "none",
+              "xs",
+              "s",
+              "m",
+              "l",
+              "xl",
+              "2xl"
+            ]
+          },
+          "align": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "stretch",
+              "baseline"
+            ]
+          },
+          "justify": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "between",
+              "around",
+              "evenly"
+            ]
+          },
+          "wrap": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "TextContent": {
+      "description": "Text block. Supports markdown. Optional size: \"small\" | \"default\" | \"large\" | \"small-heavy\" | \"large-heavy\".",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "size": {
+            "type": "string",
+            "enum": [
+              "small",
+              "default",
+              "large",
+              "small-heavy",
+              "large-heavy"
+            ]
+          }
+        },
+        "required": [
+          "text"
+        ]
+      }
+    },
+    "MarkDownRenderer": {
+      "description": "Renders markdown text with optional container variant (\"clear\" | \"card\" | \"sunk\"). Use for long-form documents, README content, or markdown with code blocks. For short UI text and labels, use TextContent.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "textMarkdown": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "clear",
+              "card",
+              "sunk"
+            ]
+          }
+        },
+        "required": [
+          "textMarkdown"
+        ]
+      }
+    },
+    "TextCallout": {
+      "description": "Standalone callout for important context or guidance. Use only inside Stack or Card",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "variant": {
+            "type": "string",
+            "enum": [
+              "neutral",
+              "info",
+              "warning",
+              "success",
+              "danger"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Button": {
+      "description": "Clickable button",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "action": {
+            "component": "ActionExpression"
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "primary",
+              "secondary",
+              "tertiary"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "default",
+              "text"
+            ]
+          },
+          "size": {
+            "type": "string",
+            "enum": [
+              "extra-small",
+              "small",
+              "normal",
+              "large"
+            ]
+          },
+          "disabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "label"
+        ]
+      }
+    },
+    "Buttons": {
+      "description": "Group of Button components. direction: \"row\" (default) | \"column\".",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "buttons": {
+            "type": "array",
+            "items": {
+              "component": "Button"
+            }
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "row",
+              "column"
+            ]
+          }
+        },
+        "required": [
+          "buttons"
+        ]
+      }
+    },
+    "Input": {
+      "description": "Single-line text input control",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "placeholder": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "email",
+              "password",
+              "number",
+              "url"
+            ]
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Select": {
+      "description": "Dropdown select with named items",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "component": "SelectItem"
+            }
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "SelectItem": {
+      "description": "Option for Select dropdown",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ]
+      }
+    },
+    "Separator": {
+      "description": "Visual divider between content sections",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "orientation": {
+            "type": "string",
+            "enum": [
+              "horizontal",
+              "vertical"
+            ]
+          },
+          "decorative": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "Tag": {
+      "description": "Compact semantic tag or badge with optional icon token",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "neutral",
+              "info",
+              "success",
+              "warning",
+              "danger"
+            ]
+          },
+          "icon": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string",
+            "enum": [
+              "sm",
+              "md",
+              "lg"
+            ]
+          }
+        },
+        "required": [
+          "text"
+        ]
+      }
+    },
+    "TagBlock": {
+      "description": "tags is an array of strings",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "tags"
+        ]
+      }
+    },
+    "Image": {
+      "description": "Image that supports url, base64, or inline SVG",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "url",
+              "base64",
+              "svg"
+            ]
+          }
+        },
+        "required": [
+          "content",
+          "type"
+        ]
+      }
+    },
+    "ImageBlock": {
+      "description": "Image block with loading state",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "src": {
+            "type": "string"
+          },
+          "alt": {
+            "type": "string"
+          },
+          "imageLoading": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "src"
+        ]
+      }
+    },
+    "Link": {
+      "description": "Anchor link",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "href": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string",
+            "enum": [
+              "_self",
+              "_blank"
+            ]
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "download": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "href"
+        ]
+      }
+    },
+    "Card": {
+      "description": "Styled container. variant: \"card\" (default, elevated) | \"sunk\" (recessed) | \"clear\" (transparent). Always full width. Accepts all Stack flex params (default: direction \"column\"). Cards flex to share space in row/wrap layouts.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "any"
+            }
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "card",
+              "clear",
+              "sunk"
+            ]
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "row",
+              "column"
+            ]
+          },
+          "gap": {
+            "type": "string",
+            "enum": [
+              "none",
+              "xs",
+              "s",
+              "m",
+              "l",
+              "xl",
+              "2xl"
+            ]
+          },
+          "align": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "stretch",
+              "baseline"
+            ]
+          },
+          "justify": {
+            "type": "string",
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "between",
+              "around",
+              "evenly"
+            ]
+          },
+          "wrap": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "CardHeader": {
+      "description": "Header with optional title and subtitle",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "subtitle": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Descriptions": {
+      "description": "Descriptions-style detail view for a single record with optional bordered and plain visual modes. DescField ONLY lives inside Descriptions.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "component": "DescField"
+            }
+          },
+          "title": {
+            "type": "string"
+          },
+          "columns": {
+            "type": "number"
+          },
+          "border": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items"
+        ]
+      }
+    },
+    "DescField": {
+      "description": "Declarative descriptions field with label, direct value expression, and optional span. Must be used inside Descriptions.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "any"
+          },
+          "span": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ]
+      }
+    },
+    "Form": {
+      "description": "Form container with fields and explicit action buttons",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "buttons": {
+            "component": "Buttons"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "component": "FormControl"
+            }
+          },
+          "layout": {
+            "type": "string",
+            "enum": [
+              "vertical",
+              "inline",
+              "horizontal"
+            ]
+          },
+          "labelAlign": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right"
+            ]
+          },
+          "initialValues": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "any"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "buttons"
+        ]
+      }
+    },
+    "DatePicker": {
+      "description": "Date picker supporting single and range selection",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "single",
+              "range"
+            ]
+          }
+        }
+      }
+    },
+    "Modal": {
+      "description": "Modal dialog. open is a reactive $boolean binding — set to true to open, X/Escape/backdrop auto-closes. Put Form with buttons inside children.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "component": "TextContent"
+                },
+                {
+                  "component": "MarkDownRenderer"
+                },
+                {
+                  "component": "CardHeader"
+                },
+                {
+                  "component": "Image"
+                },
+                {
+                  "component": "Separator"
+                },
+                {
+                  "component": "HorizontalBarChart"
+                },
+                {
+                  "component": "RadarChart"
+                },
+                {
+                  "component": "PieChart"
+                },
+                {
+                  "component": "ScatterChart"
+                },
+                {
+                  "component": "AreaChart"
+                },
+                {
+                  "component": "BarChart"
+                },
+                {
+                  "component": "TagBlock"
+                },
+                {
+                  "component": "Form"
+                },
+                {
+                  "component": "Buttons"
+                },
+                {
+                  "component": "Steps"
+                }
+              ]
+            }
+          },
+          "open": {
+            "type": "boolean"
+          },
+          "size": {
+            "type": "string",
+            "enum": [
+              "sm",
+              "md",
+              "lg"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "children"
+        ]
+      }
+    },
+    "CheckBoxGroup": {
+      "description": "CheckboxGroup component with items and CheckboxGroup wraps each item",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "component": "CheckBoxItem"
+            }
+          },
+          "value": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      }
+    },
+    "CheckBoxItem": {
+      "description": "Checkbox item with label and optional description",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "defaultChecked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "label"
+        ]
+      }
+    },
+    "RadioGroup": {
+      "description": "Radio group for selecting one option from a list",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "component": "RadioItem"
+            }
+          },
+          "defaultValue": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ]
+      }
+    },
+    "RadioItem": {
+      "description": "Standalone radio toggle with optional label and description",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "description",
+          "value"
+        ]
+      }
+    },
+    "SwitchGroup": {
+      "description": "Group of switch toggles",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "component": "SwitchItem"
+            }
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "clear",
+              "card",
+              "sunk"
+            ]
+          },
+          "value": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      }
+    },
+    "SwitchItem": {
+      "description": "Standalone switch toggle with optional label and description",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "defaultChecked": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "Slider": {
+      "description": "Numeric slider input; supports continuous and discrete variants",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "variant": {
+            "type": "string",
+            "enum": [
+              "continuous",
+              "discrete"
+            ]
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "defaultValue": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "variant",
+          "min",
+          "max"
+        ]
+      }
+    },
+    "FormControl": {
+      "description": "Field with name, input component, label text and optional hint text",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "input": {
+            "anyOf": [
+              {
+                "component": "Input"
+              },
+              {
+                "component": "TextArea"
+              },
+              {
+                "component": "Select"
+              },
+              {
+                "component": "Slider"
+              },
+              {
+                "component": "CheckBoxGroup"
+              },
+              {
+                "component": "RadioGroup"
+              },
+              {
+                "component": "DatePicker"
+              }
+            ]
+          },
+          "rules": {
+            "type": "object",
+            "properties": {
+              "required": {
+                "type": "boolean"
+              },
+              "email": {
+                "type": "boolean"
+              },
+              "url": {
+                "type": "boolean"
+              },
+              "numeric": {
+                "type": "boolean"
+              },
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              },
+              "minLength": {
+                "type": "number"
+              },
+              "maxLength": {
+                "type": "number"
+              },
+              "pattern": {
+                "type": "string"
+              }
+            }
+          },
+          "hint": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "label",
+          "input"
+        ]
+      }
+    },
+    "TextArea": {
+      "description": "Multi-line text input",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "number"
+          },
+          "placeholder": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Col": {
+      "description": "Declarative table column. Use Col(title, field, options?) instead of writing a raw columns JSON object.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "options": {
+            "type": "object",
+            "properties": {
+              "cell": {
+                "type": "any"
+              }
+            }
+          }
+        },
+        "required": [
+          "title",
+          "field"
+        ]
+      }
+    },
+    "IndexCol": {
+      "description": "Row-number column for Table. IndexCol(\"序号\") — title is required.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    },
+    "Table": {
+      "description": "Data table: Table(columns, rows, expandRow?). Col(title, field, options?) defines each column. IndexCol(title) adds a row-number column. ExpandRow (3rd arg) renders expandable content per row — use @Render(\"row\", ...)",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "component": "Col"
+                },
+                {
+                  "component": "IndexCol"
+                }
+              ]
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "any"
+              }
+            }
+          },
+          "expandRow": {
+            "type": "any"
+          }
+        },
+        "required": [
+          "columns",
+          "rows"
+        ]
+      }
+    },
+    "PieChart": {
+      "description": "Circular slices; use for protocol distribution or traffic breakdown by source",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "pie",
+              "donut"
+            ]
+          }
+        },
+        "required": [
+          "labels",
+          "values"
+        ]
+      }
+    },
+    "LineChart": {
+      "description": "Lines over time; use for latency, throughput, or any time-series metric",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            ]
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "component": "Series"
+            }
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "linear",
+              "smooth",
+              "step"
+            ]
+          },
+          "xLabel": {
+            "type": "string"
+          },
+          "yLabel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "labels",
+          "series"
+        ]
+      }
+    },
+    "BarChart": {
+      "description": "Vertical bars; use for comparing values across categories or devices",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            ]
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "component": "Series"
+            }
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "grouped",
+              "stacked"
+            ]
+          },
+          "xLabel": {
+            "type": "string"
+          },
+          "yLabel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "labels",
+          "series"
+        ]
+      }
+    },
+    "HorizontalBarChart": {
+      "description": "Horizontal bars; use for long category labels, ranked lists, or interface throughput comparison",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "component": "Series"
+            }
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "grouped",
+              "stacked"
+            ]
+          },
+          "xLabel": {
+            "type": "string"
+          },
+          "yLabel": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "labels",
+          "series"
+        ]
+      }
+    },
+    "AreaChart": {
+      "description": "Filled area under lines; use for bandwidth utilization, cumulative traffic, or capacity trends",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            ]
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "component": "Series"
+            }
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "linear",
+              "smooth",
+              "step"
+            ]
+          },
+          "xLabel": {
+            "type": "string"
+          },
+          "yLabel": {
+            "type": "string"
+          },
+          "stacked": {
+            "type": "boolean"
+          },
+          "thresholdType": {
+            "type": "string",
+            "enum": [
+              "low",
+              "high"
+            ]
+          },
+          "thresholdValue": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "labels",
+          "series"
+        ]
+      }
+    },
+    "RadarChart": {
+      "description": "Radar/spider chart; use for comparing multiple metrics across devices or interfaces",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "labels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "component": "Series"
+            }
+          }
+        },
+        "required": [
+          "labels",
+          "series"
+        ]
+      }
+    },
+    "ScatterChart": {
+      "description": "Scatter points; use for correlations like latency vs packet loss or throughput vs error rate. When X values are epoch timestamps, pass xType='time' for automatic date formatting; otherwise pass raw numbers and xType defaults to 'value'.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "datasets": {
+            "type": "array",
+            "items": {
+              "component": "ScatterSeries"
+            }
+          },
+          "xLabel": {
+            "type": "string"
+          },
+          "yLabel": {
+            "type": "string"
+          },
+          "xType": {
+            "type": "string",
+            "enum": [
+              "time",
+              "value"
+            ]
+          }
+        },
+        "required": [
+          "datasets"
+        ]
+      }
+    },
+    "Series": {
+      "description": "A named data series for multi-series charts. values[i] pairs with chart's labels[i], so values.length MUST equal labels.length.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "category",
+          "values"
+        ]
+      }
+    },
+    "ScatterSeries": {
+      "description": "A named scatter series with data points for ScatterChart",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "component": "Point"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "points"
+        ]
+      }
+    },
+    "Point": {
+      "description": "A data point with optional z dimension for bubble charts",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "z": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ]
+      }
+    },
+    "Tabs": {
+      "description": "Tabbed container",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "component": "TabItem"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      }
+    },
+    "TabItem": {
+      "description": "value is unique id, trigger is tab label, content is array of components",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "type": "any"
+            }
+          }
+        },
+        "required": [
+          "value",
+          "label",
+          "content"
+        ]
+      }
+    },
+    "Steps": {
+      "description": "Ordered step-by-step procedure. Every item must be a StepsItem.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "component": "StepsItem"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      }
+    },
+    "StepsItem": {
+      "description": "One step with optional expandable details. Details may contain text, components, or nested StepsItem values.",
+      "propsSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "component": "Card"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "component": "StepsItem"
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    }
+  },
+  "componentGroups": [
+    {
+      "name": "Layout",
+      "components": [
+        "Stack",
+        "Separator",
+        "Tabs",
+        "TabItem",
+        "Steps",
+        "StepsItem"
+      ],
+      "notes": [
+        "- For grid-like layouts, use Stack with direction \"row\" and wrap=true. Avoid justify=\"between\" unless you specifically want large gutters.",
+        "- Use nested Stacks when you need explicit rows/sections.",
+        "- Use Tabs for alternative views (chart types, data sections) instead of inventing ternary show/hide patterns.",
+        "- For nested data, prefer Tabs + @Each when outer items represent a small set of groups/views and the nested content is the main content."
+      ]
+    },
+    {
+      "name": "Content",
+      "components": [
+        "Card",
+        "CardHeader",
+        "TextContent",
+        "MarkDownRenderer",
+        "TextCallout",
+        "Image",
+        "ImageBlock",
+        "Link"
+      ],
+      "notes": [
+        "- Use MarkDownRenderer for long-form text with code blocks; use TextContent for short UI labels.",
+        "- Use Cards to group related KPIs or sections. Stack with direction \"row\" for side-by-side layouts.",
+        "- Wrap charts in a Card with CardHeader for titled sections."
+      ]
+    },
+    {
+      "name": "Tables",
+      "components": [
+        "Table",
+        "Col",
+        "IndexCol"
+      ],
+      "notes": [
+        "- Cell renderer: `Col(title, field, {cell: @Render(\"v\", expr)})` — `v` is the cell value.",
+        "- When the renderer needs other row fields, declare the second binder: `@Render(\"v\", \"row\", expr)`. Keep all logic that combines `v` and `row` inside that single template — do not reference `row` unless you declared it.",
+        "- Prefer displaying source values as-is; do not add unnecessary transformations, classifications, or semantic styling.",
+        "- Numeric cells: format and display the value directly by default. NEVER branch on `v` (e.g. `v > 0`, `v < 0`) for Tag/color/status styling unless explicitly requested.",
+        "- Object maps: `@ObjectEntries(obj)` → `{key, value}[]` rows. The key becomes field `\"key\"`, the value becomes field `\"value\"`. In Col: `Col(\"ID\", \"key\")` for the key, `Col(\"Status\", \"value.status\")` for nested values. Original field names like `\"id\"` or `\"status\"` do NOT exist after @ObjectEntries — always use `\"key\"` and `\"value.xxx\"`. Do NOT `@Each` on objects.",
+        "- ALWAYS render categorical/enum-valued columns (fields with a small fixed set of discrete text values) with @Switch + Tag, mapping each value to a colored Tag. NEVER render such columns as plain text. Example: `@Switch(v, {\"critical\": Tag(\"严重\", \"danger\"), \"major\": Tag(\"主要\", \"warning\"), \"minor\": Tag(\"一般\", \"info\")}, Tag(\"Unknown\"))`."
+      ]
+    },
+    {
+      "name": "Descriptions",
+      "components": [
+        "Descriptions",
+        "DescField"
+      ],
+      "notes": [
+        "- Prefer Descriptions for single-record detail views; reserve Table for arrays of records.",
+        "- To show multiple field groups, use separate Descriptions calls side-by-side: Stack([descA, descB], \"row\")"
+      ]
+    },
+    {
+      "name": "Charts (2D)",
+      "components": [
+        "LineChart",
+        "BarChart",
+        "AreaChart",
+        "RadarChart",
+        "HorizontalBarChart",
+        "Series"
+      ],
+      "notes": [
+        "- Only use chart components when the data model exposes chart-ready fields matching the signature. For raw row records, prefer Table or Descriptions.",
+        "- LineChart, BarChart, AreaChart accept number[] (epoch timestamps) as labels. When labels are timestamps, pass the RAW timestamp array directly — the chart auto-formats them (same-day → time, cross-day → date). NEVER wrap timestamp labels with @FormatDate; @FormatDate is for Table cells and Descriptions only.",
+        "- Charts always use a category (equal-spacing) axis. Do NOT pass xType or any axis-type parameter — it is not supported.",
+        "- For positional tuple arrays like [timestamp, value], project the index first: @Each(data.samples, \"item\", item[0]) for labels, @Each(data.samples, \"item\", item[1]) for values. Pass the raw timestamp array — do not @FormatDate the labels.",
+        "- When a multi-series LineChart is built by partitioning a flat array (e.g. `@Filter` over an entity field), derive the labels axis from one of the partitioned slices, NOT the unpartitioned source — the unpartitioned array has length N × entityCount while each filtered series has only N values, which leaves the right side blank.",
+        "- If per-entity timestamps do not align across slices, use ScatterChart with Point pairs (or one LineChart per entity) so each series carries its own X axis.",
+        "- Do not invent labels, series, categories, or missing time points just to make a chart render."
+      ]
+    },
+    {
+      "name": "Charts (1D)",
+      "components": [
+        "PieChart"
+      ],
+      "notes": [
+        "- PieChart takes parallel labels[] and values[] arrays of NUMBERS (not objects): PieChart([\"Low\", \"Med\", \"High\"], [12, 28, 7], \"donut\")."
+      ]
+    },
+    {
+      "name": "Charts (Scatter)",
+      "components": [
+        "ScatterChart",
+        "ScatterSeries",
+        "Point"
+      ],
+      "notes": [
+        "- When X values are epoch timestamps, pass them as raw numbers — the chart will format them automatically. Do NOT use @FormatDate on coordinate values."
+      ]
+    },
+    {
+      "name": "Forms",
+      "components": [
+        "Form",
+        "FormControl",
+        "Input",
+        "TextArea",
+        "Select",
+        "SelectItem",
+        "DatePicker",
+        "Slider",
+        "CheckBoxGroup",
+        "CheckBoxItem",
+        "RadioGroup",
+        "RadioItem",
+        "Buttons",
+        "SwitchGroup",
+        "SwitchItem",
+        "Modal"
+      ],
+      "notes": [
+        "- For Form fields, define EACH FormControl as its own reference — do NOT inline all controls in one array. This allows progressive field-by-field streaming.",
+        "- NEVER nest Form inside Form — each Form should be a standalone container.",
+        "- Form requires explicit buttons. Always pass a Buttons(...) reference as the second Form argument: Form(name, buttons, fields).",
+        "- rules is an optional object: {required: true, email: true, minLength: 8, maxLength: 100}",
+        "- Available rules: required, email, min, max, minLength, maxLength, pattern, url, numeric",
+        "- The renderer shows error messages automatically — do NOT generate error text in the UI"
+      ]
+    },
+    {
+      "name": "Data Display",
+      "components": [
+        "Tag",
+        "TagBlock",
+        "Button"
+      ],
+      "notes": [
+        "- For boolean fields (active, enabled, status), use a ternary: `v ? Tag(\"Active\", \"success\") : Tag(\"Inactive\", \"danger\")`. `@Switch` matches string keys so `{true: ...}` won't match boolean values."
+      ]
+    }
+  ],
+  "tools": [],
+  "examples": [
+    "root = Stack([kpiRow, tableCard])\nkpiRow = Stack([countKpi, avgKpi, activeKpi], \"row\", \"m\", \"stretch\", \"start\", true)\ncountKpi = Card([TextContent(\"Total Employees\", \"small\"), TextContent(\"\" + @Count(data.employees), \"large-heavy\")])\navgKpi = Card([TextContent(\"Avg Salary\", \"small\"), TextContent(\"\" + @FormatNumber(@Avg(data.employees.salary), 1), \"large-heavy\")])\nactiveKpi = Card([TextContent(\"Active\", \"small\"), TextContent(\"\" + @Count(@Filter(data.employees, \"active\", \"==\", 1)), \"large-heavy\")])\ntableCard = Card([tableHeader, employeeTable])\ntableHeader = CardHeader(\"Employee Directory\", \"Salary, status and 7-day trend\")\nemployeeTable = Table([nameCol, salaryCol, joinedCol, statusCol, perfCol, skillsCol], data.employees)\nnameCol = Col(\"Name\", \"name\", {cell: @Render(\"v\", \"row\", Link(\"http://localhost:5173/\" + row.id, v))})\nsalaryCol = Col(\"Salary\", \"salary\", {cell: @Render(\"v\", TextContent(@FormatNumber(v, 1)))})\njoinedCol = Col(\"Joined\", \"joinedAt\", {cell: @Render(\"v\", TextContent(@FormatDate(v, \"date\")))})\nstatusCol = Col(\"Status\", \"active\", {cell: @Render(\"v\", @Switch(v, {\"1\": Tag(\"Active\", \"success\"), \"0\": Tag(\"Inactive\", \"danger\")}, Tag(\"Unknown\")))})\nperfCol = Col(\"Performance\", \"perfRatio\", {cell: @Render(\"v\", TextContent(@FormatPercent(v, 1)))})",
+    "root = Stack([kpiCard])\nkpiCard = Card([kpiHeader, kpiChart])\nkpiHeader = CardHeader(\"Latency Trend\", \"Hourly samples, last 6 hours\")\ntimestampLabels = @Each(data.samples, \"item\", item[0])\nsampleValues = @Each(data.samples, \"item\", item[1])\nkpiChart = LineChart(timestampLabels, [Series(\"Latency\", sampleValues)], \"smooth\", \"Time\", \"ms\")",
+    "root = Stack([trendCard])\ntrendCard = Card([trendHeader, trendChart])\ntrendHeader = CardHeader(\"Group Comparison\", \"Value trend by group\")\ngroupASlice = @Filter(data.records, \"groupKey\", \"==\", \"group-a\")\ngroupBSlice = @Filter(data.records, \"groupKey\", \"==\", \"group-b\")\ntrendLabels = groupASlice.timestamp\ngroupASeries = Series(\"Group A\", groupASlice.value)\ngroupBSeries = Series(\"Group B\", groupBSlice.value)\ntrendChart = LineChart(trendLabels, [groupASeries, groupBSeries], \"smooth\", \"Time\", \"Value\")",
+    "root = Stack([detail])\ndetail = Descriptions([DescField(\"Name\", data.user.name ?? \"No data\"), DescField(\"Region\", data.user.region ?? \"No data\")], \"Profile\")",
+    "root = Stack([reportHeader, dimCards])\nreportHeader = CardHeader(\"网络健康报告\", \"综合健康分: \" + data.healthScore)\ndimCards = Stack(@Each(data.data, \"dim\", dimTpl))\ndimTpl = Card([CardHeader(dim.key, \"得分: \" + dim.value.rootValue + \" · 排名: \" + dim.value.rank), LineChart(@Each(dim.value.baseline, \"b\", b.timestamp), [Series(\"Baseline\", dim.value.baseline.value), Series(\"Essential\", dim.value.essential.value)], \"smooth\", \"时间\", \"数值\"), Stack([Table([Col(\"区域\", \"regionName\"), Col(\"数值\", \"value\"), Col(\"层级\", \"level\")], dim.value.rankList), Table([Col(\"子指标\", \"key\"), Col(\"数值\", \"value\")], dim.value.subValues)], \"row\", \"m\")])",
+    " # Nested Array Example\nroot = Stack([summaryCard, modelTabs])\nmodelTabs = Tabs(@Each(data.grouped_by_model, \"group\", modelTabTpl))\nmodelTabTpl = TabItem(group.model, group.model + \" (\" + group.count + \")\",[table])\ntable = Table([Col(\"Device Name\", \"name\"), Col(\"IP\", \"ip\"), Col(\"Version\", \"version\"), Col(\"Vendor\", \"vendor\")], group.devices)",
+    "root = Stack([deviceCard, regionCard])\ndeviceCard = Card([deviceHeader, deviceTable])\ndeviceHeader = CardHeader(\"Devices by ID\", \"Status of managed devices\")\ndeviceRows = @ObjectEntries(data.devicesById)\ndeviceTable = Table([Col(\"Device\", \"key\"), Col(\"Status\", \"value.status\")], deviceRows)\nregionCard = Card([regionHeader, regionChart])\nregionHeader = CardHeader(\"Regions\", \"Device count by region\")\nregionChart = PieChart(@ObjectKeys(data.devicesByRegion), @Each(@ObjectEntries(data.devicesByRegion), \"entry\", entry.value))"
+  ],
+  "additionalRules": [
+    "JS globals do not exist: String(), Number(), Date(), Math.*, JSON.* are parse errors. `+` auto-converts: write `\"Total: \" + data.count`, never `String(...)`.",
+    "Functions do not exist: `(d) => ...` and `function` are parse errors. Repeat concrete definitions per instance (cardA = Card(...), cardB = Card(...)), or use @Each/@Render.",
+    "Use openui-lang concatenation with `+` for display strings; do not use JavaScript conversion helpers.",
+    "Never hardcode data values from the data model — always reference fields via data paths or derived variables. Accessing a field on an array extracts that field from every element: `filteredRows.fieldName` returns an array of values, useful for building Series.",
+    "When host data is provided, never invent, backfill, or synthesize labels, rows, metrics, statuses, timestamps, percentages, or records that are absent. For null-dominant records, preserve real non-null fields and show missing ones with `?? \"No data\"` (or `\"Unknown\"`, `\"?\"`, or omit). ",
+    "For field names containing spaces, special characters, or non-ASCII text (e.g. Chinese field names), ALWAYS use bracket notation: `data.peer_interface_info[\"本端接口\"]` — never use dot notation like `data.peer_interface_info.本端接口`.",
+    "NEVER nest @Render inside @Render — it crashes at runtime. This means: (1) NEVER define a standalone variable like `tpl = @Render(...)` and then use it inside `{cell: @Render(\"v\", tpl)}`; (2) NEVER call @Render inside the body of another @Render. All render logic MUST be a single @Render with the full expression inlined. WRONG: `severityTpl = @Render(\"v\", @Switch(v, {\"紧急\": Tag(\"紧急\", \"danger\")}, Tag(v, \"neutral\")))` → `Col(..., {cell: @Render(\"v\", severityTpl)})`. RIGHT: `Col(..., {cell: @Render(\"v\", @Switch(v, {\"紧急\": Tag(\"紧急\", \"danger\")}, Tag(v, \"neutral\")))})`.",
+    "When Table cell needs computed values (e.g. sum of filtered array), inline the expression directly: `{cell: @Render(\"v\", \"row\", @Sum(@Filter(v, \"status\", \"==\", \"在线\").count))}` — do NOT split into separate variable definitions that wrap @Render.",
+    "@Each only iterates arrays, never objects. For object maps use `@ObjectEntries(obj)` → `{key, value}[]` or `@ObjectKeys(obj)` → `string[]`. After @ObjectEntries, original field names do NOT exist — access the key via `\"key\"` and nested properties via `\"value.xxx\"` (e.g. `\"value.status\"`, NOT `\"status\"`)."
+  ],
+  "builtins": [
+    {
+      "signature": "Count(array) -> number",
+      "description": "Returns array length",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "First(array) -> element",
+      "description": "Returns first element of array",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Last(array) -> element",
+      "description": "Returns last element of array",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Sum(numbers[]) -> number",
+      "description": "Sum of numeric array",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Avg(numbers[]) -> number",
+      "description": "Average of numeric array",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Min(numbers[]) -> number",
+      "description": "Minimum value in array",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Max(numbers[]) -> number",
+      "description": "Maximum value in array",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Sort(array, field, direction?) -> sorted array",
+      "description": "Sort array by field. Direction: \"asc\" (default) or \"desc\"",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Filter(array, field, operator: \"==\" | \"!=\" | \">\" | \"<\" | \">=\" | \"<=\" | \"contains\", value) -> filtered array",
+      "description": "Filter array by field value",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "ObjectEntries(obj) -> {key: string, value: any}[]",
+      "description": "Convert a plain object map into ordered rows of {key, value}. Access the object key via \"key\" and the original value via \"value\" (e.g. \"value.status\"). Original field names are NOT available — always use \"key\" and \"value.xxx\". Returns [] for null, arrays, and unsupported inputs.",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "ObjectKeys(obj) -> string[]",
+      "description": "Return the ordered keys of a plain object map as a string array. Returns [] for null, arrays, and unsupported inputs.",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Round(number, decimals?) -> number",
+      "description": "Round to N decimal places (default 0)",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Abs(number) -> number",
+      "description": "Absolute value",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Floor(number) -> number",
+      "description": "Round down to nearest integer",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Ceil(number) -> number",
+      "description": "Round up to nearest integer",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Switch(value, cases, default?) -> result",
+      "description": "Map an enum value to a display result via a cases object. Numeric values are coerced to strings for key lookup. Returns default (null if omitted) when no case matches.",
+      "templateBuiltin": true
+    },
+    {
+      "signature": "FormatDate(value, style?) -> string | string[]",
+      "description": "Format a date-like value for display. `value` accepts a Unix timestamp in seconds OR milliseconds (auto-detected), an ISO 8601 string; also maps over arrays. `style` accepts \"date\", \"dateTime\", \"time\", or \"relative\", defaults to \"date\".",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "FormatBytes(value) -> string",
+      "description": "Format a byte count into a compact SI string (KB, MB, GB). Returns \"\" for nullish input.",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "FormatNumber(value, decimals?) -> string",
+      "description": "Format a scalar number as a locale-aware display string. Returns raw input for invalid values.",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "FormatPercent(value, decimals?) -> string",
+      "description": "Format a ratio (e.g. 0.125) as a locale-aware percentage string that already includes the % symbol (e.g. \"12.5%\"). Do NOT append + \"%\" to the result.",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "FormatDuration(value, unit?) -> string",
+      "description": "Format an elapsed duration into a compact display string. Input defaults to seconds and also supports explicit \"ms\" input.",
+      "templateBuiltin": false
+    },
+    {
+      "signature": "Each(array, varName, template)",
+      "description": "Evaluate template for each element. varName is the loop variable - use it ONLY inside the template expression (inline). Do NOT create a separate statement for the template.",
+      "templateBuiltin": true
+    },
+    {
+      "signature": "Render(\"v\", expr) / Render(\"v\", \"row\", expr)",
+      "description": "Create a deferred render template for prop values. Binder names are string literals and are only in scope inside the template body.",
+      "templateBuiltin": true
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+root = Stack([headerRow, contentColumn], "column", "l", "start", "start")
+headerRow = Stack([logoText, statusText], "row", "m", "center", "start")
+logoText = TextContent("Acme Analytics", "large")
+statusText = TextContent("Operational", "small")
+contentColumn = Stack([summaryText, detailStack], "column", "s", "start", "start")
+detailStack = Stack([TextContent("Uptime 99.98%"), TextContent("Latency 42ms")], "row", "l")
+summaryText = TextContent("System summary for the current shift.", "default")

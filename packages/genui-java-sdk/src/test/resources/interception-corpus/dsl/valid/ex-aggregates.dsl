@@ -1,0 +1,6 @@
+root = Stack([total, average, minimum, maximum, count])
+total = TextContent("Sum: " + @Sum(data.values))
+average = TextContent("Avg: " + @Avg(data.values))
+minimum = TextContent("Min: " + @Min(data.values))
+maximum = TextContent("Max: " + @Max(data.values))
+count = TextContent("Count: " + @Count(data.values))
