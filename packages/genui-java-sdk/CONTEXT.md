@@ -4,6 +4,14 @@ Java 21 SDK that assembles GenUI system prompts and drives an LLM to generate op
 
 ## Language
 
+**Builtin Vocabulary**:
+The set of builtin function names that validation accepts, carried by the contract's builtins section and derived per validation request — never a hardcoded name list in code. Language keywords (Query/Mutation/Action) are not vocabulary.
+_Avoid_: builtin whitelist, function registry
+
+**Case Contract**:
+The contract bundled with a repair-bench case, representing the contract in force when the original generation ran; it overrides the SDK default for that case's reproduction and repair, and silent fallback to the default is forbidden because it would disguise vocabulary drift as not-reproduced.
+_Avoid_: historical contract, legacy contract
+
 **Base Contract**:
 The frozen, frontend-exported description of the built-in component library (components, groups, examples, rules, builtins) that ships inside the SDK; the frontend is its single source of truth and the SDK only consumes it.
 _Avoid_: default contract, built-in schema

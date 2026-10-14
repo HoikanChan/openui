@@ -29,9 +29,8 @@ import java.util.Map;
  * additions and feeds the result into {@link PromptAssembler} correctly.
  *
  * <p>
- * The assembler itself is byte-pinned to the TypeScript oracle by {@link PromptGoldenTest}; here we independently
- * reconstruct the merged {@code PromptInput} (base → generation → request order) and assert the SDK produces exactly
- * that prompt — locking the merge wiring and ordering.
+ * Here we independently reconstruct the merged {@code PromptInput} (base → generation → request order) and assert the
+ * SDK produces exactly that prompt — locking the merge wiring and ordering.
  */
 class SdkPromptMergeTest {
 
