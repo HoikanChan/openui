@@ -61,7 +61,7 @@ class StaticTypeValidationTest {
     @Test
     void reportsWrongArrayElementType() {
         ValidationResult result = validate("root = PieChart([\"A\"], data.values, \"pie\")",
-                Map.of("values", List.of("not-a-number")));
+                Map.of("values", List.of(true)));
 
         ValidationIssue issue = issue(result, "type-prop-mismatch");
         assertEquals("PieChart", issue.component());

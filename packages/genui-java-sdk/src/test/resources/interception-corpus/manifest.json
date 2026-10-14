@@ -91,7 +91,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-01",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-syslog-steps.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -101,7 +101,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-02",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-online-device-info.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -111,7 +111,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-03",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-grouped-model-tabs.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -121,7 +121,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-04",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-peer-interface-info.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -131,7 +131,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-05",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-interface-bandwidth-tabs.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -141,7 +141,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-06",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-bd-interface-mapping.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -151,7 +151,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-08",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-top-cpu-table.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -161,7 +161,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-09",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-device-cpu-kpis.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -171,7 +171,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-10",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-device-cpu-detail.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -181,7 +181,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-11",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-port-summary-table.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -191,7 +191,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-12",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-nested-device-version-cards.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -201,7 +201,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-13",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-device-type-tabs-render-each.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -211,7 +211,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-14",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-nested-device-version-compact.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -221,7 +221,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-15",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-link-optical-tabs.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -231,7 +231,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-16",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-cpu-data-availability.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -241,7 +241,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-17",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-device-monitoring-logs.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -251,7 +251,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-18",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-fabric-device-inventory.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -261,7 +261,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-19",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-no-data-device-list.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -271,7 +271,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-20",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-client-experience-trend.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -281,7 +281,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-21",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-fabric-type-tabs.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -291,7 +291,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-22",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-fault-location-details.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -301,7 +301,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-23",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-fib-usage-table.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -311,7 +311,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-24",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-ospf-neighbors.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -321,7 +321,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-25",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-congestion-diagnosis.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -331,7 +331,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-26",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-interface-status-table.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
@@ -341,7 +341,7 @@
       "origin": "user-supplied attachment pasted-text.txt#dsl-27",
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-wireless-health-dimensions.dsl",
-      "contractFile": "openui/base-contract.json",
+      "contractFile": "contracts/openui-frozen-0.1.11.json",
       "expectedOutcome": "valid",
       "expectedCodes": []
     },
