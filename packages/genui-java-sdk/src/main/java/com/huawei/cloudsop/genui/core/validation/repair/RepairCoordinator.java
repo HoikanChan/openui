@@ -11,6 +11,7 @@ import com.huawei.cloudsop.genui.core.llm.protocol.ChatMessage;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.validation.OpenuiLangValidator;
+import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
@@ -18,6 +19,7 @@ import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -116,13 +118,14 @@ public final class RepairCoordinator {
             GenerationContract contract, String rootName, String originalSystemPrompt) {
         String currentDsl = invalidDsl;
         ValidationResult currentResult = initialResult;
+        List<FullRepairOutcome.AttemptRecord> attemptLog = new ArrayList<>();
         long deadlineNanos = deadline(policy.timeout());
 
         for (int attempt = 1; attempt <= policy.maxAttempts(); attempt++) {
             // 说明：超时判断发生在两次尝试之间；单次进行中的 transport.post 本身并未独立限时
             // （需要传输层自身的读超时支持）。
             if (timedOut(deadlineNanos)) {
-                return FullRepairOutcome.timedOut(currentDsl, currentResult, attempt - 1);
+                return FullRepairOutcome.timedOut(currentDsl, currentResult, attemptLog);
             }
 
             List<ChatMessage> messages = ReaskPromptBuilder.buildFullRepair(userIntent, currentDsl,
@@ -135,19 +138,21 @@ public final class RepairCoordinator {
                 String content = ChatCompletionResponse.parse(response).firstContent();
                 extracted = OpenuiCodeExtractor.extract(content);
             } catch (LlmTransportException error) {
-                // 修复过程中传输层失败 —— 暴露最后一次已知结果，标记为未修复。
-                return FullRepairOutcome.failed(currentDsl, currentResult, attempt);
+                // 修复过程中传输层失败 —— 暴露最后一次已知结果，标记为传输错误。
+                attemptLog.add(new FullRepairOutcome.AttemptRecord(attempt, false, null));
+                return FullRepairOutcome.transportError(currentDsl, currentResult, attemptLog);
             }
 
             ValidationResult revalidated = validateFinal(extracted, contract, rootName);
             currentDsl = extracted;
             currentResult = revalidated;
+            attemptLog.add(new FullRepairOutcome.AttemptRecord(attempt, revalidated.isValid(), revalidated.issues()));
 
             if (revalidated.isValid()) {
-                return FullRepairOutcome.repaired(extracted, revalidated, attempt);
+                return FullRepairOutcome.repaired(extracted, revalidated, attemptLog);
             }
         }
-        return FullRepairOutcome.exhausted(currentDsl, currentResult, policy.maxAttempts());
+        return FullRepairOutcome.stillInvalid(currentDsl, currentResult, attemptLog);
     }
 
     // ── STREAMING reask-and-continue ──────────────────────────────────────────
@@ -319,38 +324,103 @@ public final class RepairCoordinator {
     }
 
     /**
-     * 一次完整（同步）修复尝试序列的结果。
+     * 一次完整（同步）修复尝试序列的结果。结果区分四种终态（{@link OutcomeKind}），并携带逐次尝试的复验记录
+     * （{@link AttemptRecord}），供 bench 等调用方度量修复过程；传输失败的尝试其 {@code issues} 为
+     * {@code null}。超时只发生在两次尝试之间，因此 {@code attemptLog} 只含已完成的尝试。
      *
-     * @param repaired
-     *            修复后的 DSL 重新校验为有效时为 {@code true}
+     * @param kind
+     *            终态类别：修复成功 / 预算耗尽仍无效 / 传输错误 / 超时
      * @param dsl
-     *            最后一次修复的 DSL 文本（{@code repaired} 为真时即为有效文本）
+     *            最后一次修复的 DSL 文本（{@code kind} 为 REPAIRED 时即为有效文本）
      * @param result
-     *            最后一次的校验结果（{@code repaired} 为真时即为有效结果）
-     * @param attempts
-     *            实际执行的尝试次数
-     * @param timedOut
-     *            因超时而中止序列时为 {@code true}
+     *            最后一次的校验结果（REPAIRED 时即为有效结果；超时且无任何尝试时为初次失败结果）
+     * @param attemptLog
+     *            逐次尝试的复验记录，按尝试顺序排列；不会为 {@code null}
      *
      * @since 2026
      */
-    public record FullRepairOutcome(boolean repaired, String dsl, ValidationResult result, int attempts,
-            boolean timedOut) {
+    public record FullRepairOutcome(OutcomeKind kind, String dsl, ValidationResult result,
+            List<AttemptRecord> attemptLog) {
 
-        static FullRepairOutcome repaired(String dsl, ValidationResult result, int attempts) {
-            return new FullRepairOutcome(true, dsl, result, attempts, false);
+        /**
+         * 修复序列的终态类别。
+         *
+         * @since 2026
+         */
+        public enum OutcomeKind {
+            /** 某次尝试复验通过。 */
+            REPAIRED,
+            /** 尝试预算耗尽，最后一次复验仍无效 —— 模型修不动。 */
+            STILL_INVALID,
+            /** 传输层失败，序列中止 —— 基础设施噪声，不算“修不动”。 */
+            TRANSPORT_ERROR,
+            /** 两次尝试之间命中墙钟预算。 */
+            TIMED_OUT
         }
 
-        static FullRepairOutcome exhausted(String dsl, ValidationResult result, int attempts) {
-            return new FullRepairOutcome(false, dsl, result, attempts, false);
+        /**
+         * 单次修复尝试的复验记录。
+         *
+         * @param attempt
+         *            尝试序号（从 1 开始）
+         * @param valid
+         *            该次尝试产出的 DSL 复验是否有效；传输失败时恒为 {@code false}
+         * @param issues
+         *            该次复验发现的问题；传输失败的尝试为 {@code null}
+         *
+         * @since 2026
+         */
+        public record AttemptRecord(int attempt, boolean valid, List<ValidationIssue> issues) {
+
+            /**
+             * 紧凑构造方法：非 {@code null} 的 issues 归一化为不可变列表（{@code null} 保留，表示传输失败）。
+             */
+            public AttemptRecord {
+                issues = issues == null ? null : List.copyOf(issues);
+            }
         }
 
-        static FullRepairOutcome timedOut(String dsl, ValidationResult result, int attempts) {
-            return new FullRepairOutcome(false, dsl, result, attempts, true);
+        static FullRepairOutcome repaired(String dsl, ValidationResult result, List<AttemptRecord> attemptLog) {
+            return new FullRepairOutcome(OutcomeKind.REPAIRED, dsl, result, List.copyOf(attemptLog));
         }
 
-        static FullRepairOutcome failed(String dsl, ValidationResult result, int attempts) {
-            return new FullRepairOutcome(false, dsl, result, attempts, false);
+        static FullRepairOutcome stillInvalid(String dsl, ValidationResult result, List<AttemptRecord> attemptLog) {
+            return new FullRepairOutcome(OutcomeKind.STILL_INVALID, dsl, result, List.copyOf(attemptLog));
+        }
+
+        static FullRepairOutcome transportError(String dsl, ValidationResult result, List<AttemptRecord> attemptLog) {
+            return new FullRepairOutcome(OutcomeKind.TRANSPORT_ERROR, dsl, result, List.copyOf(attemptLog));
+        }
+
+        static FullRepairOutcome timedOut(String dsl, ValidationResult result, List<AttemptRecord> attemptLog) {
+            return new FullRepairOutcome(OutcomeKind.TIMED_OUT, dsl, result, List.copyOf(attemptLog));
+        }
+
+        /**
+         * 修复后的 DSL 复验为有效时返回 {@code true}。
+         *
+         * @return 是否修复成功
+         */
+        public boolean repaired() {
+            return kind == OutcomeKind.REPAIRED;
+        }
+
+        /**
+         * 序列因超时而中止时返回 {@code true}。
+         *
+         * @return 是否超时
+         */
+        public boolean timedOut() {
+            return kind == OutcomeKind.TIMED_OUT;
+        }
+
+        /**
+         * 实际执行的尝试次数（含传输失败的那次）。
+         *
+         * @return 尝试次数
+         */
+        public int attempts() {
+            return attemptLog.size();
         }
     }
 }
