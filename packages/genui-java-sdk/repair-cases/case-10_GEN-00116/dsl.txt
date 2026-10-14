@@ -1,0 +1,9 @@
+root = Stack([metricsCard])
+metricsCard = Card([metricsHeader, metricsTable])
+metricsHeader = CardHeader("设备资源利用率", "设备: " + data.queryNetworkDeviceMetrics.telemetryData[0].neName)
+
+metricsTable = Table([ipCol, nameCol, cpuCol, memCol], data.queryNetworkDeviceMetrics.telemetryData)
+ipCol = Col("设备 IP", "neIp")
+nameCol = Col("设备名称", "neName")
+cpuCol = Col("CPU 利用率 (%)", "cpu_usage")
+memCol = Col("内存利用率 (%)", "mem_usage")

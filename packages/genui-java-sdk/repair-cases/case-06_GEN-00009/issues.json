@@ -1,0 +1,14 @@
+[
+  {
+    "code": "unknown-component",
+    "message": "Unknown component \"ObjectFromEntries\" — not found in catalog or builtins"
+  },
+  {
+    "code": "unknown-component",
+    "message": "Unknown component \"ObjectFromEntries\" — not found in catalog or builtins"
+  },
+  {
+    "code": "unresolved-ref",
+    "message": "unresolved reference \"fabricGroups\""
+  }
+]

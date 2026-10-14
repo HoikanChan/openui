@@ -315,6 +315,61 @@ class RepairBenchRunnerTest {
     }
 
     @Test
+    void validationOnlyEmitsInvalidWithoutRepair() throws Exception {
+        String invalidDsl = "root = Bogus(\"x\")";
+        writeCase("case-a", "a", invalidDsl, null);
+        writeCase("case-b", "b", VALID_DSL, null);
+        ScriptedTransport transport = new ScriptedTransport();
+
+        List<RepairCase> cases = RepairCasePack.load(packDir(), null);
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        PrintStream print = new PrintStream(buffer, true, StandardCharsets.UTF_8);
+        // repair=false：transport 传 null 也必须能跑（validation-only 不碰 transport）。
+        new RepairBenchRunner(null, null, 3, Duration.ZERO, print, false).runAll(cases, 1);
+        print.flush();
+
+        List<Map<String, Object>> caseLines = new ArrayList<>();
+        Map<String, Object> summary = null;
+        for (String line : buffer.toString(StandardCharsets.UTF_8).split("\\R")) {
+            if (line.isBlank()) {
+                continue;
+            }
+            Map<String, Object> parsed = Json.asObject(Json.parse(line), "output line");
+            if ("summary".equals(parsed.get("type"))) {
+                summary = parsed;
+            } else {
+                caseLines.add(parsed);
+            }
+        }
+        assertNotNull(summary, "summary line must be emitted");
+
+        Map<String, Object> invalidLine = caseLines.stream().filter(l -> "a".equals(l.get("caseId"))).findFirst()
+                .orElseThrow();
+        assertEquals("invalid", invalidLine.get("status"));
+        assertEquals(false, invalidLine.get("success"));
+        assertEquals(true, invalidLine.get("reproduced"));
+        assertEquals(List.of("unknown-component"), strings(invalidLine, "initialIssueCodes"));
+        assertTrue(!invalidLine.containsKey("attempts"), "validation-only rows carry no attempts");
+        assertTrue(!invalidLine.containsKey("finalDsl"), "validation-only rows carry no finalDsl");
+
+        Map<String, Object> validLine = caseLines.stream().filter(l -> "b".equals(l.get("caseId"))).findFirst()
+                .orElseThrow();
+        assertEquals("not-reproduced", validLine.get("status"));
+
+        assertEquals(0, transport.postCount(), "validation-only must make zero LLM calls");
+
+        Map<String, Object> byStatus = map(summary, "byStatus");
+        assertEquals(1L, longOf(byStatus.get("invalid")));
+        assertEquals(1L, longOf(byStatus.get("not-reproduced")));
+        Map<String, Object> mainRate = map(summary, "mainRate");
+        assertEquals(0L, longOf(mainRate.get("denominator")));
+        assertNull(mainRate.get("rate"), "no repaired/still-invalid in validation-only → null main rate");
+        Map<String, Object> bucket = map(map(summary, "issueBuckets"), "unknown-component");
+        assertEquals(1L, longOf(bucket.get("cases")));
+        assertEquals(1L, longOf(bucket.get("invalid")));
+    }
+
+    @Test
     void internalIssueCodesPassthrough() throws Exception {
         String invalidDsl = "root = Bogus(\"x\")";
         Path dir = Files.createDirectories(tempDir.resolve("case-a"));

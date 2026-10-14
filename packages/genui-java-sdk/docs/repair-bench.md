@@ -7,17 +7,34 @@ repair-bench 是真实错误语料的修复基准（内部迭代工具,住 genui
 ## 运行
 
 ```bash
+# 默认 validation-only：零 LLM 调用,不需要 .env
 java -cp <test-classpath> com.huawei.cloudsop.genui.bench.RepairBenchCli \
-  --cases=repair-cases/ [--concurrency=4] [--max-attempts=3] [--timeout-minutes=0] [--limit=N]
+  --cases=repair-cases/ [--concurrency=4] [--limit=N]
+
+# 完整修复：显式加 --repair 才烧 LLM
+java -cp <test-classpath> com.huawei.cloudsop.genui.bench.RepairBenchCli \
+  --cases=repair-cases/ --repair [--max-attempts=3] [--timeout-minutes=0]
 ```
 
 | 参数 | 默认 | 说明 |
 |---|---|---|
 | `--cases` | 必填 | 案例包根目录,扫一层子目录中含 `case.json` 者 |
+| `--repair` | 关 | 开关。**不带 = validation-only**：每案例只做 FINAL 校验,输出 `invalid`（issueCodes 全量）/ `not-reproduced`,不读 .env、不建 transport;**带 = 完整修复**,现有行为 |
 | `--concurrency` | 4 | 有界线程池大小 |
-| `--max-attempts` | 3 | 单案例修复尝试预算 |
+| `--max-attempts` | 3 | 单案例修复尝试预算（仅 `--repair`） |
 | `--timeout-minutes` | 0（关） | 尝试之间的墙钟预算;关闭时靠 transport 的 10 分钟请求上限兜底 |
 | `--limit` | 无 | 按目录名取前 N,冒烟用 |
+
+### 语料从哪来
+
+`repair-cases/` 由 `scripts/md-to-repair-cases.mjs` 从 smartcanvas 失败语料生成（首次已落地,产物进 git;语料更新后重跑）：
+
+```bash
+node scripts/md-to-repair-cases.mjs            # 常规：LLM 反推缺失 intent(复用已落地值)
+node scripts/md-to-repair-cases.mjs --no-llm   # 不调 LLM(缺失 intent 留空)
+```
+
+缺口（缺 dataModel、反推 intent 待核对、空分类文件）记录在 `repair-cases/CONVERSION-GAPS.md`。
 
 ### test-classpath 怎么拼（本机 mvn 会 fork OOM）
 
@@ -29,7 +46,7 @@ M2=~/.m2/repository
 
 # 1. 编译（增量可跳过）
 javac -encoding UTF-8 -d /tmp/rb-build/main \
-  -cp "$M2/com/alibaba/fastjson2/fastjson2/2.0.61/fastjson2-2.0.61.jar" \
+  -cp "$M2/com/alibaba/fastjson2/fastjson2/2.0.60/fastjson2-2.0.60.jar" \
   $(find src/main/java -name "*.java")
 javac -encoding UTF-8 -d /tmp/rb-build/test \
   -cp "/tmp/rb-build/main;src/main/resources;$M2/…fastjson2…jar;…junit…jar" \
@@ -44,9 +61,9 @@ classpath 必含：`fastjson2`、`com.huawei.bsp.commonlib.resetclient`（编译
 
 ### LLM 配置
 
-环境变量 `LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / HTTPS_PROXY`。真实环境变量优先;其次读**仓库根** `.env`（文件可选,只解析 `KEY=VALUE`,`#` 注释与空行跳过）。
+环境变量 `LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / HTTPS_PROXY`。真实环境变量优先;其次读**仓库根** `.env`（文件可选,只解析 `KEY=VALUE`,`#` 注释与空行跳过）。**只有 `--repair` 才读**——validation-only 不碰 LLM 配置。
 
-当前 `.env` 指向 `qwen3.6-27b`,该账号未购买此模型 → 403 `AccessDenied.Unpurchased`。跑真实 baseline 前先换已购模型或开通。
+当前 `.env` 指向 `qwen3.8-flash`（已验证可调通）。换模型改 `.env` 的 `LLM_MODEL` 或设环境变量。
 
 ## 案例包格式
 
@@ -74,13 +91,14 @@ repair-cases/
 
 | status | 含义 | 迭代动作 |
 |---|---|---|
+| `invalid` | validation-only 下复现成功（FINAL 校验无效） | 看 `initialIssueCodes` 对比根因 |
 | `repaired` | 某轮修复后 FINAL 校验通过 | — |
 | `still-invalid` | 试满预算仍无效 | 改提示词 / 调策略 |
 | `transport-error` | LLM 请求失败（403、网络等） | 重跑;**不进主口径分母** |
 | `timeout` | 尝试之间命中墙钟预算 | 重跑;不进主口径分母 |
 | `not-reproduced` | 初次校验就通过（复现失败） | 先修环境——契约漂移信号,惩罚副口径 |
 
-- **主口径**（80% 目标立在这）：`repaired / (repaired + still-invalid)`,基础设施噪声剔除
+- **主口径**（80% 目标立在这）：`repaired / (repaired + still-invalid)`,基础设施噪声剔除;validation-only 跑法下主口径恒为 null（没有修复环节）
 - **副口径**：`repaired / total`,含 not-reproduced 惩罚
 - `initialIssueCodes` / `attempts[].issueCodes` / `finalIssueCodes` 全部是 **actionable 视图**（修复提示词消费的去噪视图,与完整 raw issues 有差）
 - `issueBuckets` 只统计 reproduced 案例,按初始 codes 分桶——迭代循环"按 code 看哪类修不动"的直接数据源
@@ -93,3 +111,4 @@ repair-cases/
 4. `--timeout-minutes` 是尝试之间的检查,不是硬超时;单请求挂死靠 transport 10 分钟上限。
 5. 修复请求固定温度 0 + 不开 thinking,`originalSystemPrompt` 从案例契约现算（案例包不带 system prompt）。
 6. 新增案例后跑 `RepairCasePackTest`（loader 校验）确认语料结构合法。
+7. **dataModel 为 null 的案例也固定 `data` externalRef**：DSL 引用 `data` 是提示词契约的产物,与数据是否在案无关;类型校验才由 dataModel 缺失关闭。语料包的 7 个缺 dataModel 案例因此是 `not-reproduced`（类型类根因不触发）,回填后即恢复——见 `CONVERSION-GAPS.md`。

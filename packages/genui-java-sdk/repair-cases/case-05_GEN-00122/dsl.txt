@@ -1,0 +1,8 @@
+root = Stack([header, metricsTable])
+header = CardHeader("光模块指标", "设备: " + data.queryOpticalModuleMetrics[0].telemetryData[0].neName)
+flatRows = @Flatten(data.queryOpticalModuleMetrics.telemetryData)
+metricsTable = Table([metricCol, valueCol, laneCol, idCol], flatRows)
+metricCol = Col("指标名称", "metricName")
+valueCol = Col("指标值", "metricValue")
+laneCol = Col("Lane ID", "laneId")
+idCol = Col("唯一标识", "opt_uniq_id")

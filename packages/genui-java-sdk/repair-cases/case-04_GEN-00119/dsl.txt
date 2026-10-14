@@ -1,0 +1,12 @@
+root = Stack([moduleCard])
+moduleCard = Card([moduleHeader, moduleTable])
+moduleHeader = CardHeader("光模块指标", "设备: " + data.queryOpticalModuleMetrics[0].neName)
+
+flatRows = @Flatten(data.queryOpticalModuleMetrics.telemetryData)
+moduleTable = Table([metricCol, valueCol, filteredValueCol, effcntCol, laneCol], flatRows)
+
+metricCol = Col("指标名称", "metricName")
+valueCol = Col("数值", "metricValue")
+filteredValueCol = Col("过滤后数值", "filteredValue")
+effcntCol = Col("有效计数", "effcnt")
+laneCol = Col("Lane ID", "laneId")
