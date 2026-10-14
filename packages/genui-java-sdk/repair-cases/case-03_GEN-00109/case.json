@@ -1,0 +1,38 @@
+{
+  "id": "GEN-00109",
+  "originalIntent": "展示光模块指标详情，用 @Flatten 展平嵌套 telemetryData 后通过 @MergeObject 添加 metricName 列。",
+  "dataModel": {
+    "queryOpticalModuleMetrics": [
+      {
+        "telemetryTotal": 1,
+        "telemetryData": [
+          {
+            "voltage": 3.31,
+            "voltage_filter": 3.31,
+            "voltage_effcnt": 100,
+            "mac": "97-55-46-F9-00-01",
+            "metricValue": 3.31,
+            "neIp": "197.197.5.1",
+            "neName": "O05-17F-Leaf2-Simu6-0001",
+            "ifName": "400GE1/0/101"
+          }
+        ]
+      },
+      {
+        "telemetryTotal": 1,
+        "telemetryData": [
+          {
+            "temperature": 37.62,
+            "temperature_filter": 37.62,
+            "tempe_effcnt": 100,
+            "mac": "97-55-46-F9-00-01",
+            "metricValue": 37.62,
+            "neIp": "197.197.5.1",
+            "neName": "O05-17F-Leaf2-Simu6-0001",
+            "ifName": "400GE1/0/101"
+          }
+        ]
+      }
+    ]
+  }
+}

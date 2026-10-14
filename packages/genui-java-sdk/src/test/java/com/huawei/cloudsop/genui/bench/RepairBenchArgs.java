@@ -17,10 +17,13 @@ package com.huawei.cloudsop.genui.bench;
  *            尝试之间的墙钟预算（分钟）；0 = 不启用，靠 transport 请求上限兜底
  * @param limit
  *            按目录名排序取前 N 个案例（冒烟用）；{@code null} = 全部
+ * @param repair
+ *            是否跑修复：默认 false = 每案例只做 FINAL 校验（零 LLM 调用）；true = 完整修复流程
  *
  * @since 2026
  */
-record RepairBenchArgs(String casesDir, int concurrency, int maxAttempts, long timeoutMinutes, Integer limit) {
+record RepairBenchArgs(String casesDir, int concurrency, int maxAttempts, long timeoutMinutes, Integer limit,
+        boolean repair) {
 
     static final int DEFAULT_CONCURRENCY = 4;
 
@@ -39,6 +42,7 @@ record RepairBenchArgs(String casesDir, int concurrency, int maxAttempts, long t
         int maxAttempts = DEFAULT_MAX_ATTEMPTS;
         long timeoutMinutes = 0;
         Integer limit = null;
+        boolean repair = false;
         for (String arg : args) {
             if (arg.startsWith("--cases=")) {
                 cases = arg.substring("--cases=".length());
@@ -50,6 +54,8 @@ record RepairBenchArgs(String casesDir, int concurrency, int maxAttempts, long t
                 timeoutMinutes = parseNonNegativeLong(arg, "--timeout-minutes");
             } else if (arg.startsWith("--limit=")) {
                 limit = parsePositiveInt(arg, "--limit");
+            } else if (arg.equals("--repair")) {
+                repair = true;
             } else {
                 throw new IllegalArgumentException("Unknown argument: " + arg);
             }
@@ -57,7 +63,7 @@ record RepairBenchArgs(String casesDir, int concurrency, int maxAttempts, long t
         if (cases == null || cases.isBlank()) {
             throw new IllegalArgumentException("Missing required argument: --cases=<dir>");
         }
-        return new RepairBenchArgs(cases, concurrency, maxAttempts, timeoutMinutes, limit);
+        return new RepairBenchArgs(cases, concurrency, maxAttempts, timeoutMinutes, limit, repair);
     }
 
     private static int parsePositiveInt(String arg, String name) {

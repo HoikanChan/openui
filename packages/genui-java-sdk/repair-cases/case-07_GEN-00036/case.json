@@ -1,0 +1,24 @@
+{
+  "id": "GEN-00036",
+  "originalIntent": "查询Fabric default1下的设备数量和款型分布统计。展示设备总数和按款型(neType)分组的设备数量。枚举值翻译：neState: online(在线), offline(离线); neRole: ServerLeaf(Server Leaf); neCategory: EnterpriseSwitch(交换机)。",
+  "dataModel": {
+    "queryDeviceInfo": {
+      "isTruncated": false,
+      "deviceTotal": 10,
+      "deployScene": "FabricDcn",
+      "deviceInfo": [
+        {
+          "neState": "online",
+          "neName": "O05-17F-Leaf2-Simu6-0001",
+          "neIp": "197.197.5.1",
+          "neCategory": "EnterpriseSwitch",
+          "neType": "CE9866-128DQ",
+          "neRole": "ServerLeaf",
+          "neVendor": "Huawei",
+          "neVersion": "1.26 V300R026C00",
+          "fabricName": "default1"
+        }
+      ]
+    }
+  }
+}

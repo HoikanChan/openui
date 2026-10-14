@@ -1,0 +1,22 @@
+root = Stack([deviceInfoCard, portTableCard])
+deviceInfoCard = Card([deviceInfoHeader, deviceInfoDesc])
+deviceInfoHeader = CardHeader("设备基本信息")
+deviceInfoDesc = Descriptions([
+  DescField("设备名称", data.queryDevicePort.aiInstanceData[0].neName),
+  DescField("IP地址", data.queryDevicePort.aiInstanceData[0].neIp),
+  DescField("型号", data.queryDevicePort.aiInstanceData[0].slotName),
+  DescField("角色", @Switch(data.queryDevicePort.aiInstanceData[0].neRole, {"ServerLeaf": "Server Leaf"}, data.queryDevicePort.aiInstanceData[0].neRole)),
+  DescField("状态", @Switch(data.queryDevicePort.aiInstanceData[0].neState, {"online": "在线", "offline": "离线"}, data.queryDevicePort.aiInstanceData[0].neState)),
+  DescField("厂商", data.queryDevicePort.aiInstanceData[0].vendorType),
+  DescField("Fabric名称", data.queryDevicePort.aiInstanceData[0].fabricName)
+], true)
+portTableCard = Card([portTableHeader, portTable])
+portTableHeader = CardHeader("端口信息", "共 " + @String(data.queryDevicePort.aiInstanceTotal) + " 个端口")
+portTable = Table([
+  Col("端口名称", "ifName"),
+  Col("管理状态", "adminStatus", {cell: @Render("v", @Switch(v, {"active": Tag("Up", "success"), "inactive": Tag("Down", "danger")}, Tag(v, "neutral")))}),
+  Col("运行状态", "operStatus", {cell: @Render("v", @Switch(v, {"active": Tag("Up", "success"), "inactive": Tag("Down", "danger")}, Tag(v, "neutral")))}),
+  Col("IP地址", "ifIp"),
+  Col("速率 (Mbps)", "ifHighSpeed"),
+  Col("所属设备", "neName")
+], data.queryDevicePort.aiInstanceData)

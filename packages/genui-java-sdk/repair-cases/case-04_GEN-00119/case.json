@@ -1,0 +1,60 @@
+{
+  "id": "GEN-00119",
+  "originalIntent": "展示光模块指标数据，包含电压和接收光功率等多维度指标。",
+  "dataModel": {
+    "queryOpticalModuleMetrics": [
+      {
+        "telemetryTotal": 1,
+        "telemetryData": [
+          {
+            "voltage": 3.31,
+            "voltage_filter": 3.31,
+            "voltage_effcnt": 96,
+            "mac": "97-55-46-F9-00-01",
+            "metricValue": 3.31,
+            "neIp": "197.197.5.1",
+            "neName": "O05-17F-Leaf2-Simu6-0001",
+            "ifName": "400GE1/0/101"
+          }
+        ]
+      },
+      {
+        "telemetryTotal": 4,
+        "telemetryData": [
+          {
+            "rx_power_dbm": -3,
+            "rx_power_dbm_filter": -3,
+            "rx_power_effcnt": 24,
+            "mac": "97-55-46-F9-00-01",
+            "metricValue": -3,
+            "neIp": "197.197.5.1",
+            "neName": "O05-17F-Leaf2-Simu6-0001",
+            "ifName": "400GE1/0/101",
+            "laneId": "0"
+          },
+          {
+            "rx_power_dbm": -3.1,
+            "rx_power_dbm_filter": -3.1,
+            "rx_power_effcnt": 24,
+            "metricValue": -3.1,
+            "laneId": "1"
+          },
+          {
+            "rx_power_dbm": -3.5,
+            "rx_power_dbm_filter": -3.5,
+            "rx_power_effcnt": 24,
+            "metricValue": -3.5,
+            "laneId": "2"
+          },
+          {
+            "rx_power_dbm": -3.6,
+            "rx_power_dbm_filter": -3.6,
+            "rx_power_effcnt": 24,
+            "metricValue": -3.6,
+            "laneId": "3"
+          }
+        ]
+      }
+    ]
+  }
+}

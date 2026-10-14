@@ -1,0 +1,21 @@
+{
+  "id": "GEN-00066",
+  "originalIntent": "帮我查询光模块性能指标，展示设备IP、设备名称、接口名称，并用表格列出电压和温度等指标。",
+  "dataModel": {
+    "queryOpticalModuleMetrics": {
+      "telemetryTotal": 1,
+      "telemetryData": [
+        {
+          "temperature": 37.62,
+          "temperature_filter": 37.62,
+          "tempe_effcnt": 1,
+          "mac": "97-55-46-F9-00-01",
+          "metricValue": 37.62,
+          "neIp": "197.197.5.1",
+          "neName": "O05-17F-Leaf2-Simu6-0001",
+          "ifName": "400GE1/0/100"
+        }
+      ]
+    }
+  }
+}

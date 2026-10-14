@@ -1,0 +1,24 @@
+{
+  "id": "GEN-00056",
+  "originalIntent": "查询设备的 Loopback 接口信息和 BGP 对端信息，并用两个表格分别展示设备 IP、接口名称以及对端 IP、接口名称。",
+  "dataModel": {
+    "bash": [
+      {
+        "loopback_interface": {
+          "device-ip": "10.136.193.101",
+          "interface-name": "LoopBack1"
+        },
+        "bgp-peer": [
+          {
+            "device-ip": "10.136.193.110",
+            "interface-name": "LoopBack1"
+          },
+          {
+            "device-ip": "10.136.193.104",
+            "interface-name": "LoopBack1"
+          }
+        ]
+      }
+    ]
+  }
+}

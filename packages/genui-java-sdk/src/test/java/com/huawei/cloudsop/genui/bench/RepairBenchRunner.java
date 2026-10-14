@@ -61,12 +61,21 @@ final class RepairBenchRunner {
     /** 全批共享的确定性修复配置：温度 0 + 不开 thinking（镜像 GenUiGenerator.repairConfig 的纪律）。 */
     private final GenUiLlmConfig repairConfig;
 
+    /** 是否跑修复：false = 每案例只做 FINAL 校验（validation-only，不初始化 transport、零 LLM 调用）。 */
+    private final boolean repair;
+
     RepairBenchRunner(LlmTransport transport, String model, int maxAttempts, Duration timeout, PrintStream out) {
+        this(transport, model, maxAttempts, timeout, out, true);
+    }
+
+    RepairBenchRunner(LlmTransport transport, String model, int maxAttempts, Duration timeout, PrintStream out,
+            boolean repair) {
         this.transport = transport;
         this.model = model;
         this.maxAttempts = maxAttempts;
         this.timeout = timeout == null ? Duration.ZERO : timeout;
         this.out = out;
+        this.repair = repair;
         this.repairConfig = GenUiLlmConfig.builder().defaultModel(model).temperature(0).enableThinking(false).build();
     }
 
@@ -127,7 +136,9 @@ final class RepairBenchRunner {
                 benchCase.dataModel() == null ? null : new DataModelSpec("Response data", benchCase.dataModel()),
                 List.of(), null, null, null, null);
         String systemPrompt = sdk.assemblePrompt(promptRequest).prompt();
-        Set<String> externalRefs = benchCase.dataModel() == null ? Set.of() : Set.of("data");
+        // 与 ValidateCli 一致固定 data:bench 案例 DSL 全部引用 data(提示词契约根名),dataModel 为 null 只关
+        // 类型校验;若随之清空 externalRefs,这些案例会被整批误报 unresolved-ref。
+        Set<String> externalRefs = Set.of("data");
 
         // ── 步骤 1：复现判定（FINAL）──
         ValidationResult v0 = DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder()
@@ -146,6 +157,20 @@ final class RepairBenchRunner {
             line.put("durationMs", System.currentTimeMillis() - started);
             emit(Json.stringify(line));
             summary.record("not-reproduced", null);
+            return;
+        }
+
+        // ── 步骤 1.5：validation-only（--repair 未开）时到此为止，不碰 transport ──
+        if (!repair) {
+            LinkedHashMap<String, Object> line = baseLine(benchCase);
+            line.put("status", "invalid");
+            line.put("success", false);
+            line.put("reproduced", true);
+            line.put("initialIssueCodes", initialCodes);
+            putInternalCodes(line, benchCase);
+            line.put("durationMs", System.currentTimeMillis() - started);
+            emit(Json.stringify(line));
+            summary.record("invalid", initialCodes);
             return;
         }
 

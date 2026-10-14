@@ -1,0 +1,44 @@
+{
+  "id": "en-device-distribution-fabric#3",
+  "originalIntent": "展示 Fabric 设备分布统计数据，包含设备状态分布、设备款型分布、设备版本分布三个维度。",
+  "dataModel": {
+    "queryDeviceDistribution": [
+      {
+        "deployScene": "FabricDcn",
+        "distributionData": [
+          {
+            "count": 6,
+            "type": "online"
+          }
+        ],
+        "distributionTotal": 1
+      },
+      {
+        "deployScene": "FabricDcn",
+        "distributionData": [
+          {
+            "count": 2,
+            "type": "CE6881-48S6CQ"
+          },
+          {
+            "count": 2,
+            "type": "CE12804"
+          }
+        ],
+        "distributionTotal": 3
+      }
+    ],
+    "queryDeviceInfo": {
+      "deviceTotal": 6,
+      "deviceInfo": [
+        {
+          "neState": "online",
+          "neName": "ZP-1-2F-C22-16U-NSW02-PIT-BF01",
+          "neType": "CE6881-48S6CQ",
+          "neVersion": "8.22 V200R022C00SPC500",
+          "fabricName": "PIT"
+        }
+      ]
+    }
+  }
+}

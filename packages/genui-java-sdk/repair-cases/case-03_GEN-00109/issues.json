@@ -1,0 +1,6 @@
+[
+  {
+    "code": "type-table-column-missing",
+    "message": "Table column field \"unit\" is absent from the proven row shape."
+  }
+]

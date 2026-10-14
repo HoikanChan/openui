@@ -24,16 +24,18 @@ class RepairBenchArgsTest {
         assertEquals(RepairBenchArgs.DEFAULT_MAX_ATTEMPTS, args.maxAttempts());
         assertEquals(0, args.timeoutMinutes());
         assertEquals(null, args.limit(), "limit defaults to null (no limit)");
+        assertEquals(false, args.repair(), "repair defaults to false (validation-only)");
     }
 
     @Test
     void allFlagsParsed() {
         RepairBenchArgs args = RepairBenchArgs.parse(new String[] { "--cases=c", "--concurrency=2",
-                "--max-attempts=5", "--timeout-minutes=10", "--limit=3" });
+                "--max-attempts=5", "--timeout-minutes=10", "--limit=3", "--repair" });
         assertEquals(2, args.concurrency());
         assertEquals(5, args.maxAttempts());
         assertEquals(10, args.timeoutMinutes());
         assertEquals(3, args.limit());
+        assertEquals(true, args.repair());
     }
 
     @Test

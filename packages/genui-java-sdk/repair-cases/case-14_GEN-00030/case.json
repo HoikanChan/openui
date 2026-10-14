@@ -1,0 +1,29 @@
+{
+  "id": "GEN-00030",
+  "originalIntent": "设备 10.136.193.107 BGP 对等体信息表格。",
+  "dataModel": {
+    "title": "设备 10.136.193.107 BGP对等体信息",
+    "data": [
+      {
+        "deviceIp": "10.136.193.107",
+        "peerAddr": "100.100.100.101",
+        "localIfName": "-",
+        "remoteAs": "100",
+        "bgpCurState": "已建立",
+        "vrfName": "_public_",
+        "isOverlay": "Underlay",
+        "bgpInstanceType": "BGPPeer"
+      },
+      {
+        "deviceIp": "10.136.193.107",
+        "peerAddr": "100.100.100.102",
+        "localIfName": "LoopBack1",
+        "remoteAs": "100",
+        "bgpCurState": "已建立",
+        "vrfName": "_public_",
+        "isOverlay": "Underlay",
+        "bgpInstanceType": "BGPPeer"
+      }
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+[
+  {
+    "code": "builtin-argument-type-mismatch",
+    "message": "@ObjectEntries argument 0 expects object, but received object[]."
+  }
+]

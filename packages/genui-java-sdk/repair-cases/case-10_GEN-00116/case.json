@@ -1,0 +1,20 @@
+{
+  "id": "GEN-00116",
+  "originalIntent": "展示设备197.197.5.1的CPU利用率和内存利用率指标数据，以表格形式呈现。",
+  "dataModel": {
+    "queryNetworkDeviceMetrics": {
+      "telemetryTotal": 1,
+      "telemetryData": [
+        {
+          "mem_usage": 70,
+          "mem_usage_filter": 70,
+          "mem_effcnt": 26,
+          "mac": "97-55-46-F9-00-01",
+          "metricValue": 70,
+          "neIp": "197.197.5.1",
+          "neName": "O05-17F-Leaf2-Simu6-0001"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,13 @@
+root = Stack([header, fabricTabs])
+header = CardHeader(data.title, "共 " + @Count(data.data) + " 条记录")
+fabricTabs = Tabs(@Each(fabricGroups, "group", fabricTabTpl))
+fabricTabTpl = TabItem(group.key, group.key, [fabricTable])
+fabricTable = Table([typeCol, countCol], group.items)
+typeCol = Col("设备款型", "deviceType")
+countCol = Col("数量", "count")
+fabricGroups = @Each(data.data, "item", @MergeObject(item, {key: item.fabricName}))
+fabricGrouped = @Each(fabricGroups, "item", @MergeObject({key: item.key, items: @Filter(data.data, "fabricName", "==", item.key)}))
+uniqueFabrics = @ObjectKeys(@ObjectFromEntries(@Each(fabricGroups, "item", {key: item.key, value: item.key})))
+fabricMap = @ObjectFromEntries(@Each(uniqueFabrics, "f", {key: f, value: @Filter(data.data, "fabricName", "==", f)}))
+fabricEntries = @ObjectEntries(fabricMap)
+fabricGroups = fabricEntries

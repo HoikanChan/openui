@@ -1,0 +1,13 @@
+root = Stack([infoCard, metricsCard], "column", "m")
+infoCard = Card([infoHeader, infoDescriptions])
+infoHeader = CardHeader("设备信息")
+infoDescriptions = Descriptions([ipField, nameField, interfaceField], true)
+ipField = DescField("设备IP", data.queryOpticalModuleMetrics.telemetryData[0].neIp)
+nameField = DescField("设备名称", data.queryOpticalModuleMetrics.telemetryData[0].neName)
+interfaceField = DescField("接口名称", data.queryOpticalModuleMetrics.telemetryData[0].ifName)
+metricsCard = Card([metricsHeader, metricsTable])
+metricsHeader = CardHeader("光模块性能指标")
+metricsTable = Table([nameCol, valueCol], metricsRows)
+nameCol = Col("指标名称", "name")
+valueCol = Col("指标值", "value")
+metricsRows = [{name: "电压 (V)", value: data.queryOpticalModuleMetrics.telemetryData[0].voltage}, {name: "温度 (℃)", value: data.queryOpticalModuleMetrics.telemetryData[0].temperature}]

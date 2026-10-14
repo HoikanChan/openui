@@ -1,0 +1,16 @@
+root = Stack([metricsCard])
+metricsCard = Card([metricsHeader, metricsTable])
+metricsHeader = CardHeader("接口指标详情", "设备: " + data.queryInterfaceMetrics.telemetryData[0].neName)
+metricsTable = Table([nameCol, valueCol], rows)
+nameCol = Col("指标名称", "name")
+valueCol = Col("指标值", "value")
+rows = @Each(data.queryInterfaceMetrics.telemetryData, "item", [
+  {name: "设备名称", value: item.neName},
+  {name: "设备 IP", value: item.neIp},
+  {name: "接口名称", value: item.ifName},
+  {name: "MAC 地址", value: item.mac},
+  {name: "查询 ID", value: item.if_query_id},
+  {name: "接收丢包数", value: item.recv_drop_pkts_cnt},
+  {name: "接收丢包数 (过滤)", value: item.recv_drop_pkts_cnt_filter},
+  {name: "指标值", value: item.metricValue}
+])

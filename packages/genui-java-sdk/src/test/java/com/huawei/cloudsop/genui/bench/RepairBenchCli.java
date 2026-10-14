@@ -21,8 +21,11 @@ import java.util.Map;
  *
  * <pre>{@code
  * java -cp <test-classpath> com.huawei.cloudsop.genui.bench.RepairBenchCli \
- *   --cases=repair-cases/ [--concurrency=4] [--max-attempts=3] [--timeout-minutes=0] [--limit=N]
+ *   --cases=repair-cases/ [--concurrency=4] [--max-attempts=3] [--timeout-minutes=0] [--limit=N] [--repair]
  * }</pre>
+ *
+ * 默认（不带 {@code --repair}）为 validation-only：每案例只做 FINAL 校验并输出 status + issueCodes，
+ * 不读 .env、不建 transport、零 LLM 调用。带 {@code --repair} 才走完整修复（此时才需要 LLM 配置）。
  *
  * LLM 配置：{@code LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / HTTPS_PROXY}，真实环境变量优先，其次从仓库根
  * {@code .env} 读取。
@@ -44,7 +47,7 @@ public final class RepairBenchCli {
             parsed = RepairBenchArgs.parse(args);
         } catch (IllegalArgumentException error) {
             System.err.println("usage: RepairBenchCli --cases=<dir> [--concurrency=4] [--max-attempts=3] "
-                    + "[--timeout-minutes=0] [--limit=N]");
+                    + "[--timeout-minutes=0] [--limit=N] [--repair]");
             System.err.println("error: " + error.getMessage());
             System.exit(2);
             return;
@@ -59,25 +62,28 @@ public final class RepairBenchCli {
             return;
         }
 
-        Map<String, String> env = BenchEnv.resolve(findRepoRoot().resolve(".env"));
-        String model = env.get("LLM_MODEL");
-        if (model == null || model.isBlank()) {
-            System.err.println("[repair-bench] LLM_MODEL is not set (env or repo-root .env)");
-            System.exit(1);
-            return;
-        }
-        LlmTransport transport;
-        try {
-            transport = new OpenAiCompatBenchTransport(env.get("LLM_BASE_URL"), env.get("LLM_API_KEY"),
-                    env.get("HTTPS_PROXY"));
-        } catch (IllegalArgumentException error) {
-            System.err.println("[repair-bench] " + error.getMessage());
-            System.exit(1);
-            return;
+        Map<String, String> env = parsed.repair() ? BenchEnv.resolve(findRepoRoot().resolve(".env")) : Map.of();
+        LlmTransport transport = null;
+        String model = null;
+        if (parsed.repair()) {
+            model = env.get("LLM_MODEL");
+            if (model == null || model.isBlank()) {
+                System.err.println("[repair-bench] LLM_MODEL is not set (env or repo-root .env)");
+                System.exit(1);
+                return;
+            }
+            try {
+                transport = new OpenAiCompatBenchTransport(env.get("LLM_BASE_URL"), env.get("LLM_API_KEY"),
+                        env.get("HTTPS_PROXY"));
+            } catch (IllegalArgumentException error) {
+                System.err.println("[repair-bench] " + error.getMessage());
+                System.exit(1);
+                return;
+            }
         }
 
         RepairBenchRunner runner = new RepairBenchRunner(transport, model, parsed.maxAttempts(),
-                Duration.ofMinutes(parsed.timeoutMinutes()), System.out);
+                Duration.ofMinutes(parsed.timeoutMinutes()), System.out, parsed.repair());
         try {
             runner.runAll(cases, parsed.concurrency());
         } catch (InterruptedException error) {
