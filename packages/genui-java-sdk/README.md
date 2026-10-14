@@ -103,15 +103,11 @@ byte-for-byte port of `packages/lang-core/src/parser/prompt.ts`'s `generatePromp
 Builtin docs come from the contract's top-level `builtins` manifest (exported by the
 frontend); all other sections are transcribed from `prompt.ts`.
 
-Cross-language alignment is pinned by `PromptGoldenTest`: each
-`src/test/resources/prompt-golden/<name>.json` is a merged `PromptSpec`, and the
-matching `<name>.txt` is produced by the TypeScript oracle. Regenerate the golden
-outputs (and re-export the base contract when the builtins registry changes) with:
-
-```bash
-pnpm --dir packages/react-ui-dsl run generate:base-contract
-pnpm --dir packages/lang-core run generate:prompt-golden
-```
+Cross-language prompt alignment was previously pinned by `PromptGoldenTest`; it was
+removed on the validation-iteration branch (2026-10-14) because the contract's
+builtins manifest is now internal truth while lang-core's manifest lags — the
+byte-for-byte premise no longer holds. See
+`docs/adr/0003-builtin-vocabulary-is-contract-data.md`.
 
 ## Cross-language validation oracle
 
