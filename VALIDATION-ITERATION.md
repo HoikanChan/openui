@@ -4,8 +4,8 @@
 
 本分支按 [repair-bench 设计](superpowers/specs/2026-10-13-repair-bench-design.md)收缩，只保留 validation / repair 迭代所需的代码：
 
-- `packages/genui-java-sdk` — validation + repair 主战场（parser / semantic / stream / repair）
-- `packages/genui-eval-cli` — 生成与修复基准 CLI（repair-bench 扩展点）
+- `packages/genui-java-sdk` — validation + repair 主战场（parser / semantic / stream / repair；内部迭代基准 repair-bench 也驻其 test scope `bench/`）
+- `packages/genui-eval-cli` — 生成链路 CLI；预留为 validation 模块向内部测试服务交付的载体（形态待定，另开设计）
 - `packages/lang-core` — 框架无关 Lang 内核，Java parser 的跨语言对齐 oracle 来源
 - `examples/genui-service` — SmartCanvasService 契约参考实现
 - `interal-code/` — 内部参照代码

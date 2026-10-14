@@ -4,6 +4,16 @@
 - 状态：已与维护者对齐（方案 A + 前置判断 1/2）
 - 分支策略：`validation-iteration` 长期分支，不合回 master，作为外部迭代线
 
+> **2026-10-14 修订**（维护者 grilling 后与实现对齐，见 [2026-10-14 实现设计](2026-10-14-repair-bench-impl-design.md)）：
+>
+> 1. **双轨道取消**（修订 B/C/D 相关段落）：真实语料不存在独立的 render 发现通道——`error_detail.txt` 是挂在同一批流量语料上的人工渲染问题标注，不是一条错误报告来源。bench 案例包只收校验器拦截的失败案例（首批 26 例 INVALID）；MISSED 案例的"补规则"工作流留在 validation-test 缺口分析工具链（MISSED→DETECTED 复跑度量），不进 bench。`reportedBy` 字段、按轨道汇总、gapOpen/gapClosed 等轨道 2 概念全部废弃。
+> 2. **bench 驻 genui-java-sdk test scope**（修订 C）：`genui-eval-cli` 预留为 validation 模块向内部测试服务交付的载体（形态待定，另开设计），不再承载 bench——避免测试服务的交付工作牵动内部迭代工具。
+> 3. **主口径剔除 transport-error 与 timeout**（修订 D）：基础设施噪声与自设预算不算"可复现但修不动"，可筛出重跑；主口径 = repaired / (repaired + still-invalid)。
+> 4. bench 的 `.env` 从**仓库根**读取（原文 B 密钥搬迁小节的指向相应调整；eval-cli 包内 .env 留给交付链路，交付不依赖 .env——另议）。
+>
+> 本文其余内容保留原状，作为当时的决策记录；实现以上游 spec + 本修订注 + 2026-10-14 实现设计为准。
+
+
 ## 背景与目标
 
 公司内部与外部仓库已发生显著漂移：前端 UI 基本全改（外部视为不可用），后端提示词部分调整但整体逻辑未变。外部环境要继续迭代 validation 模块，输入是内部捞出的真实错误数据（生成失败的 DSL + 报错 + 当时的组件契约）。

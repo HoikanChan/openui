@@ -20,7 +20,18 @@
 
 ## 工具边界
 
-- `packages/genui-eval-cli` — **Eval Generation CLI**:包装 genui-java-sdk 生成能力的 Java 命令行工具,repair-bench 基准的扩展点;术语在系统词汇表。它是仓库自用工具,不是子领域,无独立 CONTEXT.md。
+- `packages/genui-eval-cli` — **Eval Generation CLI**:包装 genui-java-sdk 生成能力的 Java 命令行工具。预留为 validation 模块向内部测试服务交付的载体(交付形态待定,另行设计),仓库自用工具,不是子领域,无独立 CONTEXT.md。内部迭代基准(repair-bench)不驻此包——住 genui-java-sdk test scope 的 `bench/`(与 ValidateCli、ValidationCorpusReportGenerator 同先例),见 [repair-bench 实现设计](docs/superpowers/specs/2026-10-14-repair-bench-impl-design.md)。
+
+## repair-bench
+
+`packages/genui-java-sdk/src/test/java/com/huawei/cloudsop/genui/bench/RepairBenchCli.java` 是 repair-bench 的入口(案例包进 → stdout JSONL 出)。运行方式:
+
+```bash
+java -cp <test-classpath> com.huawei.cloudsop.genui.bench.RepairBenchCli \
+  --cases=repair-cases/ [--concurrency=4] [--max-attempts=3] [--timeout-minutes=0] [--limit=N]
+```
+
+LLM 配置:`LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / HTTPS_PROXY`,真实环境变量优先,其次从仓库根 `.env` 读取。
 
 ## Examples 边界
 
