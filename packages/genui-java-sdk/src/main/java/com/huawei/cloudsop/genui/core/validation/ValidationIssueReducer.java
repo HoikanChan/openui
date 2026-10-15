@@ -1,6 +1,7 @@
 package com.huawei.cloudsop.genui.core.validation;
 
 import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -19,8 +20,9 @@ public final class ValidationIssueReducer {
     /**
      * Return the actionable subset of {@code rawIssues} in original order.
      *
-     * <p>The result is immutable. This operation never invents diagnostics and never changes validation
-     * status; callers that need parser parity should continue using the raw issue list.
+     * <p>
+     * The result is immutable. This operation never invents diagnostics and never changes validation status; callers
+     * that need parser parity should continue using the raw issue list.
      */
     public static List<ValidationIssue> actionable(List<ValidationIssue> rawIssues) {
         if (rawIssues == null || rawIssues.isEmpty()) {
@@ -48,8 +50,8 @@ public final class ValidationIssueReducer {
             kept.add(issue);
         }
 
-        boolean hasExplainingError = kept.stream().anyMatch(issue -> issue.severity() == ValidationSeverity.ERROR
-                && !ROOT_TAIL_CODES.contains(issue.code()));
+        boolean hasExplainingError = kept.stream().anyMatch(
+                issue -> issue.severity() == ValidationSeverity.ERROR && !ROOT_TAIL_CODES.contains(issue.code()));
         if (hasExplainingError) {
             kept.removeIf(issue -> ROOT_TAIL_CODES.contains(issue.code()));
         }

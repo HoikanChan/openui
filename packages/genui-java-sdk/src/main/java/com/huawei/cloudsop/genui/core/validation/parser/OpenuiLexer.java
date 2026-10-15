@@ -11,13 +11,11 @@ import java.util.List;
  * openui-lang 的手写词法分析器。
  *
  * <p>
- * 精确对应 {@code packages/lang-core/src/parser/lexer.ts} 的分词规则（字符串转义、数字格式、{@code $state}、
- * {@code @builtin}、帕斯卡命名的 {@link TokenType#TYPE} 与小写的 {@link TokenType#IDENT}、双字符运算符
- * {@code == != >= <= && || ??}）。
+ * 精确对应 {@code packages/lang-core/src/parser/lexer.ts} 的分词规则（字符串转义、数字格式、{@code $state}、 {@code @builtin}、帕斯卡命名的
+ * {@link TokenType#TYPE} 与小写的 {@link TokenType#IDENT}、双字符运算符 {@code == != >= <= && || ??}）。
  *
  * <p>
- * Java 扩展：每个 {@link Token} 都携带从 1 开始的行/列以及从 0 开始的偏移/长度，供下游阶段附加诊断信息。
- * 换行符是有意义的 token（语句分隔符）。
+ * Java 扩展：每个 {@link Token} 都携带从 1 开始的行/列以及从 0 开始的偏移/长度，供下游阶段附加诊断信息。 换行符是有意义的 token（语句分隔符）。
  *
  * @since 2026
  */

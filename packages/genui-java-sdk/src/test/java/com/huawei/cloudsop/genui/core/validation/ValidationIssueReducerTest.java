@@ -4,8 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
-import java.util.List;
+
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 class ValidationIssueReducerTest {
 
@@ -24,12 +26,12 @@ class ValidationIssueReducerTest {
     void keepsFirstSyntaxRootCauseAndSuppressesSameStatementCascades() {
         ValidationIssue syntax = issue("syntax-unexpected-token", "syntax", "table", null, null,
                 "Unexpected token EQUALS", null);
-        ValidationIssue laterSyntax = issue("syntax-unclosed-bracket", "syntax", "table", null, null,
-                "Unclosed '('", null);
+        ValidationIssue laterSyntax = issue("syntax-unclosed-bracket", "syntax", "table", null, null, "Unclosed '('",
+                null);
         ValidationIssue unresolved = issue("unresolved-ref", "reference", "table", null, null,
                 "unresolved reference columns", "define it");
-        ValidationIssue type = issue("type-prop-mismatch", "type", "table", "Table", "/rows",
-                "Table.rows mismatch", null);
+        ValidationIssue type = issue("type-prop-mismatch", "type", "table", "Table", "/rows", "Table.rows mismatch",
+                null);
 
         List<ValidationIssue> actionable = ValidationIssueReducer
                 .actionable(List.of(syntax, laterSyntax, unresolved, type));
@@ -39,8 +41,8 @@ class ValidationIssueReducerTest {
 
     @Test
     void keepsRootCauseHintedReferenceOnSyntaxBrokenStatement() {
-        ValidationIssue syntax = issue("syntax-unexpected-token", "syntax", "value", null, null,
-                "Unexpected token DOT", null);
+        ValidationIssue syntax = issue("syntax-unexpected-token", "syntax", "value", null, null, "Unexpected token DOT",
+                null);
         String hint = RepairHints.unresolvedRefHint("Math");
         ValidationIssue rootCause = issue("unresolved-ref", "reference", "value", null, null,
                 "unresolved reference Math", hint);
@@ -62,8 +64,7 @@ class ValidationIssueReducerTest {
     void rootTailIsSuppressedWhenAnotherActionableErrorExists() {
         ValidationIssue cause = issue("syntax-missing-assignment", "syntax", "root", null, null,
                 "root is missing equals", null);
-        ValidationIssue tail = issue("root-missing", "root", null, null, null,
-                "no renderable root", null);
+        ValidationIssue tail = issue("root-missing", "root", null, null, null, "no renderable root", null);
 
         assertEquals(List.of(cause), ValidationIssueReducer.actionable(List.of(cause, tail)));
     }

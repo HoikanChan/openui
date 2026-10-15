@@ -7,11 +7,13 @@ package com.huawei.cloudsop.genui.core.validation.type;
 import com.huawei.cloudsop.genui.core.validation.type.ValueType.Primitive;
 import com.huawei.cloudsop.genui.core.validation.type.ValueType.PrimitiveKind;
 import com.huawei.cloudsop.genui.core.validation.type.ValueType.UnionType;
+
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/** Shared normalization and predicates for the validation value-type algebra.
+/**
+ * Shared normalization and predicates for the validation value-type algebra.
  *
  * @since 2026
  */

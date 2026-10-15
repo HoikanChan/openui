@@ -4,10 +4,12 @@
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
 
+import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
+import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.Builtins;
 import com.huawei.cloudsop.genui.core.validation.parser.ParseDiagnostic;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
@@ -52,15 +54,29 @@ public final class ProgramAnalyzer {
     private static final Object DYNAMIC = new Object();
 
     private final ContractCatalog catalog;
+    private final BuiltinCatalog builtins;
+
+    /**
+     * 构造语义分析器（builtin 词表取 SDK 默认契约派生集）。
+     *
+     * @param catalog
+     *            用于合约校验的组件目录
+     */
+    public ProgramAnalyzer(ContractCatalog catalog) {
+        this(catalog, BuiltinCatalog.getDefault());
+    }
 
     /**
      * 构造语义分析器。
      *
      * @param catalog
      *            用于合约校验的组件目录
+     * @param builtins
+     *            builtin 函数词表（从契约派生）
      */
-    public ProgramAnalyzer(ContractCatalog catalog) {
+    public ProgramAnalyzer(ContractCatalog catalog, BuiltinCatalog builtins) {
         this.catalog = catalog;
+        this.builtins = builtins;
     }
 
     /**
@@ -274,7 +290,7 @@ public final class ProgramAnalyzer {
         if (!(value.expr() instanceof AstNode.Comp comp)) {
             return false;
         }
-        return !Builtins.isBuiltin(comp.name()) && !Builtins.isReservedCall(comp.name());
+        return !builtins.isBuiltin(comp.name()) && !Builtins.isReservedCall(comp.name());
     }
 
     // ───────────────────────────────────────────────────────────────────────────
@@ -388,7 +404,7 @@ public final class ProgramAnalyzer {
     private Object materializeComp(AstNode.Comp comp, WalkCtx ctx) {
         String name = comp.name();
 
-        if (Builtins.isBuiltin(name)) {
+        if (builtins.isBuiltin(name)) {
             // Builtin: recurse args for nested refs/components; not a renderable element.
             // Lazy builtins (@Each/@Render) scope their binder names over the template args first.
             if (walkLazyBuiltin(comp, ctx)) {
@@ -471,25 +487,25 @@ public final class ProgramAnalyzer {
     }
 
     /**
-     * Binder arg positions per lazy builtin: {@code Each} binds arg 1 only in the 3-arg form; {@code Render} binds
-     * every arg except the last (the template) when it has at least 2 args.
+     * Binder 参数位置——从契约 params 的 {@code binder} 标记派生（Each 为 1；Render 为除模板外的全部前缀参数）。 仅对实参充足的调用返回非空（Each 需 3 参、Render 需 2
+     * 参），与旧硬编码行为一致。
      */
-    private static List<Integer> lazyBinderIndexes(AstNode.Comp comp) {
-        if (!Builtins.isLazyBuiltin(comp.name())) {
+    private List<Integer> lazyBinderIndexes(AstNode.Comp comp) {
+        if (!builtins.isLazyBuiltin(comp.name())) {
             return List.of();
         }
+        BuiltinSpec spec = builtins.spec(comp.name());
+        if (spec == null) {
+            return List.of();
+        }
+        List<Integer> declared = spec.binderIndexes();
         int argc = comp.args().size();
-        if ("Each".equals(comp.name())) {
-            return argc >= 3 ? List.of(1) : List.of();
-        }
-        if (argc < 2) {
+        // Each 的 3-arg 形式才绑定；Render 至少 2 参才绑定。
+        int minBindArgs = "Each".equals(comp.name()) ? 3 : 2;
+        if (argc < minBindArgs) {
             return List.of();
         }
-        List<Integer> indexes = new ArrayList<>();
-        for (int i = 0; i < argc - 1; i++) {
-            indexes.add(i);
-        }
-        return indexes;
+        return declared.stream().filter(index -> index < argc - 1 || "Each".equals(comp.name())).toList();
     }
 
     /** A binder may be a bare identifier ({@code Ref}) or a string literal ({@code Str}); anything else is invalid. */

@@ -10,8 +10,7 @@ import java.util.Objects;
  * GenUI 生成流水线的顶层校验配置。
  *
  * <p>
- * 仅暴露两个策略维度：<em>何时</em> 校验（{@link ValidationConfigMode}）以及<em>失败时如何处理</em>
- * （{@link RepairPolicyKind}）。请使用预设工厂方法而非直接构造。
+ * 仅暴露两个策略维度：<em>何时</em> 校验（{@link ValidationConfigMode}）以及<em>失败时如何处理</em> （{@link RepairPolicyKind}）。请使用预设工厂方法而非直接构造。
  *
  * <pre>
  * GenUiValidationConfig cfg = GenUiValidationConfig.finalOnly(); // 默认配置

@@ -33,9 +33,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * {@link RepairBenchRunner} 全批流程（假 transport）：复现判定、repaired / still-invalid / transport-error /
- * not-reproduced 状态映射、逐 attempt codes、主副口径与 issueBuckets 算术（含 transport-error 剔除分母、
- * 分母 0 → rate null）、内部 issues.json 透传。
+ * {@link RepairBenchRunner} 全批流程（假 transport）：复现判定、repaired / still-invalid / transport-error / not-reproduced 状态映射、逐
+ * attempt codes、主副口径与 issueBuckets 算术（含 transport-error 剔除分母、 分母 0 → rate null）、内部 issues.json 透传。
  *
  * @since 2026
  */
@@ -53,8 +52,7 @@ class RepairBenchRunnerTest {
     private static final String STILL_BAD_DSL = "root = StillBad()";
 
     /**
-     * 一个会触发"修复后仍无效"的 DSL（测试契约里不存在 {@code StillBad} 组件），
-     * 但它依然是合法的 openui-lang 语法 —— 不会触发 root-mismatch 之外的解析级错误。
+     * 一个会触发"修复后仍无效"的 DSL（测试契约里不存在 {@code StillBad} 组件）， 但它依然是合法的 openui-lang 语法 —— 不会触发 root-mismatch 之外的解析级错误。
      * 注意：不带参数（避免括号引号在 JSON 转义/反转义中变形）。
      */
     private static final String STILL_BAD_DSL_2 = "root = StillBad2()";
@@ -81,7 +79,7 @@ class RepairBenchRunnerTest {
     private static final class ScriptedTransport implements LlmTransport {
         private final Map<String, Deque<String>> scriptByDsl = new LinkedHashMap<>();
 
-        private final int[] postCount = { 0 };
+        private final int[] postCount = {0};
 
         ScriptedTransport answer(String invalidDsl, String... responses) {
             scriptByDsl.put(invalidDsl, new ArrayDeque<>(List.of(responses)));
@@ -110,8 +108,7 @@ class RepairBenchRunnerTest {
                 // ReaskPromptBuilder 会把 DSL 原样（含换行/引号）拼进提示词，
                 // 但 ChatCompletionRequest.toJson 已把换行转义为 \n、引号转义为 \"，
                 // 因此匹配前先把 key 转成同样的 JSON 转义形式。
-                String jsonEscapedKey = entry.getKey().replace("\\", "\\\\").replace("\"", "\\\"")
-                        .replace("\n", "\\n");
+                String jsonEscapedKey = entry.getKey().replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
                 if (haystack.contains(jsonEscapedKey) || haystack.contains(entry.getKey())) {
                     Deque<String> queue = entry.getValue();
                     if (queue.isEmpty()) {
@@ -207,8 +204,7 @@ class RepairBenchRunnerTest {
         String invalidDsl = "root = Bogus(\"x\")";
         writeCase("case-a", "a", invalidDsl, null);
         // 第一次修复返回根名正确但仍含未知组件的 DSL（触发第二轮），第二次返回有效 DSL。
-        ScriptedTransport transport = new ScriptedTransport()
-                .answer(invalidDsl, STILL_BAD_ROOTED_DSL)
+        ScriptedTransport transport = new ScriptedTransport().answer(invalidDsl, STILL_BAD_ROOTED_DSL)
                 .answer(STILL_BAD_ROOTED_DSL, VALID_DSL);
 
         BatchResult result = run(transport, 2);
@@ -246,10 +242,8 @@ class RepairBenchRunnerTest {
         String invalidDsl = "root = Bogus(\"x\")";
         writeCase("case-a", "a", invalidDsl, null);
         // 每一轮修复都返回另一个仍无效的 DSL（逐轮换 key，模拟模型修不动）。
-        ScriptedTransport transport = new ScriptedTransport()
-                .answer(invalidDsl, STILL_BAD_DSL)
-                .answer(STILL_BAD_DSL, STILL_BAD_DSL_2)
-                .answer(STILL_BAD_DSL_2, STILL_BAD_DSL_3);
+        ScriptedTransport transport = new ScriptedTransport().answer(invalidDsl, STILL_BAD_DSL)
+                .answer(STILL_BAD_DSL, STILL_BAD_DSL_2).answer(STILL_BAD_DSL_2, STILL_BAD_DSL_3);
 
         BatchResult result = run(transport, 1);
         Map<String, Object> line = result.caseLine("a");
@@ -393,10 +387,8 @@ class RepairBenchRunnerTest {
         writeCase("case-d", "d", badDslA, null); // 与 a 同一 DSL → 共享脚本队列
         // a 消费第一条（修复成功），d 消费第二条（"<boom>" → transport-error）。
         // badDslB 逐轮换 key，三次都返回仍无效 DSL → still-invalid。
-        ScriptedTransport transport = new ScriptedTransport()
-                .answer(badDslA, VALID_DSL, "<boom>")
-                .answer(badDslB, STILL_BAD_DSL)
-                .answer(STILL_BAD_DSL, STILL_BAD_DSL_2)
+        ScriptedTransport transport = new ScriptedTransport().answer(badDslA, VALID_DSL, "<boom>")
+                .answer(badDslB, STILL_BAD_DSL).answer(STILL_BAD_DSL, STILL_BAD_DSL_2)
                 .answer(STILL_BAD_DSL_2, STILL_BAD_DSL_3);
 
         BatchResult result = run(transport, 2);

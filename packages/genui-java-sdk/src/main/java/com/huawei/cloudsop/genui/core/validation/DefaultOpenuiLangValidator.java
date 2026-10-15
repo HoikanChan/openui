@@ -24,13 +24,11 @@ import java.util.Objects;
  * 处理流程：
  * <ol>
  * <li>通过 {@link OpenuiParser#parse(String, ParseMode)} 预处理并解析 DSL。</li>
- * <li>根据请求中的合约构建 {@link ContractCatalog}（合约为 null 时得到空目录，导致每个组件都被报告为未知组件；不支持
- * “仅语法”模式）。</li>
+ * <li>根据请求中的合约构建 {@link ContractCatalog}（合约为 null 时得到空目录，导致每个组件都被报告为未知组件；不支持 “仅语法”模式）。</li>
  * <li>执行 {@link ProgramAnalyzer#analyze(Program, ValidationMode, String, java.util.Set)}。</li>
- * <li>当请求携带具体数据模型时，对最终程序执行 {@link ProgramTypeValidator} 类型校验（dataModel 存在时
- * {@code data} 自动并入外部引用集合）。</li>
- * <li>将问题映射为 {@link ValidationStatus}：只要存在 {@link ValidationSeverity#ERROR} 级别问题即为 {@code INVALID}；
- * 仅在 {@link ValidationMode#STREAMING} 下存在非 ERROR 问题时为 {@code PARTIAL}；否则为 {@code VALID}。</li>
+ * <li>当请求携带具体数据模型时，对最终程序执行 {@link ProgramTypeValidator} 类型校验（dataModel 存在时 {@code data} 自动并入外部引用集合）。</li>
+ * <li>将问题映射为 {@link ValidationStatus}：只要存在 {@link ValidationSeverity#ERROR} 级别问题即为 {@code INVALID}； 仅在
+ * {@link ValidationMode#STREAMING} 下存在非 ERROR 问题时为 {@code PARTIAL}；否则为 {@code VALID}。</li>
  * </ol>
  *
  * <p>

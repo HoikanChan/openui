@@ -8,6 +8,7 @@ import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
+
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -67,8 +68,7 @@ public final class ValidationCorpusReportGenerator {
         }
 
         Files.writeString(output,
-                normalizeMarkdown(render(results, statusCounts, rawIssueCounts, actionableIssueCounts,
-                        coverageCounts)),
+                normalizeMarkdown(render(results, statusCounts, rawIssueCounts, actionableIssueCounts, coverageCounts)),
                 StandardCharsets.UTF_8);
         System.out.println("wrote=" + output.toAbsolutePath());
         System.out.println("cases=" + results.size());
@@ -93,8 +93,7 @@ public final class ValidationCorpusReportGenerator {
         report.append("- 原始 Issue 统计: `").append(rawIssueCounts).append("`\n");
         report.append("- 可操作 Issue 统计: `").append(actionableIssueCounts).append("`\n");
         report.append("- 标注覆盖: `").append(coverageCounts).append("`\n\n");
-        report.append("每个结果均由当前代码实际运行生成。`actionableIssues` 用于修复与报告；")
-                .append("`rawIssues` 保留完整诊断和跨语言 parity。\n\n");
+        report.append("每个结果均由当前代码实际运行生成。`actionableIssues` 用于修复与报告；").append("`rawIssues` 保留完整诊断和跨语言 parity。\n\n");
 
         for (int index = 0; index < results.size(); index++) {
             appendCase(report, index + 1, results.get(index));
@@ -166,8 +165,7 @@ public final class ValidationCorpusReportGenerator {
     }
 
     private static String normalizeMarkdown(String markdown) {
-        return markdown.lines().map(String::stripTrailing).collect(Collectors.joining("\n")).stripTrailing()
-                + "\n";
+        return markdown.lines().map(String::stripTrailing).collect(Collectors.joining("\n")).stripTrailing() + "\n";
     }
 
     private static String coverage(CaseResult item) {

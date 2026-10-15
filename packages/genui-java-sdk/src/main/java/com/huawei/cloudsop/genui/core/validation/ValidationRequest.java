@@ -17,8 +17,8 @@ import java.util.Set;
  * DSL 校验器的输入。
  *
  * <p>
- * 请使用 {@link #builder()} 构造实例。{@code externalRefs} 集合始终非空且不可变；传入 {@code null} 会得到空集合。
- * {@code dataModel} 为 {@code null} 表示调用方未提供运行时数据；空 map 是一个具体的空数据模型，两者语义不同。
+ * 请使用 {@link #builder()} 构造实例。{@code externalRefs} 集合始终非空且不可变；传入 {@code null} 会得到空集合。 {@code dataModel} 为 {@code null}
+ * 表示调用方未提供运行时数据；空 map 是一个具体的空数据模型，两者语义不同。
  *
  * @param dsl
  *            待校验的 DSL 字符串
@@ -44,8 +44,7 @@ public record ValidationRequest(String dsl, GenerationContract contract, String 
      * 紧凑构造方法，将 {@code externalRefs} 归一化为不可变集合、{@code dataModel} 归一化为不可变 map。
      */
     public ValidationRequest {
-        externalRefs = externalRefs == null ? Set.of()
-                : Collections.unmodifiableSet(new LinkedHashSet<>(externalRefs));
+        externalRefs = externalRefs == null ? Set.of() : Collections.unmodifiableSet(new LinkedHashSet<>(externalRefs));
         if (dataModel != null) {
             dataModel = Collections.unmodifiableMap(new LinkedHashMap<>(dataModel));
         }

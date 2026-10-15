@@ -22,10 +22,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
- * Offline FINAL-mode validation of a DSL file with the same validator + base contract the streaming gate
- * uses. Prints a JSON verdict to stdout. Used by the reask prompt replay loop as ground truth.
+ * Offline FINAL-mode validation of a DSL file with the same validator + base contract the streaming gate uses. Prints a
+ * JSON verdict to stdout. Used by the reask prompt replay loop as ground truth.
  *
- * <p>Usage: {@code java ... ValidateCli <dsl-file>}
+ * <p>
+ * Usage: {@code java ... ValidateCli <dsl-file>}
  */
 public final class ValidateCli {
     private ValidateCli() {
@@ -39,14 +40,13 @@ public final class ValidateCli {
         String dsl = Files.readString(Path.of(args[0]), StandardCharsets.UTF_8);
 
         GenerationSdk sdk = GenerationSdk.create();
-        GenerationContract merged = sdk.mergedContract(
-                new GenUIPromptRequest(null, null, List.of(), null, null, null, null));
+        GenerationContract merged = sdk
+                .mergedContract(new GenUIPromptRequest(null, null, List.of(), null, null, null, null));
 
         // Mirror the real pipeline: with a data model present, "data" is a known external ref.
-        ValidationResult result = new DefaultOpenuiLangValidator().validate(ValidationRequest.builder()
-                .dsl(dsl).contract(merged).rootName(merged.root() == null ? "root" : merged.root())
-                .externalRefs(java.util.Set.of("data"))
-                .mode(ValidationMode.FINAL).build());
+        ValidationResult result = new DefaultOpenuiLangValidator().validate(ValidationRequest.builder().dsl(dsl)
+                .contract(merged).rootName(merged.root() == null ? "root" : merged.root())
+                .externalRefs(java.util.Set.of("data")).mode(ValidationMode.FINAL).build());
 
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
         out.put("status", result.status().name());

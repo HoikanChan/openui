@@ -22,8 +22,7 @@ import java.util.Map;
  *
  * @since 2026
  */
-public record ValidationMetadata(int statementCount, String rootName, ValidationMode mode,
-        Map<String, String> extra) {
+public record ValidationMetadata(int statementCount, String rootName, ValidationMode mode, Map<String, String> extra) {
 
     /**
      * 紧凑构造方法，将 {@code extra} 归一化为不可变映射。

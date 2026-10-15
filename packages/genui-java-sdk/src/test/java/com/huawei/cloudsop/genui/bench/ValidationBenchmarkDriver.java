@@ -42,17 +42,24 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * A/B benchmark driver for Generated DSL Validation.
  *
- * <p>Reads react-ui-dsl benchmark fixtures (meta.prompt + data), generates DSL through
- * {@link GenUiGenerator#generateStream} against an OpenAI-compatible endpoint, and writes
- * per-fixture DSL outputs plus timing/call metrics. Two arms:
+ * <p>
+ * Reads react-ui-dsl benchmark fixtures (meta.prompt + data), generates DSL through
+ * {@link GenUiGenerator#generateStream} against an OpenAI-compatible endpoint, and writes per-fixture DSL outputs plus
+ * timing/call metrics. Two arms:
  *
  * <ul>
- *   <li>{@code off} — {@link GenUiValidationConfig#disabled()}: raw delta streaming, no gate.</li>
- *   <li>{@code on} — {@link GenUiValidationConfig#streamingGateWithReask()}: statement gate + Fail-Fast Reask.</li>
+ * <li>{@code off} — {@link GenUiValidationConfig#disabled()}: raw delta streaming, no gate.</li>
+ * <li>{@code on} — {@link GenUiValidationConfig#streamingGateWithReask()}: statement gate + Fail-Fast Reask.</li>
  * </ul>
  *
- * <p>Usage:
- * {@code java ... ValidationBenchmarkDriver --fixtures <dir> --out <dir> --arm off|on --env <.env path>
+ * <p>
+ * Usage: {@code java ... ValidationBenchmarkDriver --fixtures
+ *
+<dir>
+ *  --out
+ *
+<dir>
+ *  --arm off|on --env <.env path>
  * [--only id1,id2] [--concurrency 3] [--capture-body <file>]}
  */
 public final class ValidationBenchmarkDriver {
@@ -95,13 +102,10 @@ public final class ValidationBenchmarkDriver {
             calls.incrementAndGet();
             firstBody.compareAndSet(null, body);
             bodies.add(body);
-            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-                    .timeout(Duration.ofSeconds(600))
-                    .header("Content-Type", "application/json")
-                    .header("Accept", "text/event-stream")
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(600))
+                    .header("Content-Type", "application/json").header("Accept", "text/event-stream")
                     .header("Authorization", "Bearer " + apiKey)
-                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
-                    .build();
+                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8)).build();
             try {
                 HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
                 if (response.statusCode() != 200) {
@@ -162,9 +166,7 @@ public final class ValidationBenchmarkDriver {
                 : GenUiValidationConfig.disabled();
         GenUiGenerator generator = GenUiGenerator.withTransport(llmConfig, transport, validationConfig, null);
 
-        UiGenerationRequest request = UiGenerationRequest.builder()
-                .userInput(fixture.prompt())
-                .response(fixture.data())
+        UiGenerationRequest request = UiGenerationRequest.builder().userInput(fixture.prompt()).response(fixture.data())
                 .build();
 
         List<String> errorFrames = new ArrayList<>();
@@ -212,8 +214,8 @@ public final class ValidationBenchmarkDriver {
     }
 
     /**
-     * When a fixture needed more than one LLM call (i.e. reask fired), persist every request body so the
-     * erroneous DSL, the reask instructions, and the full prompts can be inspected afterwards.
+     * When a fixture needed more than one LLM call (i.e. reask fired), persist every request body so the erroneous DSL,
+     * the reask instructions, and the full prompts can be inspected afterwards.
      */
     private static void writeCallLog(Fixture fixture, OpenAiHttpTransport transport, List<String> errorFrames,
             Path outDir) {
@@ -263,11 +265,8 @@ public final class ValidationBenchmarkDriver {
         Path captureBody = opts.containsKey("capture-body") ? Path.of(opts.get("capture-body")) : null;
 
         double temperature = Double.parseDouble(opts.getOrDefault("temperature", "0"));
-        GenUiLlmConfig llmConfig = GenUiLlmConfig.builder()
-                .defaultModel(model)
-                .temperature(temperature)
-                .enableThinking(false)
-                .build();
+        GenUiLlmConfig llmConfig = GenUiLlmConfig.builder().defaultModel(model).temperature(temperature)
+                .enableThinking(false).build();
 
         List<Fixture> fixtures = new ArrayList<>();
         try (var files = Files.list(fixturesDir)) {
@@ -280,7 +279,8 @@ public final class ValidationBenchmarkDriver {
         }
         Files.createDirectories(outDir);
 
-        System.out.printf("arm=%s model=%s temp=%s fixtures=%d concurrency=%d%n", arm, model, temperature, fixtures.size(), concurrency);
+        System.out.printf("arm=%s model=%s temp=%s fixtures=%d concurrency=%d%n", arm, model, temperature,
+                fixtures.size(), concurrency);
         Instant startedAt = Instant.now();
         long wallStart = System.nanoTime();
 

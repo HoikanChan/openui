@@ -10,8 +10,8 @@ import java.util.List;
  * 形如 {@code id = expression} 的顶层类型化语句。
  *
  * <p>
- * 对应 {@code ast.ts} 中 TS 侧的 {@code Statement} 联合类型（种类：value/state/query/mutation）。每个变体
- * 额外携带一个 {@link SourceSpan}（行/列/偏移范围）—— 这是 Java 侧为诊断信息新增的扩展，TS 侧未追踪该信息。
+ * 对应 {@code ast.ts} 中 TS 侧的 {@code Statement} 联合类型（种类：value/state/query/mutation）。每个变体 额外携带一个
+ * {@link SourceSpan}（行/列/偏移范围）—— 这是 Java 侧为诊断信息新增的扩展，TS 侧未追踪该信息。
  *
  * @since 2026
  */

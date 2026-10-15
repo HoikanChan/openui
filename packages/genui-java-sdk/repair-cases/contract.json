@@ -1622,139 +1622,442 @@
   ],
   "builtins": [
     {
+      "name": "Count",
       "signature": "Count(array) -> number",
       "description": "Returns array length",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "array",
+          "type": "array"
+        }
+      ],
+      "returnType": "number"
     },
     {
+      "name": "First",
       "signature": "First(array) -> element",
       "description": "Returns first element of array",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "array",
+          "type": "T[]"
+        }
+      ],
+      "returnType": "T"
     },
     {
+      "name": "Last",
       "signature": "Last(array) -> element",
       "description": "Returns last element of array",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "array",
+          "type": "T[]"
+        }
+      ],
+      "returnType": "T"
     },
     {
+      "name": "Sum",
       "signature": "Sum(numbers[]) -> number",
       "description": "Sum of numeric array",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "numbers",
+          "type": "number[]"
+        }
+      ],
+      "returnType": "number"
     },
     {
+      "name": "Avg",
       "signature": "Avg(numbers[]) -> number",
       "description": "Average of numeric array",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "numbers",
+          "type": "number[]"
+        }
+      ],
+      "returnType": "number"
     },
     {
+      "name": "Min",
       "signature": "Min(numbers[]) -> number",
       "description": "Minimum value in array",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "numbers",
+          "type": "number[]"
+        }
+      ],
+      "returnType": "number"
     },
     {
+      "name": "Max",
       "signature": "Max(numbers[]) -> number",
       "description": "Maximum value in array",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "numbers",
+          "type": "number[]"
+        }
+      ],
+      "returnType": "number"
     },
     {
+      "name": "Sort",
       "signature": "Sort(array, field, direction?) -> sorted array",
       "description": "Sort array by field. Direction: \"asc\" (default) or \"desc\"",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "array",
+          "type": "T[]"
+        },
+        {
+          "name": "field",
+          "type": "string"
+        },
+        {
+          "name": "direction",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "returnType": "T[]"
     },
     {
+      "name": "Filter",
       "signature": "Filter(array, field, operator: \"==\" | \"!=\" | \">\" | \"<\" | \">=\" | \"<=\" | \"contains\", value) -> filtered array",
       "description": "Filter array by field value",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "array",
+          "type": "T[]"
+        },
+        {
+          "name": "field",
+          "type": "string"
+        },
+        {
+          "name": "operator",
+          "type": "string"
+        },
+        {
+          "name": "value",
+          "type": "any"
+        }
+      ],
+      "returnType": "T[]"
     },
     {
+      "name": "Flatten",
       "signature": "Flatten(array[][]) -> array",
       "description": "Flatten a nested array one level. Best used with array pluck: @Flatten(data.groups.items) extracts the \"items\" field from each group (producing items[][]) then flattens to items[]. Returns [] for null and non-array input.",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "array",
+          "type": "array[]"
+        }
+      ],
+      "returnType": "array"
     },
     {
+      "name": "ObjectEntries",
       "signature": "ObjectEntries(obj) -> {key: string, value: any}[]",
       "description": "Convert a plain object map into ordered rows of {key, value}. Access the object key via \"key\" and the original value via \"value\" (e.g. \"value.status\"). Original field names are NOT available — always use \"key\" and \"value.xxx\". Returns [] for null, arrays, and unsupported inputs.",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "obj",
+          "type": "Record<string, T>"
+        }
+      ],
+      "returnType": "{key: string, value: T}[]"
     },
     {
+      "name": "ObjectKeys",
       "signature": "ObjectKeys(obj) -> string[]",
       "description": "Return the ordered keys of a plain object map as a string array. Returns [] for null, arrays, and unsupported inputs.",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "obj",
+          "type": "Record<string, any>"
+        }
+      ],
+      "returnType": "string[]"
     },
     {
+      "name": "ObjectValues",
       "signature": "ObjectValues(obj) -> any[]",
       "description": "Return the ordered values of a plain object map as an array. Returns [] for null, arrays, and unsupported inputs.",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "obj",
+          "type": "Record<string, any>"
+        }
+      ],
+      "returnType": "any[]"
     },
     {
+      "name": "Round",
       "signature": "Round(number, decimals?) -> number",
       "description": "Round to N decimal places (default 0)",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "number",
+          "type": "number"
+        },
+        {
+          "name": "decimals",
+          "type": "number",
+          "optional": true
+        }
+      ],
+      "returnType": "number"
     },
     {
+      "name": "Abs",
       "signature": "Abs(number) -> number",
       "description": "Absolute value",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "number",
+          "type": "number"
+        }
+      ],
+      "returnType": "number"
     },
     {
+      "name": "Floor",
       "signature": "Floor(number) -> number",
       "description": "Round down to nearest integer",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "number",
+          "type": "number"
+        }
+      ],
+      "returnType": "number"
     },
     {
+      "name": "Ceil",
       "signature": "Ceil(number) -> number",
       "description": "Round up to nearest integer",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "number",
+          "type": "number"
+        }
+      ],
+      "returnType": "number"
     },
     {
+      "name": "Number",
       "signature": "Number(value) -> number",
       "description": "Convert a value to a number. Strings are parsed; booleans map to 0/1; invalid values return 0. For string-to-number conversion in chart Series, use @Number(value). @Number can handle decimals; do not use the unsupported parseFloat — use @Number instead.",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "value",
+          "type": "any"
+        }
+      ],
+      "returnType": "number"
     },
     {
+      "name": "Switch",
       "signature": "Switch(value, cases, default?) -> result",
       "description": "Map an enum value to a display result via a cases object. Numeric values are coerced to strings for key lookup. Returns default (null if omitted) when no case matches.",
-      "templateBuiltin": true
+      "templateBuiltin": true,
+      "params": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "cases",
+          "type": "Record<string, T>"
+        },
+        {
+          "name": "default",
+          "type": "any",
+          "optional": true
+        }
+      ],
+      "returnType": "T | param(2)"
     },
     {
+      "name": "FormatDate",
       "signature": "FormatDate(value, style?) -> string | string[]",
       "description": "Format a date-like value for TEXT display ONLY (Table cells, Descriptions, TextContent). `value` accepts a Unix timestamp in seconds OR milliseconds (auto-detected), an ISO 8601 string; also maps over arrays. `style` accepts \"dateTime\", \"time\", \"relative\", or \"date\" (date-only, use ONLY when time-of-day is irrelevant), defaults to \"dateTime\". ⚠️ NEVER use @FormatDate on Chart labels — pass raw timestamp arrays directly; charts auto-format timestamps (same-day → time, cross-day → date). Using @FormatDate on Chart labels produces pre-formatted strings and breaks time-axis formatting. ⚠️ HARD RULE — pass the RAW timestamp value directly; NEVER divide by 1000 (`v / 1000`) or multiply by 1000 (`v * 1000`) to \"convert units\" — the engine auto-detects seconds vs milliseconds (10-digit = seconds, 13-digit = milliseconds). Doing so turns valid timestamps into 1970 dates.",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "style",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "locale",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "returnType": "string | string[]"
     },
     {
+      "name": "FormatBytes",
       "signature": "FormatBytes(value) -> string",
       "description": "Format a byte count into a compact SI string (KB, MB, GB). Returns \"\" for nullish input.",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "value",
+          "type": "any"
+        }
+      ],
+      "returnType": "string"
     },
     {
+      "name": "FormatDuration",
       "signature": "FormatDuration(value, unit?) -> string",
       "description": "Format an elapsed duration into a compact display string. Input defaults to seconds and also supports explicit \"ms\" input.",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "value",
+          "type": "any"
+        },
+        {
+          "name": "unit",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "locale",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "returnType": "string"
     },
     {
+      "name": "MergeObject",
       "signature": "MergeObject(object1, object2, ...objectN) -> object",
       "description": "Merge multiple objects into one. Later objects override earlier ones. Non-object arguments are skipped. Returns {} when no objects are provided. Useful with @Each to expand array rows with extra fields.",
-      "templateBuiltin": true
+      "templateBuiltin": true,
+      "params": [
+        {
+          "name": "object1",
+          "type": "object"
+        },
+        {
+          "name": "object2",
+          "type": "object"
+        },
+        {
+          "name": "objectN",
+          "type": "object",
+          "variadic": true
+        }
+      ],
+      "returnType": "object"
     },
     {
+      "name": "Join",
       "signature": "Join(array, separator?) -> string",
       "description": "Join array elements into a single string with an optional separator (default \", \"). Each element is converted to a string; null/undefined elements are skipped. Returns \"\" for null, non-array, or empty input.",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "array",
+          "type": "array"
+        },
+        {
+          "name": "separator",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "returnType": "string"
     },
     {
+      "name": "String",
       "signature": "String(value) -> string",
       "description": "Convert a number or boolean to string. Returns empty string for other types.",
-      "templateBuiltin": false
+      "templateBuiltin": false,
+      "params": [
+        {
+          "name": "value",
+          "type": "any"
+        }
+      ],
+      "returnType": "string"
     },
     {
+      "name": "Each",
       "signature": "Each(array, varName, template)",
       "description": "Evaluate template for each element. varName is the loop variable - use it ONLY inside the template expression (inline). Do NOT create a separate statement for the template.",
-      "templateBuiltin": true
+      "templateBuiltin": true,
+      "params": [
+        {
+          "name": "array",
+          "type": "T[]"
+        },
+        {
+          "name": "varName",
+          "type": "string",
+          "binder": true
+        },
+        {
+          "name": "template",
+          "type": "any"
+        }
+      ]
     },
     {
+      "name": "Render",
       "signature": "Render(\"v\", expr) / Render(\"v\", \"row\", expr)",
       "description": "Create a deferred render template for prop values. Binder names are string literals and are only in scope inside the template body.",
-      "templateBuiltin": true
+      "templateBuiltin": true,
+      "params": [
+        {
+          "name": "v",
+          "type": "string",
+          "binder": true
+        },
+        {
+          "name": "row",
+          "type": "string",
+          "optional": true,
+          "binder": true
+        },
+        {
+          "name": "template",
+          "type": "any"
+        }
+      ]
     }
   ]
 }

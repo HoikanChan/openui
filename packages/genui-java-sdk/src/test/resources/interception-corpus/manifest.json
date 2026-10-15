@@ -1266,8 +1266,9 @@
       "contractFile": "contracts/openui-shared.json",
       "expectedOutcome": "intercepted",
       "expectedCodes": [
-        "unknown-component"
-      ]
+        "unresolved-ref"
+      ],
+      "note": "String is a contract builtin (extension); bare name parses as a plain identifier reference since the validation lexicon derives from base-contract builtins"
     },
     {
       "id": "js-syntax-arrow-helper",

@@ -12,13 +12,11 @@ import java.util.List;
  *
  * <p>
  * 对应 {@code packages/lang-core/src/parser/statements.ts} 中的 {@code split()}：语句以深度为 0 的换行符
- * 分隔；括号/圆括号/花括号内部或多行三元表达式内部的换行符不会造成分割。接受 {@link TokenType#IDENT}、
- * {@link TokenType#TYPE} 与 {@link TokenType#STATE_VAR} 作为标识符。没有 {@code =} 或没有标识符的行会被跳过
- * （在 {@link OpenuiParser} 中作为诊断信息暴露）。
+ * 分隔；括号/圆括号/花括号内部或多行三元表达式内部的换行符不会造成分割。接受 {@link TokenType#IDENT}、 {@link TokenType#TYPE} 与 {@link TokenType#STATE_VAR}
+ * 作为标识符。没有 {@code =} 或没有标识符的行会被跳过 （在 {@link OpenuiParser} 中作为诊断信息暴露）。
  *
  * <p>
- * Java 扩展：每个 {@link RawStmt} 都携带一个基于其 token 推导出的 {@link SourceSpan}（行/列/偏移范围），
- * 用于诊断信息。
+ * Java 扩展：每个 {@link RawStmt} 都携带一个基于其 token 推导出的 {@link SourceSpan}（行/列/偏移范围）， 用于诊断信息。
  *
  * @since 2026
  */

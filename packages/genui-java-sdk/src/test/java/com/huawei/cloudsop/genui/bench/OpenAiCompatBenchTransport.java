@@ -19,9 +19,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /**
- * OpenAI 兼容端点的 {@link LlmTransport}（bench 自持拷贝，与交付物 eval-cli 物理隔离）。JDK HttpClient，自持完整
- * URL（LLM_BASE_URL + /chat/completions），HTTP 非 2xx 转 {@link LlmTransportException}。每请求 10 分钟超时
- * （覆盖到响应头到达；响应体读取阶段理论上仍可阻塞，MVP 接受——transport-error 在输出中可见）。
+ * OpenAI 兼容端点的 {@link LlmTransport}（bench 自持拷贝，与交付物 eval-cli 物理隔离）。JDK HttpClient，自持完整 URL（LLM_BASE_URL +
+ * /chat/completions），HTTP 非 2xx 转 {@link LlmTransportException}。每请求 10 分钟超时 （覆盖到响应头到达；响应体读取阶段理论上仍可阻塞，MVP
+ * 接受——transport-error 在输出中可见）。
  *
  * @since 2026
  */

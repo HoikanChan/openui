@@ -17,14 +17,13 @@ import java.util.Map;
  * 从合并后的 {@link GenerationContract} 派生出的组件目录。
  *
  * <p>
- * 对应 {@code materialize.ts} 通过 {@code ctx.cat} 查询的 TS 侧 {@code ParamMap}
- * （{@code Map<name, {params: ParamDef[]}>}）。对每个组件，本类提取有序位置参数（按
- * {@code propsSchema.properties} 的插入顺序）、哪些是必填（来自 {@code propsSchema.required}）、每个参数
+ * 对应 {@code materialize.ts} 通过 {@code ctx.cat} 查询的 TS 侧 {@code ParamMap} （{@code Map<name, {params:
+ * ParamDef[]}>}）。对每个组件，本类提取有序位置参数（按 {@code propsSchema.properties} 的插入顺序）、哪些是必填（来自 {@code propsSchema.required}）、每个参数
  * 声明的默认值，以及用于嵌套属性校验的原始 per-param schema 片段。
  *
  * <p>
- * 仅签名组件（携带 {@code x-openui-signature} 但没有 {@code properties}）会被记录，使存在性检查得以通过，
- * 但参数列表为空且 {@code signatureOnly=true}，以便遍历器跳过属性级规则。
+ * 仅签名组件（携带 {@code x-openui-signature} 但没有 {@code properties}）会被记录，使存在性检查得以通过， 但参数列表为空且
+ * {@code signatureOnly=true}，以便遍历器跳过属性级规则。
  *
  * @since 2026
  */

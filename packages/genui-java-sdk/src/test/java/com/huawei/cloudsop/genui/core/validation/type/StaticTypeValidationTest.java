@@ -83,8 +83,7 @@ class StaticTypeValidationTest {
     void acceptsEachBinderAcrossReferencedTemplateStatements() {
         String dsl = "root = Tabs(@Each(data.groups, \"group\", groupTemplate))\n"
                 + "groupTemplate = TabItem(group.model, group.model, [groupTable])\n"
-                + "groupTable = Table([nameCol], group.devices)\n"
-                + "nameCol = Col(\"Device Name\", \"name\")";
+                + "groupTable = Table([nameCol], group.devices)\n" + "nameCol = Col(\"Device Name\", \"name\")";
         Map<String, Object> dataModel = Map.of("groups",
                 List.of(Map.of("model", "CE12804S", "devices", List.of(Map.of("name", "DC1-spine-01")))));
 
@@ -95,8 +94,7 @@ class StaticTypeValidationTest {
 
     @Test
     void rejectsReferencedTemplateWhenEachBinderIsNotInScope() {
-        String dsl = "root = groupTemplate\n"
-                + "groupTemplate = TabItem(group.model, group.model, [])";
+        String dsl = "root = groupTemplate\n" + "groupTemplate = TabItem(group.model, group.model, [])";
 
         ValidationResult result = validate(dsl, Map.of("groups", List.of()));
 
@@ -117,8 +115,9 @@ class StaticTypeValidationTest {
     void rejectsNonStringTemplateBinders() {
         ValidationResult each = validate("root = Stack(@Each(data.users, 1, TextContent(\"x\")))",
                 Map.of("users", List.of(Map.of("name", "Ada"))));
-        ValidationResult render = validate("root = Table([nameCol], data.users)\n"
-                + "nameCol = Col(\"Name\", \"name\", {cell: @Render(1, TextContent(\"x\"))})",
+        ValidationResult render = validate(
+                "root = Table([nameCol], data.users)\n"
+                        + "nameCol = Col(\"Name\", \"name\", {cell: @Render(1, TextContent(\"x\"))})",
                 Map.of("users", List.of(Map.of("name", "Ada"))));
 
         issue(each, "builtin-argument-type-mismatch");
@@ -172,8 +171,7 @@ class StaticTypeValidationTest {
 
     @Test
     void validatesTableColumnFieldReachedThroughAReference() {
-        String dsl = "root = Table([nameCol], data.users)\n"
-                + "nameCol = Col(\"Name\", field)\n"
+        String dsl = "root = Table([nameCol], data.users)\n" + "nameCol = Col(\"Name\", field)\n"
                 + "field = \"missing\"";
 
         ValidationResult result = validate(dsl, Map.of("users", List.of(Map.of("name", "Ada"))));
@@ -256,8 +254,7 @@ class StaticTypeValidationTest {
 
     @Test
     void operatorMismatchDoesNotCreateDownstreamPropNoise() {
-        String dsl = "root = Table([nameCol], rows)\n"
-                + "nameCol = Col(\"Name\", \"name\")\n"
+        String dsl = "root = Table([nameCol], rows)\n" + "nameCol = Col(\"Name\", \"name\")\n"
                 + "rows = data.left + []";
         ValidationResult result = validate(dsl, Map.of("left", List.of(Map.of("name", "Ada"))));
 
@@ -301,8 +298,7 @@ class StaticTypeValidationTest {
 
     @Test
     void rejectsLineChartWithOnlyOneKnownPoint() {
-        String dsl = "root = LineChart(labels, [series])\n"
-                + "labels = @Each(data.points, \"point\", point.label)\n"
+        String dsl = "root = LineChart(labels, [series])\n" + "labels = @Each(data.points, \"point\", point.label)\n"
                 + "series = Series(\"Value\", @Each(data.points, \"point\", point.value))";
         ValidationResult result = validate(dsl, Map.of("points", List.of(Map.of("label", "A", "value", 1))));
 

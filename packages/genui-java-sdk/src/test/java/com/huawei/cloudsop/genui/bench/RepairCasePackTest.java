@@ -22,8 +22,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * {@link RepairCasePack} 加载：契约解析链两级优先 + 无契约整批终止；dataModel null 语义；id 重复 / dsl.txt
- * 缺失或空 / case.json 非法 / issues.json 非法 / 零案例目录 → 整批终止且报错列出全部问题案例；issues.json 透传。
+ * {@link RepairCasePack} 加载：契约解析链两级优先 + 无契约整批终止；dataModel null 语义；id 重复 / dsl.txt 缺失或空 / case.json 非法 / issues.json 非法
+ * / 零案例目录 → 整批终止且报错列出全部问题案例；issues.json 透传。
  *
  * @since 2026
  */
@@ -128,8 +128,7 @@ class RepairCasePackTest {
         Files.writeString(tempDir.resolve("contract.json"), CONTRACT, StandardCharsets.UTF_8);
         Path dir = writeCase("case-a", "{\"id\":\"a\"}", "root = Stack([])");
         Files.writeString(dir.resolve("issues.json"),
-                "[{\"code\":\"type-prop-mismatch\",\"message\":\"m\"},{\"code\":\"syntax\"}]",
-                StandardCharsets.UTF_8);
+                "[{\"code\":\"type-prop-mismatch\",\"message\":\"m\"},{\"code\":\"syntax\"}]", StandardCharsets.UTF_8);
 
         List<RepairCase> cases = RepairCasePack.load(tempDir, null);
         assertEquals(List.of("type-prop-mismatch", "syntax"), cases.get(0).internalIssueCodes());

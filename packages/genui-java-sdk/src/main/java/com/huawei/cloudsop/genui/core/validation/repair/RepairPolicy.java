@@ -10,9 +10,8 @@ import java.time.Duration;
 import java.util.Objects;
 
 /**
- * 完整的修复策略值对象（设计决策 #8 / #9）。将 {@code GenUiValidationConfig} 上粗粒度的
- * {@link RepairPolicyKind} 与高级调优参数 —— 重试次数上限与单次请求超时 —— 包装在一起；这些高级参数刻意不放在
- * 顶层公共配置中。
+ * 完整的修复策略值对象（设计决策 #8 / #9）。将 {@code GenUiValidationConfig} 上粗粒度的 {@link RepairPolicyKind} 与高级调优参数 —— 重试次数上限与单次请求超时 ——
+ * 包装在一起；这些高级参数刻意不放在 顶层公共配置中。
  *
  * <p>
  * 生成器通过 {@link #from(RepairPolicyKind)} 将 {@code config.repairPolicy()}（一个 KIND）映射为
@@ -21,8 +20,7 @@ import java.util.Objects;
  * @param kind
  *            粗粒度策略（NONE / FINAL_REPAIR / FAIL_FAST_REASK）
  * @param maxAttempts
- *            最大修复尝试次数（同步场景为整份 DSL 修复次数，流式场景为重新请求轮数），必须 {@code >= 1}，
- *            默认 {@code 1}
+ *            最大修复尝试次数（同步场景为整份 DSL 修复次数，流式场景为重新请求轮数），必须 {@code >= 1}， 默认 {@code 1}
  * @param timeout
  *            单次完整修复请求的时间预算；{@code Duration.ZERO} 表示“无显式超时”（依赖传输层自身的超时）
  * @param statementRepairTimeout
@@ -55,8 +53,7 @@ public record RepairPolicy(RepairPolicyKind kind, int maxAttempts, Duration time
     }
 
     /**
-     * 将顶层配置上的粗粒度 {@link RepairPolicyKind} 映射为带默认高级参数（{@code maxAttempts = 1}、
-     * 无显式超时）的 {@code RepairPolicy}。
+     * 将顶层配置上的粗粒度 {@link RepairPolicyKind} 映射为带默认高级参数（{@code maxAttempts = 1}、 无显式超时）的 {@code RepairPolicy}。
      *
      * @param kind
      *            粗粒度策略

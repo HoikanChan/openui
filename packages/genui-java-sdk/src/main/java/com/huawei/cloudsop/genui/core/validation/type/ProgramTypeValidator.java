@@ -4,7 +4,7 @@ import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
-import com.huawei.cloudsop.genui.core.validation.parser.Builtins;
+import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.parser.SourceSpan;
 import com.huawei.cloudsop.genui.core.validation.parser.Statement;
@@ -41,7 +41,8 @@ public final class ProgramTypeValidator {
     private final DataPathResolver pathResolver = new DataPathResolver();
     private final SchemaTypeCompiler schemaCompiler = new SchemaTypeCompiler();
     private final TypeAssignability assignability = new TypeAssignability();
-    private final BuiltinTypeRegistry builtinTypes = new BuiltinTypeRegistry();
+    private final BuiltinTypeRegistry builtinTypes = new BuiltinTypeRegistry(
+            BuiltinCatalog.getDefault().specsForTypeValidation());
 
     /**
      * Validate proven expression and component-prop types. Unsupported or unproven checks are skipped. Streaming
@@ -142,8 +143,7 @@ public final class ProgramTypeValidator {
                 return Optional.empty();
             }
             if (node instanceof AstNode.Member member) {
-                return infer(member.obj(), statementId, scope, resolving)
-                        .flatMap(type -> field(type, member.field()));
+                return infer(member.obj(), statementId, scope, resolving).flatMap(type -> field(type, member.field()));
             }
             if (node instanceof AstNode.Index index) {
                 Optional<ValueType> container = infer(index.obj(), statementId, scope, resolving);
@@ -209,7 +209,7 @@ public final class ProgramTypeValidator {
 
         private Optional<ValueType> inferComponent(AstNode.Comp component, String statementId,
                 Map<String, ValueType> scope, Set<String> resolving) {
-            if (Builtins.isBuiltin(component.name())) {
+            if (builtinTypes.known(component.name())) {
                 return builtinTypes.infer(component, scope, new BuiltinTypeRegistry.Context() {
                     @Override
                     public Optional<ValueType> infer(AstNode node, Map<String, ValueType> nestedScope) {
@@ -345,8 +345,8 @@ public final class ProgramTypeValidator {
             if (path.isPresent()) {
                 return pathResolver.resolveCardinality(dataModel, path.get());
             }
-            if (resolved instanceof AstNode.Comp builtin && ("Each".equals(builtin.name())
-                    || "Sort".equals(builtin.name())) && !builtin.args().isEmpty()) {
+            if (resolved instanceof AstNode.Comp builtin
+                    && ("Each".equals(builtin.name()) || "Sort".equals(builtin.name())) && !builtin.args().isEmpty()) {
                 return knownArraySize(builtin.args().get(0), resolving);
             }
             return OptionalInt.empty();
@@ -389,8 +389,8 @@ public final class ProgramTypeValidator {
                 if (valueType.isEmpty() || !fieldPresentInAll(rowType.get(), field.v())) {
                     String detail = valueType.isEmpty() ? "the proven row shape" : "some rows";
                     emit("type-table-column-missing",
-                            "Table column field \"" + field.v() + "\" is absent from " + detail + ".",
-                            statementId, "Table", "/columns/" + field.v(), "Use a field present in the Table rows.");
+                            "Table column field \"" + field.v() + "\" is absent from " + detail + ".", statementId,
+                            "Table", "/columns/" + field.v(), "Use a field present in the Table rows.");
                     continue;
                 }
                 validateCellTemplate(call, valueType.get(), rowType.get(), statementId, scope, resolving);
@@ -548,9 +548,8 @@ public final class ProgramTypeValidator {
 
     private static boolean fieldPresentInAll(ValueType type, String[] segments, int index) {
         if (type instanceof UnionType union) {
-            return !union.alternatives().isEmpty()
-                    && union.alternatives().stream()
-                            .allMatch(alternative -> fieldPresentInAll(alternative, segments, index));
+            return !union.alternatives().isEmpty() && union.alternatives().stream()
+                    .allMatch(alternative -> fieldPresentInAll(alternative, segments, index));
         }
         if (!(type instanceof ObjectType object)) {
             return false;
@@ -566,8 +565,7 @@ public final class ProgramTypeValidator {
         if (type instanceof ObjectType) {
             return true;
         }
-        return type instanceof UnionType union
-                && !union.alternatives().isEmpty()
+        return type instanceof UnionType union && !union.alternatives().isEmpty()
                 && union.alternatives().stream().allMatch(ProgramTypeValidator::isObjectShape);
     }
 

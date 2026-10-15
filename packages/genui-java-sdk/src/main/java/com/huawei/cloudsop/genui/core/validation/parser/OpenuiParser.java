@@ -13,14 +13,12 @@ import java.util.Set;
  * 顶层编排器：预处理 → 分词 → 切分 → 解析 → 分类 → {@link Program}。
  *
  * <p>
- * 对应 {@code packages/lang-core/src/parser/parser.ts} 中直到语法层（语句分类）为止的流水线，在 schema 物化
- * 之前停止（后续章节负责语义层）。语句分类遵循 {@code classifyStatement}：{@code Query(...)} /
- * {@code Mutation(...)} 会在 {@code $var} 状态判断<em>之前</em>被检测，其次是 {@code $var} → 状态，其余情况
- * 为取值声明。
+ * 对应 {@code packages/lang-core/src/parser/parser.ts} 中直到语法层（语句分类）为止的流水线，在 schema 物化 之前停止（后续章节负责语义层）。语句分类遵循
+ * {@code classifyStatement}：{@code Query(...)} / {@code Mutation(...)} 会在 {@code $var} 状态判断<em>之前</em>被检测，其次是
+ * {@code $var} → 状态，其余情况 为取值声明。
  *
  * <p>
- * 每个阶段的语法问题都会作为 {@link ParseDiagnostic} 收集到 {@link Program} 上；不会抛出异常。格式错误的语句会
- * 降级为一条诊断信息并被跳过，使后续语句仍可继续解析。
+ * 每个阶段的语法问题都会作为 {@link ParseDiagnostic} 收集到 {@link Program} 上；不会抛出异常。格式错误的语句会 降级为一条诊断信息并被跳过，使后续语句仍可继续解析。
  *
  * @since 2026
  */
