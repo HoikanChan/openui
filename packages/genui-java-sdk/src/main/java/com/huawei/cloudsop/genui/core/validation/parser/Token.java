@@ -9,14 +9,13 @@ package com.huawei.cloudsop.genui.core.validation.parser;
  *
  * <p>
  * 对应 TS 侧的 {@code Token{t, v}}，但作为 Java 扩展额外增加了源码位置字段（{@code line}、{@code column}、
- * {@code offset}、{@code length}），使诊断信息可携带行/列/范围。{@code line}/{@code column} 从 1 开始计数，
- * {@code offset} 从 0 开始（预处理后源文本中的下标）。
+ * {@code offset}、{@code length}），使诊断信息可携带行/列/范围。{@code line}/{@code column} 从 1 开始计数， {@code offset} 从 0
+ * 开始（预处理后源文本中的下标）。
  *
  * <p>
- * {@code text} 携带 {@link TokenType#STR}、{@link TokenType#IDENT}、{@link TokenType#TYPE}、
- * {@link TokenType#STATE_VAR}（含前导 {@code $}）以及 {@link TokenType#BUILTIN_CALL}（不含前导 {@code @}）的解码
- * 字符串值。{@code number} 携带 {@link TokenType#NUM} 的解析数值。标点符号类 token 两者分别为 {@code null}/
- * {@code NaN}。
+ * {@code text} 携带 {@link TokenType#STR}、{@link TokenType#IDENT}、{@link TokenType#TYPE}、 {@link TokenType#STATE_VAR}（含前导
+ * {@code $}）以及 {@link TokenType#BUILTIN_CALL}（不含前导 {@code @}）的解码 字符串值。{@code number} 携带 {@link TokenType#NUM}
+ * 的解析数值。标点符号类 token 两者分别为 {@code null}/ {@code NaN}。
  *
  * @param type
  *            token 类型

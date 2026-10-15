@@ -35,14 +35,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 /**
- * repair-bench 批量执行器。照 {@code JobRunner} 形态：有界固定线程池、按完成顺序逐行 JSONL、
- * {@code synchronized} emit；加载阶段的语料损坏已在 loader 层整批终止（退出码 1），执行阶段单案例异常转
- * {@code error} 行不中断批次。
+ * repair-bench 批量执行器。照 {@code JobRunner} 形态：有界固定线程池、按完成顺序逐行 JSONL、 {@code synchronized} emit；加载阶段的语料损坏已在 loader
+ * 层整批终止（退出码 1），执行阶段单案例异常转 {@code error} 行不中断批次。
  *
  * <p>
- * 单案例流程（实现设计 §3）：案例契约现算 originalSystemPrompt → FINAL 复现判定（非 INVALID 即
- * {@code not-reproduced}）→ {@link RepairCoordinator#repairFull} 驱动修复 → outcome kind 映射输出状态。
- * 全链路 issue code 一律取 <b>actionable</b> 视图（与修复提示词所见一致）。
+ * 单案例流程（实现设计 §3）：案例契约现算 originalSystemPrompt → FINAL 复现判定（非 INVALID 即 {@code not-reproduced}）→
+ * {@link RepairCoordinator#repairFull} 驱动修复 → outcome kind 映射输出状态。 全链路 issue code 一律取 <b>actionable</b> 视图（与修复提示词所见一致）。
  *
  * @since 2026
  */
@@ -108,8 +106,8 @@ final class RepairBenchRunner {
         } finally {
             pool.shutdownNow();
         }
-        emit(Json.stringify(summary.toLine(model, maxAttempts, concurrency, timeout,
-                System.currentTimeMillis() - batchStart)));
+        emit(Json.stringify(
+                summary.toLine(model, maxAttempts, concurrency, timeout, System.currentTimeMillis() - batchStart)));
     }
 
     private void runOneSafely(RepairCasePack.RepairCase benchCase, SummaryAccumulator summary) {
@@ -177,11 +175,11 @@ final class RepairBenchRunner {
         // ── 步骤 2：repairFull ──
         RepairCoordinator coordinator = new RepairCoordinator(transport, DefaultOpenuiLangValidator.INSTANCE,
                 new RepairPolicy(RepairPolicyKind.FINAL_REPAIR, maxAttempts, timeout, Duration.ZERO))
-                .withBodyBuilder((messages, stream) -> ChatCompletionRequest.of(repairConfig, null, messages, stream)
-                        .toJson())
+                .withBodyBuilder(
+                        (messages, stream) -> ChatCompletionRequest.of(repairConfig, null, messages, stream).toJson())
                 .withExternalRefs(externalRefs).withDataModel(benchCase.dataModel());
-            FullRepairOutcome outcome = coordinator.repairFull(benchCase.originalIntent(), benchCase.dsl(), v0,
-                    benchCase.contract(), benchCase.contract().root(), systemPrompt);
+        FullRepairOutcome outcome = coordinator.repairFull(benchCase.originalIntent(), benchCase.dsl(), v0,
+                benchCase.contract(), benchCase.contract().root(), systemPrompt);
 
         String status = switch (outcome.kind()) {
             case REPAIRED -> "repaired";
@@ -202,8 +200,7 @@ final class RepairBenchRunner {
             LinkedHashMap<String, Object> attemptLine = new LinkedHashMap<>();
             attemptLine.put("attempt", record.attempt());
             attemptLine.put("valid", record.valid());
-            attemptLine.put("issueCodes",
-                    record.issues() == null ? null : actionableCodes(record.issues()));
+            attemptLine.put("issueCodes", record.issues() == null ? null : actionableCodes(record.issues()));
             attempts.add(attemptLine);
         }
         line.put("attempts", attempts);
@@ -245,8 +242,8 @@ final class RepairBenchRunner {
      * 批次汇总累加器（worker 线程共享，全部方法 synchronized）。口径（实现设计 §5.2）：
      *
      * <ul>
-     * <li>主口径 = repaired / (repaired + still-invalid)——transport-error 与 timeout 剔除分母（基础设施噪声与
-     * 自设预算不算"修不动"，可筛出重跑）；分母为 0 时 rate 为 null。
+     * <li>主口径 = repaired / (repaired + still-invalid)——transport-error 与 timeout 剔除分母（基础设施噪声与 自设预算不算"修不动"，可筛出重跑）；分母为 0
+     * 时 rate 为 null。
      * <li>副口径 = repaired / total（not-reproduced 计入惩罚，度量外部环境保真度）。
      * <li>issueBuckets 仅统计 reproduced 案例，按 initialIssueCodes 分桶（一案例可入多桶）。
      * </ul>

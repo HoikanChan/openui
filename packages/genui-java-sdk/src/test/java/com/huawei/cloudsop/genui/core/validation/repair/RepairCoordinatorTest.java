@@ -14,8 +14,8 @@ import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.RepairPolicyKind;
-import com.huawei.cloudsop.genui.core.validation.repair.RepairCoordinator.FullRepairOutcome;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
+import com.huawei.cloudsop.genui.core.validation.repair.RepairCoordinator.FullRepairOutcome;
 
 import org.junit.jupiter.api.Test;
 
@@ -29,8 +29,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Attempt-budget and timeout behavior of {@link RepairCoordinator#repairFull}, plus the
- * {@link FullRepairOutcome} outcome-kind / per-attempt-log visibility that repair-bench consumes.
+ * Attempt-budget and timeout behavior of {@link RepairCoordinator#repairFull}, plus the {@link FullRepairOutcome}
+ * outcome-kind / per-attempt-log visibility that repair-bench consumes.
  *
  * @since 2026
  */
@@ -76,8 +76,9 @@ class RepairCoordinatorTest {
         assertEquals(2, outcome.attemptLog().size());
         assertEquals(1, outcome.attemptLog().get(0).attempt());
         assertFalse(outcome.attemptLog().get(0).valid());
-        assertTrue(outcome.attemptLog().get(0).issues().stream()
-                .anyMatch(issue -> "unknown-component".equals(issue.code())),
+        assertTrue(
+                outcome.attemptLog().get(0).issues().stream()
+                        .anyMatch(issue -> "unknown-component".equals(issue.code())),
                 "first attempt revalidation keeps its issues");
         assertEquals("root = StillBad2()", outcome.dsl(), "last repaired DSL text surfaced");
         assertEquals(2, t.count());

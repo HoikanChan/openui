@@ -36,9 +36,8 @@ class BenchEnvTest {
     @Test
     void parsesKeyValueAndSkipsComments() throws Exception {
         Path env = tempDir.resolve(".env");
-        Files.writeString(env, "# comment line\n" + "\n" + "LLM_BASE_URL=https://llm.example/v1\n"
-                + "NO_EQUALS_LINE\n" + "LLM_MODEL= qwen3.6-27b \n" + "OTHER_KEY=ignored-but-parsed\n",
-                StandardCharsets.UTF_8);
+        Files.writeString(env, "# comment line\n" + "\n" + "LLM_BASE_URL=https://llm.example/v1\n" + "NO_EQUALS_LINE\n"
+                + "LLM_MODEL= qwen3.6-27b \n" + "OTHER_KEY=ignored-but-parsed\n", StandardCharsets.UTF_8);
 
         Map<String, String> fileValues = BenchEnv.readDotEnv(env);
         assertEquals("https://llm.example/v1", fileValues.get("LLM_BASE_URL"));
@@ -50,8 +49,9 @@ class BenchEnvTest {
     @Test
     void resolveMergesOnlyBenchKeys() throws Exception {
         Path env = tempDir.resolve(".env");
-        Files.writeString(env, "LLM_BASE_URL=https://llm.example/v1\nLLM_API_KEY=sk-test\nLLM_MODEL=m1\n"
-                + "UNRELATED=nope\n", StandardCharsets.UTF_8);
+        Files.writeString(env,
+                "LLM_BASE_URL=https://llm.example/v1\nLLM_API_KEY=sk-test\nLLM_MODEL=m1\n" + "UNRELATED=nope\n",
+                StandardCharsets.UTF_8);
 
         Map<String, String> resolved = BenchEnv.resolve(env);
         // 环境变量优先于文件：本测试不依赖具体环境，只断言文件值在环境变量缺席时进入结果。

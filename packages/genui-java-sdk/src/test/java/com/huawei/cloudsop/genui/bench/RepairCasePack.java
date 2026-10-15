@@ -33,12 +33,12 @@ import java.util.stream.Stream;
  *     issues.json          # 可选：内部拦截报错 [{"code": "...", ...}]，仅透传
  * </pre>
  *
- * 契约解析链：{@code <case>/contract.json} &gt; 语料级 {@code contract.json} &gt; 报错终止。故意不做 SDK 默认契约兜底——
- * bench 的意义是保真"当时契约"，静默兜底会把契约漂移伪装成 not-reproduced。
+ * 契约解析链：{@code <case>/contract.json} &gt; 语料级 {@code contract.json} &gt; 报错终止。故意不做 SDK 默认契约兜底—— bench
+ * 的意义是保真"当时契约"，静默兜底会把契约漂移伪装成 not-reproduced。
  *
  * <p>
- * 语料是 git 静态资产：<b>任何</b>解析失败（case.json 非法 / dsl.txt 缺失或空 / contract 解析失败 / issues.json
- * 非法 / id 重复 / 零案例目录 / --cases 不是目录）都收集全部问题后整批终止，不提供降级跑法。
+ * 语料是 git 静态资产：<b>任何</b>解析失败（case.json 非法 / dsl.txt 缺失或空 / contract 解析失败 / issues.json 非法 / id 重复 / 零案例目录 / --cases
+ * 不是目录）都收集全部问题后整批终止，不提供降级跑法。
  *
  * @since 2026
  */
@@ -59,8 +59,8 @@ final class RepairCasePack {
      * @param originalIntent
      *            原始用户意图；缺失为 {@code null}（ReaskPromptBuilder 对 null/blank 跳过 Original request 段）
      * @param dataModel
-     *            渲染数据模型：缺失/显式 null → {@code null}（类型校验关闭）；{@code {}} → 空 map（具体空模型）。
-     *            绝不能把缺失归一成空 map —— {@code ValidationRequest.dataModel} 区分两者
+     *            渲染数据模型：缺失/显式 null → {@code null}（类型校验关闭）；{@code {}} → 空 map（具体空模型）。 绝不能把缺失归一成空 map ——
+     *            {@code ValidationRequest.dataModel} 区分两者
      * @param dsl
      *            失败 DSL 原文（不 strip）
      * @param contract
@@ -132,8 +132,8 @@ final class RepairCasePack {
                 continue;
             }
             if (!ids.add(loaded.id())) {
-                problems.add(problem(dir, "duplicate case id '" + loaded.id() + "' (also in " + idDirs.get(loaded.id())
-                        + ")"));
+                problems.add(problem(dir,
+                        "duplicate case id '" + loaded.id() + "' (also in " + idDirs.get(loaded.id()) + ")"));
                 continue;
             }
             idDirs.put(loaded.id(), dir.getFileName().toString());
@@ -208,8 +208,7 @@ final class RepairCasePack {
             }
         }
         if (contract == null) {
-            problems.add(problem(dir,
-                    "no contract: neither <case>/contract.json nor corpus contract.json exists"));
+            problems.add(problem(dir, "no contract: neither <case>/contract.json nor corpus contract.json exists"));
             return null;
         }
 

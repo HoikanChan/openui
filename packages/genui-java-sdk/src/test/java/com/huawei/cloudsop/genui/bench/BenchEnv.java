@@ -13,8 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * LLM 配置解析：真实环境变量优先，其次从仓库根 {@code .env} 读取。文件可选、不存在不报错；只解析
- * {@code KEY=VALUE} 行，{@code #} 注释与空行跳过。
+ * LLM 配置解析：真实环境变量优先，其次从仓库根 {@code .env} 读取。文件可选、不存在不报错；只解析 {@code KEY=VALUE} 行，{@code #} 注释与空行跳过。
  *
  * @since 2026
  */

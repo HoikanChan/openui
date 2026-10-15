@@ -32,9 +32,8 @@ class ReaskPromptBuilderTest {
     }
 
     private static GenerationContract contractWith(Map<String, String> signatures) {
-        Map<String, ComponentPromptSpec> components = signatures.entrySet().stream()
-                .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey,
-                        entry -> new ComponentPromptSpec(entry.getValue(), "desc")));
+        Map<String, ComponentPromptSpec> components = signatures.entrySet().stream().collect(java.util.stream.Collectors
+                .toMap(Map.Entry::getKey, entry -> new ComponentPromptSpec(entry.getValue(), "desc")));
         return new GenerationContract("1.0", "Stack", components, List.of(), List.of(), List.of(), List.of());
     }
 
@@ -97,11 +96,11 @@ class ReaskPromptBuilderTest {
                 "Unexpected token COLON", "formContent", null, null, 8, 33, null, false);
         GenerationContract contract = contractWith(Map.of("Form",
                 "Form(fields: {label: string, name: string, rules?: any[], component: any}[], layout?: string)",
-                "Input", "Input(placeholder?: string, defaultValue?: any, disabled?: boolean, readOnly?: boolean, size?: string)"));
+                "Input",
+                "Input(placeholder?: string, defaultValue?: any, disabled?: boolean, readOnly?: boolean, size?: string)"));
 
         List<ChatMessage> messages = ReaskPromptBuilder.buildRepairAndContinue("build a form",
-                "formHeader = CardHeader(\"应用故障排查\")",
-                """
+                "formHeader = CardHeader(\"应用故障排查\")", """
                         formContent = Form([
                           {
                             label: "应用名称",
@@ -110,8 +109,7 @@ class ReaskPromptBuilderTest {
                             component: Input(placeholder: "请输入应用名称", size: "medium")
                           }
                         ], "vertical")
-                        """,
-                List.of(issue), contract);
+                        """, List.of(issue), contract);
         String text = join(messages);
 
         assertTrue(text.contains("## Compact openui-lang rules for repair"), "compact repair syntax is present");
@@ -143,8 +141,8 @@ class ReaskPromptBuilderTest {
     void targetedRewritesFlagEachBlockStatementButNotPlainEach() {
         // @Each template written as a JS block (name = value statements) → mode 6 in the error catalog.
         String block = "rows = @Each(data.devices, \"d\", {\n  id = d.id\n  name = d.name\n})";
-        String textBlock = join(ReaskPromptBuilder.buildRepairAndContinue("x", "root = Stack([])", block,
-                List.of(), null));
+        String textBlock = join(
+                ReaskPromptBuilder.buildRepairAndContinue("x", "root = Stack([])", block, List.of(), null));
         assertTrue(textBlock.contains("`@Each` template is ONE expression"), "block-statement @Each flagged");
 
         // A valid single-expression @Each must NOT trip the block detector.

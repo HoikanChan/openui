@@ -6,6 +6,8 @@ package com.huawei.cloudsop.genui.core.contract;
 
 import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.core.Json;
+import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr;
+import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExprParser;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,12 +52,126 @@ public final class GenerationContractLoader {
         ArrayList<BuiltinSpec> result = new ArrayList<>();
         if (value == null)
             return result;
+        java.util.Set<String> seenNames = new java.util.HashSet<>();
         for (Object item : Json.asList(value, "builtins")) {
             Map<String, Object> entry = Json.asObject(item, "builtin");
-            result.add(new BuiltinSpec(string(entry.get("signature")), string(entry.get("description")),
-                    Boolean.TRUE.equals(entry.get("templateBuiltin"))));
+            result.add(builtin(entry, seenNames));
         }
         return result;
+    }
+
+    /** 解析单个 builtin 条目并做结构校验（name 重复、optional 排必填前、variadic 不在末位、类型串解析）。 */
+    private static BuiltinSpec builtin(Map<String, Object> entry, java.util.Set<String> seenNames) {
+        String name = string(entry.get("name"));
+        if (name == null || name.isBlank()) {
+            throw new GenerationSdkException("builtin entry is missing 'name': " + entry);
+        }
+        if (!seenNames.add(name)) {
+            throw new GenerationSdkException("duplicate builtin name in contract: " + name);
+        }
+        List<BuiltinSpec.ParamSpec> params = builtinParams(entry.get("params"), name);
+        boolean seenPlainOptional = false;
+        for (int i = 0; i < params.size(); i++) {
+            BuiltinSpec.ParamSpec param = params.get(i);
+            if (param.optional()) {
+                if (!param.binder()) {
+                    seenPlainOptional = true;
+                }
+            } else if (seenPlainOptional) {
+                // binder 参数豁免：其 optional 语义是"该作用域绑定可省略"（Render 的 2/3 参双形式），
+                // 后随的 template 仍是必填。
+                throw new GenerationSdkException("builtin '" + name + "': required parameter '" + param.name()
+                        + "' must not follow an optional parameter");
+            }
+            if (param.variadic() && i != params.size() - 1) {
+                throw new GenerationSdkException(
+                        "builtin '" + name + "': variadic parameter '" + param.name() + "' must be the last parameter");
+            }
+        }
+        TypeExpr returnType = null;
+        Object returnTypeRaw = entry.get("returnType");
+        if (returnTypeRaw != null) {
+            returnType = TypeExprParser.parse(string(returnTypeRaw), name + ".returnType");
+        }
+        requireBoundTypeVars(params, returnType, name);
+        return new BuiltinSpec(name, string(entry.get("signature")), string(entry.get("description")),
+                Boolean.TRUE.equals(entry.get("templateBuiltin")), params, returnType);
+    }
+
+    private static List<BuiltinSpec.ParamSpec> builtinParams(Object value, String builtinName) {
+        if (value == null) {
+            throw new GenerationSdkException("builtin '" + builtinName + "' is missing 'params'");
+        }
+        ArrayList<BuiltinSpec.ParamSpec> result = new ArrayList<>();
+        for (Object item : Json.asList(value, "params of builtin " + builtinName)) {
+            Map<String, Object> param = Json.asObject(item, "param of builtin " + builtinName);
+            String name = string(param.get("name"));
+            String type = string(param.get("type"));
+            if (name == null || type == null) {
+                throw new GenerationSdkException(
+                        "builtin '" + builtinName + "': param entry requires 'name' and 'type'");
+            }
+            result.add(new BuiltinSpec.ParamSpec(name, type, TypeExprParser.parse(type, builtinName + "." + name),
+                    Boolean.TRUE.equals(param.get("optional")), Boolean.TRUE.equals(param.get("variadic")),
+                    Boolean.TRUE.equals(param.get("binder"))));
+        }
+        return result;
+    }
+
+    /** returnType 里的 {@code T} 必须能在某个参数类型中解出绑定；param(n) 引用必须在参数表范围内。 */
+    private static void requireBoundTypeVars(List<BuiltinSpec.ParamSpec> params, TypeExpr returnType,
+            String builtinName) {
+        boolean paramsBindT = params.stream().anyMatch(param -> containsTypeVar(param.typeExpr()));
+        if (returnType != null && !paramsBindT && containsTypeVar(returnType)) {
+            throw new GenerationSdkException(
+                    "builtin '" + builtinName + "': returnType references T but no parameter type binds it");
+        }
+        int paramCount = params.size();
+        visit(returnType, typeExpr -> {
+            if (typeExpr instanceof TypeExpr.ParamRef ref && (ref.index() < 0 || ref.index() >= paramCount)) {
+                throw new GenerationSdkException("builtin '" + builtinName + "': param(" + ref.index()
+                        + ") is out of range for " + paramCount + " parameter(s)");
+            }
+        });
+    }
+
+    private static boolean containsTypeVar(TypeExpr type) {
+        return type != null && (type instanceof TypeExpr.TypeVar
+                || (type instanceof TypeExpr.ArrayOf arrayOf && containsTypeVar(arrayOf.element()))
+                || (type instanceof TypeExpr.RecordOf record && containsTypeVar(record.value()))
+                || (type instanceof TypeExpr.ObjectLiteral literal
+                        && literal.fields().stream().anyMatch(field -> containsTypeVar(field.type())))
+                || (type instanceof TypeExpr.UnionOf union
+                        && union.alternatives().stream().anyMatch(GenerationContractLoader::containsTypeVar))
+                || (type instanceof TypeExpr.Conditional conditional
+                        && (containsTypeVar(conditional.whenArray()) || containsTypeVar(conditional.otherwise()))));
+    }
+
+    private interface Visitor {
+        void visit(TypeExpr type);
+    }
+
+    private static void visit(TypeExpr type, Visitor visitor) {
+        if (type == null) {
+            return;
+        }
+        visitor.visit(type);
+        if (type instanceof TypeExpr.ArrayOf arrayOf) {
+            visit(arrayOf.element(), visitor);
+        } else if (type instanceof TypeExpr.RecordOf record) {
+            visit(record.value(), visitor);
+        } else if (type instanceof TypeExpr.ObjectLiteral literal) {
+            for (TypeExpr.ObjectLiteral.Field field : literal.fields()) {
+                visit(field.type(), visitor);
+            }
+        } else if (type instanceof TypeExpr.UnionOf union) {
+            for (TypeExpr alternative : union.alternatives()) {
+                visit(alternative, visitor);
+            }
+        } else if (type instanceof TypeExpr.Conditional conditional) {
+            visit(conditional.whenArray(), visitor);
+            visit(conditional.otherwise(), visitor);
+        }
     }
 
     static Map<String, ComponentPromptSpec> componentMap(Object value) {

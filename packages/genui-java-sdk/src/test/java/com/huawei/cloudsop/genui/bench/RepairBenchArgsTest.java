@@ -18,7 +18,7 @@ class RepairBenchArgsTest {
 
     @Test
     void defaultsApplied() {
-        RepairBenchArgs args = RepairBenchArgs.parse(new String[] { "--cases=repair-cases" });
+        RepairBenchArgs args = RepairBenchArgs.parse(new String[]{"--cases=repair-cases"});
         assertEquals("repair-cases", args.casesDir());
         assertEquals(RepairBenchArgs.DEFAULT_CONCURRENCY, args.concurrency());
         assertEquals(RepairBenchArgs.DEFAULT_MAX_ATTEMPTS, args.maxAttempts());
@@ -29,8 +29,8 @@ class RepairBenchArgsTest {
 
     @Test
     void allFlagsParsed() {
-        RepairBenchArgs args = RepairBenchArgs.parse(new String[] { "--cases=c", "--concurrency=2",
-                "--max-attempts=5", "--timeout-minutes=10", "--limit=3", "--repair" });
+        RepairBenchArgs args = RepairBenchArgs.parse(new String[]{"--cases=c", "--concurrency=2", "--max-attempts=5",
+                "--timeout-minutes=10", "--limit=3", "--repair"});
         assertEquals(2, args.concurrency());
         assertEquals(5, args.maxAttempts());
         assertEquals(10, args.timeoutMinutes());
@@ -46,30 +46,30 @@ class RepairBenchArgsTest {
     @Test
     void unknownArgRejected() {
         assertThrows(IllegalArgumentException.class,
-                () -> RepairBenchArgs.parse(new String[] { "--cases=c", "--bogus=1" }));
+                () -> RepairBenchArgs.parse(new String[]{"--cases=c", "--bogus=1"}));
     }
 
     @Test
     void nonNumericRejected() {
         assertThrows(IllegalArgumentException.class,
-                () -> RepairBenchArgs.parse(new String[] { "--cases=c", "--concurrency=x" }));
+                () -> RepairBenchArgs.parse(new String[]{"--cases=c", "--concurrency=x"}));
     }
 
     @Test
     void nonPositiveConcurrencyRejected() {
         assertThrows(IllegalArgumentException.class,
-                () -> RepairBenchArgs.parse(new String[] { "--cases=c", "--concurrency=0" }));
+                () -> RepairBenchArgs.parse(new String[]{"--cases=c", "--concurrency=0"}));
     }
 
     @Test
     void negativeTimeoutRejected() {
         assertThrows(IllegalArgumentException.class,
-                () -> RepairBenchArgs.parse(new String[] { "--cases=c", "--timeout-minutes=-1" }));
+                () -> RepairBenchArgs.parse(new String[]{"--cases=c", "--timeout-minutes=-1"}));
     }
 
     @Test
     void zeroTimeoutAllowed() {
-        RepairBenchArgs args = RepairBenchArgs.parse(new String[] { "--cases=c", "--timeout-minutes=0" });
+        RepairBenchArgs args = RepairBenchArgs.parse(new String[]{"--cases=c", "--timeout-minutes=0"});
         assertEquals(0, args.timeoutMinutes());
     }
 }

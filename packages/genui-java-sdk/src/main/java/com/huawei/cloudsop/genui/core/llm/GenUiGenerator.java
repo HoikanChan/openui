@@ -146,9 +146,8 @@ public final class GenUiGenerator {
                     RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
                     if (policy.kind() == RepairPolicyKind.FINAL_REPAIR) {
                         RepairCoordinator.FullRepairOutcome outcome = repairCoordinator(policy, externalRefs,
-                                dataModelFor(effectiveRequest))
-                                .repairFull(userMessage(effectiveRequest), extracted, validationResult, merged,
-                                        merged.root(), requestBody.systemPrompt());
+                                dataModelFor(effectiveRequest)).repairFull(userMessage(effectiveRequest), extracted,
+                                        validationResult, merged, merged.root(), requestBody.systemPrompt());
                         if (outcome.repaired()) {
                             return new GenUiGenerationResult(outcome.dsl(), effectiveRequest.response(),
                                     ValidationStatus.VALID, markRepaired(outcome.result()));
@@ -183,8 +182,8 @@ public final class GenUiGenerator {
     }
 
     /**
-     * Build a repair coordinator that also carries the render data model, so every re-validation attempt runs the
-     * same data-path/prop type validation as the initial FINAL gate.
+     * Build a repair coordinator that also carries the render data model, so every re-validation attempt runs the same
+     * data-path/prop type validation as the initial FINAL gate.
      */
     private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs,
             Map<String, Object> dataModel) {
@@ -204,8 +203,8 @@ public final class GenUiGenerator {
     /**
      * Render Data Model for validation, or {@code null} when the request carries none. {@code
      * UiGenerationRequest.response()} normalizes absent to an EMPTY map (never null), while {@code
-     * ValidationRequest.dataModel} distinguishes null (no model → type validation off, {@code data} unresolved) from
-     * an empty map (concrete empty model). Translate at this seam so absent stays "no model".
+     * ValidationRequest.dataModel} distinguishes null (no model → type validation off, {@code data} unresolved) from an
+     * empty map (concrete empty model). Translate at this seam so absent stays "no model".
      */
     private static Map<String, Object> dataModelFor(UiGenerationRequest request) {
         return request.response().isEmpty() ? null : request.response();
@@ -218,8 +217,8 @@ public final class GenUiGenerator {
 
     private GenUiLlmConfig repairConfig() {
         return GenUiLlmConfig.builder().endpoint(config.endpoint()).defaultModel(config.defaultModel()).temperature(0)
-                .enableThinking(false).jsonObjectResponse(config.jsonObjectResponse()).extraHeaders(config.extraHeaders())
-                .build();
+                .enableThinking(false).jsonObjectResponse(config.jsonObjectResponse())
+                .extraHeaders(config.extraHeaders()).build();
     }
 
     /** Tag a repaired result's metadata with {@code repaired=true} for service-layer logging. */
@@ -326,9 +325,8 @@ public final class GenUiGenerator {
                 // Section 7 Fail-Fast Reask: cancel-then-reask when policy is FAIL_FAST_REASK; otherwise the
                 // withheld statement is terminal (error -> done, INVALID). Reask reuses the SAME session/gate
                 // continuing from the accepted prefix; only accepted repaired DSL is emitted. seq is shared.
-                if (policy.kind() == RepairPolicyKind.FAIL_FAST_REASK
-                        && failFastReask(effectiveRequest, merged, externalRefs, session, sink, nextSeq, policy,
-                                requestBody.systemPrompt())) {
+                if (policy.kind() == RepairPolicyKind.FAIL_FAST_REASK && failFastReask(effectiveRequest, merged,
+                        externalRefs, session, sink, nextSeq, policy, requestBody.systemPrompt())) {
                     // Reask succeeded: continuation emitted accepted DSL and closed cleanly via onEnd().
                     sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
                     return new GenUiGenerationResult(session.acceptedDsl(), dataModel, ValidationStatus.VALID,
@@ -460,8 +458,8 @@ public final class GenUiGenerator {
         GenUIPromptRequest promptRequest = toPromptRequest(request);
         GenerationContract merged = sdk.mergedContract(promptRequest);
         ValidationRequest validationRequest = ValidationRequest.builder().dsl(dsl).contract(merged)
-                .rootName(merged.root()).externalRefs(externalRefsFor(promptRequest))
-                .dataModel(dataModelFor(request)).mode(ValidationMode.FINAL).build();
+                .rootName(merged.root()).externalRefs(externalRefsFor(promptRequest)).dataModel(dataModelFor(request))
+                .mode(ValidationMode.FINAL).build();
         return validator.validate(validationRequest);
     }
 

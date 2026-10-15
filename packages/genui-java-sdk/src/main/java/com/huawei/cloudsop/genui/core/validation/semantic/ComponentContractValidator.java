@@ -14,15 +14,13 @@ import java.util.Map;
  * 对单个目录组件调用做合约校验。
  *
  * <p>
- * 对应 {@code packages/lang-core/src/parser/materialize.ts} 中 {@code materializeValue} 的
- * {@code "Comp"} 分支中与校验相关的部分：多余的位置参数、缺失/为空的必填属性（上报前先应用
- * {@code defaultValue} 兜底）、以及嵌套的非法属性（{@code validateNestedObjectProps}，包含已移除的
+ * 对应 {@code packages/lang-core/src/parser/materialize.ts} 中 {@code materializeValue} 的 {@code "Comp"}
+ * 分支中与校验相关的部分：多余的位置参数、缺失/为空的必填属性（上报前先应用 {@code defaultValue} 兜底）、以及嵌套的非法属性（{@code validateNestedObjectProps}，包含已移除的
  * {@code Col.options.format} 提示）。
  *
  * <p>
- * 输入是已经物化好的位置参数<em>值</em>（普通 Java 对象：{@code Map}、{@code List}、{@code String} 等，
- * 未解析引用/占位符/被丢弃的组件为 {@code null}）—— 与 TS 遍历器执行这些检查时 {@code props[name]} 中持有的
- * 形状一致。严重程度由调用方选择（按模式区分）；完整语句的合约错误为 ERROR。
+ * 输入是已经物化好的位置参数<em>值</em>（普通 Java 对象：{@code Map}、{@code List}、{@code String} 等， 未解析引用/占位符/被丢弃的组件为 {@code null}）—— 与 TS
+ * 遍历器执行这些检查时 {@code props[name]} 中持有的 形状一致。严重程度由调用方选择（按模式区分）；完整语句的合约错误为 ERROR。
  *
  * @since 2026
  */

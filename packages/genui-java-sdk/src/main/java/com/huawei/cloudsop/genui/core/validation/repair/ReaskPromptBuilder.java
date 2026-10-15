@@ -21,29 +21,24 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 为后续章节的两种修复形态（设计决策 #6）构建确定性的修复对话消息。纯函数、无副作用 —— 其输出文本被单元测试
- * 直接断言。
+ * 为后续章节的两种修复形态（设计决策 #6）构建确定性的修复对话消息。纯函数、无副作用 —— 其输出文本被单元测试 直接断言。
  *
  * <ul>
- * <li>{@link #buildFullRepair} —— “这是你产出的完整 DSL；它因以下机器可读问题未通过校验；请重新生成一份修正后的
- * 完整 openui-lang”。
- * <li>{@link #buildRepairAndContinue} —— “这是已接受的前缀（目前为止有效）；你的下一条语句无效，原因如下；请仅从该
- * 语句的修正版本开始，继续生成剩余 DSL”。
+ * <li>{@link #buildFullRepair} —— “这是你产出的完整 DSL；它因以下机器可读问题未通过校验；请重新生成一份修正后的 完整 openui-lang”。
+ * <li>{@link #buildRepairAndContinue} —— “这是已接受的前缀（目前为止有效）；你的下一条语句无效，原因如下；请仅从该 语句的修正版本开始，继续生成剩余 DSL”。
  * </ul>
  *
  * <p>
- * 问题描述块由结构化的 {@link ValidationIssue} 字段（code / message / hint / component / path）构建 ——
- * 绝不使用原始解析器异常文本。组件签名提示来自合并后的 {@link GenerationContract}，通过
- * {@link ComponentPropsSchema#formatSignature} 生成。
+ * 问题描述块由结构化的 {@link ValidationIssue} 字段（code / message / hint / component / path）构建 —— 绝不使用原始解析器异常文本。组件签名提示来自合并后的
+ * {@link GenerationContract}，通过 {@link ComponentPropsSchema#formatSignature} 生成。
  *
  * <h2>修复消费可操作问题视图（原设计决策 11.4，机制迁移至 {@link ValidationIssueReducer}）</h2>
  *
  * <p>
- * 一次解析失败会扩散出派生噪声：该语句的表达式被拆解为虚假的 {@code excess-args}/{@code null-required}
- * 参数问题，模板片段暴露为 {@code unresolved-ref}，根节点停止物化（{@code root-not-renderable}）。本类仅在
- * “提示词视图”这一层经 {@link ValidationIssueReducer#actionable} 过滤这些噪声 —— {@code ValidationResult}
- * 本身保持完整，拦截语料库与 TS 对齐测试继续断言完整输出。reducer 同时保留这样的 {@code unresolved-ref}：其
- * hint 本身就是根因（JS 全局函数 / 缺少 '@'，参见 {@code RepairHints#isRootCauseHint}）—— 移除它会只剩下 token
+ * 一次解析失败会扩散出派生噪声：该语句的表达式被拆解为虚假的 {@code excess-args}/{@code null-required} 参数问题，模板片段暴露为
+ * {@code unresolved-ref}，根节点停止物化（{@code root-not-renderable}）。本类仅在 “提示词视图”这一层经
+ * {@link ValidationIssueReducer#actionable} 过滤这些噪声 —— {@code ValidationResult} 本身保持完整，拦截语料库与 TS 对齐测试继续断言完整输出。reducer
+ * 同时保留这样的 {@code unresolved-ref}：其 hint 本身就是根因（JS 全局函数 / 缺少 '@'，参见 {@code RepairHints#isRootCauseHint}）—— 移除它会只剩下 token
  * 层面的症状。
  *
  * @since 2026
@@ -207,8 +202,7 @@ public final class ReaskPromptBuilder {
     }
 
     /**
-     * 完整性契约。回放实验（V0 7/26 → V1 14/26）表明：接续修复失败的主因不是单语句修不对，而是修好后
-     * 续写中途停笔或对同型错误只改第一处，导致文档不完整（root 缺失、下游引用未定义）。以下三条通用约束把
+     * 完整性契约。回放实验（V0 7/26 → V1 14/26）表明：接续修复失败的主因不是单语句修不对，而是修好后 续写中途停笔或对同型错误只改第一处，导致文档不完整（root 缺失、下游引用未定义）。以下三条通用约束把
      * “修复一条语句”升级为“补全整个文档”，是修复率翻倍的主杠杆，不依赖任何按例定制的参数。
      */
     private static void appendCompletionContract(StringBuilder sb, String acceptedPrefix) {
@@ -227,12 +221,12 @@ public final class ReaskPromptBuilder {
     }
 
     /**
-     * 定向改写。回放实验（V1 14/26 → V2 ~16/26）表明：针对无效语句里检出的 JavaScript 惯性泄漏给出改写指引能稳定再
-     * 修好 2~3 例；但 V3 证明堆砌冗长示例反而降分。故本节把每种泄漏压成单行 {@code WRONG → RIGHT} 映射，且只在真正
-     * 检出该模式时输出——这些模式（{@code .map}/JS 方法/{@code ===}/{@code .includes}/{@code @Each} 块语句/编造组件）
-     * 本质都是同一类“JS 习惯”，用一张按需填充的紧凑清单覆盖，而非逐点堆例。
+     * 定向改写。回放实验（V1 14/26 → V2 ~16/26）表明：针对无效语句里检出的 JavaScript 惯性泄漏给出改写指引能稳定再 修好 2~3 例；但 V3 证明堆砌冗长示例反而降分。故本节把每种泄漏压成单行
+     * {@code WRONG → RIGHT} 映射，且只在真正 检出该模式时输出——这些模式（{@code .map}/JS 方法/{@code ===}/{@code .includes}/{@code @Each}
+     * 块语句/编造组件） 本质都是同一类“JS 习惯”，用一张按需填充的紧凑清单覆盖，而非逐点堆例。
      */
-    private static void appendTargetedRewrites(StringBuilder sb, String invalidStatement, List<ValidationIssue> issues) {
+    private static void appendTargetedRewrites(StringBuilder sb, String invalidStatement,
+            List<ValidationIssue> issues) {
         if (invalidStatement == null) {
             invalidStatement = "";
         }
@@ -253,8 +247,8 @@ public final class ReaskPromptBuilder {
             rules.add("`@Each` template is ONE expression, not a JS block: `@Each(items, \"d\", "
                     + "{id: d.id, name: d.name})` — inline logic, no `x = y` statements inside.");
         }
-        boolean unknownComponent = issues != null && issues.stream().anyMatch(
-                i -> i != null && "unknown-component".equals(i.code()));
+        boolean unknownComponent = issues != null
+                && issues.stream().anyMatch(i -> i != null && "unknown-component".equals(i.code()));
         if (unknownComponent) {
             rules.add("Only components in the signatures section exist — never invent helpers "
                     + "(e.g. lowercase `cardHeader(...)`); inline the expression or reuse a defined component.");
@@ -275,8 +269,10 @@ public final class ReaskPromptBuilder {
         sb.append("2. One statement has the form `name = Expression`; keep one complete assignment per statement.\n");
         sb.append("3. `root` must ultimately be a renderable component, usually `root = Stack([...])`.\n");
         sb.append("4. Arguments are POSITIONAL. Write `Stack(children, \"row\", \"l\")`, not named component args.\n");
-        sb.append("5. Object literals are allowed only as expression values or object props; keep `{}`, `[]`, and `()` balanced.\n");
-        sb.append("6. Builtins must start with `@`, for example `@Each(array, \"item\", expr)` and `@Render(\"v\", expr)`.\n");
+        sb.append(
+                "5. Object literals are allowed only as expression values or object props; keep `{}`, `[]`, and `()` balanced.\n");
+        sb.append(
+                "6. Builtins must start with `@`, for example `@Each(array, \"item\", expr)` and `@Render(\"v\", expr)`.\n");
         sb.append("7. Binder names are string literals and are only in scope inside that builtin template.\n");
         sb.append("8. JavaScript globals and methods are unavailable; use openui-lang builtins instead.\n\n");
     }
@@ -296,8 +292,8 @@ public final class ReaskPromptBuilder {
                 hints.add("Named component arguments are not supported; convert `foo: value` inside component calls "
                         + "to positional arguments, but keep object-literal keys when an object prop is required.");
             }
-            if ("syntax-unclosed-bracket".equals(issue.code()) || message.toLowerCase(java.util.Locale.ROOT)
-                    .contains("unclosed")) {
+            if ("syntax-unclosed-bracket".equals(issue.code())
+                    || message.toLowerCase(java.util.Locale.ROOT).contains("unclosed")) {
                 hints.add("Close every `(`, `[`, and `{` opened by the invalid statement before starting another "
                         + "statement.");
             }
@@ -347,8 +343,8 @@ public final class ReaskPromptBuilder {
     }
 
     /**
-     * 追加 {@code (stmt=id, line L:C)} 位置片段，便于修复模型在多语句文档中定位问题。未知部分（{@code null}
-     * statementId、{@code -1} 行号）会被省略；两者都未知时不渲染任何内容。
+     * 追加 {@code (stmt=id, line L:C)} 位置片段，便于修复模型在多语句文档中定位问题。未知部分（{@code null} statementId、{@code -1}
+     * 行号）会被省略；两者都未知时不渲染任何内容。
      */
     private static void appendLocation(StringBuilder sb, ValidationIssue issue) {
         boolean hasStmt = issue.statementId() != null && !issue.statementId().isBlank();
@@ -370,8 +366,7 @@ public final class ReaskPromptBuilder {
     }
 
     /**
-     * 为问题中出现的每个组件名输出签名提示（使模型能看到它用错的东西的确切允许形状）。顺序确定：按问题出现顺序，
-     * 并去重。
+     * 为问题中出现的每个组件名输出签名提示（使模型能看到它用错的东西的确切允许形状）。顺序确定：按问题出现顺序， 并去重。
      */
     private static void appendInvalidStatementSignatures(StringBuilder sb, String invalidStatement,
             List<ValidationIssue> issues, GenerationContract contract) {

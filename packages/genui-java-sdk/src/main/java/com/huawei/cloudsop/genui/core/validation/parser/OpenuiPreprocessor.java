@@ -10,13 +10,12 @@ import com.huawei.cloudsop.genui.core.llm.extract.OpenuiCodeExtractor;
  * 将 LLM 响应清洗为可解析的 openui-lang 源码。
  *
  * <p>
- * 处理流程对应 {@code parser.ts} 中 TS 侧的 {@code preprocess()}：围栏代码提取 → 去除注释 → 空白归一化。
- * 围栏处理<em>委托</em>给 {@link OpenuiCodeExtractor}（SDK 已有的 markdown 围栏逻辑）而非重新实现，以保持
- * 两者一致。
+ * 处理流程对应 {@code parser.ts} 中 TS 侧的 {@code preprocess()}：围栏代码提取 → 去除注释 → 空白归一化。 围栏处理<em>委托</em>给
+ * {@link OpenuiCodeExtractor}（SDK 已有的 markdown 围栏逻辑）而非重新实现，以保持 两者一致。
  *
  * <p>
- * {@link #process(String, ParseMode)} 在 {@link ParseMode#STREAMING} 模式下会额外运行 {@code autoClose}
- * （对应 {@code statements.ts}），修复未闭合的括号/字符串以实现部分输入的容错解析。
+ * {@link #process(String, ParseMode)} 在 {@link ParseMode#STREAMING} 模式下会额外运行 {@code autoClose} （对应
+ * {@code statements.ts}），修复未闭合的括号/字符串以实现部分输入的容错解析。
  *
  * @since 2026
  */
@@ -54,9 +53,8 @@ public final class OpenuiPreprocessor {
     }
 
     /**
-     * 按指定模式执行完整预处理。在 {@link ParseMode#STREAMING} 下，清洗后的文本会被自动闭合，
-     * {@code wasIncomplete} 反映是否执行过修复；在 {@link ParseMode#FINAL} 下文本原样返回，
-     * {@code wasIncomplete} 恒为 {@code false}。
+     * 按指定模式执行完整预处理。在 {@link ParseMode#STREAMING} 下，清洗后的文本会被自动闭合， {@code wasIncomplete} 反映是否执行过修复；在
+     * {@link ParseMode#FINAL} 下文本原样返回， {@code wasIncomplete} 恒为 {@code false}。
      *
      * @param input
      *            原始输入
@@ -73,8 +71,8 @@ public final class OpenuiPreprocessor {
     }
 
     /**
-     * 去除出现在字符串字面量（{@code "} 与 {@code '} 两种定界符）之外的 {@code //} 与 {@code #} 行注释。
-     * 对应 {@code parser.ts} 中的 {@code stripComments}。
+     * 去除出现在字符串字面量（{@code "} 与 {@code '} 两种定界符）之外的 {@code //} 与 {@code #} 行注释。 对应 {@code parser.ts} 中的
+     * {@code stripComments}。
      */
     static String stripComments(String input) {
         String[] lines = input.split("\n", -1);
@@ -117,8 +115,7 @@ public final class OpenuiPreprocessor {
     }
 
     /**
-     * 自动闭合未闭合的字符串与括号，使部分/流式输入也能无语法错误地解析。对应 {@code statements.ts} 中的
-     * {@code autoClose}。
+     * 自动闭合未闭合的字符串与括号，使部分/流式输入也能无语法错误地解析。对应 {@code statements.ts} 中的 {@code autoClose}。
      */
     static Result autoClose(String input) {
         java.util.Deque<Character> stack = new java.util.ArrayDeque<>();

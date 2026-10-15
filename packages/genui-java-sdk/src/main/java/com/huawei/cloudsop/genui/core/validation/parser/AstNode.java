@@ -11,8 +11,8 @@ import java.util.Map;
  * openui-lang 表达式中可能出现的每一种值。
  *
  * <p>
- * 密封接口，对应 {@code packages/lang-core/src/parser/ast.ts} 中 TS 的可辨识联合类型 {@code ASTNode}。
- * 每个变体都是一个 record。解析器负责产出这些节点；求值/物化不在本层范围内（后续章节消费该语法树）。
+ * 密封接口，对应 {@code packages/lang-core/src/parser/ast.ts} 中 TS 的可辨识联合类型 {@code ASTNode}。 每个变体都是一个
+ * record。解析器负责产出这些节点；求值/物化不在本层范围内（后续章节消费该语法树）。
  *
  * @since 2026
  */
@@ -35,8 +35,7 @@ public sealed interface AstNode permits AstNode.Comp, AstNode.Str, AstNode.Num, 
     }
 
     /**
-     * 组件调用：{@code Header("Hello", "Subtitle")}。{@code mappedProps} 由后续的“位置参数转具名参数”映射
-     * 填充（不属于解析器职责），解析器产出时始终为空。
+     * 组件调用：{@code Header("Hello", "Subtitle")}。{@code mappedProps} 由后续的“位置参数转具名参数”映射 填充（不属于解析器职责），解析器产出时始终为空。
      *
      * @param name
      *            组件名

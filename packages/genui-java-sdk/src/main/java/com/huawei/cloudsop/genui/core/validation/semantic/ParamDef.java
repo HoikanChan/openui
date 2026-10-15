@@ -16,8 +16,8 @@ package com.huawei.cloudsop.genui.core.validation.semantic;
  * @param required
  *            该组件是否要求此参数
  * @param hasDefault
- *            JSON schema 中声明了 {@code default} 时为 {@code true}（用于区分“默认值是 {@code null}”与
- *            “没有默认值”）；对应 TS 侧 {@code defaultValue !== undefined}
+ *            JSON schema 中声明了 {@code default} 时为 {@code true}（用于区分“默认值是 {@code null}”与 “没有默认值”）；对应 TS 侧
+ *            {@code defaultValue !== undefined}
  * @param defaultValue
  *            声明的默认值，{@code hasDefault} 为 {@code false} 时为 {@code null}
  * @param schema

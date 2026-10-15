@@ -324,9 +324,8 @@ public final class RepairCoordinator {
     }
 
     /**
-     * 一次完整（同步）修复尝试序列的结果。结果区分四种终态（{@link OutcomeKind}），并携带逐次尝试的复验记录
-     * （{@link AttemptRecord}），供 bench 等调用方度量修复过程；传输失败的尝试其 {@code issues} 为
-     * {@code null}。超时只发生在两次尝试之间，因此 {@code attemptLog} 只含已完成的尝试。
+     * 一次完整（同步）修复尝试序列的结果。结果区分四种终态（{@link OutcomeKind}），并携带逐次尝试的复验记录 （{@link AttemptRecord}），供 bench 等调用方度量修复过程；传输失败的尝试其
+     * {@code issues} 为 {@code null}。超时只发生在两次尝试之间，因此 {@code attemptLog} 只含已完成的尝试。
      *
      * @param kind
      *            终态类别：修复成功 / 预算耗尽仍无效 / 传输错误 / 超时

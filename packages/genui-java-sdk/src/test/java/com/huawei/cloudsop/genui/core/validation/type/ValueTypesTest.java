@@ -11,8 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.huawei.cloudsop.genui.core.validation.type.ValueType.Primitive;
 import com.huawei.cloudsop.genui.core.validation.type.ValueType.PrimitiveKind;
 import com.huawei.cloudsop.genui.core.validation.type.ValueType.UnionType;
-import java.util.List;
+
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 class ValueTypesTest {
 
@@ -28,7 +30,7 @@ class ValueTypesTest {
     @Test
     void emptyUnionIsNotNumeric() {
         assertFalse(ValueTypes.isNumber(new UnionType(List.of())));
-        assertTrue(ValueTypes.isNumber(new UnionType(List.of(
-                new Primitive(PrimitiveKind.NUMBER), new Primitive(PrimitiveKind.NUMBER)))));
+        assertTrue(ValueTypes.isNumber(
+                new UnionType(List.of(new Primitive(PrimitiveKind.NUMBER), new Primitive(PrimitiveKind.NUMBER)))));
     }
 }
