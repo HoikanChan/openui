@@ -20,5 +20,11 @@
         }
       ]
     }
+  },
+  "rootCause": "幻觉组件 @GroupBy",
+  "source": {
+    "file": "2b-幻觉组件-GroupBy.md",
+    "run": "20260918_181004_5lez",
+    "errorDetail": "statementCount=23, rootName=root, valStatus=INVALID"
   }
 }

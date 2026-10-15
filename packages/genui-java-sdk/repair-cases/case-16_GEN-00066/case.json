@@ -17,5 +17,11 @@
         }
       ]
     }
+  },
+  "rootCause": "数据路径幻觉 — voltage 不在当前 telemetryData 中",
+  "source": {
+    "file": "4a-数据路径幻觉-顶层路径.md",
+    "run": "20260918_181004_5lez",
+    "errorDetail": "statementCount=13, rootName=root, valStatus=INVALID"
   }
 }

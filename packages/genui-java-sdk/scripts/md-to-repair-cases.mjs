@@ -7,7 +7,8 @@
  *                                       [--env=FILE] [--model=ID] [--no-llm] [--refresh-intents]
  *
  * 输入: <dataset>/eval-failure-report/evaluations/llm-errors/*.md(空文件跳过并记录)
- * 输出: <out>/contract.json            base-contract.json 逐字节拷贝
+ * 输出: <out>/contract.json            首次生成时从 base-contract.json 拷贝;已存在则不动
+ *                                    (包契约由人维护——builtin 格式等随主线单独同步)
  *       <out>/case-NN_<id>/case.json | dsl.txt [| issues.json]
  *       <out>/CONVERSION-GAPS.md       缺口全清单
  *
@@ -198,7 +199,7 @@ function repairEllipsis(text) {
 const ID_RE = /^[A-Za-z][\w-]*(?:#\d+)?$/;
 
 /** 一个 `## ` 小节 → 案例数组(4b 的 "GEN-00232 / GEN-00233 / GEN-00349" 一节三例);非案例小节返回 null。 */
-function parseCaseSection(section, file) {
+function parseCaseSection(section, file, categoryRootCause) {
   const ids = section.title.split('/').map((s) => s.trim()).filter(Boolean);
   if (!ids.length || ids.some((id) => !ID_RE.test(id))) return null;
 
@@ -252,7 +253,9 @@ function parseCaseSection(section, file) {
   return finalIds.map((id) => ({
     id,
     file,
-    rootCause: metaInfo['根因定位'] || null,
+    rootCause: metaInfo['根因定位'] || categoryRootCause || null,
+    run: metaInfo.run || null,
+    errorDetail: metaInfo.errorDetail || null,
     issueCodes: Array.isArray(metaInfo.issueCodes) ? metaInfo.issueCodes : null,
     issueMessages: Array.isArray(metaInfo.issueMessages) ? metaInfo.issueMessages : null,
     hasNoCodesRecord: !Array.isArray(metaInfo.issueCodes),
@@ -276,6 +279,10 @@ function writeCase(dir, c) {
   const caseJson = { id: c.id };
   if (c.intent) caseJson.originalIntent = c.intent;
   if (c.dataModel != null) caseJson.dataModel = c.dataModel;
+  if (c.rootCause) caseJson.rootCause = c.rootCause;
+  caseJson.source = { file: c.file };
+  if (c.run) caseJson.source.run = c.run;
+  if (c.errorDetail) caseJson.source.errorDetail = c.errorDetail;
   fs.writeFileSync(path.join(dir, 'case.json'), JSON.stringify(caseJson, null, 2) + '\n');
   fs.writeFileSync(path.join(dir, 'dsl.txt'), c.dsl);
   const issuesPath = path.join(dir, 'issues.json');
@@ -405,8 +412,10 @@ async function main() {
   const seen = new Map();
   for (const file of nonEmpty) {
     const text = fs.readFileSync(path.join(errorsDir, file), 'utf8');
+    const header = text.match(/^#\s.*\r?\n\r?\n>\s*根因:\s*(.*)$/m);
+    const categoryRootCause = header ? header[1].trim() : null;
     for (const section of splitSections(text)) {
-      const parsed = parseCaseSection(section, file);
+      const parsed = parseCaseSection(section, file, categoryRootCause);
       if (!parsed) continue;
       for (const c of parsed) {
         if (seen.has(c.id)) { duplicates.push({ id: c.id, first: seen.get(c.id), dup: file }); continue; }
@@ -455,8 +464,14 @@ async function main() {
 
   // 写包
   fs.mkdirSync(opts.out, { recursive: true });
-  fs.copyFileSync(opts.contract, path.join(opts.out, 'contract.json'));
-  const contractVersion = JSON.parse(fs.readFileSync(opts.contract, 'utf8')).contractVersion;
+  const packContract = path.join(opts.out, 'contract.json');
+  if (fs.existsSync(packContract)) {
+    console.log(`包契约已存在,不覆盖: ${packContract}(需同步时手动改)`);
+  } else {
+    fs.copyFileSync(opts.contract, packContract);
+    console.log(`已生成包契约: ${packContract}`);
+  }
+  const contractVersion = JSON.parse(fs.readFileSync(packContract, 'utf8')).contractVersion;
   const written = new Set();
   for (const c of cases) {
     writeCase(path.join(opts.out, c.dirName), c);

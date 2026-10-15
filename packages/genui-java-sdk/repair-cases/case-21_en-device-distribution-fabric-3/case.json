@@ -40,5 +40,11 @@
         }
       ]
     }
+  },
+  "rootCause": "@ObjectEntries 对数组调用",
+  "source": {
+    "file": "6a-内置函数参数错误-ObjectEntries.md",
+    "run": "20260912_200334_r73z",
+    "errorDetail": "statementCount=20, rootName=root, valStatus=INVALID"
   }
 }
