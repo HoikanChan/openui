@@ -65,5 +65,11 @@
         "count": 10
       }
     ]
+  },
+  "rootCause": "幻觉组件 @ObjectFromEntries",
+  "source": {
+    "file": "2a-幻觉组件-ObjectFromEntries.md",
+    "run": "20260918_154544_4zb3",
+    "errorDetail": "statementCount=12, rootName=root, valStatus=INVALID"
   }
 }

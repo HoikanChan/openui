@@ -1,6 +1,6 @@
 # CONVERSION-GAPS — smartcanvas 语料 → repair-bench case 包
 
-生成: 2026-10-14T08:37:10.608Z
+生成: 2026-10-15T12:12:03.602Z
 脚本: packages/genui-java-sdk/scripts/md-to-repair-cases.mjs
 语料: C:\workspace\smartcanvas-dataset/eval-failure-report/evaluations/llm-errors/
 契约: src/main/resources/openui/base-contract.json(contractVersion @cloudsop/openui-react-ui-dsl@1.1.5)逐字节拷贝

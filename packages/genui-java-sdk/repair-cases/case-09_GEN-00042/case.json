@@ -30,5 +30,11 @@
         ]
       }
     ]
+  },
+  "rootCause": "字段名幻觉 — Col field \"patchFileVersion\" 条件存在",
+  "source": {
+    "file": "3b-字段名幻觉-版本补丁.md",
+    "run": "20260918_181004_5lez",
+    "errorDetail": "statementCount=13, rootName=root, valStatus=INVALID"
   }
 }

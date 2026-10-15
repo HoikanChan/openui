@@ -1,4 +1,9 @@
 {
   "id": "GEN-00140",
-  "originalIntent": "查询设备端口信息，展示设备基本信息、端口列表及端口总数。"
+  "originalIntent": "查询设备端口信息，展示设备基本信息、端口列表及端口总数。",
+  "rootCause": "数据路径幻觉 — neState 不在 aiInstanceData[0] 中",
+  "source": {
+    "file": "4b-数据路径幻觉-queryDeviceInfo.md",
+    "run": "20260918_181004_5lez"
+  }
 }

@@ -25,5 +25,11 @@
         "bgpInstanceType": "BGPPeer"
       }
     ]
+  },
+  "rootCause": "数据路径幻觉 — data.deviceIp 不存在",
+  "source": {
+    "file": "4a-数据路径幻觉-顶层路径.md",
+    "run": "20260918_130128_7ojm",
+    "errorDetail": "statementCount=10, rootName=root, valStatus=INVALID"
   }
 }

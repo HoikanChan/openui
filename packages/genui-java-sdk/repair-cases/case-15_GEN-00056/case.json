@@ -20,5 +20,11 @@
         ]
       }
     ]
+  },
+  "rootCause": "连字符字段 — bgp-peer 被解析为减法",
+  "source": {
+    "file": "4a-数据路径幻觉-顶层路径.md",
+    "run": "20260918_130128_7ojm",
+    "errorDetail": "statementCount=11, rootName=root, valStatus=INVALID"
   }
 }
