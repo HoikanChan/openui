@@ -15,13 +15,13 @@ import java.util.Map;
  * null)。{@code content} 不做额外包装, 由 {@code type} 决定其 JSON 类型。
  *
  * <p>
- * <b>类型语义(design Decision #7)</b>:validation / repair / replace / commit 均不是独立的 envelope 类型 —— 它们是 SDK 内部的流式校验门(Section
- * 6)与修复(Section 7)机制的实现细节,不对外 暴露。本记录只保留固定的四种类型:
+ * <b>类型语义(#56:首次生成实时展示,轮末统一校验)</b>:
  *
  * <ul>
  * <li>{@code dataModel} —— 首帧,回显请求的数据模型。
- * <li>{@code dsl} —— 经 SDK 校验门放行、可安全渲染的 openui-lang 内容(一条完整语句或一批语句), 不是模型的原始增量文本;未通过校验门的内容不会以此类型出现。
- * <li>{@code error} —— SDK 判定自己无法产出可信的最终 DSL(例如底层传输失败且不可恢复);不代表 "本次渲染有个别语句被丢弃" —— 那属于 SDK 内部处理,不通过 error 帧暴露。
+ * <li>{@code dsl} ——
+ * 模型本轮输出的<b>原始增量文本,实时转发</b>:不因校验扣留、不做逐语句门控、不保证多语句原子展示。校验在模型本轮输出结束后统一进行,只影响返回结果的状态,不改变已发出的帧。前端按既有同名覆盖能力消费增量。
+ * <li>{@code error} —— SDK 判定自己无法产出可信的最终 DSL(例如底层传输失败且不可恢复);不代表"轮末校验发现问题" ——那属于返回结果的状态,不通过 error 帧暴露。
  * <li>{@code done} —— 仅表示 SSE 流结束,不携带业务成功与否的语义;业务层面的最终校验状态由返回的 {@link GenUiGenerationResult#validationStatus()} 承载,而非
  * done 帧。
  * </ul>
@@ -44,16 +44,15 @@ public record RenderStreamEnvelope(String type, int seq, Object content) {
     }
 
     /**
-     * DSL 帧:content 为经 SDK 校验门接受(accepted)的 openui-lang 内容 —— 一条完整语句或一批语句, 已排除会破坏渲染的非法片段。这不是模型的原始流式增量文本(raw
-     * delta);未接受的内容不会出现在 此帧中(校验门的具体放行/重试策略见 Section 6)。
+     * DSL 帧:content 为模型本轮输出的原始增量文本(#56 实时转发)。不因校验扣留;轮末统一校验不影响已发出的帧。
      *
      * @param seq
      *            帧序号,必须 {@code >= 1}(0 保留给首帧 {@code dataModel})。
-     * @param acceptedDsl
-     *            已被 SDK 接受、可安全渲染的 DSL 内容。
+     * @param deltaText
+     *            模型输出的原始增量文本。
      */
-    public static RenderStreamEnvelope dsl(int seq, String acceptedDsl) {
-        return new RenderStreamEnvelope(TYPE_DSL, seq, acceptedDsl);
+    public static RenderStreamEnvelope dsl(int seq, String deltaText) {
+        return new RenderStreamEnvelope(TYPE_DSL, seq, deltaText);
     }
 
     /** 错误帧:content 为 {@code {code, message, retryable}}。 */

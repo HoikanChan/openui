@@ -109,17 +109,18 @@ paths:
       tags:
         - generation
       operationId: generate
-      summary: 生成 openui-lang(SSE 流式,SDK 校验门包络)
+      summary: 生成 openui-lang(SSE 流式,SDK 包络,实时转发 + 轮末统一校验)
       description: |
-        以 Server-Sent Events(text/event-stream)流式返回 SDK 校验门包络帧。手写实现,不经 codegen。
+        以 Server-Sent Events(text/event-stream)流式返回 SDK RenderStreamEnvelope 帧。手写实现,不经 codegen。
 
         每个 SSE `data:` 行是一个 JSON RenderStreamEnvelope {type, seq, content}:
         - `dataModel`(seq=0):首帧,回显请求的 dataModel(content 为 JSON 对象)。
-        - `dsl`(seq 递增):经 SDK 校验门放行、可安全渲染的 openui-lang 内容(一条完整语句,
-          content 为字符串);**不是** LLM 原始增量,未通过校验门的语句永不出现在此帧。
+        - `dsl`(seq 递增):模型本轮输出的原始增量文本(content 为字符串),实时转发——不因校验
+          扣留、不做逐语句门控;前端按同名覆盖能力消费增量(同名语句以最新定义为准)。
         - `error`:SDK 判定无法产出可信 DSL(content 为 {code, message, retryable})。
-          code=VALIDATION_FAILED 表示某完整语句被校验门 withhold(retryable=false);
           code=LLM_STREAM_FAILED 表示流中途失败或 finish_reason 非 stop(retryable=true)。
+          轮末统一校验发现的问题不通过 error 帧暴露——校验在模型输出结束后对当前有效程序
+          统一进行,结论记录在服务端日志(供缓存决策),不影响已发出的帧。
         - `done`:流结束(无 content 字段),仅表示 SSE 结束,不承载业务成功语义。
 
         错误边界:拼装/连接在响应体开始前失败仍返回 JSON(400/404/502),任何 SSE 帧都在
@@ -374,7 +375,7 @@ definitions:
     properties:
       code:
         type: string
-        description: VALIDATION_FAILED(语句被校验门 withhold)| LLM_STREAM_FAILED(流中途失败/截断)
+        description: LLM_STREAM_FAILED(流中途失败/截断;内容不可信)
       message:
         type: string
       retryable:
@@ -404,7 +405,7 @@ definitions:
       content:
         type: object
         description: |
-          按 type 变化的载荷:dataModel 为原始数据模型对象;dsl 为已放行的 openui-lang 字符串;
+          按 type 变化的载荷:dataModel 为原始数据模型对象;dsl 为模型原始增量文本字符串(实时转发);
           error 为 StreamEnvelopeError;done 无此字段。
         additionalProperties: true
 

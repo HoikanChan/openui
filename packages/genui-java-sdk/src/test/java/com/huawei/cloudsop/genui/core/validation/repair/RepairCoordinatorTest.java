@@ -89,7 +89,7 @@ class RepairCoordinatorTest {
         // A tiny already-elapsed timeout: the loop should bail on the first deadline check and never
         // post at all (attemptLog empty, kind=TIMED_OUT).
         ScriptedPosts t = ScriptedPosts.of(syncResponse("root = StillBad()"));
-        RepairPolicy policy = new RepairPolicy(RepairPolicyKind.FINAL_REPAIR, 3, Duration.ofNanos(1), Duration.ZERO);
+        RepairPolicy policy = new RepairPolicy(RepairPolicyKind.FINAL_REPAIR, 3, Duration.ofNanos(1));
         RepairCoordinator c = coordinator(t, policy);
 
         FullRepairOutcome outcome = c.repairFull("intent", "root = Bogus()", invalidSeed(), baseContract(), "Stack");

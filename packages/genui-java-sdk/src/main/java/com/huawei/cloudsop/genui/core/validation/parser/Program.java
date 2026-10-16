@@ -40,4 +40,18 @@ public record Program(List<Statement> statements, List<ParseDiagnostic> diagnost
     public boolean isClean() {
         return diagnostics.isEmpty();
     }
+
+    /**
+     * 按语句 id 去重的当前有效语句(同名 last-wins:保留首次出现顺序,值为最新定义)。对应 TS 侧 {@code stmtMap} 的 {@code Map.set}
+     * 语义,是语义/类型检查共用的唯一去重口径(#56:历史定义不产生当前错误)。
+     *
+     * @return id → 最新语句的有序映射;不会为 {@code null}
+     */
+    public java.util.LinkedHashMap<String, Statement> currentById() {
+        java.util.LinkedHashMap<String, Statement> current = new java.util.LinkedHashMap<>();
+        for (Statement statement : statements) {
+            current.put(statement.id(), statement);
+        }
+        return current;
+    }
 }

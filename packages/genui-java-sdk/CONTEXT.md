@@ -12,6 +12,18 @@ _Avoid_: builtin whitelist, function registry
 The contract bundled with a repair-bench case, representing the contract in force when the original generation ran; it overrides the SDK default for that case's reproduction and repair, and silent fallback to the default is forbidden because it would disguise vocabulary drift as not-reproduced.
 _Avoid_: historical contract, legacy contract
 
+**Current Effective Program**:
+The last-wins-by-name statement map a round maintains: a re-issued `id = ...` statement overrides the previous definition, new names append, and superseded statements stop producing current errors (they survive only in the round's raw-output record). Frontend rendering and backend validation both resolve against this same definition set.
+_Avoid_: deduplicated DSL, merged statements, program snapshot
+
+**Round-End Unified Check**:
+The single validation pass that runs once after a model output round ends, over the Current Effective Program, in FINAL mode — covering syntax, references, component/builtin contracts, params, data paths, static types, and page completeness. No per-statement gating or repair happens during the round.
+_Avoid_: streaming gate, final check (as a separate second policy), statement gate
+
+**Round Record**:
+The per-round audit entry (raw output, current definitions, diagnostics, duration, contract version) carried on `GenUiGenerationResult.rounds()`, feeding later incremental repair (#58) and evaluation.
+_Avoid_: session log, attempt log
+
 **Base Contract**:
 The frozen, frontend-exported description of the built-in component library (components, groups, examples, rules, builtins) that ships inside the SDK; the frontend is its single source of truth and the SDK only consumes it.
 _Avoid_: default contract, built-in schema

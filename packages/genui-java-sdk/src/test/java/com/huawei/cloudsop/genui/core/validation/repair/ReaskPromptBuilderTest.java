@@ -31,12 +31,6 @@ class ReaskPromptBuilderTest {
                 List.of(), List.of(), List.of(), List.of());
     }
 
-    private static GenerationContract contractWith(Map<String, String> signatures) {
-        Map<String, ComponentPromptSpec> components = signatures.entrySet().stream().collect(java.util.stream.Collectors
-                .toMap(Map.Entry::getKey, entry -> new ComponentPromptSpec(entry.getValue(), "desc")));
-        return new GenerationContract("1.0", "Stack", components, List.of(), List.of(), List.of(), List.of());
-    }
-
     private static ValidationIssue issue(String code, String message, String component, String hint) {
         return new ValidationIssue(code, ValidationSeverity.ERROR, "contract", message, null, component,
                 "root.children[0]", 3, 5, hint, false);
@@ -68,87 +62,6 @@ class ReaskPromptBuilderTest {
         assertTrue(text.contains("root = Bogus(\"x\")"), "the invalid (accepted-context) DSL present");
         assertTrue(text.contains("Bogus(title: string)"), "component signature hint present");
         assertTrue(text.contains("show a bogus widget"), "original user intent present");
-    }
-
-    @Test
-    void repairAndContinueContainsAcceptedPrefixInvalidStatementIssuesAndSignature() {
-        ValidationIssue issue = issue("invalid-prop", "Unknown prop 'foo' on CardHeader", "CardHeader",
-                "use title instead");
-        GenerationContract contract = contractWith("CardHeader", "CardHeader(title?: string)");
-
-        List<ChatMessage> messages = ReaskPromptBuilder.buildRepairAndContinue("build a card",
-                "root = Stack([a])\na = TextContent(\"hi\")", "b = CardHeader(foo: 1)", List.of(issue), contract);
-        String text = join(messages);
-
-        assertTrue(text.contains(ReaskPromptBuilder.CONTINUE_REPAIR_MARKER), "continue marker present");
-        assertTrue(text.contains("root = Stack([a])"), "accepted prefix present");
-        assertTrue(text.contains("a = TextContent(\"hi\")"), "full accepted prefix present");
-        assertTrue(text.contains("b = CardHeader(foo: 1)"), "invalid next statement present");
-        assertTrue(text.contains("invalid-prop"), "issue code present");
-        assertTrue(text.contains("use title instead"), "issue hint present");
-        assertTrue(text.contains("CardHeader(title?: string)"), "signature hint present");
-        assertTrue(text.contains("build a card"), "original user intent present");
-    }
-
-    @Test
-    void repairAndContinueAddsSyntaxRepairHintsAndSignaturesFromInvalidStatement() {
-        ValidationIssue issue = new ValidationIssue("syntax-unexpected-token", ValidationSeverity.ERROR, "syntax",
-                "Unexpected token COLON", "formContent", null, null, 8, 33, null, false);
-        GenerationContract contract = contractWith(Map.of("Form",
-                "Form(fields: {label: string, name: string, rules?: any[], component: any}[], layout?: string)",
-                "Input",
-                "Input(placeholder?: string, defaultValue?: any, disabled?: boolean, readOnly?: boolean, size?: string)"));
-
-        List<ChatMessage> messages = ReaskPromptBuilder.buildRepairAndContinue("build a form",
-                "formHeader = CardHeader(\"应用故障排查\")", """
-                        formContent = Form([
-                          {
-                            label: "应用名称",
-                            name: "appName",
-                            rules: { required: true },
-                            component: Input(placeholder: "请输入应用名称", size: "medium")
-                          }
-                        ], "vertical")
-                        """, List.of(issue), contract);
-        String text = join(messages);
-
-        assertTrue(text.contains("## Compact openui-lang rules for repair"), "compact repair syntax is present");
-        assertTrue(text.contains("Arguments are POSITIONAL"), "positional argument rule is reinforced");
-        assertTrue(text.contains("## Syntax repair hints"), "syntax issue gets targeted repair hints");
-        assertTrue(text.contains("Named component arguments are not supported"),
-                "colon syntax hint should explain the common repair");
-        assertTrue(text.contains("Form(fields:"), "signature for component in invalid statement is included");
-        assertTrue(text.contains("Input(placeholder?:"), "nested component signature is included");
-    }
-
-    @Test
-    void targetedRewritesFireOnlyForJavaScriptPatternsDetectedInTheStatement() {
-        // tc-014-roam-quality: one statement leaks both `===` and `.includes(` (JS-habit class).
-        ValidationIssue syntax = new ValidationIssue("syntax-unexpected-token", ValidationSeverity.ERROR, "syntax",
-                "Unexpected token EQUALS", "valueCol", null, null, 4, 40, null, false);
-        String stmt = "valueCol = Col(\"数值\", \"value\", {cell: @Render(\"v\", \"row\", "
-                + "TextContent(row.value + ([\"a\", \"b\"].includes(row.key) ? \"%\" : "
-                + "(row.key === \"avg_roam_time\" ? \"ms\" : \"\"))))})";
-        String text = join(ReaskPromptBuilder.buildRepairAndContinue("x", "root = Stack([valueCol])", stmt,
-                List.of(syntax), null));
-
-        assertTrue(text.contains("`===` / `!==` → `==` / `!=`"), "strict-equality rewrite present");
-        assertTrue(text.contains("spell out membership"), "includes membership rewrite present");
-        assertFalse(text.contains("@FormatNumber"), ".toString/.toFixed rewrite must not fire when absent");
-    }
-
-    @Test
-    void targetedRewritesFlagEachBlockStatementButNotPlainEach() {
-        // @Each template written as a JS block (name = value statements) → mode 6 in the error catalog.
-        String block = "rows = @Each(data.devices, \"d\", {\n  id = d.id\n  name = d.name\n})";
-        String textBlock = join(
-                ReaskPromptBuilder.buildRepairAndContinue("x", "root = Stack([])", block, List.of(), null));
-        assertTrue(textBlock.contains("`@Each` template is ONE expression"), "block-statement @Each flagged");
-
-        // A valid single-expression @Each must NOT trip the block detector.
-        String ok = "rows = @Each(data.devices, \"d\", {id: d.id, name: d.name})";
-        String textOk = join(ReaskPromptBuilder.buildRepairAndContinue("x", "root = Stack([])", ok, List.of(), null));
-        assertFalse(textOk.contains("`@Each` template is ONE expression"), "expression @Each not flagged");
     }
 
     @Test

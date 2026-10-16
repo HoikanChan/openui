@@ -330,6 +330,32 @@ class StaticTypeValidationTest {
                         .dataModel(dataModel).mode(ValidationMode.FINAL).build());
     }
 
+    @Test
+    void overriddenStatementNoLongerProducesStaleTypeError() {
+        // #56:同名覆盖后,旧定义的数据路径错误不得继续产生当前错误。
+        // rows 先绑到不存在的 data.wrong_path,后被同名覆盖为 data.rows → 类型检查使用当前有效定义。
+        String dsl = "rows = Table([nameCol], data.wrong_path)\n" + "rows = data.rows\n"
+                + "nameCol = Col(\"Name\", \"name\")\n" + "root = Stack([rows])";
+        ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("name", "dev-1"))));
+
+        assertFalse(result.issues().stream().anyMatch(i -> "type-data-path-missing".equals(i.code())),
+                "被覆盖语句的历史类型错误不得出现在当前校验中: " + result.issues());
+        assertEquals(ValidationStatus.VALID, result.status());
+    }
+
+    @Test
+    void redefinedStatementDownstreamMismatchIsStillDetected() {
+        // #56:修改定义造成下游不匹配时仍能发现——rows 被同名覆盖成二维数组后,Table rows 报 shape 错误。
+        String dsl = "rows = data.rows\n" + "rows = @Each(data.groups, \"g\", g.devices)\n"
+                + "nameCol = Col(\"Name\", \"name\")\n" + "table = Table([nameCol], rows)\n" + "root = Stack([table])";
+        Map<String, Object> dataModel = Map.of("groups", List.of(Map.of("devices", List.of(Map.of("name", "d1")))),
+                "rows", List.of(Map.of("name", "d1")));
+
+        ValidationResult result = validate(dsl, dataModel);
+        assertTrue(result.issues().stream().anyMatch(i -> "type-table-row-shape-mismatch".equals(i.code())),
+                "覆盖后的新定义造成下游 Table 不匹配必须被发现: " + result.issues());
+    }
+
     private static ValidationIssue issue(ValidationResult result, String code) {
         ValidationIssue issue = result.issues().stream().filter(candidate -> code.equals(candidate.code())).findFirst()
                 .orElse(null);

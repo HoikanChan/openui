@@ -10,10 +10,10 @@ package com.huawei.cloudsop.genui.core.validation;
  * @since 2026
  */
 public enum ValidationConfigMode {
-    /** 仅在 LLM 生成完成后执行一次校验。 */
+    /**
+     * 轮末统一校验(#56):生成过程实时转发、不校验、不逐语句修复;模型本轮输出结束后,对当前有效程序(同名 last-wins)执行一次统一检查。这是开启校验时的唯一时机策略(名称沿用历史,不表示还有其他校验时机)。
+     */
     FINAL_ONLY,
-    /** 在每个流式检查点以及最终结果处都执行校验。 */
-    STREAMING_GATE,
     /** 完全关闭校验。 */
     DISABLED
 }

@@ -54,7 +54,9 @@ public final class ProgramTypeValidator {
             return List.of();
         }
         Context context = new Context(program, catalog, dataModel);
-        for (Statement statement : program.statements()) {
+        // #56 同名覆盖:类型检查只遍历当前有效定义(Program#currentById,与 ProgramAnalyzer 共用同一去重口径),
+        // 被覆盖语句的历史类型错误不再产生当前错误;修改定义造成的下游不匹配仍会被发现。
+        for (Statement statement : program.currentById().values()) {
             if (statement instanceof Statement.Value value) {
                 context.infer(value.expr(), statement.id(), new LinkedHashMap<>(), new HashSet<>());
             }

@@ -71,7 +71,8 @@ public final class LlmStream implements Closeable {
 
     /**
      * 把文本增量交给 {@code onDelta} 消费者(镜像 {@link #pipeTo}:逐段读取 OpenAI 兼容 SSE 的 delta.content,不写 OutputStream),返回
-     * finish_reason(可能为 null)。供 SDK 校验门中间层使用: 服务层把每个 delta 喂给 {@code StreamingValidationSession},由门决定放行/withhold。
+     * finish_reason(可能为 null)。供轮末校验中间层使用: 服务层把每个 delta 实时转发为 dsl 帧,同时喂给 {@code ProgramRoundSession} 维护当前程序(同名
+     * last-wins),轮末统一校验。
      */
     public String pipeToConsumer(Consumer<String> onDelta) throws IOException {
         String finishReason = null;

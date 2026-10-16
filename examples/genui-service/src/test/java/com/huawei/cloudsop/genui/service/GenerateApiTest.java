@@ -40,9 +40,9 @@ import java.util.Map;
  * 生成端点行为:SDK 校验门产生的 dataModel/dsl/error/done envelope 序列化为 SSE JSON。
  *
  * <p>
- * 协议(design Decision #7):首帧 dataModel(seq=0)→ 若干 dsl(仅门放行的完整语句)→ done; withhold 的非法语句触发 error(VALIDATION_FAILED)→
- * done,其文本从不出现在 dsl 帧;流前失败 502 不变; finish_reason 非 stop / 流中途失败 → error(LLM_STREAM_FAILED)→ done(取代旧文本尾巴); 空 prompt 400
- * / 未知 extensionId 404 / promptOverride 不变。
+ * 协议(#56:首次生成实时展示,轮末统一校验):首帧 dataModel(seq=0)→ 若干 dsl(模型原始增量,实时转发)→ done; 轮末统一校验当前有效程序(同名 last-wins),结果只记日志,不发
+ * VALIDATION_FAILED 帧; 流前失败 502 不变; finish_reason 非 stop / 流中途失败 → error(LLM_STREAM_FAILED)→ done(取代旧文本尾巴); 空 prompt
+ * 400 / 未知 extensionId 404 / promptOverride 不变。
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -79,8 +79,9 @@ class GenerateApiTest {
   }
 
   @Test
-  void withholdsDefinitivelyInvalidStatementThenErrorThenDone() throws Exception {
-    // NoSuchComponent 是未知组件 → 完整语句被校验门判定为 definitively invalid → WITHHOLD。
+  void invalidStatementIsForwardedLiveAndRoundEndCheckStaysInternal() throws Exception {
+    // #56: NoSuchComponent 是未知组件,但生成过程不扣留——增量实时转发为 dsl 帧;
+    // 轮末统一校验只影响日志/结果状态,不发 VALIDATION_FAILED error 帧,流以 done 结束。
     when(llmClient.openStream(anyString(), anyString())).thenReturn(stream(
         "data: {\"choices\":[{\"delta\":{\"content\":\"root = NoSuchComponent([])\\n\"}}]}\n\n"
             + "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"
@@ -89,15 +90,33 @@ class GenerateApiTest {
     List<Frame> frames = performGenerate("{\"prompt\":\"展示UI\"}");
 
     assertEquals("dataModel", frames.get(0).type);
-    // 被 withhold 的语句文本从不进 dsl 帧
-    assertFalse(
+    // 增量实时出现在 dsl 帧(实时展示,不因校验扣留)
+    assertTrue(
         frames.stream()
             .anyMatch(f -> "dsl".equals(f.type) && String.valueOf(f.content).contains("NoSuchComponent")),
-        "withheld statement text must never appear in a dsl frame: " + frames);
-    Frame error = lastOfType(frames, "error");
-    assertEquals("VALIDATION_FAILED", errorCode(error));
+        "model delta must be forwarded live in a dsl frame: " + frames);
+    assertFalse(hasType(frames, "error"), "round-end check must not emit an error frame: " + frames);
     assertEquals("done", frames.get(frames.size() - 1).type);
     assertSeqMonotonic(frames);
+  }
+
+  @Test
+  void sameNameOverrideIsForwardedLive() throws Exception {
+    // #56: 同名语句以最新定义为准。两条增量都实时转发(前端按同名覆盖消费),流干净结束。
+    when(llmClient.openStream(anyString(), anyString())).thenReturn(stream(
+        "data: {\"choices\":[{\"delta\":{\"content\":\"root = NoSuchComponent([])\\n\"}}]}\n\n"
+            + "data: {\"choices\":[{\"delta\":{\"content\":\"root = Stack([])\\n\"}}]}\n\n"
+            + "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"
+            + "data: [DONE]\n"));
+
+    List<Frame> frames = performGenerate("{\"prompt\":\"展示UI\"}");
+
+    List<Frame> dslFrames = frames.stream().filter(f -> "dsl".equals(f.type)).toList();
+    assertEquals(2, dslFrames.size(), "both deltas forwarded live: " + frames);
+    assertTrue(String.valueOf(dslFrames.get(0).content).contains("NoSuchComponent"));
+    assertTrue(String.valueOf(dslFrames.get(1).content).contains("Stack"));
+    assertFalse(hasType(frames, "error"), "same-name override makes the current program valid: " + frames);
+    assertEquals("done", frames.get(frames.size() - 1).type);
   }
 
   @Test

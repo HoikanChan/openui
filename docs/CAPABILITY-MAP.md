@@ -26,7 +26,7 @@ OpenUI(数据驱动 UI 生成,SmartCanvasService 契约的服务端实现)
 │    ├─ 3.2 Prompt 组装 prompt:PromptAssembler + 数据特征化采样 characterize/
 │    ├─ 3.3 LLM 链路 llm:GenUiGenerator(同步/流式)+ SSE 解析 + DSL 提取
 │    ├─ 3.4 校验体系 validation:parser → semantic → type → reducer(actionable)
-│    │    └─ 流式 gate:StreamingValidationSession(EMIT/BUFFER/WITHHOLD/FAIL)
+│    │    └─ 轮末统一校验:ProgramRoundSession(同名 last-wins 程序状态 + 轮末 FINAL 检查)
 │    ├─ 3.5 修复体系 repair:RepairCoordinator(reask 循环)+ 策略 + 提示词
 │    └─ 3.6 内部基准 bench(test scope):repair-bench + ValidateCli + 语料报告
 │
@@ -120,13 +120,13 @@ Java 21,fastjson2 2.0.60。能力按包分六层。
 | semantic | `ProgramAnalyzer` / `ContractCatalog` / `ComponentContractValidator` | unknown-component / null-required 等;产出 `RepairHints` |
 | type | `ProgramTypeValidator` / `SchemaTypeCompiler` / `BuiltinTypeRegistry` / `DataPathResolver` / `TypeAssignability` | propsSchema 编译 → 静态类型检查(type-prop-mismatch / type-data-path-missing / type-table-column-missing 等);dataModel 缺失则类型校验关闭 |
 | reducer | `ValidationIssueReducer` | raw → actionable 去噪视图(修复提示词消费) |
-| stream | `StreamingValidationSession` / `StatementBoundaryScanner` / `GateDecision` | 流式 gate:EMIT(渲染安全)/ BUFFER(临时未解析暂留)/ WITHHOLD(阻塞级 ERROR 永不发出,Fail-Fast 触发点)/ FAIL |
+| stream | `ProgramRoundSession` / `StatementBoundaryScanner` / `RoundEndResult` | #56 轮末统一校验:增量喂入按语法完整性识别完整语句,同名 last-wins 维护当前有效程序;轮末对当前定义做一次 FINAL 统一检查,产出 RoundEndResult(原始输出/当前定义/诊断/耗时/契约版本) |
 
-两个正交开关:`ValidationMode`(FINAL / STREAMING,单次调用的规则集)× `ValidationConfigMode`(FINAL_ONLY / STREAMING_GATE / DISABLED,生成流水线中何时触发)。详见 spec `2026-08-28-java-validation-actionable-issues-design.md` 与 `2026-08-12-openui-lang-template-scope-design.md`。
+两个正交开关:`ValidationMode`(FINAL / STREAMING,单次调用的规则集)× `ValidationConfigMode`(FINAL_ONLY / DISABLED,生成流水线中是否在轮末触发校验)。详见 spec `2026-08-28-java-validation-actionable-issues-design.md` 与 `2026-08-12-openui-lang-template-scope-design.md`。
 
 ### 3.5 修复体系 `core/validation/repair`
 
-- **`RepairCoordinator`**:`repairFull()`(完整修复,`FullRepairOutcome` 含 OutcomeKind + 每轮 AttemptRecord)/ `reaskStream()`(流式前缀保留 + 单语句重请求)。
+- **`RepairCoordinator`**:`repairFull()`(完整修复,`FullRepairOutcome` 含 OutcomeKind + 每轮 AttemptRecord)。增量修复轮(#58)在 ProgramRoundSession 之上落地。
 - **`ReaskPromptBuilder`**:修复提示词(userIntent + acceptedPrefix + 校验 issue 的 actionable 视图 + 案例契约现算的 originalSystemPrompt)。
 - **`RepairPolicy`**:kind + maxAttempts + timeout + statementRepairTimeout。固定温度 0、不开 thinking。
 
