@@ -1,7 +1,0 @@
-{
-  "id": "missing-required-textcontent",
-  "originalIntent": "Render an empty text section",
-  "dataModel": {
-    "rows": []
-  }
-}

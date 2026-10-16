@@ -34,7 +34,7 @@ OpenUI(数据驱动 UI 生成,SmartCanvasService 契约的服务端实现)
 ├─ 5. 参考服务 ─ examples/genui-service(Spring Boot 2.7 REST 参考实现)
 │
 ├─ 6. 语料与数据资产
-│    ├─ repair-cases/ ×2(根:3 例早期;SDK:25 例 smartcanvas 真实错误语料)
+│    ├─ repair-cases/(SDK:25 例 smartcanvas 真实错误语料)
 │    ├─ interception-corpus(test resources:拦截语料 + 契约)
 │    ├─ validation-test/(49 例真实校验结果)
 │    └─ reports/(Reask 修复率根因分析)
@@ -157,7 +157,7 @@ SmartCanvasService 契约的可运行 REST 参考实现(Spring Boot 2.7 / javax,
 | 语料转换缺口 | 同上 `CONVERSION-GAPS.md` | 7 例缺 dataModel(→ not-reproduced)、反推 intent 待核对 |
 | 复现基线 | 同上 `REPRODUCE-BASELINE.md` | validation 首跑(1.1.5)与 md 根因逐案例对比 |
 | 语料再生成脚本 | `packages/genui-java-sdk/scripts/md-to-repair-cases.mjs` | 从 smartcanvas 失败语料 md 重生成;`--no-llm` 模式;案例数漂移即终止 |
-| 早期 repair 案例 | 根 `repair-cases/` | 3 例(0001 syntax / 0002 unknown-component / 0003 missing-required)+ contract.json |
+| smartcanvas 错误语料 case 包 | `packages/genui-java-sdk/repair-cases/` | 25 案例 + 语料级 contract.json(= base-contract 快照);`dsl.txt` 逐字落盘含 CRLF;issues.json 透传拦截报错;早期 3 例(syntax / unknown-component / missing-required)已并入 `src/test/resources/interception-corpus/`,根 `repair-cases/` 已删 |
 | 拦截语料 | `src/test/resources/interception-corpus/` | dsl(bad/valid)+ contracts + manifest;`InterceptionCorpusTest` 消费 |
 | 真实校验结果 | `validation-test/` | 49 例:INVALID 26 / VALID 23;raw 90 issue、actionable 60;分类统计齐全 |
 | 根因分析 | `reports/reask-repair-rate-analysis.html` | Reask 修复率根因分析(迭代输入) |
