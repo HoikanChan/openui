@@ -1,0 +1,23 @@
+{
+  "id": "GEN-00126",
+  "originalIntent": "渲染两台设备的内存利用率对比条形图。展示设备IP、设备名称和内存利用率（单位：%）。",
+  "dataModel": {
+    "devices": [
+      {
+        "neIp": "10.136.193.107",
+        "neName": "serverleaf1",
+        "mem_usage": 50
+      },
+      {
+        "neIp": "10.136.193.108",
+        "neName": "serverleaf2",
+        "mem_usage": 49
+      }
+    ]
+  },
+  "rootCause": "下划线key 未用中划线，前端",
+  "source": {
+    "file": "gloden-dataset.md",
+    "note": "黄金数据集案例，非 llm-errors 失败语料；2026-10-16 手工收录"
+  }
+}

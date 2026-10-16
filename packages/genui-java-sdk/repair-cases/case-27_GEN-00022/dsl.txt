@@ -1,0 +1,9 @@
+root = Stack([Stack([headerCard, modelTabs])])
+
+headerCard = Card([TextContent("Fabric: pod11 设备版本补丁统计", "large-heavy")])
+modelTabs = Tabs(@Each(@GroupBy(data.queryDeviceInfo.deviceInfo, "neType"), "group", modelTabTpl))
+modelTabTpl = TabItem(group.key, group.key + " (" + @Count(group.value) + ")", [deviceTable])
+deviceTable = Table([nameCol, baseVersionCol, patchVersionCol], group.value)
+nameCol = Col("设备名称", "neName")
+baseVersionCol = Col("基础版本", "neVersion")
+patchVersionCol = Col("补丁版本", "patchFileVersion", {cell: @Render("v", v ? Tag(v, "info") : TextContent("无"))})
