@@ -1,0 +1,35 @@
+{
+  "id": "GEN-00030",
+  "originalIntent": "设备 10.136.193.107 BGP 对等体信息表格。",
+  "dataModel": {
+    "title": "设备 10.136.193.107 BGP对等体信息",
+    "data": [
+      {
+        "deviceIp": "10.136.193.107",
+        "peerAddr": "100.100.100.101",
+        "localIfName": "-",
+        "remoteAs": "100",
+        "bgpCurState": "已建立",
+        "vrfName": "_public_",
+        "isOverlay": "Underlay",
+        "bgpInstanceType": "BGPPeer"
+      },
+      {
+        "deviceIp": "10.136.193.107",
+        "peerAddr": "100.100.100.102",
+        "localIfName": "LoopBack1",
+        "remoteAs": "100",
+        "bgpCurState": "已建立",
+        "vrfName": "_public_",
+        "isOverlay": "Underlay",
+        "bgpInstanceType": "BGPPeer"
+      }
+    ]
+  },
+  "rootCause": "数据路径幻觉 — data.deviceIp 不存在",
+  "source": {
+    "file": "4a-数据路径幻觉-顶层路径.md",
+    "run": "20260918_130128_7ojm",
+    "errorDetail": "statementCount=10, rootName=root, valStatus=INVALID"
+  }
+}

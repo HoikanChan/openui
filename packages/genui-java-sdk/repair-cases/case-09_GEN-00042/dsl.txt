@@ -1,0 +1,16 @@
+root = Stack([summaryCard, modelTabs])
+
+summaryCard = Card([summaryHeader, summaryContent])
+summaryHeader = CardHeader("Fabric 版本补丁统计", data.summary.fabricName)
+summaryContent = Stack([totalDevicesKpi, totalModelsKpi], "row", "m")
+totalDevicesKpi = Card([TextContent("设备总数", "small"), TextContent("" + data.summary.totalDevices, "large-heavy")])
+totalModelsKpi = Card([TextContent("设备型号数", "small"), TextContent("" + data.summary.totalModels, "large-heavy")])
+
+modelTabs = Tabs(@Each(data.models, "model", modelTabTpl))
+modelTabTpl = TabItem(model.neType, model.neType + " (" + model.deviceCount + " 台)", [modelTable])
+
+modelTable = Table([nameCol, ipCol, versionCol, patchCol], model.devices)
+nameCol = Col("设备名称", "neName")
+ipCol = Col("IP 地址", "neIp")
+versionCol = Col("版本号", "neVersion")
+patchCol = Col("补丁版本", "patchFileVersion", {cell: @Render("v", v ? Tag(v, "info") : TextContent("无", "small"))})

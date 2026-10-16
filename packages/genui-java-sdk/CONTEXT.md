@@ -1,8 +1,28 @@
 # GenUI Java SDK
 
-Java 21 SDK that assembles GenUI system prompts and drives an LLM to generate openui-lang UI from host data. This context covers prompt-side data handling and the layering of the component library the prompt is assembled from.
+Java 21 SDK that assembles GenUI system prompts and drives an LLM to generate openui-lang UI from host data. This context covers the prompt-side data handling (how large host data is characterized before being embedded in a prompt) and the repair-side vocabulary (how validation failures are explained back to the model).
 
 ## Language
+
+**Builtin Vocabulary**:
+The set of builtin function names that validation accepts, carried by the contract's builtins section and derived per validation request — never a hardcoded name list in code. Language keywords (Query/Mutation/Action) are not vocabulary.
+_Avoid_: builtin whitelist, function registry
+
+**Case Contract**:
+The contract bundled with a repair-bench case, representing the contract in force when the original generation ran; it overrides the SDK default for that case's reproduction and repair, and silent fallback to the default is forbidden because it would disguise vocabulary drift as not-reproduced.
+_Avoid_: historical contract, legacy contract
+
+**Current Effective Program**:
+The last-wins-by-name statement map a round maintains: a re-issued `id = ...` statement overrides the previous definition, new names append, and superseded statements stop producing current errors (they survive only in the round's raw-output record). Frontend rendering and backend validation both resolve against this same definition set.
+_Avoid_: deduplicated DSL, merged statements, program snapshot
+
+**Round-End Unified Check**:
+The single validation pass that runs once after a model output round ends, over the Current Effective Program, in FINAL mode — covering syntax, references, component/builtin contracts, params, data paths, static types, and page completeness. No per-statement gating or repair happens during the round.
+_Avoid_: streaming gate, final check (as a separate second policy), statement gate
+
+**Round Record**:
+The per-round audit entry (raw output, current definitions, diagnostics, duration, contract version) carried on `GenUiGenerationResult.rounds()`, feeding later incremental repair (#58) and evaluation.
+_Avoid_: session log, attempt log
 
 **Base Contract**:
 The frozen, frontend-exported description of the built-in component library (components, groups, examples, rules, builtins) that ships inside the SDK; the frontend is its single source of truth and the SDK only consumes it.
@@ -44,6 +64,22 @@ _Avoid_: examples, preview
 Characterization metadata (counts, inferred schema, Enum Domains) presented out-of-band alongside the data tree rather than inside it, so that `data.<field>` reference paths in the tree stay valid.
 _Avoid_: annotations, metadata block
 
+**Reask Prompt**:
+The deterministic repair message sent back to the model after a failed generation, presenting the validation issues it must fix.
+_Avoid_: retry prompt, error prompt
+
+**Derived Issue**:
+A validation issue that exists only because another failure on the same statement corrupted parsing or materialization; it describes a symptom, not a cause.
+_Avoid_: cascade error, secondary error
+
+**Cascade Suppression**:
+Dropping Derived Issues from a Reask Prompt so the repair model sees causes instead of symptoms. Applies only to the prompt view — never to the validation verdict itself.
+_Avoid_: dedup (different concern), filtering
+
+**Root-cause Hint**:
+A hint that names the underlying language-subset violation behind an error (e.g. a JS global that does not exist in openui-lang, or a builtin missing its `@`). Exempt from Cascade Suppression because it *is* the explanation.
+_Avoid_: suggestion, tip
+
 ## Relationships
 
 - A **Base Contract** plus at most one **GenUI Base Supplement** yields the **Effective Base Contract** (build-time, global)
@@ -51,6 +87,8 @@ _Avoid_: annotations, metadata block
 - A **Render Data Model** is reduced by **Characterization** into a **Prompt Data Model**
 - A **Prompt Data Model** is a same-shape data tree (**Sample Rows** in place of full arrays) plus a **Sidecar**
 - A **Sidecar** carries the **Enum Domain** and counts that **Sample Rows** alone cannot guarantee
+- A **Reask Prompt** presents validation issues after **Cascade Suppression**; a **Root-cause Hint** always survives suppression
+- A **Derived Issue** is what **Cascade Suppression** removes
 
 ## Flagged ambiguities
 

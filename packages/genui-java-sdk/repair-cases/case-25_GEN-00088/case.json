@@ -1,0 +1,10 @@
+{
+  "id": "GEN-00088",
+  "originalIntent": "帮我查询接口指标详情，并以指标名称和数值的表格展示设备、接口、MAC、查询ID、输出字节率等遥测数据。",
+  "rootCause": "@Each template 传数组字面量导致 object[][]",
+  "source": {
+    "file": "7a-Each语义误解-接口指标.md",
+    "run": "20260918_130128_7ojm",
+    "errorDetail": "statementCount=8, rootName=root, valStatus=INVALID"
+  }
+}

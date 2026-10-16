@@ -164,7 +164,7 @@ class GenerationSdkBaseSupplementTest {
                         new ComponentGroup("Charts", List.of("Tag"), List.of("base note"))),
                 List.of(new ToolSpec("loadOrders", "loads orders", Map.of(), Map.of(), null)),
                 List.of("root = Stack([])"), List.of("base rule"),
-                List.of(new BuiltinSpec("map(items, fn)", "maps items", false)));
+                List.of(new BuiltinSpec("map", "map(items, fn)", "maps items", false, List.of(), null)));
     }
 
     @SafeVarargs

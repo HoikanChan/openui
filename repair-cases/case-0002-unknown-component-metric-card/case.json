@@ -1,0 +1,7 @@
+{
+  "id": "unknown-component-metric-card",
+  "originalIntent": "Show the revenue KPI",
+  "dataModel": {
+    "revenue": 1234567
+  }
+}

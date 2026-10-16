@@ -1,0 +1,5 @@
+root = Stack([bigText, normalText, smallText, concatText], "column", "m", "start", "start")
+bigText = TextContent("Quarterly Report", "large")
+normalText = TextContent("Prepared for the leadership team.", "default")
+smallText = TextContent("Confidential", "small")
+concatText = TextContent("Region: " + data.report.region + " (" + data.report.code + ")", "default")

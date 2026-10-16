@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Generated DSL 校验与反思修复证据报告</title>
+  <!-- Self-contained evidence report: no external fonts, scripts, images, or CDNs. -->
+  <style>
+    :root {
+      --paper: #eee7da;
+      --paper-raised: #f8f2e7;
+      --ink: #28211b;
+      --muted: #675b50;
+      --rule: #b5a590;
+      --red: #a42b1f;
+      --green: #17614f;
+      --amber: #8b5c14;
+      --code: #27231f;
+      --paper-deep: #ded2bf;
+      --cream: #fffaf0;
+      --shadow: rgba(61, 47, 34, .14);
+      --serif: Georgia, "Noto Serif CJK SC", "Songti SC", "SimSun", serif;
+      --mono: Consolas, "SFMono-Regular", "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 28px; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, transparent 0 70px, rgba(164, 43, 31, .12) 70px 71px, transparent 71px),
+        repeating-linear-gradient(0deg, rgba(72, 57, 43, .025) 0 1px, transparent 1px 5px),
+        var(--paper);
+      font: 17px/1.75 var(--serif);
+      text-rendering: optimizeLegibility;
+    }
+
+    body::before {
+      content: "VALIDATION DOSSIER";
+      position: fixed;
+      z-index: 0;
+      right: -22px;
+      bottom: 112px;
+      color: rgba(103, 91, 80, .13);
+      font: 700 11px/1 var(--mono);
+      letter-spacing: .36em;
+      transform: rotate(-90deg);
+      pointer-events: none;
+    }
+
+    ::selection { color: var(--cream); background: var(--red); }
+    a { color: inherit; }
+    p { max-width: 82ch; }
+    strong { font-weight: 700; }
+    code, pre, .source-badge, .metric, nav { font-family: var(--mono); }
+    code {
+      padding: .08em .3em;
+      color: #712a20;
+      background: rgba(164, 43, 31, .075);
+      border-bottom: 1px solid rgba(164, 43, 31, .25);
+      font-size: .9em;
+    }
+
+    nav {
+      position: fixed;
+      z-index: 10;
+      inset: 30px auto 30px 24px;
+      width: 220px;
+      padding: 58px 22px 22px;
+      overflow-y: auto;
+      color: var(--muted);
+      background: rgba(248, 242, 231, .86);
+      border: 1px solid rgba(103, 91, 80, .32);
+      box-shadow: 7px 8px 0 rgba(103, 91, 80, .08);
+      backdrop-filter: blur(8px);
+      counter-reset: nav-item;
+    }
+
+    nav::before {
+      content: "CASE FILE 07 / DSL";
+      position: absolute;
+      inset: 0 0 auto;
+      padding: 15px 20px 13px;
+      color: var(--cream);
+      background: var(--red);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .16em;
+    }
+
+    nav::after {
+      content: "EVIDENCE INDEX\A REV. 2026-08-07";
+      display: block;
+      margin-top: 24px;
+      padding-top: 17px;
+      border-top: 1px dashed var(--rule);
+      white-space: pre;
+      color: #8c7c6b;
+      font-size: 9px;
+      line-height: 1.7;
+      letter-spacing: .14em;
+    }
+
+    nav a {
+      display: grid;
+      grid-template-columns: 27px 1fr;
+      gap: 8px;
+      align-items: baseline;
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(181, 165, 144, .42);
+      color: var(--muted);
+      font-size: 12px;
+      text-decoration: none;
+      counter-increment: nav-item;
+      transition: color .18s ease, padding-left .18s ease;
+    }
+
+    nav a::before {
+      content: "0" counter(nav-item);
+      color: var(--red);
+      font-size: 9px;
+      letter-spacing: .08em;
+    }
+
+    nav a:hover, nav a:focus-visible {
+      padding-left: 5px;
+      color: var(--red);
+      outline: none;
+    }
+
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 1500px;
+      margin-left: clamp(272px, 19vw, 334px);
+      margin-right: clamp(22px, 5vw, 92px);
+      padding: 32px 0 90px;
+      counter-reset: dossier-section;
+    }
+
+    section {
+      position: relative;
+      margin: 0 0 34px;
+      padding: clamp(30px, 4vw, 64px);
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(164, 43, 31, .045) 0 1px, transparent 1px) 42px 0 / 100% 100%,
+        repeating-linear-gradient(0deg, transparent 0 34px, rgba(103, 91, 80, .045) 34px 35px),
+        var(--paper-raised);
+      border: 1px solid var(--rule);
+      box-shadow: 0 18px 46px var(--shadow), 8px 8px 0 rgba(103, 91, 80, .075);
+      counter-increment: dossier-section;
+      animation: dossier-enter .55s both;
+      animation-delay: calc((var(--section-index, 1) - 1) * 35ms);
+    }
+
+    section:nth-of-type(1) { --section-index: 1; }
+    section:nth-of-type(2) { --section-index: 2; }
+    section:nth-of-type(3) { --section-index: 3; }
+    section:nth-of-type(4) { --section-index: 4; }
+    section:nth-of-type(5) { --section-index: 5; }
+    section:nth-of-type(6) { --section-index: 6; }
+    section:nth-of-type(7) { --section-index: 7; }
+    section:nth-of-type(8) { --section-index: 8; }
+    section:nth-of-type(9) { --section-index: 9; }
+
+    section::before {
+      content: "§ 0" counter(dossier-section) "  /  " attr(id);
+      position: absolute;
+      top: 0;
+      right: 0;
+      padding: 9px 15px;
+      color: var(--muted);
+      background: var(--paper-deep);
+      border-left: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+      font: 10px/1 var(--mono);
+      letter-spacing: .1em;
+    }
+
+    section::after {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 22px;
+      width: 2px;
+      background: rgba(164, 43, 31, .48);
+    }
+
+    #executive-summary {
+      padding-top: clamp(54px, 7vw, 96px);
+      background:
+        radial-gradient(circle at 86% 10%, rgba(164, 43, 31, .09), transparent 25%),
+        repeating-linear-gradient(0deg, transparent 0 34px, rgba(103, 91, 80, .045) 34px 35px),
+        var(--paper-raised);
+    }
+
+    #executive-summary::before {
+      content: "ASSESSMENT / GENERATED DSL";
+      color: var(--cream);
+      background: var(--red);
+      border-color: var(--red);
+    }
+
+    h1, h2, h3 { margin-top: 0; line-height: 1.18; }
+    h1 {
+      max-width: 12ch;
+      margin: 18px 0 25px;
+      font-size: clamp(46px, 6.8vw, 102px);
+      font-weight: 700;
+      letter-spacing: -.055em;
+    }
+    h2 {
+      margin-bottom: 18px;
+      font-size: clamp(29px, 3vw, 48px);
+      letter-spacing: -.025em;
+    }
+    h3 { margin-bottom: 12px; font-size: clamp(19px, 1.7vw, 25px); }
+    section > header { margin-bottom: 32px; padding-bottom: 22px; border-bottom: 1px solid var(--rule); }
+    section > header > p:last-child { color: var(--muted); font-size: 18px; }
+    footer { margin-top: 32px; padding-top: 24px; border-top: 3px double var(--rule); }
+
+    .source-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin: 0 0 12px;
+      padding: 5px 9px 4px;
+      color: var(--muted);
+      background: rgba(255, 250, 240, .58);
+      border: 1px solid currentColor;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.25;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .source-badge::before { content: "■"; font-size: 7px; }
+    .status-pass { color: var(--green) !important; }
+    .status-warn { color: var(--amber) !important; }
+    .status-fail { color: var(--red) !important; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+      gap: 17px;
+      margin: 24px 0;
+    }
+
+    .claim-card, .metric, .error-card, .trace, .evidence-gap {
+      position: relative;
+      padding: 20px;
+      background: rgba(255, 250, 240, .68);
+      border: 1px solid var(--rule);
+    }
+
+    .claim-card {
+      min-height: 210px;
+      box-shadow: inset 0 4px 0 var(--ink);
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .claim-card:hover {
+      transform: translateY(-3px) rotate(-.12deg);
+      box-shadow: inset 0 4px 0 var(--red), 5px 7px 0 rgba(103, 91, 80, .08);
+    }
+
+    .claim-card::after {
+      content: "";
+      position: absolute;
+      right: 11px;
+      bottom: 11px;
+      width: 16px;
+      height: 16px;
+      border-right: 2px solid var(--red);
+      border-bottom: 2px solid var(--red);
+      opacity: .5;
+    }
+
+    .claim-card h2 { font-size: 27px; }
+    .claim-card h3 { padding-right: 15px; }
+    .claim-card p:last-child { margin-bottom: 0; color: var(--muted); }
+
+    .metric {
+      display: flex;
+      min-height: 132px;
+      flex-direction: column;
+      justify-content: space-between;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, transparent 0 84%, rgba(164, 43, 31, .09) 84%),
+        rgba(255, 250, 240, .78);
+    }
+
+    .metric span, .metric small {
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .metric strong { display: block; margin: 5px 0; color: var(--red); font-size: clamp(26px, 3vw, 42px); line-height: 1; }
+
+    .error-card { margin: 18px 0; padding: 0; overflow: hidden; }
+    .error-card h3 {
+      margin: 0;
+      padding: 16px 20px;
+      color: var(--cream);
+      background: var(--code);
+      font: 700 15px/1.3 var(--mono);
+      letter-spacing: .02em;
+    }
+    .error-card table { margin: 0; }
+    .error-card th { width: 140px; color: var(--red); background: rgba(164, 43, 31, .045); }
+
+    .table-wrap {
+      width: 100%;
+      margin: 20px 0;
+      overflow-x: auto;
+      border: 1px solid var(--rule);
+      background: rgba(255, 250, 240, .72);
+    }
+    .error-card .table-wrap { margin: 0; border: 0; }
+    table { width: 100%; border-collapse: collapse; min-width: 720px; }
+    th, td { padding: 13px 15px; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+    th:last-child, td:last-child { border-right: 0; }
+    tr:last-child td, tr:last-child th { border-bottom: 0; }
+    thead th {
+      color: var(--cream);
+      background: var(--code);
+      font: 700 11px/1.35 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    tbody th { font: 700 12px/1.5 var(--mono); }
+    tbody tr { transition: background .16s ease; }
+    tbody tr:hover { background: rgba(164, 43, 31, .035); }
+
+    pre.code-block, pre {
+      position: relative;
+      max-width: 100%;
+      margin: 17px 0 23px;
+      padding: 24px;
+      overflow: auto;
+      color: #f4ebdc;
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, .032) 1px, transparent 1px) 0 0 / 4ch 100%,
+        var(--code);
+      border: 1px solid #171411;
+      border-left: 5px solid var(--red);
+      box-shadow: 5px 6px 0 rgba(103, 91, 80, .12);
+      font: 13px/1.65 var(--mono);
+      white-space: pre;
+      tab-size: 2;
+    }
+    pre code { padding: 0; color: inherit; background: transparent; border: 0; font-size: inherit; }
+
+    .trace {
+      margin: 24px 0;
+      padding: clamp(22px, 3vw, 36px);
+      background:
+        linear-gradient(90deg, transparent 0 29px, rgba(164, 43, 31, .2) 29px 30px, transparent 30px),
+        repeating-linear-gradient(0deg, rgba(255, 250, 240, .82) 0 32px, rgba(103, 91, 80, .08) 32px 33px);
+    }
+    .trace ol { margin: 0; padding-left: 25px; }
+    .trace li { margin: 11px 0; padding-left: 9px; }
+    .trace h3:not(:first-child) { margin-top: 30px; }
+
+    .evidence-gap {
+      margin: 28px 0;
+      padding: 24px 26px 22px 31px;
+      background: rgba(139, 92, 20, .06);
+      border: 1px dashed var(--amber);
+      box-shadow: inset 6px 0 0 rgba(139, 92, 20, .2);
+    }
+    .evidence-gap::before {
+      content: "EVIDENCE NOTE";
+      display: block;
+      margin-bottom: 12px;
+      color: var(--amber);
+      font: 700 9px/1 var(--mono);
+      letter-spacing: .18em;
+    }
+    .evidence-gap p:last-child, .evidence-gap ul:last-child { margin-bottom: 0; }
+
+    button[data-toggle] {
+      appearance: none;
+      margin: 7px 0 13px;
+      padding: 10px 15px;
+      color: var(--red);
+      background: transparent;
+      border: 2px solid var(--red);
+      border-radius: 0;
+      font: 700 11px/1 var(--mono);
+      letter-spacing: .08em;
+      cursor: pointer;
+      transform: rotate(-.4deg);
+      transition: color .16s ease, background .16s ease, transform .16s ease;
+    }
+    button[data-toggle]:hover, button[data-toggle]:focus-visible {
+      color: var(--cream);
+      background: var(--red);
+      outline: 2px solid var(--cream);
+      outline-offset: -4px;
+      transform: rotate(0deg);
+    }
+    [hidden] { display: none !important; }
+
+    @keyframes dossier-enter {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1100px) {
+      nav { width: 190px; }
+      main { margin-left: 235px; margin-right: 24px; }
+      section { padding: 34px; }
+    }
+
+    @media (max-width: 899px) {
+      html { scroll-padding-top: 12px; }
+      body { background: repeating-linear-gradient(0deg, rgba(72, 57, 43, .025) 0 1px, transparent 1px 5px), var(--paper); }
+      body::before, nav { display: none; }
+      main { width: auto; margin: 0; padding: 12px; }
+      section { margin-bottom: 18px; padding: 46px 23px 29px; box-shadow: 4px 5px 0 rgba(103, 91, 80, .07); }
+      section::after { left: 10px; }
+      section::before { max-width: calc(100% - 11px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      h1 { font-size: clamp(42px, 14vw, 68px); }
+      h2 { font-size: 31px; }
+      .grid { grid-template-columns: 1fr; }
+      .claim-card { min-height: 0; }
+      pre.code-block, pre { padding: 18px; font-size: 12px; }
+      .error-card th { width: 116px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+    }
+
+    @media print {
+      @page { size: A4; margin: 16mm; }
+      nav, [data-toggle], body::before { display: none !important; }
+      body { background: white; color: black; font-size: 10.5pt; }
+      main { max-width: none; margin: 0; padding: 0; }
+      section { margin: 0 0 8mm; padding: 8mm; overflow: visible; background: white; box-shadow: none; }
+      section, article { break-inside: avoid; }
+      section::before { color: black; background: white; }
+      .claim-card, .metric, .error-card, .trace, .evidence-gap { background: white; box-shadow: none; }
+      pre { white-space: pre-wrap; overflow: visible; color: black; background: #f3f3f3; box-shadow: none; }
+      pre code { color: black; }
+      [hidden] { display: block !important; }
+      a { text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <nav aria-label="报告目录">
+    <a href="#executive-summary">结论</a>
+    <a href="#claim-matrix">属性边界</a>
+    <a href="#error-taxonomy">错误分类</a>
+    <a href="#reflection-pipeline">反思机制</a>
+    <a href="#runtime-results">运行数据</a>
+    <a href="#case-success">成功案卷</a>
+    <a href="#case-failure">失败案卷</a>
+    <a href="#known-misses">失败原因</a>
+    <a href="#evidence-ledger">证据账本</a>
+  </nav>
+
+  <main id="report">
+    <section id="executive-summary">
+      <p class="source-badge">证据报告 · 2026-08-07</p>
+      <h1>校验成立，修复尚未收敛</h1>
+      <p>当前系统能够在公开 DSL 流出前扣留已确定无效的完整语句；这一结论不蕴含反思必然收敛，也不蕴含数据路径、业务语义或视觉质量正确。</p>
+
+      <div class="grid" aria-label="核心结论">
+        <article class="claim-card">
+          <p class="source-badge status-pass">已证明 · gate 属性</p>
+          <h2>坏语句可以被扣留</h2>
+          <p>39 个 Java 管线 fixture 的 Gate A/B 中，公开交付的渲染或 parse 失败由 <strong>1 降到 0</strong>。无法修复时返回确定性失败，而不是继续发送已知无效语句。</p>
+        </article>
+        <article class="claim-card">
+          <p class="source-badge status-warn">经验结果 · 弱收敛</p>
+          <h2>一次反思只有 2/14 修复</h2>
+          <p><code>t07-after</code> 两轮共 116 个 eligible 运行，14 次触发 reask，只有 2 次最终 VALID，修复率 <strong>14.3%</strong>。</p>
+        </article>
+        <article class="claim-card">
+          <p class="source-badge status-fail">已知反例 · 非完备</p>
+          <h2>合法不等于正确</h2>
+          <p><code>data.data.users</code>、<code>data.userz</code> 和 <code>data.value.toFixed(1)</code> 当前均可无 issue 通过，说明验证器没有证明数据路径与语言子集语义正确。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="claim-matrix">
+      <header>
+        <p class="source-badge">属性边界</p>
+        <h2>系统到底证明了什么</h2>
+        <p>把确定性验证属性、经验性模型结果和当前不可判定范围分开，避免把“拦截成功”误写成“生成正确”。</p>
+      </header>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>主张</th><th>属性类型</th><th>当前证据</th><th>可否对外承诺</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>无效语句被扣留</td><td>确定性属性</td><td>当前测试与 Gate A/B 支持</td><td class="status-pass">可以，但限于 validator 可观察的错误</td></tr>
+            <tr><td>组件契约被检查</td><td>确定性属性</td><td>contract corpus 支持</td><td class="status-pass">可以，需声明 catalog 范围</td></tr>
+            <tr><td>引用最终闭合</td><td>条件属性</td><td>final validation 支持，repair 可能失败</td><td class="status-warn">只能承诺失败会被识别，不能承诺必然闭合</td></tr>
+            <tr><td>反思能够修复</td><td>经验性结果</td><td><strong>2/14</strong> in <code>t07-after</code></td><td class="status-warn">只能报告样本结果</td></tr>
+            <tr><td>数据路径正确</td><td>已知反例</td><td><code>data.data.users</code> / <code>data.userz</code></td><td class="status-fail">不能</td></tr>
+            <tr><td>视觉质量改善</td><td>未证明</td><td>overall 7.1 → 7.2，处于噪声范围</td><td class="status-fail">不能</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="error-taxonomy">
+      <header>
+        <p class="source-badge">真实错误原文 · t07 / t07-after</p>
+        <h2>模型当前具体犯什么错</h2>
+        <p>错误不是单一“语法错”，而是 JavaScript 惯性、契约错配、作用域混淆、结构复杂度和续写完整性五类机制叠加。下面每项都给出真实或等价保真原文、validator 观察、反思动作与终局限制。</p>
+      </header>
+
+      <div class="error-card">
+        <h3>01 · JS 数组方法与箭头函数</h3>
+        <div class="table-wrap"><table><tbody>
+          <tr><th>原始错误</th><td><code>baseline.map(item =&gt; item.value)</code></td></tr>
+          <tr><th>validator 观察</th><td><code>syntax-unclosed-bracket</code> 与 <code>syntax-unexpected-token</code>；箭头中的 <code>=</code> 打断解析。</td></tr>
+          <tr><th>反思动作</th><td>提示改为数组 pluck <code>baseline.value</code>，或 <code>@Each(baseline, "item", item.value)</code>。</td></tr>
+          <tr><th>终局 / 限制</th><td>最高频、相对可修；但改对这一行仍可能因下游引用缺失而整篇失败。</td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="error-card">
+        <h3>02 · 严格等于与成员判断</h3>
+        <div class="table-wrap"><table><tbody>
+          <tr><th>原始错误</th><td><code>row.key === "avg_roam_time"</code> / <code>arr.includes(x)</code></td></tr>
+          <tr><th>validator 观察</th><td><code>===</code> 产生 <code>Unexpected token EQUALS</code>；成员方法属于 JS API 泄漏。</td></tr>
+          <tr><th>反思动作</th><td><code>=== / !==</code> 改为 <code>== / !=</code>；成员判断展开成 <code>x == a || x == b</code>。</td></tr>
+          <tr><th>终局 / 限制</th><td>当前本地 builder 已加按需 rewrite，但尚无使用这版 prompt 的新 live A/B。</td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="error-card">
+        <h3>03 · JS 转换方法</h3>
+        <div class="table-wrap"><table><tbody>
+          <tr><th>原始错误</th><td><code>data.totalDevices.toString()</code> / <code>v.toFixed(1)</code></td></tr>
+          <tr><th>validator 观察</th><td>零参 <code>toString()</code> 会产生语法错误；单参数 <code>toFixed(1)</code> 是当前 parser 盲区。</td></tr>
+          <tr><th>反思动作</th><td><code>"" + x</code> 或 <code>@FormatNumber(x, 1)</code>。</td></tr>
+          <tr><th>终局 / 限制</th><td>同一家族存在“可拦”和“漏拦”两种结果；没有 issue 就不会触发反思。</td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="error-card">
+        <h3>04 · JS 全局对象</h3>
+        <div class="table-wrap"><table><tbody>
+          <tr><th>原始错误</th><td><code>Math.abs(data.delta)</code></td></tr>
+          <tr><th>validator 观察</th><td>语法层可解析，引用层报 <code>unresolved-ref "Math"</code>。</td></tr>
+          <tr><th>反思动作</th><td>提示使用 <code>@Abs</code>、<code>@Round</code>、<code>@FormatNumber</code> 等 builtin。</td></tr>
+          <tr><th>终局 / 限制</th><td>依赖引用白名单兜底，不是语法系统自动区分 JS 与 DSL。</td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="error-card">
+        <h3>05 · 编造或过时组件</h3>
+        <div class="table-wrap"><table><tbody>
+          <tr><th>原始错误</th><td><code>cardHeader(...)</code> / <code>VLayout</code> / <code>Text</code> / <code>@Div</code></td></tr>
+          <tr><th>validator 观察</th><td><code>unknown-component</code>；完整真实文件曾同时出现 32 个 unknown component。</td></tr>
+          <tr><th>反思动作</th><td>给出最小相关签名，要求只使用 catalog 中注册组件，不发明 helper。</td></tr>
+          <tr><th>终局 / 限制</th><td>候选替换通常不唯一；旧名迁移与真正幻觉在错误码上相同。</td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="error-card">
+        <h3>06 · @Render 参数与 binder 作用域</h3>
+        <div class="table-wrap"><table><tbody>
+          <tr><th>原始错误</th><td><code>@Render("v", expr, 2)</code></td></tr>
+          <tr><th>validator 观察</th><td>双 binder 形式要求第二参数是字符串；错位后常表现为 <code>unresolved-ref "v"</code>。</td></tr>
+          <tr><th>反思动作</th><td>回放 <code>@Render("v", expr)</code> 与 <code>@Render("v", "row", expr)</code> 两个签名。</td></tr>
+          <tr><th>终局 / 限制</th><td>三轮反馈仍可能不改，错误目录将其归入 prompt 收益递减的模型能力墙。</td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="error-card">
+        <h3>07 · @Each 中写 JS 块语句</h3>
+        <div class="table-wrap"><table><tbody>
+          <tr><th>原始错误</th><td><code>@Each(items,"d",{ id = d.id ... })</code></td></tr>
+          <tr><th>validator 观察</th><td>对象位置出现赋值语句，产生 <code>syntax-unexpected-token EQUALS</code>。</td></tr>
+          <tr><th>反思动作</th><td>要求 template 是单个表达式：<code>@Each(items, "d", {id: d.id})</code>。</td></tr>
+          <tr><th>终局 / 限制</th><td>Gate A/B 中 <code>sparse-nullable</code> 一次 reask 后仍无效，最终以 INVALID 扣留。</td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="error-card">
+        <h3>08 · excess args</h3>
+        <div class="table-wrap"><table><tbody>
+          <tr><th>原始错误</th><td><code>Card(..., fourthArg)</code></td></tr>
+          <tr><th>validator 观察</th><td><code>Card takes 3 arg(s), got 4</code>。</td></tr>
+          <tr><th>反思动作</th><td>给出精确组件签名，要求按 positional 参数重写整条语句。</td></tr>
+          <tr><th>终局 / 限制</th><td>历史三轮反馈仍残留；同时 TS renderer 可能丢弃多余参数继续渲染，属于 validator 与 renderer 的产品语义决策点。</td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="error-card">
+        <h3>09 · 深层嵌套括号失衡</h3>
+        <div class="table-wrap"><table><tbody>
+          <tr><th>原始错误</th><td><code>@Render</code>、<code>@Switch</code>、三元与组件调用嵌套三层以上后少括号或多括号。</td></tr>
+          <tr><th>validator 观察</th><td><code>syntax-unclosed-bracket</code> 与 <code>syntax-unexpected-token R_BRACE</code> 成组出现。</td></tr>
+          <tr><th>反思动作</th><td>要求重写整条语句并闭合 <code>() [] {}</code>，不要原位补 token。</td></tr>
+          <tr><th>终局 / 限制</th><td><code>actual-target-gap</code> 证明可修，但相同策略在其他复杂语句上并不稳定。</td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="error-card">
+        <h3>10 · 续写截断与未闭合引用</h3>
+        <div class="table-wrap"><table><tbody>
+          <tr><th>原始错误</th><td>修复语句后提前停止，后续布局引用 <code>roamCard</code>、<code>coverageCard</code>、<code>throughputCard</code>，却从未定义。</td></tr>
+          <tr><th>validator 观察</th><td>终局 <code>unresolved-ref</code>；无效的终端语句被扣留，因此落盘 DSL 看起来只剩局部前缀。</td></tr>
+          <tr><th>反思动作</th><td>当前本地 prompt 新增 Completion contract，要求定义所有引用并以 <code>root</code> 收尾。</td></tr>
+          <tr><th>终局 / 限制</th><td>这是“局部修复成功 / 全局完整性失败”的核心模式；新契约尚无 fresh live A/B 证明。</td></tr>
+        </tbody></table></div>
+      </div>
+    </section>
+
+    <section id="reflection-pipeline">
+      <header>
+        <p class="source-badge">机制剖面</p>
+        <h2>反思不是自由复写，而是受约束续写</h2>
+        <p>系统先冻结已接受前缀，只把第一条无效完整语句、结构化 issues 和相关签名反馈给模型；模型只能从错误语句处继续写。</p>
+      </header>
+
+      <div class="trace" aria-label="反思数据流">
+        <ol>
+          <li><strong>LLM delta</strong>：持续接收模型输出。</li>
+          <li><strong>statement boundary</strong>：只在识别到完整赋值语句后触发校验。</li>
+          <li><strong>validator</strong>：语法、组件契约、引用与 root 检查；无效语句不公开。</li>
+          <li><strong>reask</strong>：拼装 accepted prefix + invalid statement + issues + signatures。</li>
+          <li><strong>same gate</strong>：修复续写再次经过同一个 gate。</li>
+          <li><strong>终局</strong>：VALID，或达到错误 / done 条件后给出失败语义。</li>
+        </ol>
+      </div>
+
+      <article>
+        <p class="source-badge status-warn">当前本地构造 · 非历史 live 请求</p>
+        <h3>当前代码实际会加入的 Completion contract</h3>
+        <pre class="code-block"><code>## Completion contract (critical)
+- The same mistake pattern may recur later in the document. Apply the SAME correction to EVERY later occurrence, not just the first.
+- Your continuation MUST complete the document: every identifier referenced anywhere (in the accepted prefix or your continuation) must be defined by the end.
+- `root` is NOT defined yet. Your continuation MUST end with a `root = Stack([...])` statement wiring the top-level layout.
+- Do NOT stop after the corrected statement. Keep writing until the document is complete.</code></pre>
+        <p>当无效语句包含 <code>.map(... =&gt; ...)</code> 时，当前本地 builder 还会实际加入：</p>
+        <pre class="code-block"><code>## Rewrite these JavaScript patterns (openui-lang has no JS methods/operators)
+- Array `arr.map(x =&gt; x.f)` → pluck `arr.f`, or `@Each(arr, "x", x.f)`.</code></pre>
+        <p><strong>证据限定：</strong>这些文本来自当前 worktree 的 <code>ReaskPromptBuilder</code> 构造结果，并由单元测试覆盖；它们不是下面 2026-07 历史运行的真实请求内容，因此不能拿历史效果反推这版 prompt 的效果。</p>
+      </article>
+
+      <article>
+        <p class="source-badge">历史真实运行 · llm-calls.json</p>
+        <h3>历史 reask 中真实使用的核心语句</h3>
+        <pre class="code-block"><code>You are continuing an openui-lang document. Everything in "Accepted so far" is ALREADY valid and MUST NOT be repeated.
+Your previous NEXT statement was invalid. Produce a CORRECTED version of that statement and then the REST of the document.
+Emit ONLY the remaining openui-lang (do not re-emit the accepted prefix).
+
+- Close every `(`, `[`, and `{` opened by the invalid statement before starting another statement.
+- Regenerate the whole invalid statement using the signatures below instead of patching a token in place.</code></pre>
+      </article>
+    </section>
+
+    <section id="runtime-results">
+      <header>
+        <p class="source-badge">真实运行数据</p>
+        <h2>反思前后结果：提升存在，但不能证明来自 prompt</h2>
+        <p>下表直接从 <code>target/benchmark-out/t07</code> 与 <code>t07-after</code> 的四份 <code>metrics-on.json</code> 聚合。两组各包含两轮、116 个非 SKIPPED 运行。</p>
+      </header>
+
+      <div class="grid">
+        <div class="metric"><span>t07 有效率</span><strong>102 / 116</strong><small>87.9%</small></div>
+        <div class="metric"><span>t07-after 有效率</span><strong>104 / 116</strong><small>89.7%</small></div>
+        <div class="metric"><span>t07 reask 修复</span><strong>2 / 16</strong><small>12.5%</small></div>
+        <div class="metric"><span>t07-after reask 修复</span><strong>2 / 14</strong><small>14.3%</small></div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>运行</th><th>Eligible</th><th>VALID</th><th>有效率</th><th>Reasked</th><th>Repaired</th><th>修复率</th><th>平均耗时</th><th>首个 DSL</th></tr></thead>
+          <tbody>
+            <tr><td><code>t07</code></td><td>116</td><td>102</td><td>87.9%</td><td>16</td><td>2</td><td>12.5%</td><td>5095 ms</td><td>3084 ms</td></tr>
+            <tr><td><code>t07-after</code></td><td>116</td><td>104</td><td>89.7%</td><td>14</td><td>2</td><td>14.3%</td><td>4702 ms</td><td>2689 ms</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <aside class="evidence-gap">
+        <h3>模型归纳（基于上表，不是额外实验）</h3>
+        <ul>
+          <li>最终 VALID 多了 2 个，但成功修复数仍是 2；14.3% 的上升主要来自 reask 分母由 16 降到 14，不能写成“修复能力显著提升”。</li>
+          <li>平均耗时与首个 DSL 时间都下降，但两组是独立模型调用，不能据此断言新增 prompt 降低了延迟。</li>
+          <li>单次 reask 的经验成功率仍低，最稳妥结论是“机制有效，效果不足”。</li>
+        </ul>
+      </aside>
+
+      <h3>另一个实验回答的是 gate，而不是 repair 收敛</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Gate A/B（39 个 Java fixture）</th><th>OFF</th><th>ON</th><th>判读</th></tr></thead>
+          <tbody>
+            <tr><td>坏 UI / parse 失败交付</td><td>1</td><td>0</td><td class="status-pass">支持“已知无效 DSL 不流出”</td></tr>
+            <tr><td>平均耗时</td><td>4113 ms</td><td>4329 ms</td><td>+216 ms（+5.3%）</td></tr>
+            <tr><td>P95</td><td>6397 ms</td><td>8756 ms</td><td>+2359 ms，reask 尾延迟</td></tr>
+            <tr><td>首个 DSL</td><td>2370 ms</td><td>2896 ms</td><td>+526 ms，完整语句缓冲代价</td></tr>
+            <tr><td>Judge overall</td><td>7.1</td><td>7.2</td><td>|Δ|≤1 按实验说明视为噪声</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="case-success">
+      <header>
+        <p class="source-badge status-pass">历史真实运行 · 成功案卷</p>
+        <h2>actual-target-gap：括号错误被修复，文档也闭合</h2>
+      </header>
+
+      <div class="grid">
+        <div class="metric"><span>status</span><strong>VALID</strong></div>
+        <div class="metric"><span>durationMs</span><strong>5470</strong></div>
+        <div class="metric"><span>firstDslMs</span><strong>2905</strong></div>
+        <div class="metric"><span>llmCalls / reasks</span><strong>2 / 1</strong></div>
+        <div class="metric"><span>dslChars</span><strong>490</strong></div>
+      </div>
+
+      <div class="trace">
+        <h3>1 · 被拦语句</h3>
+        <pre class="code-block"><code>gapCol = Col("差距", "gap", {cell: @Render("v", "row", Tag(@FormatPercent(row.gap, 3), row.gap &gt;= 0 ? "success" : "danger")))})</code></pre>
+        <p><code>R_BRACE at 6:124</code>；未闭合 <code>{</code> at 6:27；未闭合 <code>(</code> at 6:13。</p>
+
+        <h3>2 · 真实反思</h3>
+        <pre class="code-block"><code>- Regenerate the whole invalid statement using the signatures below instead of patching a token in place.
+- Close every `(`, `[`, and `{` opened by the invalid statement before starting another statement.</code></pre>
+
+        <h3>3 · 模型修复结果</h3>
+        <pre class="code-block"><code>gapCol = Col("差距", "gap", {cell: @Render("v", "row", Tag(@FormatPercent(v, 3), v &gt;= 0 ? "success" : "danger"))})
+root = Stack([slaHeader, slaTable])</code></pre>
+
+        <h3>4 · 为什么成功</h3>
+        <p>错误定位集中在一条语句；反馈给出了具体 bracket 类型、位置和 <code>Col</code>/<code>Tag</code> 签名；模型不仅改正局部表达式，还继续输出了可渲染 <code>root</code>。同一 gate 的终局校验因此返回 VALID。</p>
+      </div>
+
+      <button type="button" data-toggle="success-full" aria-expanded="true">折叠 / 展开完整落盘 DSL</button>
+      <div id="success-full">
+        <pre class="code-block"><code>slaHeader = TextContent("各服务 SLA 达成情况", "large")
+slaTable = Table([serviceCol, targetCol, actualCol, gapCol], data.services)
+serviceCol = Col("服务", "name")
+targetCol = Col("目标 SLA", "target", {cell: @Render("v", TextContent(@FormatPercent(v, 3)))})
+actualCol = Col("实际 SLA", "actual", {cell: @Render("v", TextContent(@FormatPercent(v, 3)))})
+gapCol = Col("差距", "gap", {cell: @Render("v", "row", Tag(@FormatPercent(v, 3), v &gt;= 0 ? "success" : "danger"))})
+root = Stack([slaHeader, slaTable])</code></pre>
+      </div>
+    </section>
+
+    <section id="case-failure">
+      <header>
+        <p class="source-badge status-fail">历史真实运行 · 失败案卷</p>
+        <h2>tc-010-coverage-quality：局部修复成功 / 全局完整性失败</h2>
+      </header>
+
+      <div class="grid">
+        <div class="metric"><span>status</span><strong>INVALID</strong></div>
+        <div class="metric"><span>durationMs</span><strong>7324</strong></div>
+        <div class="metric"><span>firstDslMs</span><strong>2169</strong></div>
+        <div class="metric"><span>llmCalls / reasks</span><strong>2 / 1</strong></div>
+        <div class="metric"><span>dslChars</span><strong>546</strong></div>
+      </div>
+
+      <div class="trace">
+        <h3>1 · 被拦语句</h3>
+        <pre class="code-block"><code>trendMiniChart = MiniChart("line", data.data[0].value.baseline.map(item =&gt; item.value), 48)</code></pre>
+        <p><code>syntax-unclosed-bracket</code> at 8:67；<code>syntax-unexpected-token EQUALS</code> at 8:73。</p>
+
+        <h3>2 · 真实反思</h3>
+        <pre class="code-block"><code>Produce a CORRECTED version of that statement and then the REST of the document.
+JavaScript globals and methods are unavailable; use openui-lang builtins instead.
+Close every `(`, `[`, and `{` opened by the invalid statement before starting another statement.
+Regenerate the whole invalid statement using the signatures below instead of patching a token in place.</code></pre>
+
+        <h3>3 · 模型确实修好了局部语法</h3>
+        <pre class="code-block"><code>trendMiniChart = MiniChart("line", @Each(data.data[0].value.baseline, "item", item.value), 48)</code></pre>
+
+        <h3>4 · 终局仍失败</h3>
+        <pre class="code-block"><code>[unresolved-ref] unresolved reference "roamCard"
+[unresolved-ref] unresolved reference "coverageCard"
+[unresolved-ref] unresolved reference "throughputCard"</code></pre>
+        <p>模型在完成错误语句后没有把后续卡片定义全部写完。终局引用检查发现三个未定义标识符；引用它们的终端语句被 gate 扣留，所以落盘 DSL 最后只保留到已修复的 <code>trendMiniChart</code>。</p>
+      </div>
+
+      <aside class="evidence-gap">
+        <h3>失败的关键不是“没看懂 .map”</h3>
+        <p>`.map` 已被正确替换，失败发生在不同层级：反思任务要求“改当前语句并继续完成整篇”，模型只满足了局部后置条件，没有满足文档级引用闭合不变量。这正是当前 Completion contract 试图补强、但尚未经过新 live A/B 验证的地方。</p>
+      </aside>
+    </section>
+
+    <section id="known-misses">
+      <header>
+        <p class="source-badge status-fail">反例与失败机理</p>
+        <h2>为什么反思修复会失败</h2>
+      </header>
+
+      <div class="grid">
+        <article class="claim-card">
+          <h3>01 · 局部诊断，全局目标</h3>
+          <p>issues 针对“第一条无效语句”，而完成条件涉及整篇引用图、root 可达性和后续所有语句。局部错误反馈并不包含全局修复证明。</p>
+        </article>
+        <article class="claim-card">
+          <h3>02 · 修复预算只有一次</h3>
+          <p>当前实验配置 <code>maxAttempts=1</code>。第二次输出仍无效时不会进入迭代收敛过程，而是直接结束为 INVALID。</p>
+        </article>
+        <article class="claim-card">
+          <h3>03 · accepted prefix 不可回写</h3>
+          <p>已接受前缀被冻结且明确禁止重发。这保护流式稳定性，却意味着前缀中已被语法层接受的语义坏选择不能被反思重构。</p>
+        </article>
+        <article class="claim-card">
+          <h3>04 · validator 有观测盲区</h3>
+          <p>数据 schema 不参与校验，单参数成员调用也会漏过。没有 issue 就不会触发 reask，修复器对这类错误完全不可达。</p>
+        </article>
+        <article class="claim-card">
+          <h3>05 · prompt 是建议，不是证明义务</h3>
+          <p>签名、错误码和 Completion contract 只能改变模型概率，无法强制它遵守“定义全部引用”或保证输出终止于合法 root。</p>
+        </article>
+        <article class="claim-card">
+          <h3>06 · 错误到修复不是单值映射</h3>
+          <p><code>unknown-component</code>、binder 错位和深层括号错误往往有多种合法改写；validator 能证伪当前项，却不能构造唯一正确项。</p>
+        </article>
+        <article class="claim-card">
+          <h3>07 · 上下文与续写长度压力</h3>
+          <p>reask 同时携带原请求、accepted prefix、错误语句、issues、签名与规则。模型可能修好最近错误后提前结束，形成 continuation truncation。</p>
+        </article>
+        <article class="claim-card">
+          <h3>08 · 视觉与业务语义在系统外</h3>
+          <p>即使语法、契约、引用全部合法，也可能选错数据、漏字段、布局失衡或格式不佳；这些不会由当前 reask 机制自动变好。</p>
+        </article>
+      </div>
+
+      <h3>三个当前真实 known miss</h3>
+      <pre class="code-block"><code>root = Table([Col("Name", "name")], data.data.users)
+root = Table([Col("Name", "nmae")], data.userz)
+root = TextContent(data.value.toFixed(1))</code></pre>
+      <p>当前 corpus 将它们标为 <code>expectedOutcome: missed</code>，三者均返回 no validator issues。前两项需要 dataModel schema 对照；第三项需要收紧上游语言语法或在 eval / runtime 层补充规则。</p>
+
+      <aside class="evidence-gap">
+        <h3>实验限制必须和结果一起阅读</h3>
+        <ul>
+          <li>Gate A/B 的 44 个 fixture 中有 5 个顶层数组因 Java SDK <code>Map</code> 数据模型限制被跳过。</li>
+          <li>OFF / ON 两臂是独立模型采样；即使 temperature=0，服务端输出仍可能波动。</li>
+          <li>Judge 的相同 DSL 对照也出现 ±1 漂移，报告将 |Δ|≤1 视为噪声。</li>
+          <li>文档引用的两个 eval run 目录与截图当前不在 worktree，不能现场复核视觉判分。</li>
+          <li>当前 Completion contract 与新增定向 rewrite 只有本地构造和单测证据，没有 fresh live A/B。</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section id="evidence-ledger">
+      <header>
+        <p class="source-badge">可审计证据账本</p>
+        <h2>每项结论从哪里来</h2>
+      </header>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>等级</th><th>证据</th><th>本报告使用方式</th><th>限制</th></tr></thead>
+          <tbody>
+            <tr><td><strong>A</strong><br>原始运行</td><td><code>target/benchmark-out/{t07,t07-after}/round{1,2}/metrics-on.json</code></td><td>重新计算 116 样本有效率、reask 数、修复率和延迟</td><td>历史独立采样，不能做严格因果推断</td></tr>
+            <tr><td><strong>A</strong><br>原始运行</td><td><code>actual-target-gap.llm-calls.json</code>、<code>.dsl</code></td><td>成功案卷的 invalid statement、真实反思、最终 DSL</td><td>文件保存请求与落盘结果，不含逐 token response</td></tr>
+            <tr><td><strong>A</strong><br>原始运行</td><td><code>tc-010-coverage-quality.llm-calls.json</code>、<code>.dsl</code></td><td>失败案卷的局部改写与 error frame</td><td>被扣留的终端无效语句不在落盘 DSL 中</td></tr>
+            <tr><td><strong>A</strong><br>当前执行</td><td><code>mvn -o test</code></td><td>2026-08-07 本机 455 tests，0 failures，0 errors</td><td>证明当前代码测试通过，不证明 live 模型效果</td></tr>
+            <tr><td><strong>B</strong><br>当前静态</td><td><code>ReaskPromptBuilder.java</code> 与 <code>ReaskPromptBuilderTest.java</code></td><td>当前 Completion contract、JS rewrite 原句和触发条件</td><td>worktree 本地改动；尚未重新跑 live A/B</td></tr>
+            <tr><td><strong>B</strong><br>当前 corpus</td><td><code>manifest.json</code> + <code>interception-corpus-dump.md</code></td><td>当前 118 个样本：69 valid、46 intercepted、3 missed</td><td>离线 corpus 不等于线上生成分布</td></tr>
+            <tr><td><strong>C</strong><br>分析文档</td><td><code>benchmark-comparison.md</code>、<code>model-error-catalog.md</code></td><td>Gate A/B、错误频次、可攻克性分层与实验限制</td><td>部分 referenced eval 目录当前缺失</td></tr>
+            <tr><td><strong>D</strong><br>仅提交说明</td><td><code>4cfd0808</code> commit message</td><td>记录过 27%→61%、21%→58%、89.7%→94.8% 等后续数字</td><td class="status-fail">没有同等完整、可复算产物；不纳入核心结论</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>当前 corpus 与旧报告口径</h3>
+      <p>旧拦截实践报告写的是 61 个样本（12 valid、46 intercepted、3 missed）。当前 manifest 已扩充到 <strong>118</strong> 个样本（69 valid、46 intercepted、3 missed），本次 JUnit 动态测试显示 <strong>InterceptionCorpusTest 119/119</strong>。因此本文使用当前 manifest 数量，并把旧报告仅作为方法与历史说明。</p>
+
+      <h3>证据缺口</h3>
+      <div class="evidence-gap">
+        <p><code>20260704_152834_2lb5</code> 与 <code>20260704_154735_skw8</code> 对应的 eval run 目录 / 截图当前不可用。Gate A/B 的视觉分数可追溯到已提交报告，但无法在本 worktree 重新打开原截图核验。因此本报告只把 7.1→7.2 用作“未见显著视觉改善”的有限证据，不把它上升为强结论。</p>
+      </div>
+
+      <footer>
+        <p><strong>最终判定：</strong>当前进展应描述为“验证门已形成可靠安全边界；一次反思能修少量局部错误，但尚未形成可证明或高概率收敛的全局修复过程”。</p>
+      </footer>
+    </section>
+  </main>
+  <script>
+    document.querySelectorAll('[data-toggle]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const target = document.getElementById(button.dataset.toggle);
+        const expanded = button.getAttribute('aria-expanded') === 'true';
+        button.setAttribute('aria-expanded', String(!expanded));
+        target.hidden = expanded;
+      });
+    });
+  </script>
+</body>
+</html>

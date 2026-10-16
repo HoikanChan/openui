@@ -1,0 +1,10 @@
+{
+  "id": "GEN-00076",
+  "originalIntent": "查询某设备的接口指标详情，并用表格展示设备名称、设备IP、接口名称、MAC地址、查询ID、接收丢包数、过滤丢包数和指标值。",
+  "rootCause": "@Each template 传数组字面量导致 object[][]",
+  "source": {
+    "file": "7a-Each语义误解-接口指标.md",
+    "run": "20260918_130128_7ojm",
+    "errorDetail": "statementCount=10, rootName=root, valStatus=INVALID"
+  }
+}

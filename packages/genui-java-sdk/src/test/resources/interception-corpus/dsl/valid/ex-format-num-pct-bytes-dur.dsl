@@ -1,0 +1,5 @@
+root = Stack([num, pct, bytes, dur])
+num = TextContent("Total: " + @FormatNumber(data.amount, 2, "en-US"))
+pct = TextContent("Rate: " + @FormatPercent(data.rate))
+bytes = TextContent("Size: " + @FormatBytes(data.size))
+dur = TextContent("Elapsed: " + @FormatDuration(data.elapsed))

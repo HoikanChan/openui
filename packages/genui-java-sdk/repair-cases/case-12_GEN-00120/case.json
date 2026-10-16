@@ -1,0 +1,26 @@
+{
+  "id": "GEN-00120",
+  "originalIntent": "渲染CPU利用率Top3设备及其内存利用率表格。表格列：设备名称、设备IP、CPU利用率(%)、内存利用率(%)。",
+  "dataModel": {
+    "queryNetworkDeviceMetrics": {
+      "telemetryTotal": 1,
+      "telemetryData": [
+        {
+          "mem_usage": 70,
+          "mem_usage_filter": 70,
+          "mem_effcnt": 27,
+          "mac": "97-55-46-F9-00-02",
+          "metricValue": 70,
+          "neIp": "197.197.5.2",
+          "neName": "O05-17F-Leaf2-Simu6-0002"
+        }
+      ]
+    }
+  },
+  "rootCause": "字段名幻觉 — Col field \"cpu_usage\" 不存在，数据中只有内存指标",
+  "source": {
+    "file": "3c-字段名幻觉-CPU内存指标.md",
+    "run": "20260918_181004_5lez",
+    "errorDetail": "statementCount=10, rootName=root, valStatus=INVALID"
+  }
+}

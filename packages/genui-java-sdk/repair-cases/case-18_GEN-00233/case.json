@@ -1,0 +1,8 @@
+{
+  "id": "GEN-00233",
+  "originalIntent": "查询单个网络设备的基本信息，并以详情卡片和描述列表展示设备名称、IP地址、状态、角色、设备分类、款型、厂商、MAC地址、ESN、版本及所属Fabric。",
+  "rootCause": "LLM 漏掉中间层级 queryDeviceInfo，直接从 data 跳到 deviceInfo",
+  "source": {
+    "file": "4b-数据路径幻觉-queryDeviceInfo.md"
+  }
+}

@@ -1,0 +1,18 @@
+root = Stack([metricsCard])
+metricsCard = Card([metricsHeader, metricsTable])
+metricsHeader = CardHeader("光模块指标详情", "设备: " + data.queryOpticalModuleMetrics[0].telemetryData[0].neName)
+
+allMetrics = @Flatten(data.queryOpticalModuleMetrics.telemetryData)
+metricsRows = @Each(allMetrics, "item", @MergeObject(item, {
+  metricName: @Switch(item.metricValue, {
+    "3.310000000000001": "电压 (V)",
+    "37.619999999999976": "温度 (°C)"
+  }, "未知指标")
+}))
+
+metricsTable = Table([nameCol, valueCol, unitCol, ifNameCol, macCol], metricsRows)
+nameCol = Col("指标名称", "metricName")
+valueCol = Col("数值", "metricValue")
+unitCol = Col("单位", "unit")
+ifNameCol = Col("接口名称", "ifName")
+macCol = Col("MAC 地址", "mac")

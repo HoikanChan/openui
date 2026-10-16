@@ -1,0 +1,20 @@
+root = Stack([titleCard, summaryRow, deviceTypeTabs], "column", "m")
+
+titleCard = Card([titleHeader], "card")
+titleHeader = CardHeader(data.title, "设备总数: " + data.summary.totalDevices + " · 型号数: " + data.summary.totalModels)
+
+summaryRow = Stack([totalDevicesCard, totalModelsCard, inconsistentCard], "row", "m", "stretch", "start", true)
+totalDevicesCard = Card([TextContent("设备总数", "small"), TextContent("" + data.summary.totalDevices, "large-heavy")])
+totalModelsCard = Card([TextContent("设备型号", "small"), TextContent("" + data.summary.totalModels, "large-heavy")])
+inconsistentCard = Card([TextContent("版本不一致型号", "small"), TextContent("" + data.summary.versionInconsistentModels, "large-heavy")])
+
+deviceTypeTabs = Tabs(@Each(data.deviceTypeStats, "type", typeTabTpl))
+typeTabTpl = TabItem(type.neType, type.neType + " (" + type.totalCount + ")", [typeCard])
+typeCard = Card([typeHeader, versionTable], "column", "m")
+typeHeader = CardHeader(type.neType, "共 " + type.totalCount + " 台设备")
+versionTable = Table([versionCol, countCol, devicesCol], type.versionBreakdown)
+versionCol = Col("版本", "version")
+countCol = Col("数量", "count")
+devicesCol = Col("设备列表", "devices", {cell: @Render("v", deviceListTpl)})
+deviceListTpl = Stack(@Each(v, "dev", devTagTpl), "row", "xs", "start", "start", true)
+devTagTpl = Tag(dev, "neutral", null, "sm")

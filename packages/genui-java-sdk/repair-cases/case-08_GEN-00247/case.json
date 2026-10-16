@@ -1,0 +1,10 @@
+{
+  "id": "GEN-00247",
+  "originalIntent": "设备光模块性能指标数据，包含光模块维度指标（温度℃、电压V）和光模块通道维度指标（发送功率dBm、接收功率dBm、电流mA）。按光模块分组展示。",
+  "rootCause": "幻觉组件 @GroupBy",
+  "source": {
+    "file": "2b-幻觉组件-GroupBy.md",
+    "run": "20260918_181004_5lez",
+    "errorDetail": "statementCount=8, rootName=root, valStatus=INVALID"
+  }
+}

@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 class LlmStreamTest {
 
@@ -37,6 +39,19 @@ class LlmStreamTest {
             assertNull(stream.pipeTo(out));
         }
         assertEquals("partial", out.toString(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void pipeToConsumerFeedsDeltasAndReturnsFinishReason() throws Exception {
+        String sse = "data: {\"choices\":[{\"delta\":{\"content\":\"root = \"}}]}\n" + "\n"
+                + "data: {\"choices\":[{\"delta\":{\"content\":\"Stack([])\"}}]}\n" + "\n"
+                + "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n" + "\n" + "data: [DONE]\n";
+        List<String> deltas = new ArrayList<>();
+        try (LlmStream stream = new LlmStream(new ByteArrayInputStream(sse.getBytes(StandardCharsets.UTF_8)))) {
+            String finishReason = stream.pipeToConsumer(deltas::add);
+            assertEquals("stop", finishReason);
+        }
+        assertEquals(List.of("root = ", "Stack([])"), deltas);
     }
 
     @Test

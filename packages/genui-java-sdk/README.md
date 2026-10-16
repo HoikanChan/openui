@@ -103,15 +103,193 @@ byte-for-byte port of `packages/lang-core/src/parser/prompt.ts`'s `generatePromp
 Builtin docs come from the contract's top-level `builtins` manifest (exported by the
 frontend); all other sections are transcribed from `prompt.ts`.
 
-Cross-language alignment is pinned by `PromptGoldenTest`: each
-`src/test/resources/prompt-golden/<name>.json` is a merged `PromptSpec`, and the
-matching `<name>.txt` is produced by the TypeScript oracle. Regenerate the golden
-outputs (and re-export the base contract when the builtins registry changes) with:
+Cross-language prompt alignment was previously pinned by `PromptGoldenTest`; it was
+removed on the validation-iteration branch (2026-10-14) because the contract's
+builtins manifest is now internal truth while lang-core's manifest lags — the
+byte-for-byte premise no longer holds. See
+`docs/adr/0003-builtin-vocabulary-is-contract-data.md`.
 
-```bash
-pnpm --dir packages/react-ui-dsl run generate:base-contract
-pnpm --dir packages/lang-core run generate:prompt-golden
+## Generated DSL validation
+
+`GenUiGenerator` can validate generated openui-lang before services cache or
+render it. The validation data model lives under `core.validation`:
+
+- `ValidationStatus` (`VALID`, `PARTIAL`, `INVALID`)
+- `ValidationMode` (`FINAL`, `STREAMING`)
+- `ValidationSeverity` (`ERROR`, `WARNING`, `INFO`)
+- `ValidationIssue`, `ValidationResult`, `ValidationMetadata`, `ValidationRequest`
+- `ValidationConfigMode` (`FINAL_ONLY`, `DISABLED`)
+- `RepairPolicyKind` (`NONE`, `FINAL_REPAIR`)
+- `GenUiValidationConfig`, the top-level generator config record
+
+`GenUiValidationConfig` intentionally exposes two axes only: when to validate
+and what coarse repair policy to apply. Use the presets for the common modes:
+
+```java
+GenUiValidationConfig cfg = GenUiValidationConfig.finalOnly(); // default
+GenUiValidationConfig off = GenUiValidationConfig.disabled();
 ```
+
+`GenUiGenerator.generate()` runs one end-of-round unified check after extracting
+openui-lang from the LLM response — over the current effective program
+(last-wins by statement id), so superseded definitions no longer produce
+errors. With `DISABLED`, it skips validation and returns a backward-compatible
+`GenUiGenerationResult(dsl, dataModel)`, leaving `validationStatus()` and
+`validationResult()` as `null`. With `FINAL_ONLY`, a valid result returns the
+current effective DSL plus the populated `validationStatus()` and
+`validationResult()`. Any `INVALID` result throws
+`GenerationValidationException`; callers can inspect
+`e.validationResult().actionableIssues()` for the low-noise blocking diagnostics.
+The complete parser-parity view remains available through `issues()`.
+
+Final validation is data-aware. The generator forwards the concrete response
+data through initial validation and every repair attempt, so the validator can
+check generated `data.*` paths and proven expression types against the same
+model the renderer receives. Lower-level callers enable this pass explicitly:
+
+```java
+ValidationResult result = DefaultOpenuiLangValidator.INSTANCE.validate(
+    ValidationRequest.builder()
+        .dsl(generatedDsl)
+        .contract(contract)
+        .dataModel(renderDataModel)
+        .mode(ValidationMode.FINAL)
+        .build());
+```
+
+A missing `dataModel` keeps the legacy syntax/contract-only behavior. Passing
+`Map.of()` means a concrete empty model and therefore makes every `data.*` path
+missing. The MVP reports stable issue families for observable errors including
+missing/invalid data paths, component prop and slot type mismatches, builtin
+arity/type mismatches, obvious operator mismatches, and missing Table/Col
+fields or non-flat row shapes. It also checks proven chart cardinality (label/value
+lengths and single-point trend lines) and duplicate derived category expressions.
+`@Each`/`@Render` binders remain in scope through separately declared template
+statements reached from the builtin body; the same binder is still unresolved when
+that template is referenced outside the declaring builtin call.
+Empty, heterogeneous, or unsupported evidence is handled
+conservatively instead of guessing a type.
+
+`ValidationResult` deliberately exposes two issue views:
+
+- `issues()` is the immutable raw diagnostic stream for debugging, telemetry, and TS parity.
+- `actionableIssues()` preserves independent errors but removes exact duplicates and diagnostics
+  dominated by syntax, Table row-shape, or root-cause issues. Repair prompts use this view.
+
+```java
+try {
+  GenUiGenerationResult result = generator.generate(request);
+  if (result.validationStatus() == ValidationStatus.VALID) {
+    cache(result.dsl());
+  }
+} catch (GenerationValidationException e) {
+  ValidationResult result = e.validationResult();
+  log.warn("Generated DSL failed validation: {}", result.actionableIssues());
+}
+```
+
+For sync repair, configure the coarse policy as `FINAL_REPAIR`. The generator
+maps that kind to `RepairPolicy.from(...)` and `RepairCoordinator.repairFull(...)`
+tries reflection repair before throwing. Repaired output is re-validated in
+`FINAL` mode and returned as `VALID`; the result metadata includes
+`extra["repaired"] = "true"`.
+
+```java
+GenUiValidationConfig cfg =
+    new GenUiValidationConfig(
+        ValidationConfigMode.FINAL_ONLY, RepairPolicyKind.FINAL_REPAIR);
+
+GenUiGenerator generator =
+    GenUiGenerator.withTransport(llmConfig, transport, cfg, null);
+```
+
+The lower-level `RepairPolicy` value object carries advanced attempt and timeout
+knobs for repair coordination:
+
+```java
+RepairPolicy policy = RepairPolicy.of(RepairPolicyKind.FINAL_REPAIR, 2);
+```
+
+Today the top-level `GenUiValidationConfig` stores only `RepairPolicyKind`; the
+generator uses `RepairPolicy.from(...)`, whose default attempt budget is one.
+If a service needs non-default attempt budgets or timeout integration, wire that
+at the repair-coordinator boundary rather than adding fields to
+`GenUiValidationConfig`.
+
+### Streaming: live forwarding + end-of-round unified check (#56)
+
+`GenUiGenerator.generateStream(request, sink)` always starts by sending a
+`RenderStreamEnvelope.dataModel(...)` frame with `seq=0`. Generation itself is
+**never gated**: every model delta is forwarded live as a `dsl` envelope —
+nothing is withheld for validation, no per-statement repair runs, and no extra
+pre-generation model request is issued. The remaining behavior depends on
+`ValidationConfigMode`:
+
+| Mode | Stream behavior |
+|---|---|
+| `DISABLED` | Raw LLM deltas are emitted as `dsl` envelopes. No validation result is attached. |
+| `FINAL_ONLY` | Raw LLM deltas are emitted as `dsl` envelopes. When the model's output round ends cleanly, one unified validation runs over the **current effective program**; the status is carried by the returned `GenUiGenerationResult`, with no late `error` frame. |
+
+The end-of-round check is maintained by `ProgramRoundSession` (the Program
+State & Validation module): complete statements are parsed as they arrive and
+kept in a **last-wins-by-name** map, so a re-issued `id = ...` statement
+overrides the previous definition and historical definitions stop producing
+current errors. The round-end validation runs once, in `FINAL` mode, over the
+current effective definitions — covering syntax, references, component and
+builtin contracts, params, data paths, static types, and page completeness
+using the request's effective contract and the full Render Data Model. Forward
+references defined later in the same round resolve fine; references still
+missing at round end are errors. Types that cannot be proven are not reported
+as definite mismatches.
+
+Each round is recorded on the result (`GenUiGenerationResult.rounds()`): raw
+output, current definitions, diagnostics, duration, and contract version — the
+input for the upcoming incremental repair loop (#58) and for evaluation.
+
+If the stream fails mid-flight, the SDK emits `error("LLM_STREAM_FAILED")` then
+`done` and returns the best-effort current program without running a round-end
+check (the content is not trustworthy).
+
+Validation and repair internals do not enter the public stream: issue lists,
+repair prompts, and repair attempts remain SDK-internal. Public stream
+consumers see only `dataModel`, `dsl` (raw deltas, live), terminal `error`,
+and `done` envelopes.
+
+Known limitation: sync repair `timeout` bounds the attempt count, not a single
+in-flight LLM call; it is inert at the default `Duration.ZERO`. Proper
+enforcement needs transport read-timeout cooperation.
+
+### Rollback
+
+To roll back validation quickly, use `GenUiValidationConfig.disabled()` for
+bare-delta behavior. To keep raw streaming while still checking the final result,
+use `GenUiValidationConfig.finalOnly()`. A service can also revert its endpoint
+implementation to raw delta streaming if clients cannot yet consume
+`RenderStreamEnvelope` SSE frames.
+
+## Migrating from bare LLM delta streaming
+
+Older integrations often treated streaming generation as plain text: read each
+HTTP chunk, append it to a string, and pass the concatenated text to the
+renderer. With generated DSL validation enabled, migrate stream consumers to
+the SDK contract instead:
+
+1. Server-side generation should call `GenUiGenerator.generateStream(request, sink)`
+   (or feed a `ProgramRoundSession` for the end-of-round check), then serialize each
+   `RenderStreamEnvelope` as one SSE `data:` frame.
+2. Client-side consumers should parse `text/event-stream`, JSON-decode each
+   `data:` payload, and append only frames whose `type` is `"dsl"`.
+3. Treat `type="dataModel"` with `seq=0` as the render data model, `type="error"`
+   as terminal failure detail (`content.code`, `content.message`,
+   `content.retryable`), and `type="done"` as stream closure.
+
+Breaking change for the reference service: `examples/genui-service` `/generate`
+now returns `text/event-stream` `RenderStreamEnvelope` SSE frames:
+`dataModel` with `seq=0`, then accepted `dsl` frames, optional `error`
+frames with `{code, message, retryable}`, and `done`. Existing consumers that
+concatenate raw response body chunks, including
+`examples/react-ui-dsl-demo/src/useGenerate.ts`, will break and need an SSE
+envelope parsing follow-up. This docs change does not fix that frontend.
 
 ## Characterization (large data models)
 
@@ -208,5 +386,4 @@ Run the Java SDK tests with Maven:
 ```bash
 cd packages/genui-java-sdk
 mvn test
-mvn -Dtest=PromptGoldenTest test
 ```

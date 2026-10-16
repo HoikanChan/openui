@@ -1,0 +1,5 @@
+root = Stack([productTable])
+productTable = Table([skuCol, nameCol, categoryCol], data.products)
+skuCol = Col("SKU", "sku")
+nameCol = Col("Name", "name")
+categoryCol = Col("Category", "category")

@@ -151,13 +151,14 @@ Checkstyle 规则集，按 §3 映射编写。要点：
 - 含 `TreeWalker` 下各 *Name / Javadoc* / NeedBraces / OneStatementPerLine / FallThrough /
   ModifierOrder / UpperEll / MultipleVariableDeclarations / ArrayTypeStyle 等模块。
 - `RegexpHeader` 引用 §6 版权头模板（或内联 `header`）。
-- 顶层挂 `SuppressionFilter` 指向 §5.4。
-=======
 - 顶层挂 `SuppressionFilter`，其 `file` 读取 `${checkstyle.suppressions.file}`（由 pom 的
   `suppressionsFileExpression` 注入，见 §5.5），并设 `optional=true`。
+  注意：不要用 `${config_loc}` —— 该变量仅 Eclipse-CS 注入，Maven CLI 下不可用。
+
 ### 5.4 `config/checkstyle/suppressions.xml`
 
 抑制规则：排除 `target/generated-sources/**`（Swagger codegen 产物）、按需排除遗留文件。
+
 ### 5.5 两个子模块 pom 插件块（不绑 phase）
 
 `packages/genui-java-sdk/pom.xml` 与 `examples/genui-service/pom.xml` 的 `<build><plugins>` 各加：
@@ -205,18 +206,19 @@ Checkstyle 规则集，按 §3 映射编写。要点：
 </plugin>
 ```
 
+> 抑制文件经 `suppressionsLocation` 定位、`suppressionsFileExpression` 注入到属性
+> `checkstyle.suppressions.file`，供规则集中的 `SuppressionFilter` 读取（见 §5.3）。
+
 > 版本（spotless 2.43.0 / checkstyle-plugin 3.6.0 / checkstyle 10.21.0）在实施时按当时可用且
 > 支持 Java 21 的版本确认。`failOnViolation=false` 体现"不绑构建/默认不阻断"；需要门禁时再调。
 
-=======
-> 抑制文件经 `suppressionsLocation` 定位、`suppressionsFileExpression` 注入到属性
-> `checkstyle.suppressions.file`，供规则集中的 `SuppressionFilter` 读取（见 §5.3）。
 ## 6. 文件头版权模板
 
 ```java
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. {year}. All rights reserved.
  */
+```
 
 （`RegexpHeader` 用正则允许年份/年份区间变化。）
 

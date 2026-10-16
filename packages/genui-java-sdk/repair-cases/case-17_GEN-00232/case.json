@@ -1,0 +1,8 @@
+{
+  "id": "GEN-00232",
+  "originalIntent": "查询设备的基本信息，并用卡片详情展示设备名称、IP、角色、状态（在线/离线标签）、款型、厂商、MAC、DN、ESN、版本和 Fabric 名称。",
+  "rootCause": "LLM 漏掉中间层级 queryDeviceInfo，直接从 data 跳到 deviceInfo",
+  "source": {
+    "file": "4b-数据路径幻觉-queryDeviceInfo.md"
+  }
+}

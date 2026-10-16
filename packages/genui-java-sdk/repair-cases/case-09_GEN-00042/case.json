@@ -1,0 +1,40 @@
+{
+  "id": "GEN-00042",
+  "originalIntent": "统计fabric default1下所有设备的版本补丁情况，按设备型号分组展示。patchFileVersion为空表示无补丁版本。",
+  "dataModel": {
+    "summary": {
+      "fabricName": "default1",
+      "totalDevices": 10,
+      "totalModels": 1
+    },
+    "models": [
+      {
+        "neType": "CE9866-128DQ",
+        "deviceCount": 10,
+        "devices": [
+          {
+            "neName": "O05-17F-Leaf2-Simu6-0001",
+            "neIp": "197.197.5.1",
+            "neVersion": "1.26 V300R026C00"
+          },
+          {
+            "neName": "O05-17F-Leaf2-Simu6-0002",
+            "neIp": "197.197.5.2",
+            "neVersion": "1.26 V300R026C00"
+          },
+          {
+            "neName": "O05-17F-Leaf2-Simu6-0003",
+            "neIp": "197.197.5.3",
+            "neVersion": "1.26 V300R026C00"
+          }
+        ]
+      }
+    ]
+  },
+  "rootCause": "字段名幻觉 — Col field \"patchFileVersion\" 条件存在",
+  "source": {
+    "file": "3b-字段名幻觉-版本补丁.md",
+    "run": "20260918_181004_5lez",
+    "errorDetail": "statementCount=13, rootName=root, valStatus=INVALID"
+  }
+}

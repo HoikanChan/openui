@@ -2,6 +2,7 @@ packages:
   - "packages/*"
   - "examples/**/*"
   - "!**/src/templates/**"
-  - "!packages/react-ui" # just for reference
+  # validation-iteration branch: frontend packages removed (see
+  # docs/superpowers/specs/2026-10-13-repair-bench-design.md); master keeps them
 allowBuilds:
   esbuild: true

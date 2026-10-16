@@ -1,0 +1,66 @@
+{
+  "id": "GEN-00122",
+  "originalIntent": "展示光模块指标数据，包含电压和偏置电流等多维度指标。",
+  "dataModel": {
+    "queryOpticalModuleMetrics": [
+      {
+        "telemetryTotal": 1,
+        "telemetryData": [
+          {
+            "voltage": 3.36,
+            "voltage_filter": 3.36,
+            "voltage_effcnt": 416,
+            "mac": "20-87-EC-A2-37-41",
+            "metricValue": 3.36,
+            "neIp": "10.136.242.164",
+            "neName": "POD6-Leaf164",
+            "ifName": "100GE1/0/3"
+          }
+        ]
+      },
+      {
+        "telemetryTotal": 4,
+        "telemetryData": [
+          {
+            "bias_cur": 6.1,
+            "bias_cur_filter": 6.1,
+            "bias_cur_effcnt": 104,
+            "mac": "20-87-EC-A2-37-41",
+            "metricValue": 6.1,
+            "neIp": "10.136.242.164",
+            "neName": "POD6-Leaf164",
+            "ifName": "100GE1/0/3",
+            "laneId": "2"
+          },
+          {
+            "bias_cur": 6.01,
+            "bias_cur_filter": 6.01,
+            "bias_cur_effcnt": 104,
+            "metricValue": 6.01,
+            "laneId": "0"
+          },
+          {
+            "bias_cur": 5.96,
+            "bias_cur_filter": 5.96,
+            "bias_cur_effcnt": 104,
+            "metricValue": 5.96,
+            "laneId": "1"
+          },
+          {
+            "bias_cur": 5.95,
+            "bias_cur_filter": 5.95,
+            "bias_cur_effcnt": 104,
+            "metricValue": 5.95,
+            "laneId": "3"
+          }
+        ]
+      }
+    ]
+  },
+  "rootCause": "字段名幻觉 — Col field \"metricName\" 不存在",
+  "source": {
+    "file": "1b-幻觉内置函数-光模块指标.md",
+    "run": "20260918_130128_7ojm",
+    "errorDetail": "statementCount=8, rootName=root, valStatus=INVALID"
+  }
+}

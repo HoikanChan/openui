@@ -1,0 +1,7 @@
+{
+  "id": "syntax-missing-assignment",
+  "originalIntent": "Show a short text block",
+  "dataModel": {
+    "name": "CloudEngine"
+  }
+}
