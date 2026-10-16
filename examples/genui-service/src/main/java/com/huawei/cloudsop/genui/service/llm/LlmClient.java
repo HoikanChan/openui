@@ -4,6 +4,12 @@
 
 package com.huawei.cloudsop.genui.service.llm;
 
+import com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig;
+import com.huawei.cloudsop.genui.core.llm.transport.HttpClientLlmTransport;
+import com.huawei.cloudsop.genui.core.llm.transport.LlmCall;
+import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
+import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -29,12 +35,47 @@ import java.time.Duration;
  * @since 2026
  */
 @Component
-public class LlmClient {
+public class LlmClient implements LlmTransport {
     private static final Logger log = LoggerFactory.getLogger(LlmClient.class);
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final LlmProperties props;
     private final HttpClient httpClient;
+
+    public GenUiLlmConfig generationConfig() {
+        return GenUiLlmConfig.builder()
+                .endpoint(props.baseUrl() == null ? "http://localhost/" : chatCompletionsUrl(props.baseUrl()))
+                .defaultModel(props.model()).putHeader("Authorization", "Bearer " + props.apiKey()).build();
+    }
+
+    private HttpClientLlmTransport transport() {
+        return new HttpClientLlmTransport(generationConfig(), httpClient);
+    }
+
+    @Override
+    public LlmCall newCall(String body, boolean stream) {
+        if (props.apiKey() == null || props.apiKey().isBlank() || props.baseUrl() == null
+                || props.baseUrl().isBlank()) {
+            return new LlmCall() {
+                public InputStream execute() throws LlmTransportException {
+                    throw new LlmTransportException("LLM_API_KEY / LLM_BASE_URL is not set");
+                }
+                public void cancel() {
+                }
+            };
+        }
+        return transport().newCall(body, stream);
+    }
+
+    @Override
+    public String post(String body) throws LlmTransportException {
+        return transport().post(body);
+    }
+
+    @Override
+    public InputStream postStream(String body) throws LlmTransportException {
+        return transport().postStream(body);
+    }
 
     public LlmClient(LlmProperties props) {
         this.props = props;

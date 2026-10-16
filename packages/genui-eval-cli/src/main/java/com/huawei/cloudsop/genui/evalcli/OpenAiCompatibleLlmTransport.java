@@ -48,6 +48,14 @@ public final class OpenAiCompatibleLlmTransport implements LlmTransport {
     }
 
     @Override
+    public com.huawei.cloudsop.genui.core.llm.transport.LlmCall newCall(String body, boolean stream) {
+        var config = com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig.builder().endpoint(chatCompletionsUrl)
+                .putHeader("Authorization", "Bearer " + apiKey).build();
+        return new com.huawei.cloudsop.genui.core.llm.transport.HttpClientLlmTransport(config, httpClient)
+                .newCall(body, stream);
+    }
+
+    @Override
     public String post(String body) throws LlmTransportException {
         HttpResponse<InputStream> response = send(body, "application/json");
         try (InputStream stream = response.body()) {

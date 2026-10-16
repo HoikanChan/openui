@@ -16,9 +16,9 @@ import com.huawei.cloudsop.genui.core.llm.protocol.ChatCompletionRequest;
 import com.huawei.cloudsop.genui.core.llm.protocol.ChatCompletionResponse;
 import com.huawei.cloudsop.genui.core.llm.protocol.ChatMessage;
 import com.huawei.cloudsop.genui.core.llm.stream.SseDeltaParser;
+import com.huawei.cloudsop.genui.core.llm.transport.HttpClientLlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
-import com.huawei.cloudsop.genui.core.llm.transport.RestfulLlmTransport;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig;
@@ -53,6 +53,8 @@ public final class GenUiGenerator {
     private final LlmTransport transport;
     private final GenUiValidationConfig validationConfig;
     private final OpenuiLangValidator validator;
+    private GenerationTiming timing = GenerationTiming.system();
+    private String systemPromptOverride;
 
     private GenUiGenerator(GenerationSdk sdk, GenUiLlmConfig config, LlmTransport transport,
             GenUiValidationConfig validationConfig, OpenuiLangValidator validator) {
@@ -74,7 +76,7 @@ public final class GenUiGenerator {
 
     public static GenUiGenerator create(GenUiLlmConfig config) {
         GenUiLlmConfig effectiveConfig = config == null ? GenUiLlmConfig.defaults() : config;
-        return new GenUiGenerator(GenerationSdk.create(), effectiveConfig, new RestfulLlmTransport(effectiveConfig));
+        return new GenUiGenerator(GenerationSdk.create(), effectiveConfig, new HttpClientLlmTransport(effectiveConfig));
     }
 
     public static GenUiGenerator create(GenUiLlmConfig config, CharacterizationConfig characterization) {
@@ -82,7 +84,7 @@ public final class GenUiGenerator {
         GenerationSdk sdk = GenerationSdk.builder()
                 .characterization(characterization == null ? CharacterizationConfig.defaults() : characterization)
                 .build();
-        return new GenUiGenerator(sdk, effectiveConfig, new RestfulLlmTransport(effectiveConfig));
+        return new GenUiGenerator(sdk, effectiveConfig, new HttpClientLlmTransport(effectiveConfig));
     }
 
     public static GenUiGenerator withTransport(GenUiLlmConfig config, LlmTransport transport) {
@@ -120,6 +122,43 @@ public final class GenUiGenerator {
     }
 
     public GenUiGenerationResult generate(UiGenerationRequest request) {
+        long started = timing.nanoTime().getAsLong();
+        UiGenerationRequest effective = request == null ? UiGenerationRequest.builder().build() : request;
+        if ("Markdown".equals(effective.renderComponentsKey()))
+            return markdown().generate(effective);
+        GenerationSession session = new GenerationSession(transport, timing, started, null);
+        var outcome = session.run(() -> scoped(session).generateInternal(effective));
+        if (outcome.failure() == null)
+            return outcome.result();
+        return markdown().generate(effective).withEndReason(outcome.failure());
+    }
+
+    /** Configure before use. Copies share the SDK's registered contracts, not invocation state. */
+    public GenUiGenerator withTiming(GenerationTiming value) {
+        GenUiGenerator copy = scoped(transport);
+        copy.timing = Objects.requireNonNull(value);
+        return copy;
+    }
+
+    /** Host-supplied system prompt, e.g. the reference service's debug override. */
+    public GenUiGenerator withSystemPrompt(String prompt) {
+        GenUiGenerator copy = scoped(transport);
+        copy.systemPromptOverride = prompt;
+        return copy;
+    }
+
+    private GenUiGenerator scoped(LlmTransport scopedTransport) {
+        GenUiGenerator copy = new GenUiGenerator(sdk, config, scopedTransport, validationConfig, validator);
+        copy.timing = timing;
+        copy.systemPromptOverride = systemPromptOverride;
+        return copy;
+    }
+
+    private MarkdownGeneration markdown() {
+        return new MarkdownGeneration(config, transport);
+    }
+
+    private GenUiGenerationResult generateInternal(UiGenerationRequest request) {
         UiGenerationRequest effectiveRequest = request == null ? UiGenerationRequest.builder().build() : request;
         try {
             RequestBody requestBody = buildRequest(effectiveRequest, false);
@@ -243,10 +282,53 @@ public final class GenUiGenerator {
     }
 
     /**
-     * 流式生成。首帧固定发出 {@code dataModel} envelope(seq=0),随后每个模型 delta 发出 {@code dsl} envelope(seq 递增),正常结束发
-     * {@code done}。首帧发出后若流读取/传输失败,SDK 不 向调用方抛出该异常,而是发出 {@code error} 再发 {@code done},并返回已累计内容的提取结果。
+     * Stream realtime DSL under one 20-second deadline. On timeout/model failure, cancel the DSL request, emit a
+     * whole-page {@code replace}, and invoke the independent Markdown path. One {@code done} ends the entire
+     * invocation; Markdown failure emits {@code error} before it.
      */
     public GenUiGenerationResult generateStream(UiGenerationRequest request, Consumer<RenderStreamEnvelope> sink) {
+        return generateStream(request, sink, (original, reason, output) -> markdown().generateStream(original, output));
+    }
+
+    /** The host may hand off to its existing independent Markdown flow at this public seam. */
+    public GenUiGenerationResult generateStream(UiGenerationRequest request, Consumer<RenderStreamEnvelope> sink,
+            MarkdownFallback fallback) {
+        long started = timing.nanoTime().getAsLong();
+        Objects.requireNonNull(sink, "sink must not be null");
+        Objects.requireNonNull(fallback, "fallback must not be null");
+        UiGenerationRequest effective = request == null ? UiGenerationRequest.builder().build() : request;
+        if ("Markdown".equals(effective.renderComponentsKey()))
+            return markdown().generateStream(effective, sink);
+        GenerationSession session = new GenerationSession(transport, timing, started, sink);
+        var outcome = session.run(() -> {
+            session.ensureInitial(effective.response());
+            return scoped(session).generateStreamInternal(effective, session::emit);
+        });
+        session.ensureInitial(effective.response());
+        if (outcome.failure() == null) {
+            sink.accept(RenderStreamEnvelope.done(session.nextSeq()));
+            return outcome.result();
+        }
+        sink.accept(RenderStreamEnvelope.replace(session.nextSeq(), outcome.failure()));
+        try {
+            GenUiGenerationResult result = fallback.generate(effective, outcome.failure(), event -> {
+                if (!RenderStreamEnvelope.TYPE_DATA_MODEL.equals(event.type())
+                        && !RenderStreamEnvelope.TYPE_DONE.equals(event.type())) {
+                    sink.accept(new RenderStreamEnvelope(event.type(), session.nextSeq(), event.content()));
+                }
+            });
+            sink.accept(RenderStreamEnvelope.done(session.nextSeq()));
+            return result.withEndReason(outcome.failure());
+        } catch (GenerationSdkException error) {
+            sink.accept(
+                    RenderStreamEnvelope.error(session.nextSeq(), "MARKDOWN_REQUEST_FAILED", error.getMessage(), true));
+            sink.accept(RenderStreamEnvelope.done(session.nextSeq()));
+            return new GenUiGenerationResult("", effective.response()).withEndReason(outcome.failure());
+        }
+    }
+
+    private GenUiGenerationResult generateStreamInternal(UiGenerationRequest request,
+            Consumer<RenderStreamEnvelope> sink) {
         Objects.requireNonNull(sink, "sink must not be null");
         UiGenerationRequest effectiveRequest = request == null ? UiGenerationRequest.builder().build() : request;
 
@@ -322,6 +404,7 @@ public final class GenUiGenerator {
             boolean withheld = consumeGatedStream(stream, session, sink, nextSeq, true);
 
             if (withheld) {
+                stream.close(); // release the previous request before any reask
                 // Section 7 Fail-Fast Reask: cancel-then-reask when policy is FAIL_FAST_REASK; otherwise the
                 // withheld statement is terminal (error -> done, INVALID). Reask reuses the SAME session/gate
                 // continuing from the accepted prefix; only accepted repaired DSL is emitted. seq is shared.
@@ -470,15 +553,20 @@ public final class GenUiGenerator {
     private RequestBody buildRequest(UiGenerationRequest request, boolean stream) {
         UiGenerationRequest effectiveRequest = request == null ? UiGenerationRequest.builder().build() : request;
         GenUIPromptAssemblyResult assembly = sdk.assemblePrompt(toPromptRequest(effectiveRequest));
-        List<ChatMessage> messages = List.of(ChatMessage.system(assembly.prompt()),
+        String systemPrompt = systemPromptOverride == null ? assembly.prompt() : systemPromptOverride;
+        List<ChatMessage> messages = List.of(ChatMessage.system(systemPrompt),
                 ChatMessage.user(userMessage(effectiveRequest)));
-        return new RequestBody(ChatCompletionRequest.of(config, null, messages, stream).toJson(), assembly.prompt());
+        return new RequestBody(ChatCompletionRequest.of(config, null, messages, stream).toJson(), systemPrompt);
     }
 
     private record RequestBody(String json, String systemPrompt) {
     }
 
     private GenUIPromptRequest toPromptRequest(UiGenerationRequest request) {
+        if (request.includeBasic() != null || !request.specifiedComponents().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Component filtering (includeBasic/specifiedComponents) is not supported by this SDK version");
+        }
         List<String> extraRules = request.suggestion() == null || request.suggestion().isBlank()
                 ? List.of()
                 : List.of(request.suggestion());

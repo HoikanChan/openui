@@ -37,10 +37,11 @@ class PromptsApiTest {
     @Test
     void baseAssemblyMatchesSdkByteForByte() throws Exception {
         JsonNode result = assemble("{}");
-        String expected = GenerationSdk.create()
-                .assemblePrompt(new GenUIPromptRequest(null, null, List.of(), null, null, null, null)).prompt();
+        GenerationSdk sdk = GenerationSdk.create();
+        String expected = sdk.assemblePrompt(new GenUIPromptRequest(null, null, List.of(), null, null, null, null))
+                .prompt();
         assertEquals(expected, result.get("prompt").asText());
-        assertEquals("@cloudsop/openui-react-ui-dsl@0.1.0", result.get("metadata").get("baseContractVersion").asText());
+        assertEquals(sdk.baseContract().contractVersion(), result.get("metadata").get("baseContractVersion").asText());
     }
 
     @Test

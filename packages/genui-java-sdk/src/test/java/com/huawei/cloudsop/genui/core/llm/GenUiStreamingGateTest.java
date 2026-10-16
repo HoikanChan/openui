@@ -11,7 +11,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.llm.stream.SseFrames;
-import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -292,7 +291,7 @@ class GenUiStreamingGateTest {
         return "data: {\"choices\":[{\"delta\":{\"content\":" + Json.stringify(content) + "}}]}\n\n";
     }
 
-    private static final class FakeStream implements LlmTransport {
+    private static final class FakeStream implements com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
         private final String stream;
 
         private FakeStream(String stream) {

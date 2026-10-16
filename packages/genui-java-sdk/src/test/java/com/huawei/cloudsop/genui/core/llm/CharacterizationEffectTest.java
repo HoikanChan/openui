@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.Json;
-import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.prompt.characterize.ArrayShape;
 import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig;
@@ -334,7 +333,9 @@ class CharacterizationEffectTest {
         return count;
     }
 
-    private static final class FakeTransport implements LlmTransport {
+    private static final class FakeTransport
+            implements
+                com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
         private final String response;
         private String lastBody;
 

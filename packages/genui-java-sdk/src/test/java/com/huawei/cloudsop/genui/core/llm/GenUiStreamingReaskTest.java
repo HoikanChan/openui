@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.llm.stream.SseFrames;
-import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -196,7 +195,9 @@ class GenUiStreamingReaskTest {
 
     // ── scripted streaming transport ──────────────────────────────────────────
 
-    private static final class ScriptedStream implements LlmTransport {
+    private static final class ScriptedStream
+            implements
+                com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
         private final Deque<String> streams;
         private final List<String> bodies = new ArrayList<>();
         private int streamCount = 0;
