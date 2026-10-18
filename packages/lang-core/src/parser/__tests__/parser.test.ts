@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { LibraryJSONSchema, ParamMap } from "../types";
 import { createParser, createStreamParser, createStreamingParser, parse } from "../parser";
+import type { LibraryJSONSchema, ParamMap } from "../types";
 
 // ── Test schema ──────────────────────────────────────────────────────────────
 
@@ -244,7 +244,89 @@ describe("unresolved references (streaming)", () => {
   });
 });
 
-// ── existing error rules ──────────────────────────────────────────────────────
+// ── unbound template references ────────────────────────────────────────────────
+
+describe("unbound template references", () => {
+  it("keeps an ordinary named expression dependency nonfatal", () => {
+    const result = parse("root = Title(@Count(helper))\nhelper = missing", schema);
+
+    expect(result.meta.unresolved).toContain("missing");
+    expect(result.meta.errors.map(({ code }) => code)).not.toContain("unbound-template-reference");
+  });
+
+  it("resolves a binding through transitive extracted-template dependencies", () => {
+    const result = parse(
+      'root = Stack([@Each(data.items, "item", itemTpl)])\nitemTpl = Title(helper.name)\nhelper = item',
+      schema,
+      undefined,
+      { externalRefs: ["data"] },
+    );
+
+    expect(result.meta.errors.map(({ code }) => code)).not.toContain("unbound-template-reference");
+    expect(result.meta.unresolved).not.toContain("item");
+  });
+
+  it("attributes a transitive free binding to its Open Template", () => {
+    const result = parse(
+      "root = Stack([itemTpl])\nitemTpl = Title(helper.name)\nhelper = item",
+      schema,
+    );
+    const templateErrors = result.meta.errors.filter(
+      ({ code }) => code === "unbound-template-reference",
+    );
+
+    expect(templateErrors).toHaveLength(1);
+    expect(templateErrors[0]).toMatchObject({
+      component: "itemTpl",
+      statementId: "itemTpl",
+    });
+    expect(templateErrors[0].message).toContain('template "itemTpl"');
+    expect(templateErrors[0].message).toContain('binding "item"');
+    expect(templateErrors[0].message).not.toContain('template "helper"');
+  });
+
+  it("redacts an invalid template and reports each missing binding once", () => {
+    const result = parse("root = Stack([itemTpl])\nitemTpl = Stack([item, item])", schema);
+    const templateErrors = result.meta.errors.filter(
+      ({ code }) => code === "unbound-template-reference",
+    );
+
+    expect(templateErrors).toHaveLength(1);
+    expect(result.root?.props.children).toEqual([]);
+  });
+
+  it("does not expose an @Each binder to its collection expression", () => {
+    const result = parse(
+      'root = Stack([outerTpl])\nouterTpl = Title(@Each(item.children, "item", innerTpl))\ninnerTpl = Title(item.name)',
+      schema,
+    );
+    const templateErrors = result.meta.errors.filter(
+      ({ code }) => code === "unbound-template-reference",
+    );
+
+    expect(templateErrors).toHaveLength(1);
+    expect(templateErrors[0]).toMatchObject({
+      component: "outerTpl",
+      statementId: "outerTpl",
+    });
+    expect(templateErrors[0].message).toContain('binding "item"');
+  });
+
+  it("uses the outer same-name binding for a nested @Each collection", () => {
+    const result = parse(
+      'root = Stack([@Each(data.items, "item", outerTpl)])\nouterTpl = Title(@Each(item.children, "item", innerTpl))\ninnerTpl = Title(item.name)',
+      schema,
+      undefined,
+      { externalRefs: ["data"] },
+    );
+
+    expect(result.meta.errors.map(({ code }) => code)).not.toContain("unbound-template-reference");
+    expect(result.meta.unresolved).not.toContain("item");
+  });
+
+});
+
+// ── existing error rules ────────────────────────────────────────────────────────
 
 describe("existing errors carry type and code", () => {
   it("missing-required has correct shape", () => {

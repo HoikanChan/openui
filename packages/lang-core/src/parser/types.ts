@@ -75,6 +75,7 @@ export type ValidationErrorCode =
   | "unknown-component"
   | "inline-reserved"
   | "excess-args"
+  | "unbound-template-reference"
   | "invalid-prop";
 
 /**

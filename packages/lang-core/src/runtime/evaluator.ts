@@ -4,13 +4,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { ASTNode } from "../parser/ast";
-import { isASTNode } from "../parser/ast";
-import { ACTION_NAMES, ACTION_STEPS, BUILTINS, LAZY_BUILTINS, toNumber } from "../parser/builtins";
 import type { BuiltinRuntimeContext } from "../parser/builtins";
+import { ACTION_NAMES, ACTION_STEPS, BUILTINS, LAZY_BUILTINS, toNumber } from "../parser/builtins";
 import type { ActionPlan, ActionStep, ElementNode } from "../parser/types";
 import { isElementNode } from "../parser/types";
 import { isReactiveSchema } from "../reactive";
 import { evaluatePropCore } from "./evaluate-prop";
+import { instantiateTemplate } from "./template-scope";
 
 /** Optional schema context for reactive-aware evaluation. */
 export interface SchemaContext {
@@ -291,22 +291,6 @@ function evaluatePropInline(
   });
 }
 
-/** Convert a resolved runtime value back to a literal AST node for deferred evaluation. */
-function toLiteralAST(value: unknown): ASTNode {
-  if (value === null || value === undefined) return { k: "Null" };
-  if (typeof value === "string") return { k: "Str", v: value };
-  if (typeof value === "number") return { k: "Num", v: value };
-  if (typeof value === "boolean") return { k: "Bool", v: value };
-  if (Array.isArray(value)) return { k: "Arr", els: value.map(toLiteralAST) };
-  if (typeof value === "object") {
-    return {
-      k: "Obj",
-      entries: Object.entries(value).map(([k, v]) => [k, toLiteralAST(v)] as [string, ASTNode]),
-    };
-  }
-  return { k: "Null" };
-}
-
 /**
  * Evaluate Action/Run/ToAssistant/OpenUrl Comp nodes into ActionPlan/ActionStep values.
  */
@@ -350,7 +334,7 @@ function evaluateActionCall(
       // Set($varName, value) → ActionStep { type: "set", target, valueAST }
       // First arg must be a StateRef (the $variable), second arg is the value expression.
       // valueAST is preserved as-is and evaluated at click time by triggerAction.
-      // Loop variables (e.g. t.id from Each) are pre-resolved by Each's substituteRef.
+      // Loop variables (e.g. t.id from Each) are captured before deferred evaluation.
       if (args.length < 2) return null;
       const targetNode = args[0];
       if (targetNode.k !== "StateRef") return null;
@@ -371,85 +355,11 @@ function evaluateActionCall(
 }
 
 /**
- * Substitute all Ref(varName) nodes in an AST tree with a literal value.
- * This pre-resolves loop variables so deferred expressions (like Action steps)
- * don't lose scope when evaluated later at click time.
- */
-function substituteRef(node: ASTNode, varName: string, value: unknown): ASTNode {
-  switch (node.k) {
-    case "Ref":
-      return node.n === varName ? toLiteralAST(value) : node;
-    case "Member": {
-      // Member access on the loop var: t.id → resolve t, then access .id
-      if (isASTNode(node.obj)) {
-        const subObj = substituteRef(node.obj as ASTNode, varName, value);
-        // If obj resolved to a literal, we can inline the member access result
-        if (subObj.k === "Obj") {
-          const entry = subObj.entries.find(([k]) => k === node.field);
-          if (entry) return entry[1];
-        }
-        return { ...node, obj: subObj };
-      }
-      return node;
-    }
-    case "Index":
-      return {
-        ...node,
-        obj: isASTNode(node.obj) ? substituteRef(node.obj as ASTNode, varName, value) : node.obj,
-        index: isASTNode(node.index)
-          ? substituteRef(node.index as ASTNode, varName, value)
-          : node.index,
-      };
-    case "BinOp":
-      return {
-        ...node,
-        left: substituteRef(node.left, varName, value),
-        right: substituteRef(node.right, varName, value),
-      };
-    case "UnaryOp":
-      return { ...node, operand: substituteRef(node.operand, varName, value) };
-    case "Ternary":
-      return {
-        ...node,
-        cond: substituteRef(node.cond, varName, value),
-        then: substituteRef(node.then, varName, value),
-        else: substituteRef(node.else, varName, value),
-      };
-    case "Arr":
-      return { ...node, els: node.els.map((e) => substituteRef(e, varName, value)) };
-    case "Obj":
-      return {
-        ...node,
-        entries: node.entries.map(
-          ([k, v]) => [k, substituteRef(v, varName, value)] as [string, ASTNode],
-        ),
-      };
-    case "Comp": {
-      const result = { ...node, args: node.args.map((a) => substituteRef(a, varName, value)) };
-      // Also substitute in mappedProps (added by materializer for catalog components)
-      if (node.mappedProps) {
-        const subProps: Record<string, ASTNode> = {};
-        for (const [k, v] of Object.entries(node.mappedProps)) {
-          subProps[k] = substituteRef(v, varName, value);
-        }
-        (result as any).mappedProps = subProps;
-      }
-      return result;
-    }
-    case "Assign":
-      return { ...node, value: substituteRef(node.value, varName, value) };
-    default:
-      return node;
-  }
-}
-
-/**
  * Each(array, varName, template) — evaluate template once per array item.
  * varName is user-defined (e.g. `issue`, `ticket`) — no $ prefix collision.
  *
- * Before evaluation, substitutes all Ref(varName) in the template with the
- * current item's literal value. This ensures deferred expressions (like
- * Action/Set steps) capture concrete values instead of dangling loop refs.
+ * Before evaluation, captures free loop references in the template so deferred
+ * expressions (like Action/Set steps) keep their lexical scope.
  */
 function evaluateLazyBuiltin(
   node: ASTNode & { k: "Comp" },
@@ -466,54 +376,12 @@ function evaluateLazyBuiltin(
     if (!Array.isArray(arr)) return [];
 
     const varName =
-      node.args[1].k === "Ref"
-        ? node.args[1].n
-        : node.args[1].k === "Str"
-          ? node.args[1].v
-          : null;
+      node.args[1].k === "Ref" ? node.args[1].n : node.args[1].k === "Str" ? node.args[1].v : null;
     if (!varName) return [];
     const template = node.args[2];
 
-        
-    // @Render template as @Each body — callable-template semantics.
-    // The materializer inlines named @Render statements into the template
-    // position with binder refs preserved. Unwrap it here: bind the render's
-    // OWN binders (item, index) and evaluate the body, instead of returning
-    // the raw Render node (which only makes sense in a component prop slot).
-    if (template.k === "Comp" && template.name === "Render" && template.args.length >= 2) {
-      const renderBinders = template.args
-        .slice(0, -1)
-        .map((a) => (a.k === "Str" ? a.v : a.k === "Ref" ? a.n : null));
-      const body = template.args.at(-1)!;
-      return arr.map((item, idx) => {
-        const binderValues: unknown[] = [item, idx];
-        let substituted = body;
-        for (const [i, binderName] of renderBinders.entries()) {
-          if (binderName != null) {
-            substituted = substituteRef(substituted, binderName, binderValues[i]);
-          }
-        }
-        const childCtx: EvaluationContext = {
-          ...context,
-          resolveRef: (refName: string) => {
-            const bi = renderBinders.indexOf(refName);
-            if (bi !== -1) return binderValues[bi];
-            if (refName === varName) return item;
-            return context.resolveRef(refName);
-          },
-        };
-        const result = evaluate(substituted, childCtx, schemaCtx);
-        if (schemaCtx && isElementNode(result)) {
-          return evaluateElementInline(result as ElementNode, childCtx, schemaCtx);
-        }
-        return result;
-      });
-    }
-    
     return arr.map((item, _idx) => {
-      // Pre-substitute loop variable refs with concrete values in the template AST.
-      // This captures the item for deferred expressions (Action steps evaluated at click time).
-      const substituted = substituteRef(template, varName, item);
+      const substituted = instantiateTemplate(template, new Map([[varName, item]]));
       const childCtx: EvaluationContext = {
         ...context,
         resolveRef: (refName: string) => {
