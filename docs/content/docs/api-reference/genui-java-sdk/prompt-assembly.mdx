@@ -1,0 +1,155 @@
+---
+title: Prompt Assembly
+description: PromptAssembler 结构、PromptInput、prompt sections、Request Overlay、Contract Version 和 golden 测试对齐。
+---
+
+`PromptAssembler` 是 GenUI prompt 组装的权威实现（design D9）。它是 `packages/lang-core/src/parser/prompt.ts` 的 `generatePrompt` 的逐字节 Java 移植，由 `PromptGoldenTest` 锁定跨语言一致性。
+
+## 组装入口
+
+`GenerationSdk.assemblePrompt(GenUIPromptRequest)` 是唯一的 prompt 汇聚点。它执行以下步骤：
+
+1. 合并 base contract 和选中扩展的 `components`、`componentGroups`、`tools`、`examples`、`additionalRules`。
+2. 追加 `GenUIPromptRequest.extraRules()`（Request Overlay）到 `additionalRules` 末尾。
+3. 对 `GenUIPromptRequest.dataModel()` 执行 Characterization，产出 `DataModelSpec`（含 sidecar）。
+4. 调用 `PromptAssembler.assemble(PromptInput, builtins)` 生成完整 prompt 文本。
+5. 返回 `GenUIPromptAssemblyResult(prompt, metadata)`。
+
+```java
+GenerationSdk sdk = GenerationSdk.create();
+sdk.register(extension);
+
+GenUIPromptRequest promptRequest = new GenUIPromptRequest(
+    "alarm",                                // extensionId
+    new DataModelSpec("Response data", response),  // dataModel
+    List.of("优先使用 SeverityBadge"),       // extraRules (Request Overlay)
+    false,                                  // editMode
+    false,                                  // inlineMode
+    true,                                   // toolCalls
+    true                                    // bindings
+);
+
+GenUIPromptAssemblyResult result = sdk.assemblePrompt(promptRequest);
+String prompt = result.prompt();
+GenUIPromptAssemblyMetadata meta = result.metadata();
+```
+
+`GenUiGenerator` 内部自动完成 `UiGenerationRequest` → `GenUIPromptRequest` 的转换并调用 `assemblePrompt`，服务层通常不需要直接调用。详见 [Request Model](./request-model)。
+
+## PromptInput
+
+`PromptAssembler.assemble()` 接收一个 `PromptInput` record 和 base contract 的 `builtins` manifest：
+
+```java
+public record PromptInput(
+    String preamble,                                  // 自定义前言；SDK 传 null 使用默认
+    String root,                                      // root 组件名，默认 "Root"
+    Map<String, ComponentPromptSpec> components,      // 合并后的组件契约
+    List<ComponentGroup> componentGroups,             // 合并后的分组
+    DataModelSpec dataModel,                          // Characterization 后的数据
+    List<ToolSpec> tools,                             // 合并后的工具
+    List<String> examples,                            // 合并后的示例
+    List<String> additionalRules,                     // 合并后的规则 + overlay
+    Boolean editMode,
+    Boolean inlineMode,
+    Boolean toolCalls,
+    Boolean bindings
+) {}
+```
+
+`GenerationSdk` 总是用 `null` preamble（使用默认 openui-lang 前言），`root` 来自 base contract。
+
+## Prompt 结构
+
+`assemble()` 按固定顺序拼接以下 section：
+
+| 顺序 | Section | 条件 |
+| --- | --- | --- |
+| 1 | Preamble（默认 openui-lang 前言） | 总是 |
+| 2 | Syntax Rules | 总是；`bindings` 为 true 时追加 $variable 规则 |
+| 3 | Component Signatures | 总是；按 `componentGroups` 分组，未分组归 "Other" |
+| 4 | Data Model | 仅当 `dataModel.raw` 非空 |
+| 5 | Template Built-ins | 总是；来自 base contract `builtins` manifest |
+| 6 | Data Built-ins | 当 `toolCalls || bindings` 或有 raw data model |
+| 7 | Query — Live Data Fetching | 当 `toolCalls` |
+| 8 | Mutation — Write Operations | 当 `toolCalls` |
+| 9 | Action — Button Behavior | 当组件签名包含 `ActionExpression` |
+| 10 | Interactive Filters + Forms | 当 `toolCalls && bindings` |
+| 11 | Data Workflow | 当 `toolCalls` |
+| 12 | Available Tools | 当 `tools` 非空 |
+| 13 | Hoisting & Streaming | 总是 |
+| 14 | Examples | 当 `examples` 非空 |
+| 15 | Edit Mode | 当 `editMode` 为 true |
+| 16 | Inline Mode | 当 `inlineMode` 为 true |
+| 17 | Important Rules + Final Verification | 总是 |
+| 18 | Additional Rules | 当 `additionalRules` 非空（含 Request Overlay） |
+
+### toolCalls 与 bindings 的默认推导
+
+如果 `toolCalls` 为 `null`，默认为 `hasTools`（有注册工具则为 true）。如果 `bindings` 为 `null`，默认跟随 `toolCalls`。`supportsExpressions` 为 `toolCalls || bindings`，控制 Data Built-ins 和 Streaming 规则中的表达式相关内容。
+
+## Request Overlay
+
+`GenUIPromptRequest.extraRules` 是 Request Overlay 机制。它在 `assemblePrompt` 中被追加到 `additionalRules` 末尾（section 18），只在本次请求生效，不持久化到扩展。
+
+```java
+// 扩展注册时的 additionalRules
+List.of("优先使用 SeverityBadge 展示严重级别")
+
+// 请求级 overlay（来自 UiGenerationRequest.suggestion）
+List.of("这次不要用图表，只用表格")
+
+// 组装后 prompt 的 Additional Rules section：
+// - 优先使用 SeverityBadge 展示严重级别
+// - 这次不要用图表，只用表格
+```
+
+Request Overlay 与 Prompt Override 的区别：Overlay 增强 prompt 组装，Override 丢弃整个组装结果。SDK 只支持 Overlay；Prompt Override 是调试工具，不在 SDK 范围内。
+
+## Contract Version
+
+`GenUIPromptAssemblyMetadata` 携带本次组装使用的 contract 版本信息：
+
+```java
+public record GenUIPromptAssemblyMetadata(
+    String extensionId,              // 选中的扩展 ID（可能为 null）
+    String baseContractVersion,      // base contract 版本（来自 base-contract.json）
+    String generationVersion,        // 扩展版本（来自 GenUIExtension.version，可能为 null）
+    List<String> registeredToolNames // 合并后所有已注册工具名
+) {}
+```
+
+`baseContractVersion` 和 `generationVersion` 共同标识本次 prompt 由哪些 contract 贡献。服务层可以用它做缓存 key 或日志追踪。
+
+## Characterization 汇聚点
+
+`assemblePrompt` 是 Characterization 的唯一应用点。`GenerationSdk.characterize()` 在这里对 `DataModelSpec` 做转换：
+
+```java
+private DataModelSpec characterize(DataModelSpec in) {
+    if (in == null) return null;
+    Characterized c = Characterizer.characterize(in.raw(), characterization);
+    if (c.shape() == null) return in;  // gate passed through — 不变
+    Map<String, Object> sample = (Map<String, Object>) c.sample();
+    String sidecar = TsTypeRenderer.render(c.shape(), characterization.sampleRows());
+    return new DataModelSpec(in.description(), sample, sidecar);
+}
+```
+
+当原始数据小（`≤ triggerBytes`）或 Characterization 被禁用时，`c.shape()` 为 null，`DataModelSpec` 原样返回——这保证了小数据 prompt 与 golden 测试逐字节一致。详见 [Characterization](./characterization)。
+
+## Golden 测试
+
+`PromptGoldenTest` 锁定 Java 与 TypeScript 的跨语言一致性。每个 `src/test/resources/prompt-golden/<name>.json` 是一个合并后的 `PromptSpec`，对应的 `<name>.txt` 由 TypeScript oracle 产出。
+
+```bash
+# 重新生成 golden 输出（修改 builtins 或 prompt.ts 后）
+pnpm --dir packages/react-ui-dsl run generate:base-contract
+pnpm --dir packages/lang-core run generate:prompt-golden
+
+# 验证 Java 端逐字节一致
+cd packages/genui-java-sdk
+mvn -Dtest=PromptGoldenTest test
+```
+
+`PromptAssembler` 的所有 section 转录自 `prompt.ts`，builtins 文档来自 contract 的 `builtins` manifest（由前端导出）。修改任何一端后，都需要重新生成并验证 golden 文件。
