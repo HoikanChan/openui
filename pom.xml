@@ -9,11 +9,10 @@
   <version>0.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>OpenUI Java Aggregator</name>
-  <description>Aggregator-only build for the Java Generation SDK and the GenUI Service reference implementation.</description>
+  <description>Aggregator-only build for the Java Generation SDK and the eval CLI.</description>
 
   <modules>
     <module>packages/genui-java-sdk</module>
     <module>packages/genui-eval-cli</module>
-    <module>examples/genui-service</module>
   </modules>
 </project>

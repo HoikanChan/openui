@@ -19,7 +19,7 @@ OpenUI(数据驱动 UI 生成,SmartCanvasService 契约的服务端实现)
 ├─ 2. 语言内核 ─ packages/lang-core(TS,跨语言对齐 oracle)
 │    ├─ parser:lexer / statements / expressions / merge / prompt 生成
 │    ├─ runtime:evaluator / queryManager / store / toolProvider
-│    └─ scripts:generate-prompt-golden / generate-validation-oracle
+│    └─ scripts:generate-prompt-golden
 │
 ├─ 3. Java Generation SDK ─ packages/genui-java-sdk(主战场,Java 21)
 │    ├─ 3.1 契约层 contract:base-contract + Extension 注册 + Supplement 合并 + TypeExpr
@@ -76,7 +76,6 @@ OpenUI(数据驱动 UI 生成,SmartCanvasService 契约的服务端实现)
 | `src/runtime/` | evaluator / evaluate-prop / evaluate-tree / queryManager / state-field / store / toolProvider / mcp / reactive(渲染侧运行时;Java 侧不消费,仅保留语义基线) |
 | `src/library.ts` | 组件库定义(组件名 + propsSchema + 描述),Java Generation Contract 的对齐基线 |
 | `scripts/generate-prompt-golden.mts` | 重生成跨语言 prompt golden 文件(Java 侧曾逐字节断言) |
-| `scripts/generate-validation-oracle.mts` | 生成跨语言 validation oracle:TS parser 是 Java 校验器契约错误分类学的 oracle(支持子集,非全 AST parity) |
 | `src/__tests__/` | 7 个测试文件(builtins-manifest / format / object-map / render / switch / null-coalescing / library-extension) |
 
 术语重点(各自 CONTEXT.md):Open Template / Template Instance / Iterator Binding / Deferred Render Template(`@Render`)/ Render Binding / Unbound Template Reference。

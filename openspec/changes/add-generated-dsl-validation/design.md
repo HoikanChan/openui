@@ -313,9 +313,9 @@ GenUiValidationConfig.disabled()
 
 **决策要点（已确认）：**
 
-- 富化只进 `hint` 字段，`message` 保持不动。硬约束：`CrossLanguageParityTest` 靠 message 首尾引号抽取 unresolved 名字，且 syntax message 镜像 TS `enrich-errors.ts`；任何带引号的富化进 message 都会破坏 parity。
+- 富化只进 `hint` 字段，`message` 保持不动。硬约束：syntax message 镜像 TS `enrich-errors.ts`；带引号的富化进 message 会破坏与 TS 的一致性。
 - unresolved-ref 归属修正做在 validator 层：这是**字段级修正而非行为变更**（不增删 issue，parity 只断言名字集合、corpus 只断言 code 集合）。spec 的 "Final unresolved reference is invalid" scenario 本就要求 "identifies … the statement that used it"，现实现挂 entryId 属于偏离。
-- 级联抑制只做在 `ReaskPromptBuilder`（prompt 视图），validator 输出保持全量——corpus 的 `containsAll` 期望与 parity oracle 都依赖全量输出。该取舍写入 `ReaskPromptBuilder` 类 javadoc（不另立 ADR）。
+- 级联抑制只做在 `ReaskPromptBuilder`（prompt 视图），validator 输出保持全量——corpus 的 `containsAll` 期望依赖全量输出。该取舍写入 `ReaskPromptBuilder` 类 javadoc（不另立 ADR）。
 - 本轮**不做**去重、不做编辑距离 did-you-mean、不做 legacy 组件重命名映射（后两者属后续 unknown-component 富化轮次）。
 
 **11.1 unresolved-ref 归属（`ProgramAnalyzer`）**
@@ -384,7 +384,7 @@ suppressCascades(issues):
 **11.6 验证与文档同步**
 
 - TDD：`ReaskPromptBuilderTest`（现有文案断言会红，先改期望）+ 新增 `RepairHintsTest`；再实现。
-- 定向：`InterceptionCorpusTest`、`ReaskPromptBuilderTest`、`RepairCoordinatorTest`、`CrossLanguageParityTest`；最后全量 361+（低 heap 形态）。
+- 定向：`InterceptionCorpusTest`、`ReaskPromptBuilderTest`、`RepairCoordinatorTest`；最后全量 361+（低 heap 形态）。
 - `docs/generated-dsl-interception-report.md` "拦截报告示例"节引用了旧 hint 文案，需同步。
 
 ## Risks / Trade-offs
