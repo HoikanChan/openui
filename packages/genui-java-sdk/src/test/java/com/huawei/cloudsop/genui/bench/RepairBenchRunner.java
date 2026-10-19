@@ -174,7 +174,7 @@ final class RepairBenchRunner {
 
         // ── 步骤 2：repairFull ──
         RepairCoordinator coordinator = new RepairCoordinator(transport, DefaultOpenuiLangValidator.INSTANCE,
-                new RepairPolicy(RepairPolicyKind.FINAL_REPAIR, maxAttempts, timeout, Duration.ZERO))
+                new RepairPolicy(RepairPolicyKind.FINAL_REPAIR, maxAttempts, timeout))
                 .withBodyBuilder(
                         (messages, stream) -> ChatCompletionRequest.of(repairConfig, null, messages, stream).toJson())
                 .withExternalRefs(externalRefs).withDataModel(benchCase.dataModel());

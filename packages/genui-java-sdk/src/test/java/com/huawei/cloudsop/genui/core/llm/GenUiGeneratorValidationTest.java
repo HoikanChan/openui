@@ -145,34 +145,6 @@ class GenUiGeneratorValidationTest {
                 "exception message should mention the issue code, got: " + ex.getMessage());
     }
 
-    // ── Test 3b: FAIL_FAST_REASK config — sync generate() must still throw on INVALID ──
-
-    /**
-     * FAIL_FAST_REASK is a streaming-only repair strategy and cannot execute inside sync generate(). Regression guard:
-     * previously only NONE/FINAL_REPAIR threw on INVALID, so FAIL_FAST_REASK fell through the inner repair-policy
-     * filter and returned invalid DSL silently. Any INVALID result must now throw regardless of repair policy.
-     */
-    @Test
-    void syncInvalidFailFastReaskConfigStillThrows() {
-        // BogusWidget is NOT in the base contract → unknown-component ERROR.
-        String dsl = "root = BogusWidget()";
-        FakeTransport transport = FakeTransport.sync(syncResponse(dsl));
-
-        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport,
-                GenUiValidationConfig.streamingGateWithReask(), null /* default validator */);
-
-        GenerationValidationException ex = assertThrows(GenerationValidationException.class,
-                () -> generator.generate(UiGenerationRequest.builder().userInput("show bogus").build()));
-
-        ValidationResult result = ex.validationResult();
-        assertNotNull(result, "validationResult() must not be null");
-        assertEquals(ValidationStatus.INVALID, result.status(), "status must be INVALID");
-        assertTrue(
-                result.issues().stream().anyMatch(
-                        i -> "unknown-component".equals(i.code()) && i.severity() == ValidationSeverity.ERROR),
-                "must have an unknown-component ERROR issue, got: " + result.issues());
-    }
-
     // ── Test 4: validation DISABLED — invalid DSL passes through ─────────────
 
     /**

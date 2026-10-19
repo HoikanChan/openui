@@ -250,22 +250,6 @@ class ValidationModelTest {
     }
 
     @Test
-    void streamingGatePresetHasExpectedModeAndPolicy() {
-        GenUiValidationConfig config = GenUiValidationConfig.streamingGate();
-
-        assertEquals(ValidationConfigMode.STREAMING_GATE, config.validationMode());
-        assertEquals(RepairPolicyKind.NONE, config.repairPolicy());
-    }
-
-    @Test
-    void streamingGateWithReaskPresetHasExpectedModeAndPolicy() {
-        GenUiValidationConfig config = GenUiValidationConfig.streamingGateWithReask();
-
-        assertEquals(ValidationConfigMode.STREAMING_GATE, config.validationMode());
-        assertEquals(RepairPolicyKind.FAIL_FAST_REASK, config.repairPolicy());
-    }
-
-    @Test
     void disabledPresetHasExpectedModeAndPolicy() {
         GenUiValidationConfig config = GenUiValidationConfig.disabled();
 

@@ -48,8 +48,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * timing/call metrics. Two arms:
  *
  * <ul>
- * <li>{@code off} — {@link GenUiValidationConfig#disabled()}: raw delta streaming, no gate.</li>
- * <li>{@code on} — {@link GenUiValidationConfig#streamingGateWithReask()}: statement gate + Fail-Fast Reask.</li>
+ * <li>{@code off} — {@link GenUiValidationConfig#disabled()}: raw delta streaming, no validation.</li>
+ * <li>{@code on} — {@link GenUiValidationConfig#finalOnly()}: live forwarding + end-of-round unified check.</li>
  * </ul>
  *
  * <p>
@@ -172,7 +172,7 @@ public final class ValidationBenchmarkDriver {
 
         OpenAiHttpTransport transport = new OpenAiHttpTransport(baseUrl, apiKey, proxy);
         GenUiValidationConfig validationConfig = "on".equals(arm)
-                ? GenUiValidationConfig.streamingGateWithReask()
+                ? GenUiValidationConfig.finalOnly()
                 : GenUiValidationConfig.disabled();
         GenUiGenerator generator = GenUiGenerator.withTransport(llmConfig, transport, validationConfig, null);
 
