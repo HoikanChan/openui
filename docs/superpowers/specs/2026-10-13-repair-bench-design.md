@@ -55,7 +55,7 @@
 
 | 路径 | 保留理由 |
 |---|---|
-| `packages/lang-core` | 框架无关 Lang 内核（74 文件）。Java parser 的跨语言对齐 oracle 来源（`parity/oracle.json` 的再生成依据）；validation 规则迭代需保住 TS/Java 一致性 |
+| `packages/lang-core` | 框架无关 Lang 内核（74 文件）。validation 规则迭代需保住 TS/Java 语义一致性 |
 | `packages/genui-java-sdk` | validation + repair 主战场 |
 | `packages/genui-eval-cli` | repair-bench 扩展点 |
 | `examples/genui-service` | SmartCanvasService 契约参考实现（内部仿照对象） |
