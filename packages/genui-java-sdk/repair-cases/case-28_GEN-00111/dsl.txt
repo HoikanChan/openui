@@ -1,0 +1,13 @@
+root = Stack([Stack([opticalTableCard])])
+
+txData = data.queryOpticalModuleMetrics[0].telemetryData
+rxData = data.queryOpticalModuleMetrics[1].telemetryData
+mergedRows = @Each(txData, "tx", @MergeObject(tx, {
+  rx_power_dbm: rxData[Number(tx.laneId)].rx_power_dbm
+}))
+opticalTableCard = Card([opticalTableHeader, opticalTable])
+opticalTableHeader = CardHeader("光模块通道功率指标")
+opticalTable = Table([laneCol, txPowerCol, rxPowerCol], mergedRows)
+laneCol = Col("通道ID", "laneId")
+txPowerCol = Col("发送功率(dBm)", "tx_power_dbm")
+rxPowerCol = Col("接收功率(dBm)", "rx_power_dbm")

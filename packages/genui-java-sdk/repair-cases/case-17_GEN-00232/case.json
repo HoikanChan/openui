@@ -2,6 +2,28 @@
   "id": "GEN-00232",
   "originalIntent": "查询设备的基本信息，并用卡片详情展示设备名称、IP、角色、状态（在线/离线标签）、款型、厂商、MAC、DN、ESN、版本和 Fabric 名称。",
   "rootCause": "LLM 漏掉中间层级 queryDeviceInfo，直接从 data 跳到 deviceInfo",
+  "dataModel": {
+    "queryDeviceInfo": {
+      "isTruncated": false,
+      "deviceTotal": 1,
+      "deployScene": "FabricDcn",
+      "deviceInfo": [
+        {
+          "neState": "online",
+          "neName": "O05-17F-Leaf2-Simu6-0001",
+          "neIp": "197.197.5.1",
+          "neCategory": "EnterpriseSwitch",
+          "neType": "CE9866-128DQ",
+          "neEsn": "2102350FMLN0H8023425",
+          "neRole": "ServerLeaf",
+          "neVendor": "Huawei",
+          "neMac": "97-55-46-F9-00-01",
+          "neVersion": "1.26 V300R026C00",
+          "fabricName": "default1"
+        }
+      ]
+    }
+  },
   "source": {
     "file": "4b-数据路径幻觉-queryDeviceInfo.md"
   }

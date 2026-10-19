@@ -1,0 +1,125 @@
+{
+  "id": "GEN-00022",
+  "originalIntent": "统计fabric为pod11的所有设备版本补丁情况，按设备型号分组展示。每个设备型号下列出设备名称、基础版本、补丁版本。若patchFileVersion为空或null，统一显示为\"无\"。",
+  "dataModel": {
+    "queryDeviceInfo": {
+      "isTruncated": false,
+      "deviceTotal": 10,
+      "deployScene": "FabricDcn",
+      "deviceInfo": [
+        {
+          "neState": "online",
+          "neName": "pod11-DCIleaf2-1",
+          "neIp": "10.136.193.111",
+          "neCategory": "EnterpriseSwitch",
+          "neType": "CE6870-48S6CQ-EI",
+          "neEsn": "2102350RXE10K2000002",
+          "neRole": "FabricGateway",
+          "neVendor": "Huawei",
+          "neMac": "FC-BC-D1-8C-36-81",
+          "neVersion": "8.23 V200R023C00SPC100",
+          "fabricName": "pod11"
+        },
+        {
+          "neState": "online",
+          "neName": "serverleaf3",
+          "neIp": "10.136.193.104",
+          "neCategory": "EnterpriseSwitch",
+          "neType": "CE6881-48S6CQ",
+          "neEsn": "101970068636",
+          "neRole": "ServerLeaf",
+          "neVendor": "Huawei",
+          "neMac": "20-65-8E-92-B9-71",
+          "neVersion": "8.24 V200R024C00SPC500",
+          "fabricName": "pod11",
+          "patchFileVersion": "V200R024SPH151"
+        },
+        {
+          "neState": "online",
+          "neName": "serverleaf1",
+          "neIp": "10.136.193.107",
+          "neCategory": "EnterpriseSwitch",
+          "neType": "CE6857-48S6CQ-EI",
+          "neEsn": "2102352CHS10K1000023",
+          "neRole": "ServerLeaf",
+          "neVendor": "Huawei",
+          "neMac": "70-C7-F2-7D-95-41",
+          "neVersion": "8.25 V200R025C00SPC500",
+          "fabricName": "pod11"
+        },
+        {
+          "neState": "online",
+          "neName": "borderleaf2",
+          "neIp": "10.136.193.110",
+          "neCategory": "EnterpriseSwitch",
+          "neType": "CE6881-48S6CQ",
+          "neEsn": "101960058246",
+          "neRole": "BorderLeaf",
+          "neVendor": "Huawei",
+          "neMac": "20-65-8E-92-BA-B1",
+          "neVersion": "8.24 V200R024C00SPC500",
+          "fabricName": "pod11",
+          "patchFileVersion": "V200R024SPH151"
+        },
+        {
+          "neState": "online",
+          "neName": "borderleaf1",
+          "neIp": "10.136.193.109",
+          "neCategory": "EnterpriseSwitch",
+          "neType": "CE6881-48S6CQ",
+          "neEsn": "101960058204",
+          "neRole": "BorderLeaf",
+          "neVendor": "Huawei",
+          "neMac": "20-65-8E-92-B8-11",
+          "neVersion": "8.24 V200R024C00SPC500",
+          "fabricName": "pod11",
+          "patchFileVersion": "V200R024SPH151"
+        },
+        {
+          "neState": "online",
+          "neName": "Spine2",
+          "neIp": "10.136.193.101",
+          "neCategory": "EnterpriseSwitch",
+          "neType": "CE6863-48S6CQ",
+          "neEsn": "101970068653",
+          "neRole": "Spine",
+          "neVendor": "Huawei",
+          "neMac": "A8-49-4D-D8-1C-01",
+          "neVersion": "8.22 V200R022C00SPC500",
+          "fabricName": "pod11"
+        },
+        {
+          "neState": "online",
+          "neName": "pod11-FW6655F",
+          "neIp": "10.136.193.116",
+          "neCategory": "EnterpriseFirewall",
+          "neType": "USG6655F",
+          "neEsn": "102160032388",
+          "neRole": "Firewall",
+          "neVendor": "Huawei",
+          "neMac": "94-25-33-C8-2B-50",
+          "neVersion": "1.22 V600R022C00SPC100",
+          "fabricName": "pod11"
+        },
+        {
+          "neState": "online",
+          "neName": "Spine1",
+          "neIp": "10.136.193.102",
+          "neCategory": "EnterpriseSwitch",
+          "neType": "CE6863-48S6CQ",
+          "neEsn": "101970068648",
+          "neRole": "Spine",
+          "neVendor": "Huawei",
+          "neMac": "A8-49-4D-D8-1B-B1",
+          "neVersion": "8.22 V200R022C00",
+          "fabricName": "pod11"
+        }
+      ]
+    }
+  },
+  "rootCause": "分组场景",
+  "source": {
+    "file": "gloden-dataset.md",
+    "note": "黄金数据集案例，非 llm-errors 失败语料；2026-10-16 手工收录"
+  }
+}

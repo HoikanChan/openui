@@ -57,7 +57,7 @@
       }
     ]
   },
-  "rootCause": "字段名幻觉 — metricName/filteredValue/effcnt 不存在 + 数据路径幻觉",
+  "rootCause": "表合并场景，由于无法合并出现，字段名幻觉 — metricName/filteredValue/effcnt 不存在 + 数据路径幻觉",
   "source": {
     "file": "1b-幻觉内置函数-光模块指标.md",
     "run": "20260918_130128_7ojm",

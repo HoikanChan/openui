@@ -1,0 +1,8 @@
+root = Stack([Stack([chartCard])])
+
+chartCard = ChartCard([chartHeader, chart])
+chartHeader = CardHeader("链路状态分布统计", "设备: 147.207.131.100")
+labels = @Each(data.chartData, "item", item.name)
+values = @Each(data.chartData, "item", item.value)
+series = Series("链路数量", values)
+chart = BarChart(labels, [series], "grouped", "链路状态", "链路数量")

@@ -8,12 +8,29 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * UI 生成请求,记录扩展标识、用户输入、请求/响应数据模型等生成参数。
+ *
+ * <p>
+ * {@code ext} 为宿主服务扩展入参(如 {@code ext.scenario}),用于传递场景化渲染所需的额外字段;SDK 核心 LLM 链路 不消费此字段,仅由 {@code MarkdownRenderer}
+ * 等场景包裹器读取。master 上该包裹器先于完整 #57 请求面落地,故此处仅补 {@code ext} 单字段。
+ */
 public record UiGenerationRequest(String extensionId, String userInput, Map<String, Object> request,
         Map<String, Object> response, String suggestion, Boolean editMode, Boolean inlineMode, Boolean toolCalls,
-        Boolean bindings) {
+        Boolean bindings, Map<String, Object> ext) {
     public UiGenerationRequest {
         request = immutableOrderedMap(request);
         response = immutableOrderedMap(response);
+        ext = immutableOrderedMap(ext);
+    }
+
+    /**
+     * 源兼容构造器:不带 ext 的旧签名(等价于 {@code ext = null})。
+     */
+    public UiGenerationRequest(String extensionId, String userInput, Map<String, Object> request,
+            Map<String, Object> response, String suggestion, Boolean editMode, Boolean inlineMode, Boolean toolCalls,
+            Boolean bindings) {
+        this(extensionId, userInput, request, response, suggestion, editMode, inlineMode, toolCalls, bindings, null);
     }
 
     private static Map<String, Object> immutableOrderedMap(Map<String, Object> value) {
@@ -34,6 +51,7 @@ public record UiGenerationRequest(String extensionId, String userInput, Map<Stri
         private Boolean inlineMode;
         private Boolean toolCalls;
         private Boolean bindings;
+        private Map<String, Object> ext;
 
         private Builder() {
         }
@@ -83,9 +101,14 @@ public record UiGenerationRequest(String extensionId, String userInput, Map<Stri
             return this;
         }
 
+        public Builder ext(Map<String, Object> ext) {
+            this.ext = ext;
+            return this;
+        }
+
         public UiGenerationRequest build() {
             return new UiGenerationRequest(extensionId, userInput, request, response, suggestion, editMode, inlineMode,
-                    toolCalls, bindings);
+                    toolCalls, bindings, ext);
         }
     }
 }

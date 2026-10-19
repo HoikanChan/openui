@@ -1,0 +1,6 @@
+root = Stack([Stack([chartCard])])
+
+chartCard = ChartHeader("内存利用率对比", "单位：%")
+chart = BarChart(deviceLabels, [Series("内存利用率", memUsageValues)], "grouped", "设备", "内存利用率 (%)")
+deviceLabels = @Each(data.devices, "d", d.neName)
+memUsageValues = @Each(data.devices, "d", d.mem_usage)

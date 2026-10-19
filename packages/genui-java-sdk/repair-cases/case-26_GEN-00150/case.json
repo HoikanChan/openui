@@ -1,0 +1,17 @@
+{
+  "id": "GEN-00150",
+  "originalIntent": "直方图（柱状图）展示设备 147.207.131.100 的链路状态分布统计。横轴为链路状态，纵轴为链路数量。枚举值翻译：active→在线。",
+  "dataModel": {
+    "chartData": [
+      {
+        "name": "在线",
+        "value": 2
+      }
+    ]
+  },
+  "rootCause": "幻觉组件 ChartCard（契约无此组件，根因定位同 gloden-dataset.md）",
+  "source": {
+    "file": "gloden-dataset.md",
+    "note": "黄金数据集案例，非 llm-errors 失败语料；2026-10-16 手工收录"
+  }
+}

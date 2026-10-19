@@ -23,24 +23,20 @@
 
 md 里没有渲染数据块(或不可解析),case.json 不带 dataModel:validation 时类型校验关闭,相关根因不会复现。
 
+**回填进展(2026-10-16,人工编辑)**:GEN-00247(case-08)/ GEN-00232(case-17,结构跳过)/ GEN-00094(case-23)/ GEN-00088(case-25)/ GEN-00233(case-18,结构跳过)/ GEN-00349(case-19,结构跳过)/ GEN-00076(case-24)已回填;GEN-00088 取 gloden-dataset.md 同期 queryInterfaceMetrics 真值(effcnt=30),case-24 复用同族真值(GEN-00076 的 DSL 引用 recv_drop_pkts_cnt,真值中无此字段——这正是案例的幻觉面,行形状错配照常触发),case-17/18/19 用 queryDeviceInfo 真值(黄金 GEN-00022 结构,单台 Simu6 设备),其余为内部近似数据。回填后验证:GEN-00088/94/76 复现 type-table-row-shape-mismatch、GEN-00232/233/349 复现 type-data-path-missing,与 REPRODUCE-BASELINE 预期一致。注意:重跑 md-to-repair-cases.mjs 会按 md 重写这些 case.json 并清掉回填值(intent 字段有复用逻辑,dataModel 没有)。
+
 | case | 目录 | md 来源 |
 |---|---|---|
-| GEN-00247 | case-08_GEN-00247 | 2b-幻觉组件-GroupBy.md |
-| GEN-00140 | case-20_GEN-00140 | 4b-数据路径幻觉-queryDeviceInfo.md |
-| rw-333-group#1 | case-22_rw-333-group-1 | 6a-内置函数参数错误-ObjectEntries.md |
-| GEN-00094 | case-23_GEN-00094 | 7a-Each语义误解-接口指标.md |
-| GEN-00076 | case-24_GEN-00076 | 7a-Each语义误解-接口指标.md |
-| GEN-00088 | case-25_GEN-00088 | 7a-Each语义误解-接口指标.md — gloden-dataset.md 有同期 queryInterfaceMetrics 真值,可作回填候选 |
+| GEN-00140 | case-20_GEN-00140 | 4b-数据路径幻觉-queryDeviceInfo.md — queryDevicePort 真值语料侧没有 |
+| rw-333-group#1 | case-22_rw-333-group-1 | 6a-内置函数参数错误-ObjectEntries.md — data.data(fabricName/deviceType/count)真值语料侧没有 |
 
 ## 结构性 dataModel 跳过
 
 md 标注（结构）,是示意不是真实数据,按缺失处理,同样待内部回填。
 
-| case | 目录 | md 来源 |
-|---|---|---|
-| GEN-00232 | case-17_GEN-00232 | 4b-数据路径幻觉-queryDeviceInfo.md |
-| GEN-00233 | case-18_GEN-00233 | 4b-数据路径幻觉-queryDeviceInfo.md |
-| GEN-00349 | case-19_GEN-00349 | 4b-数据路径幻觉-queryDeviceInfo.md |
+**回填进展(2026-10-16)**:GEN-00232(case-17)/ GEN-00233(case-18)/ GEN-00349(case-19)已全部回填 queryDeviceInfo 真值,三例均复现 type-data-path-missing。
+
+(已清空——跳过的 3 例均已回填)
 
 ## dataModel 省略号最小修复
 

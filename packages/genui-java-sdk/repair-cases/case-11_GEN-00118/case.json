@@ -35,7 +35,7 @@
       ]
     }
   },
-  "rootCause": "字段名幻觉 — Col field \"memory_usage\" 不存在，数据中只有 CPU 指标",
+  "rootCause": "意图错误，字段名幻觉 — Col field \"memory_usage\" 不存在，数据中只有 CPU 指标",
   "source": {
     "file": "3c-字段名幻觉-CPU内存指标.md",
     "run": "20260918_181004_5lez",
