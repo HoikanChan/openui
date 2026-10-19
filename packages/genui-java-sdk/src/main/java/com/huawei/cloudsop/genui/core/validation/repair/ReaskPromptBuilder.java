@@ -21,11 +21,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 为后续章节的两种修复形态（设计决策 #6）构建确定性的修复对话消息。纯函数、无副作用 —— 其输出文本被单元测试 直接断言。
+ * 为整份 DSL 反思修复（设计决策 #6）构建确定性的修复对话消息。纯函数、无副作用 —— 其输出文本被单元测试 直接断言。
  *
  * <ul>
  * <li>{@link #buildFullRepair} —— “这是你产出的完整 DSL；它因以下机器可读问题未通过校验；请重新生成一份修正后的 完整 openui-lang”。
- * <li>{@link #buildRepairAndContinue} —— “这是已接受的前缀（目前为止有效）；你的下一条语句无效，原因如下；请仅从该 语句的修正版本开始，继续生成剩余 DSL”。
  * </ul>
  *
  * <p>
@@ -48,14 +47,7 @@ public final class ReaskPromptBuilder {
     /** 机器可解析的标记，供测试/日志识别修复类系统消息（完整修复）。 */
     public static final String FULL_REPAIR_MARKER = "[REPAIR:FULL]";
 
-    /** 机器可解析的标记，供测试/日志识别修复类系统消息（接续修复）。 */
-    public static final String CONTINUE_REPAIR_MARKER = "[REPAIR:CONTINUE]";
-
     private static final Pattern COMPONENT_CALL = Pattern.compile("(?<![@A-Za-z0-9_])([A-Z][A-Za-z0-9_]*)\\s*\\(");
-
-    /** `@Each(...)` whose template body carries a `name = value` statement (a JS block, not one expression). */
-    private static final Pattern EACH_BLOCK_STATEMENT = Pattern
-            .compile("@Each\\s*\\([\\s\\S]*\\{[\\s\\S]*[\\r\\n]\\s*[A-Za-z_][A-Za-z0-9_]*\\s*=\\s*[^=]");
 
     private ReaskPromptBuilder() {
     }
@@ -119,75 +111,6 @@ public final class ReaskPromptBuilder {
         return List.of(ChatMessage.system(system.toString()), ChatMessage.user(user.toString()));
     }
 
-    /**
-     * 接续修复提示词：已接受的前缀有效；下一条语句无效；仅从该语句的修正版本开始继续生成剩余 DSL。
-     *
-     * @param userIntent
-     *            原始用户消息/意图，可为 {@code null}
-     * @param acceptedPrefix
-     *            目前为止已接受的有效 DSL，可为空
-     * @param invalidStatement
-     *            未通过校验的那一条语句
-     * @param issues
-     *            该无效语句的结构化问题
-     * @param contract
-     *            用于生成签名提示的合并合约，可为 {@code null}
-     * @return 系统消息 + 用户消息组成的对话消息列表
-     */
-    public static List<ChatMessage> buildRepairAndContinue(String userIntent, String acceptedPrefix,
-            String invalidStatement, List<ValidationIssue> issues, GenerationContract contract) {
-        return buildRepairAndContinue(userIntent, acceptedPrefix, invalidStatement, issues, contract, null);
-    }
-
-    /**
-     * 接续修复提示词，附带初次生成时的完整 system prompt，供修复模型复用同一语言/组件契约。
-     *
-     * @param userIntent
-     *            原始用户消息/意图，可为 {@code null}
-     * @param acceptedPrefix
-     *            目前为止已接受的有效 DSL，可为空
-     * @param invalidStatement
-     *            未通过校验的那一条语句
-     * @param issues
-     *            该无效语句的结构化问题
-     * @param contract
-     *            用于生成签名提示的合并合约，可为 {@code null}
-     * @param originalSystemPrompt
-     *            初次生成请求使用的完整 system prompt，可为 {@code null}
-     * @return 系统消息 + 用户消息组成的对话消息列表
-     */
-    public static List<ChatMessage> buildRepairAndContinue(String userIntent, String acceptedPrefix,
-            String invalidStatement, List<ValidationIssue> issues, GenerationContract contract,
-            String originalSystemPrompt) {
-        StringBuilder system = new StringBuilder();
-        system.append(CONTINUE_REPAIR_MARKER).append('\n');
-        appendOriginalSystemPrompt(system, originalSystemPrompt);
-        system.append("You are continuing an openui-lang document. Everything in \"Accepted so far\" is ALREADY "
-                + "valid and MUST NOT be repeated. Your previous NEXT statement was invalid. Produce a "
-                + "CORRECTED version of that statement and then the REST of the document. Emit ONLY the "
-                + "remaining openui-lang (do not re-emit the accepted prefix). Return the continuation "
-                + "inside a single ```openui fenced block. Do not explain.\n\n");
-        appendCompletionContract(system, acceptedPrefix);
-        appendCompactSyntaxRules(system);
-        appendSyntaxRepairHints(system, issues);
-        // 同 buildFullRepair：提示词视图消费 actionable 子集；targeted rewrites / 签名提示仍基于完整 issues
-        // （其内部检测逻辑依赖未被 reducer 过滤的模式与组件名）。
-        appendIssues(system, ValidationIssueReducer.actionable(issues));
-        appendTargetedRewrites(system, invalidStatement, issues);
-        appendInvalidStatementSignatures(system, invalidStatement, issues, contract);
-
-        StringBuilder user = new StringBuilder();
-        if (userIntent != null && !userIntent.isBlank()) {
-            user.append("## Original request\n").append(userIntent.trim()).append("\n\n");
-        }
-        user.append("## Accepted so far (valid — do not repeat)\n```openui\n")
-                .append(acceptedPrefix == null ? "" : acceptedPrefix.trim()).append("\n```\n\n");
-        user.append("## Invalid next statement (fix and continue from here)\n```openui\n")
-                .append(invalidStatement == null ? "" : invalidStatement.trim()).append("\n```");
-
-        return List.of(ChatMessage.system(system.toString()), ChatMessage.user(user.toString()));
-    }
-
     // ── 共享渲染逻辑 ────────────────────────────────────────────────────────
 
     private static void appendOriginalSystemPrompt(StringBuilder sb, String originalSystemPrompt) {
@@ -199,68 +122,6 @@ public final class ReaskPromptBuilder {
                 .append("The repair instructions below override only the response shape.\n\n");
         sb.append(originalSystemPrompt.trim()).append("\n\n");
         sb.append("## Repair instructions\n");
-    }
-
-    /**
-     * 完整性契约。回放实验（V0 7/26 → V1 14/26）表明：接续修复失败的主因不是单语句修不对，而是修好后 续写中途停笔或对同型错误只改第一处，导致文档不完整（root 缺失、下游引用未定义）。以下三条通用约束把
-     * “修复一条语句”升级为“补全整个文档”，是修复率翻倍的主杠杆，不依赖任何按例定制的参数。
-     */
-    private static void appendCompletionContract(StringBuilder sb, String acceptedPrefix) {
-        boolean rootDefined = acceptedPrefix != null
-                && java.util.regex.Pattern.compile("(?m)^\\s*root\\s*=").matcher(acceptedPrefix).find();
-        sb.append("## Completion contract (critical)\n");
-        sb.append("- The same mistake pattern may recur later in the document. Apply the SAME correction to EVERY "
-                + "later occurrence, not just the first.\n");
-        sb.append("- Your continuation MUST complete the document: every identifier referenced anywhere (in the "
-                + "accepted prefix or your continuation) must be defined by the end.\n");
-        if (!rootDefined) {
-            sb.append("- `root` is NOT defined yet. Your continuation MUST end with a `root = Stack([...])` statement "
-                    + "wiring the top-level layout.\n");
-        }
-        sb.append("- Do NOT stop after the corrected statement. Keep writing until the document is complete.\n\n");
-    }
-
-    /**
-     * 定向改写。回放实验（V1 14/26 → V2 ~16/26）表明：针对无效语句里检出的 JavaScript 惯性泄漏给出改写指引能稳定再 修好 2~3 例；但 V3 证明堆砌冗长示例反而降分。故本节把每种泄漏压成单行
-     * {@code WRONG → RIGHT} 映射，且只在真正 检出该模式时输出——这些模式（{@code .map}/JS 方法/{@code ===}/{@code .includes}/{@code @Each}
-     * 块语句/编造组件） 本质都是同一类“JS 习惯”，用一张按需填充的紧凑清单覆盖，而非逐点堆例。
-     */
-    private static void appendTargetedRewrites(StringBuilder sb, String invalidStatement,
-            List<ValidationIssue> issues) {
-        if (invalidStatement == null) {
-            invalidStatement = "";
-        }
-        List<String> rules = new ArrayList<>();
-        if (invalidStatement.contains("=>") || invalidStatement.matches("(?s).*\\.map\\s*\\(.*")) {
-            rules.add("Array `arr.map(x => x.f)` → pluck `arr.f`, or `@Each(arr, \"x\", x.f)`.");
-        }
-        if (invalidStatement.matches("(?s).*\\.(toString|toFixed|join)\\s*\\(.*")) {
-            rules.add("`x.toString()` → `\"\" + x`; `x.toFixed(1)` → `@FormatNumber(x, 1)`.");
-        }
-        if (invalidStatement.contains("===") || invalidStatement.contains("!==")) {
-            rules.add("Strict equality `===` / `!==` → `==` / `!=`.");
-        }
-        if (invalidStatement.matches("(?s).*\\.includes\\s*\\(.*")) {
-            rules.add("`arr.includes(x)` → spell out membership: `x == a || x == b`.");
-        }
-        if (EACH_BLOCK_STATEMENT.matcher(invalidStatement).find()) {
-            rules.add("`@Each` template is ONE expression, not a JS block: `@Each(items, \"d\", "
-                    + "{id: d.id, name: d.name})` — inline logic, no `x = y` statements inside.");
-        }
-        boolean unknownComponent = issues != null
-                && issues.stream().anyMatch(i -> i != null && "unknown-component".equals(i.code()));
-        if (unknownComponent) {
-            rules.add("Only components in the signatures section exist — never invent helpers "
-                    + "(e.g. lowercase `cardHeader(...)`); inline the expression or reuse a defined component.");
-        }
-        if (rules.isEmpty()) {
-            return;
-        }
-        sb.append("## Rewrite these JavaScript patterns (openui-lang has no JS methods/operators)\n");
-        for (String rule : rules) {
-            sb.append("- ").append(rule).append('\n');
-        }
-        sb.append('\n');
     }
 
     private static void appendCompactSyntaxRules(StringBuilder sb) {

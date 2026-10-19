@@ -24,33 +24,29 @@ class RepairPolicyTest {
         assertEquals(1, p.maxAttempts(), "default maxAttempts is 1 (Decision #8)");
         assertEquals(Duration.ZERO, p.timeout());
         assertFalse(p.hasTimeout());
-        assertFalse(p.hasStatementRepairTimeout());
     }
 
     @Test
     void ofCustomAttempts() {
-        RepairPolicy p = RepairPolicy.of(RepairPolicyKind.FAIL_FAST_REASK, 3);
+        RepairPolicy p = RepairPolicy.of(RepairPolicyKind.FINAL_REPAIR, 3);
         assertEquals(3, p.maxAttempts());
-        assertEquals(RepairPolicyKind.FAIL_FAST_REASK, p.kind());
+        assertEquals(RepairPolicyKind.FINAL_REPAIR, p.kind());
     }
 
     @Test
     void explicitTimeoutFlagsSet() {
-        RepairPolicy p = new RepairPolicy(RepairPolicyKind.FINAL_REPAIR, 2, Duration.ofSeconds(5),
-                Duration.ofSeconds(2));
+        RepairPolicy p = new RepairPolicy(RepairPolicyKind.FINAL_REPAIR, 2, Duration.ofSeconds(5));
         assertTrue(p.hasTimeout());
-        assertTrue(p.hasStatementRepairTimeout());
     }
 
     @Test
     void rejectsZeroAttempts() {
-        assertThrows(IllegalArgumentException.class,
-                () -> new RepairPolicy(RepairPolicyKind.NONE, 0, Duration.ZERO, Duration.ZERO));
+        assertThrows(IllegalArgumentException.class, () -> new RepairPolicy(RepairPolicyKind.NONE, 0, Duration.ZERO));
     }
 
     @Test
     void rejectsNegativeTimeout() {
         assertThrows(IllegalArgumentException.class,
-                () -> new RepairPolicy(RepairPolicyKind.NONE, 1, Duration.ofSeconds(-1), Duration.ZERO));
+                () -> new RepairPolicy(RepairPolicyKind.NONE, 1, Duration.ofSeconds(-1)));
     }
 }

@@ -29,13 +29,12 @@ import com.huawei.cloudsop.genui.core.validation.RepairPolicyKind;
 import com.huawei.cloudsop.genui.core.validation.ValidationConfigMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationMetadata;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
-import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 import com.huawei.cloudsop.genui.core.validation.repair.RepairCoordinator;
 import com.huawei.cloudsop.genui.core.validation.repair.RepairPolicy;
-import com.huawei.cloudsop.genui.core.validation.stream.GateDecision;
-import com.huawei.cloudsop.genui.core.validation.stream.StreamingValidationSession;
+import com.huawei.cloudsop.genui.core.validation.stream.ProgramRoundSession;
+import com.huawei.cloudsop.genui.core.validation.stream.RoundEndResult;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,6 +46,14 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+/**
+ * 公开生成入口(#56:首次生成实时展示,轮末统一校验当前程序)。
+ *
+ * <p>
+ * 生成过程不因校验而扣留内容、不逐语句修复、不增加生成前模型请求;模型本轮输出结束后,对<b>当前有效程序</b>(同名语句
+ * last-wins)执行一次统一校验(语法、引用、组件与算子契约、参数、数据路径、静态类型、页面完整性)。检查发现的错误交给 已有失败处理:同步入口抛 {@link GenerationValidationException} 或按
+ * FINAL_REPAIR 整份修复;流式入口在返回结果上标记 状态。增量修复循环见 #58(未在本类落地)。
+ */
 public final class GenUiGenerator {
     private final GenerationSdk sdk;
     private final GenUiLlmConfig config;
@@ -121,6 +128,10 @@ public final class GenUiGenerator {
         return this;
     }
 
+    /**
+     * 同步生成:一次模型请求,轮末对当前有效程序统一校验。同名覆盖后旧定义及其错误不再生效;结果 dsl 是去重后的当前 有效定义。INVALID 时按已有失败处理:NONE 抛
+     * {@link GenerationValidationException},FINAL_REPAIR 走整份修复。
+     */
     public GenUiGenerationResult generate(UiGenerationRequest request) {
         long started = timing.nanoTime().getAsLong();
         UiGenerationRequest effective = request == null ? UiGenerationRequest.builder().build() : request;
@@ -166,47 +177,41 @@ public final class GenUiGenerator {
             String content = ChatCompletionResponse.parse(response).firstContent();
             String extracted = OpenuiCodeExtractor.extract(content);
 
-            // ── FINAL validation gate ─────────────────────────────────────────────
-            if (validationConfig.validationMode() != ValidationConfigMode.DISABLED) {
-                GenUIPromptRequest promptRequest = toPromptRequest(effectiveRequest);
-                GenerationContract merged = sdk.mergedContract(promptRequest);
-                Set<String> externalRefs = externalRefsFor(promptRequest);
-
-                ValidationRequest validationRequest = ValidationRequest.builder().dsl(extracted).contract(merged)
-                        .rootName(merged.root()).externalRefs(externalRefs).dataModel(dataModelFor(effectiveRequest))
-                        .mode(ValidationMode.FINAL).build();
-
-                ValidationResult validationResult = validator.validate(validationRequest);
-
-                if (validationResult.status() == ValidationStatus.INVALID) {
-                    // Section 7: FINAL_REPAIR attempts sync whole-DSL repair before throwing; each attempt is
-                    // re-validated in FINAL mode. FAIL_FAST_REASK is streaming-only (cannot run in sync) and
-                    // NONE never repairs — both fall through to the throw below.
-                    RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
-                    if (policy.kind() == RepairPolicyKind.FINAL_REPAIR) {
-                        RepairCoordinator.FullRepairOutcome outcome = repairCoordinator(policy, externalRefs,
-                                dataModelFor(effectiveRequest)).repairFull(userMessage(effectiveRequest), extracted,
-                                        validationResult, merged, merged.root(), requestBody.systemPrompt());
-                        if (outcome.repaired()) {
-                            return new GenUiGenerationResult(outcome.dsl(), effectiveRequest.response(),
-                                    ValidationStatus.VALID, markRepaired(outcome.result()));
-                        }
-                        // Exhausted / still invalid / timeout / transport error → throw with the last result.
-                        ValidationResult last = outcome.result() == null ? validationResult : outcome.result();
-                        throw new GenerationValidationException(
-                                "Generated DSL failed validation after repair: " + buildIssueSummary(last), last);
-                    }
-                    String summary = buildIssueSummary(validationResult);
-                    throw new GenerationValidationException("Generated DSL failed validation: " + summary,
-                            validationResult);
-                }
-
-                return new GenUiGenerationResult(extracted, effectiveRequest.response(), validationResult.status(),
-                        validationResult);
+            if (validationConfig.validationMode() == ValidationConfigMode.DISABLED) {
+                return new GenUiGenerationResult(extracted, effectiveRequest.response());
             }
-            // ─────────────────────────────────────────────────────────────────────
 
-            return new GenUiGenerationResult(extracted, effectiveRequest.response());
+            // ── 轮末统一校验:当前程序 = 同名 last-wins 的有效定义 ─────────────
+            GenerationContract merged = mergedContract(effectiveRequest);
+            ProgramRoundSession session = newRoundSession(effectiveRequest, merged);
+            session.onDelta(extracted);
+            RoundEndResult round = session.onRoundEnd();
+            ValidationResult validationResult = round.validationResult();
+
+            if (validationResult.status() == ValidationStatus.INVALID) {
+                // Section 7: FINAL_REPAIR attempts sync whole-DSL repair before throwing; each attempt is
+                // re-validated in FINAL mode. NONE never repairs — both fall through to the throw below.
+                RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
+                if (policy.kind() == RepairPolicyKind.FINAL_REPAIR) {
+                    RepairCoordinator.FullRepairOutcome outcome = repairCoordinator(policy,
+                            externalRefsFor(toPromptRequest(effectiveRequest)), dataModelFor(effectiveRequest))
+                            .repairFull(userMessage(effectiveRequest), round.currentDefinitions(), validationResult,
+                                    merged, merged.root(), requestBody.systemPrompt());
+                    if (outcome.repaired()) {
+                        return new GenUiGenerationResult(outcome.dsl(), effectiveRequest.response(),
+                                ValidationStatus.VALID, markRepaired(outcome.result()), null, List.of(round));
+                    }
+                    // Exhausted / still invalid / timeout / transport error → throw with the last result.
+                    ValidationResult last = outcome.result() == null ? validationResult : outcome.result();
+                    throw new GenerationValidationException(
+                            "Generated DSL failed validation after repair: " + buildIssueSummary(last), last);
+                }
+                throw new GenerationValidationException(
+                        "Generated DSL failed validation: " + buildIssueSummary(validationResult), validationResult);
+            }
+
+            return new GenUiGenerationResult(round.currentDefinitions(), effectiveRequest.response(),
+                    validationResult.status(), validationResult, null, List.of(round));
         } catch (GenerationValidationException e) {
             // Re-throw directly — do not wrap in a generic GenerationSdkException.
             throw e;
@@ -215,49 +220,15 @@ public final class GenUiGenerator {
         }
     }
 
-    /** Build a repair coordinator bound to this generator's transport/validator + a policy. */
-    private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs) {
-        return repairCoordinator(policy, externalRefs, null);
-    }
-
-    /**
-     * Build a repair coordinator that also carries the render data model, so every re-validation attempt runs the same
-     * data-path/prop type validation as the initial FINAL gate.
-     */
-    private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs,
-            Map<String, Object> dataModel) {
-        return new RepairCoordinator(transport, validator, policy).withBodyBuilder(this::buildBodyFromMessages)
-                .withExternalRefs(externalRefs).withDataModel(dataModel);
-    }
-
-    /**
-     * External reference names for validation: when the request carries a dataModel, the host binds {@code data} at
-     * render time (the prompt teaches the model to use {@code data.<field>}), so the validator must treat it as
-     * runtime-resolved. Without a dataModel a {@code data} reference is genuinely unresolved — inject nothing.
-     */
-    private static Set<String> externalRefsFor(GenUIPromptRequest promptRequest) {
-        return promptRequest.dataModel() == null ? Set.of() : Set.of("data");
-    }
-
-    /**
-     * Render Data Model for validation, or {@code null} when the request carries none. {@code
-     * UiGenerationRequest.response()} normalizes absent to an EMPTY map (never null), while {@code
-     * ValidationRequest.dataModel} distinguishes null (no model → type validation off, {@code data} unresolved) from an
-     * empty map (concrete empty model). Translate at this seam so absent stays "no model".
-     */
-    private static Map<String, Object> dataModelFor(UiGenerationRequest request) {
-        return request.response().isEmpty() ? null : request.response();
+    private GenUiLlmConfig repairConfig() {
+        return GenUiLlmConfig.builder().endpoint(config.endpoint()).defaultModel(config.defaultModel()).temperature(0)
+                .enableThinking(false).jsonObjectResponse(config.jsonObjectResponse())
+                .extraHeaders(config.extraHeaders()).build();
     }
 
     /** Serialize repair chat messages into a transport body, reusing the generation request shape. */
     private String buildBodyFromMessages(List<ChatMessage> messages, boolean stream) {
         return ChatCompletionRequest.of(repairConfig(), null, messages, stream).toJson();
-    }
-
-    private GenUiLlmConfig repairConfig() {
-        return GenUiLlmConfig.builder().endpoint(config.endpoint()).defaultModel(config.defaultModel()).temperature(0)
-                .enableThinking(false).jsonObjectResponse(config.jsonObjectResponse())
-                .extraHeaders(config.extraHeaders()).build();
     }
 
     /** Tag a repaired result's metadata with {@code repaired=true} for service-layer logging. */
@@ -327,223 +298,64 @@ public final class GenUiGenerator {
         }
     }
 
+    /**
+     * 轮内实时转发(#56):不因校验扣留、不逐语句修复;流干净结束后由外层 {@code done} 收尾,轮末统一校验结果随 返回值携带。DISABLED 时跳过程序状态与校验。
+     */
     private GenUiGenerationResult generateStreamInternal(UiGenerationRequest request,
             Consumer<RenderStreamEnvelope> sink) {
         Objects.requireNonNull(sink, "sink must not be null");
         UiGenerationRequest effectiveRequest = request == null ? UiGenerationRequest.builder().build() : request;
-
-        if (validationConfig.validationMode() == ValidationConfigMode.STREAMING_GATE) {
-            return generateStreamGated(effectiveRequest, sink);
-        }
-        return generateStreamRaw(effectiveRequest, sink);
-    }
-
-    /**
-     * DISABLED / FINAL_ONLY path: unchanged low-latency raw-delta streaming. In FINAL_ONLY, one FINAL validation runs
-     * at stream end over the accumulated DSL to set {@code validationStatus} — the DSL is already delivered, so an
-     * INVALID result does NOT emit a spurious {@code error} frame; it only marks the result so the service layer won't
-     * cache it (Section 9).
-     */
-    private GenUiGenerationResult generateStreamRaw(UiGenerationRequest effectiveRequest,
-            Consumer<RenderStreamEnvelope> sink) {
+        boolean validate = validationConfig.validationMode() != ValidationConfigMode.DISABLED;
         Map<String, Object> dataModel = effectiveRequest.response();
 
-        // 首帧:dataModel,seq=0。一旦发出,后续 LLM 流错误改为 error envelope 而不再抛给调用方。
-        sink.accept(RenderStreamEnvelope.dataModel(dataModel));
-        int[] nextSeq = {1};
-
         String body = buildRequestBody(effectiveRequest, true);
+        ProgramRoundSession roundSession = validate
+                ? newRoundSession(effectiveRequest, mergedContract(effectiveRequest))
+                : null;
         StringBuilder accumulated = new StringBuilder();
         try (InputStream stream = transport.postStream(body)) {
             SseDeltaParser.parse(stream, delta -> {
-                accumulated.append(delta);
-                sink.accept(RenderStreamEnvelope.dsl(nextSeq[0]++, delta));
-            });
-            String extracted = OpenuiCodeExtractor.extract(accumulated.toString());
-            sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
-
-            if (validationConfig.validationMode() == ValidationConfigMode.FINAL_ONLY) {
-                ValidationResult finalResult = finalValidate(effectiveRequest, extracted);
-                return new GenUiGenerationResult(extracted, dataModel, finalResult.status(), finalResult);
-            }
-            // DISABLED: no validation status.
-            return new GenUiGenerationResult(extracted, dataModel);
-        } catch (LlmTransportException | IOException error) {
-            sink.accept(RenderStreamEnvelope.error(nextSeq[0]++, "LLM_STREAM_FAILED", error.getMessage(), true));
-            sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
-            String extracted = OpenuiCodeExtractor.extract(accumulated.toString());
-            // Transport failed mid-stream; content is partial. Do not run a tail validation here — the
-            // error frame already signals SDK inability to produce a trustworthy final DSL.
-            return new GenUiGenerationResult(extracted, dataModel);
-        }
-    }
-
-    /**
-     * STREAMING_GATE / streamingGateWithReask path: feed each LLM delta through a {@link StreamingValidationSession}.
-     * Only SDK-accepted COMPLETE statements are emitted as {@code dsl} envelopes (never raw deltas). A
-     * definitively-invalid completed statement is WITHHELD (its text never appears in any frame) and triggers
-     * {@code error("VALIDATION_FAILED")} → {@code done}.
-     */
-    private GenUiGenerationResult generateStreamGated(UiGenerationRequest effectiveRequest,
-            Consumer<RenderStreamEnvelope> sink) {
-        Map<String, Object> dataModel = effectiveRequest.response();
-
-        // 首帧:dataModel,seq=0。
-        sink.accept(RenderStreamEnvelope.dataModel(dataModel));
-        int[] nextSeq = {1};
-
-        GenUIPromptRequest promptRequest = toPromptRequest(effectiveRequest);
-        GenerationContract merged = sdk.mergedContract(promptRequest);
-        Set<String> externalRefs = externalRefsFor(promptRequest);
-        StreamingValidationSession session = new StreamingValidationSession(validator, merged, merged.root(),
-                externalRefs, dataModelFor(effectiveRequest));
-        RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
-
-        RequestBody requestBody = buildRequest(effectiveRequest, true);
-        try (InputStream stream = transport.postStream(requestBody.json())) {
-            boolean withheld = consumeGatedStream(stream, session, sink, nextSeq, true);
-
-            if (withheld) {
-                stream.close(); // release the previous request before any reask
-                // Section 7 Fail-Fast Reask: cancel-then-reask when policy is FAIL_FAST_REASK; otherwise the
-                // withheld statement is terminal (error -> done, INVALID). Reask reuses the SAME session/gate
-                // continuing from the accepted prefix; only accepted repaired DSL is emitted. seq is shared.
-                if (policy.kind() == RepairPolicyKind.FAIL_FAST_REASK && failFastReask(effectiveRequest, merged,
-                        externalRefs, session, sink, nextSeq, policy, requestBody.systemPrompt())) {
-                    // Reask succeeded: continuation emitted accepted DSL and closed cleanly via onEnd().
-                    sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
-                    return new GenUiGenerationResult(session.acceptedDsl(), dataModel, ValidationStatus.VALID,
-                            session.latestValidationResult());
-                }
-                // Terminal failure (no reask, or reask exhausted/failed): emit error -> done, INVALID.
-                sink.accept(
-                        RenderStreamEnvelope.error(nextSeq[0]++, "VALIDATION_FAILED", withheldMessage(session), false));
-                sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
-                return new GenUiGenerationResult(session.acceptedDsl(), dataModel, ValidationStatus.INVALID,
-                        session.withheldResult());
-            }
-
-            // Clean end: buffered statements were flushed by onEnd(); close the stream.
-            sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
-            ValidationResult finalResult = session.latestValidationResult();
-            return new GenUiGenerationResult(session.acceptedDsl(), dataModel, ValidationStatus.VALID, finalResult);
-        } catch (LlmTransportException | IOException error) {
-            sink.accept(RenderStreamEnvelope.error(nextSeq[0]++, "LLM_STREAM_FAILED", error.getMessage(), true));
-            sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
-            return new GenUiGenerationResult(session.acceptedDsl(), dataModel, ValidationStatus.INVALID,
-                    session.latestValidationResult());
-        }
-    }
-
-    /**
-     * Drive one stream through the gate/session. Consumption STOPS at the first withheld statement (fail-fast): the
-     * original stream is not read past that point (a {@link StopStreamSignal} unwinds the SSE parser). EMIT decisions
-     * are forwarded as {@code dsl} envelopes; BUFFER stays internal. No {@code error}/{@code done} frames are emitted
-     * here — the caller decides terminal vs reask.
-     *
-     * @param runOnEnd
-     *            whether to flush buffered statements via {@link StreamingValidationSession#onEnd} at clean
-     *            end-of-stream (the reask continuation runs onEnd via its own driver call).
-     * @return {@code true} if a statement was withheld (fail-fast), {@code false} on a clean end.
-     */
-    private boolean consumeGatedStream(InputStream stream, StreamingValidationSession session,
-            Consumer<RenderStreamEnvelope> sink, int[] nextSeq, boolean runOnEnd) throws IOException {
-        try {
-            SseDeltaParser.parse(stream, delta -> {
-                if (applyDecisions(session.onDelta(delta), sink, nextSeq)) {
-                    throw new StopStreamSignal(); // withheld — stop reading the original stream now
+                sink.accept(RenderStreamEnvelope.dsl(0, delta)); // seq 由 GenerationSession 重排
+                if (roundSession != null) {
+                    roundSession.onDelta(delta);
                 }
             });
-        } catch (StopStreamSignal stop) {
-            return true;
+
+            if (roundSession == null) {
+                // DISABLED: raw accumulation, no validation, no round record.
+                return new GenUiGenerationResult(OpenuiCodeExtractor.extract(accumulated.toString()), dataModel);
+            }
+            // 轮末统一校验:流已干净收尾,状态由返回结果承载(不发 error 帧);endReason 随校验结论推导。
+            RoundEndResult round = roundSession.onRoundEnd();
+            ValidationStatus status = round.validationResult().status();
+            return new GenUiGenerationResult(round.currentDefinitions(), dataModel, status, round.validationResult(),
+                    status == ValidationStatus.VALID
+                            ? GenerationEndReason.CHECK_PASSED
+                            : GenerationEndReason.VALIDATION_FAILED,
+                    List.of(round));
+        } catch (LlmTransportException | IOException error) {
+            // 流中途失败:发 error 帧(GenerationSession 拦截 LLM_STREAM_FAILED 转 MODEL_REQUEST_FAILED 并触发
+            // 整页 Markdown 降级),尽力返回已累计的当前程序;不运行轮末校验(内容不可信)。
+            sink.accept(RenderStreamEnvelope.error(0, "LLM_STREAM_FAILED", error.getMessage(), true));
+            return new GenUiGenerationResult(roundSession == null
+                    ? OpenuiCodeExtractor.extract(accumulated.toString())
+                    : roundSession.drainToCurrentDefinitions(), dataModel);
         }
-        if (runOnEnd && applyDecisions(session.onEnd(), sink, nextSeq)) {
-            return true;
-        }
-        return false;
+    }
+
+    /** Build a repair coordinator bound to this generator's transport/validator + a policy. */
+    private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs) {
+        return repairCoordinator(policy, externalRefs, null);
     }
 
     /**
-     * Fail-Fast Reask (design Decision #6). Cancel-then-reask: the original stream is already stopped. Reset the
-     * session to continue from its accepted prefix, then open ONE new continuation stream (bounded by
-     * {@link RepairPolicy#maxAttempts}) and feed it through the SAME gate. The bad statement text (original AND any
-     * reask-bad) never enters a {@code dsl} frame. Returns {@code
-     * true} only if a reask round completed cleanly (final DSL valid); {@code false} if every round still withheld /
-     * the stream failed / the attempt budget was exhausted.
+     * Build a repair coordinator that also carries the render data model, so every re-validation attempt runs the same
+     * data-path/prop type validation as the initial round-end check.
      */
-    private boolean failFastReask(UiGenerationRequest effectiveRequest, GenerationContract merged,
-            Set<String> externalRefs, StreamingValidationSession session, Consumer<RenderStreamEnvelope> sink,
-            int[] nextSeq, RepairPolicy policy, String originalSystemPrompt) {
-        RepairCoordinator coordinator = repairCoordinator(policy, externalRefs);
-        for (int attempt = 1; attempt <= policy.maxAttempts(); attempt++) {
-            String acceptedPrefix = session.acceptedDsl();
-            String invalidStatement = session.withheldStatement();
-            List<com.huawei.cloudsop.genui.core.validation.ValidationIssue> issues = session.withheldResult() == null
-                    ? List.of()
-                    : session.withheldResult().issues();
-
-            // Prepare the session to continue from the accepted prefix on the fresh continuation stream.
-            session.resetForReask();
-
-            boolean clean = coordinator.reaskStream(userMessage(effectiveRequest), acceptedPrefix, invalidStatement,
-                    issues, merged, originalSystemPrompt,
-                    newStream -> !consumeGatedStream(newStream, session, sink, nextSeq, true));
-            if (clean && !session.hasWithheld()) {
-                return true; // continuation produced only valid DSL
-            }
-            // else: reask still withheld a statement → loop for another attempt (if budget remains).
-        }
-        return false;
-    }
-
-    /** Control-flow signal to unwind the blocking SSE parser at a fail-fast withhold point. */
-    private static final class StopStreamSignal extends RuntimeException {
-        StopStreamSignal() {
-            super(null, null, false, false); // no message, no stack trace — pure control flow
-        }
-    }
-
-    /**
-     * Apply gate decisions to the sink. Forwards EMIT decisions as {@code dsl} envelopes; a WITHHOLD/FAIL (definitively
-     * invalid) returns {@code true} to signal the stream must stop — but emits NO frame (the caller chooses terminal
-     * error vs reask). BUFFER stays internal (no frame).
-     *
-     * @return {@code true} if a definitively-invalid statement was encountered (fail-fast)
-     */
-    private boolean applyDecisions(List<GateDecision> decisions, Consumer<RenderStreamEnvelope> sink, int[] nextSeq) {
-        for (GateDecision decision : decisions) {
-            switch (decision.kind()) {
-                case EMIT -> sink.accept(RenderStreamEnvelope.dsl(nextSeq[0]++, decision.statementText()));
-                case BUFFER -> {
-                    // held internally — no envelope until flushed
-                }
-                case WITHHOLD, FAIL -> {
-                    return true; // fail-fast trigger; caller decides terminal error vs reask
-                }
-                default -> {
-                    // no-op
-                }
-            }
-        }
-        return false;
-    }
-
-    private static String withheldMessage(StreamingValidationSession session) {
-        ValidationResult result = session.withheldResult();
-        if (result == null) {
-            return "Generated DSL failed streaming validation";
-        }
-        return "Generated DSL failed streaming validation: " + buildIssueSummary(result);
-    }
-
-    /** Run a FINAL validation over the accumulated DSL (FINAL_ONLY tail check). */
-    private ValidationResult finalValidate(UiGenerationRequest request, String dsl) {
-        GenUIPromptRequest promptRequest = toPromptRequest(request);
-        GenerationContract merged = sdk.mergedContract(promptRequest);
-        ValidationRequest validationRequest = ValidationRequest.builder().dsl(dsl).contract(merged)
-                .rootName(merged.root()).externalRefs(externalRefsFor(promptRequest)).dataModel(dataModelFor(request))
-                .mode(ValidationMode.FINAL).build();
-        return validator.validate(validationRequest);
+    private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs,
+            Map<String, Object> dataModel) {
+        return new RepairCoordinator(transport, validator, policy).withBodyBuilder(this::buildBodyFromMessages)
+                .withExternalRefs(externalRefs).withDataModel(dataModel);
     }
 
     private String buildRequestBody(UiGenerationRequest request, boolean stream) {
@@ -560,6 +372,35 @@ public final class GenUiGenerator {
     }
 
     private record RequestBody(String json, String systemPrompt) {
+    }
+
+    /** 每轮创建的轮末校验会话:使用当前请求生效契约 + 完整 Render Data Model,无第二份能力白名单。 */
+    private ProgramRoundSession newRoundSession(UiGenerationRequest request, GenerationContract merged) {
+        return new ProgramRoundSession(validator, merged, merged.root(), externalRefsFor(toPromptRequest(request)),
+                dataModelFor(request));
+    }
+
+    private GenerationContract mergedContract(UiGenerationRequest request) {
+        return sdk.mergedContract(toPromptRequest(request));
+    }
+
+    /**
+     * External reference names for validation: when the request carries a dataModel, the host binds {@code data} at
+     * render time (the prompt teaches the model to use {@code data.<field>}), so the validator must treat it as
+     * runtime-resolved. Without a dataModel a {@code data} reference is genuinely unresolved — inject nothing.
+     */
+    private static Set<String> externalRefsFor(GenUIPromptRequest promptRequest) {
+        return promptRequest.dataModel() == null ? Set.of() : Set.of("data");
+    }
+
+    /**
+     * Render Data Model for validation, or {@code null} when the request carries none. {@code
+     * UiGenerationRequest.response()} normalizes absent to an EMPTY map (never null), while {@code
+     * ValidationRequest.dataModel} distinguishes null (no model → type validation off, {@code data} unresolved) from an
+     * empty map (concrete empty model). Translate at this seam so absent stays "no model".
+     */
+    private static Map<String, Object> dataModelFor(UiGenerationRequest request) {
+        return request.response().isEmpty() ? null : request.response();
     }
 
     private GenUIPromptRequest toPromptRequest(UiGenerationRequest request) {

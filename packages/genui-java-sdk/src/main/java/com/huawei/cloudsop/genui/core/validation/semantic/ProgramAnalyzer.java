@@ -111,14 +111,8 @@ public final class ProgramAnalyzer {
 
         // ── Symbol table: LAST-WINS on duplicate ids (mirrors TS `stmtMap` Map.set). ──
         // Preserve first-seen insertion order for the id, but keep the last statement value.
-        LinkedHashMap<String, Statement> stmtMap = new LinkedHashMap<>();
-        String firstId = null;
-        for (Statement s : program.statements()) {
-            if (firstId == null) {
-                firstId = s.id();
-            }
-            stmtMap.put(s.id(), s); // overwrite → last-wins
-        }
+        LinkedHashMap<String, Statement> stmtMap = program.currentById();
+        String firstId = program.statements().isEmpty() ? null : program.statements().get(0).id();
 
         // Fold parser syntax diagnostics into the issue list (mode-aware severity).
         foldParserDiagnostics(program, mode, incomplete, issues);

@@ -168,8 +168,8 @@ render it. The validation data model lives under `core.validation`:
 - `ValidationMode` (`FINAL`, `STREAMING`)
 - `ValidationSeverity` (`ERROR`, `WARNING`, `INFO`)
 - `ValidationIssue`, `ValidationResult`, `ValidationMetadata`, `ValidationRequest`
-- `ValidationConfigMode` (`FINAL_ONLY`, `STREAMING_GATE`, `DISABLED`)
-- `RepairPolicyKind` (`NONE`, `FINAL_REPAIR`, `FAIL_FAST_REASK`)
+- `ValidationConfigMode` (`FINAL_ONLY`, `DISABLED`)
+- `RepairPolicyKind` (`NONE`, `FINAL_REPAIR`)
 - `GenUiValidationConfig`, the top-level generator config record
 
 `GenUiValidationConfig` intentionally exposes two axes only: when to validate
@@ -177,17 +177,17 @@ and what coarse repair policy to apply. Use the presets for the common modes:
 
 ```java
 GenUiValidationConfig cfg = GenUiValidationConfig.finalOnly(); // default
-GenUiValidationConfig gate = GenUiValidationConfig.streamingGate();
-GenUiValidationConfig reask = GenUiValidationConfig.streamingGateWithReask();
 GenUiValidationConfig off = GenUiValidationConfig.disabled();
 ```
 
-`GenUiGenerator.generate()` runs the sync final-validation gate after extracting
-openui-lang from the LLM response. With `DISABLED`, it skips validation and
-returns a backward-compatible `GenUiGenerationResult(dsl, dataModel)`, leaving
-`validationStatus()` and `validationResult()` as `null`. With `FINAL_ONLY`, a
-valid result returns the extracted DSL plus the populated `validationStatus()`
-and `validationResult()`. Any `INVALID` result throws
+`GenUiGenerator.generate()` runs one end-of-round unified check after extracting
+openui-lang from the LLM response — over the current effective program
+(last-wins by statement id), so superseded definitions no longer produce
+errors. With `DISABLED`, it skips validation and returns a backward-compatible
+`GenUiGenerationResult(dsl, dataModel)`, leaving `validationStatus()` and
+`validationResult()` as `null`. With `FINAL_ONLY`, a valid result returns the
+current effective DSL plus the populated `validationStatus()` and
+`validationResult()`. Any `INVALID` result throws
 `GenerationValidationException`; callers can inspect
 `e.validationResult().actionableIssues()` for the low-noise blocking diagnostics.
 The complete parser-parity view remains available through `issues()`.
@@ -266,43 +266,48 @@ If a service needs non-default attempt budgets or timeout integration, wire that
 at the repair-coordinator boundary rather than adding fields to
 `GenUiValidationConfig`.
 
-### Streaming gate
+### Streaming: live forwarding + end-of-round unified check (#56)
 
 `GenUiGenerator.generateStream(request, sink)` always starts by sending a
-`RenderStreamEnvelope.dataModel(...)` frame with `seq=0`. The remaining behavior
-depends on `ValidationConfigMode`:
+`RenderStreamEnvelope.dataModel(...)` frame with `seq=0`. Generation itself is
+**never gated**: every model delta is forwarded live as a `dsl` envelope —
+nothing is withheld for validation, no per-statement repair runs, and no extra
+pre-generation model request is issued. The remaining behavior depends on
+`ValidationConfigMode`:
 
 | Mode | Stream behavior |
 |---|---|
 | `DISABLED` | Raw LLM deltas are emitted as `dsl` envelopes. No validation result is attached. |
-| `FINAL_ONLY` | Raw LLM deltas are emitted as `dsl` envelopes, then one final validation runs over the accumulated DSL. Invalid final output marks the returned result but does not add a late `error` frame. |
-| `STREAMING_GATE` | Raw LLM deltas stay inside `StreamingValidationSession`; only gate-accepted complete statements are emitted as `dsl` envelopes. |
+| `FINAL_ONLY` | Raw LLM deltas are emitted as `dsl` envelopes. When the model's output round ends cleanly, one unified validation runs over the **current effective program**; the status is carried by the returned `GenUiGenerationResult`, with no late `error` frame. |
 
-The stream gate emits `GateDecision.Kind` values:
+The end-of-round check is maintained by `ProgramRoundSession` (the Program
+State & Validation module): complete statements are parsed as they arrive and
+kept in a **last-wins-by-name** map, so a re-issued `id = ...` statement
+overrides the previous definition and historical definitions stop producing
+current errors. The round-end validation runs once, in `FINAL` mode, over the
+current effective definitions — covering syntax, references, component and
+builtin contracts, params, data paths, static types, and page completeness
+using the request's effective contract and the full Render Data Model. Forward
+references defined later in the same round resolve fine; references still
+missing at round end are errors. Types that cannot be proven are not reported
+as definite mismatches.
 
-- `EMIT`: render-safe statement; forwarded as `RenderStreamEnvelope.dsl(seq, acceptedDsl)`.
-- `BUFFER`: valid so far but waiting on a temporary dependency; held inside the session.
-- `WITHHOLD`: completed statement is definitively invalid; its text is never emitted.
-- `FAIL`: terminal end-of-stream failure, equivalent to withholding at the end.
+Each round is recorded on the result (`GenUiGenerationResult.rounds()`): raw
+output, current definitions, diagnostics, duration, and contract version — the
+input for the upcoming incremental repair loop (#58) and for evaluation.
 
-`RenderStreamEnvelope.dsl(...)` therefore has accepted-DSL semantics. In
-`STREAMING_GATE`, consumers see SDK-accepted complete statements, not raw model
-deltas. With `streamingGateWithReask()`, a fail-fast `WITHHOLD` cancels the
-current stream and re-asks the LLM using the accepted prefix plus validation
-issues; the reask continuation is driven through the same
-`StreamingValidationSession`, preserving accepted DSL and monotonically
-increasing sequence numbers. If reask is not enabled or every reask attempt
-fails, the SDK emits `error` with code `VALIDATION_FAILED`, then `done`.
+If the stream fails mid-flight, the SDK emits `error("LLM_STREAM_FAILED")` then
+`done` and returns the best-effort current program without running a round-end
+check (the content is not trustworthy).
 
-Validation and repair internals do not enter the public stream by default:
-issue lists, repair prompts, repair attempts, and buffer/retry decisions remain
-SDK-internal. Public stream consumers see only `dataModel`, accepted `dsl`,
-terminal `error`, and `done` envelopes.
+Validation and repair internals do not enter the public stream: issue lists,
+repair prompts, and repair attempts remain SDK-internal. Public stream
+consumers see only `dataModel`, `dsl` (raw deltas, live), terminal `error`,
+and `done` envelopes.
 
-Known limitation: streaming reask `statementRepairTimeout` is not enforced.
-Sync repair `timeout` bounds the attempt count, not a single in-flight LLM call.
-Both are inert at the default `Duration.ZERO`. Proper enforcement needs
-transport read-timeout cooperation.
+Known limitation: sync repair `timeout` bounds the attempt count, not a single
+in-flight LLM call; it is inert at the default `Duration.ZERO`. Proper
+enforcement needs transport read-timeout cooperation.
 
 ### Rollback
 
@@ -320,7 +325,7 @@ renderer. With generated DSL validation enabled, migrate stream consumers to
 the SDK contract instead:
 
 1. Server-side generation should call `GenUiGenerator.generateStream(request, sink)`
-   or an equivalent `StreamingValidationSession` gate, then serialize each
+   (or feed a `ProgramRoundSession` for the end-of-round check), then serialize each
    `RenderStreamEnvelope` as one SSE `data:` frame.
 2. Client-side consumers should parse `text/event-stream`, JSON-decode each
    `data:` payload, and append only frames whose `type` is `"dsl"`.

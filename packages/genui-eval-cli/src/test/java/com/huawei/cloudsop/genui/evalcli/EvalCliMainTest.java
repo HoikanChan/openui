@@ -123,10 +123,14 @@ class EvalCliMainTest {
             return new com.huawei.cloudsop.genui.core.llm.transport.LlmCall() {
                 private boolean cancelled;
                 public synchronized InputStream execute() throws LlmTransportException {
-                    if (cancelled) throw new LlmTransportException("cancelled");
-                    return new java.io.ByteArrayInputStream(post(body).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    if (cancelled)
+                        throw new LlmTransportException("cancelled");
+                    return new java.io.ByteArrayInputStream(
+                            post(body).getBytes(java.nio.charset.StandardCharsets.UTF_8));
                 }
-                public synchronized void cancel() { cancelled = true; }
+                public synchronized void cancel() {
+                    cancelled = true;
+                }
             };
         }
 
