@@ -9,6 +9,56 @@ Java 21 SDK for assembling GenUI system prompts from:
 It also provides `GenUiGenerator` for services that want the SDK to assemble the
 prompt, invoke an LLM, parse sync or streaming responses, and extract OpenUI Lang.
 
+## Generation deadline and Markdown fallback
+
+`generate` and `generateStream` share one 20-second monotonic budget per DSL invocation,
+including prompt assembly, all model calls and validation. An independent scheduler
+cancels the active request even before response headers or during a blocked read.
+`withTiming(GenerationTiming)` permits deterministic clock/scheduler tests.
+
+The current transport is JDK `HttpClient`; pass a complete HTTP(S) endpoint:
+
+```java
+GenUiGenerator generator = GenUiGenerator.create(GenUiLlmConfig.builder()
+    .endpoint("https://your-gateway.example/chat/completions")
+    .putHeader("Authorization", "Bearer " + apiKey)
+    .build());
+```
+
+The former BSP-relative default endpoint is not usable with HttpClient. BSP support
+is explicitly deferred to [#62](https://github.com/HoikanChan/openui/issues/62).
+Custom transports must implement `LlmTransport.newCall(body, stream)` and the
+`LlmCall` cancellation contract. The handle must exist before network I/O; cancel
+must abort both headers and body reads, release resources and be idempotent.
+The default unsupported method is intentional: legacy transports must not silently
+claim cancellation support. Existing direct `post`/`postStream` remain available.
+
+On timeout or model failure the SDK stops DSL output and hands off exactly once.
+The reference host (`GenerateController`) supplies the public `MarkdownFallback`
+callback and calls `generateStream(original.asMarkdown(), sink)`. A host with its
+own independent Markdown flow can bind that flow instead. The two-argument SDK
+method uses the same explicit Markdown path by default. Markdown generation is
+outside the DSL budget, uses the original user input, request context, response
+data, locale and suggestions, and does not recursively fall back on failure.
+`MarkdownRenderer` provides the existing escaping and Canvas/Preview wrapping.
+
+Stream consumers must handle `replace` before Markdown DSL fragments:
+
+```json
+{"type":"replace","seq":2,"content":{"scope":"page","format":"Markdown","reason":"TIMEOUT"}}
+```
+
+Discard the entire previous DSL, parser state and rendered page, retain the original
+data model, then render the new fragments. This is not a same-name DSL patch or an
+append operation. Only one `done` ends the whole stream. If Markdown fails too,
+`error(MARKDOWN_REQUEST_FAILED)` precedes `done`. The returned `endReason` retains
+the DSL outcome (`CHECK_PASSED`, `TIMEOUT`, `MODEL_REQUEST_FAILED`, or a distinct
+unchecked/validation-failed status), even after successful fallback.
+
+This ticket preserves existing optional validation/repair strategies; the incremental
+repair loop from #54 is separate. Actual BSP/company-host adaptation and frontend
+whole-page replacement verification remain tracked in #62.
+
 For a user-facing integration walkthrough, see [INTEGRATION.md](INTEGRATION.md).
 
 OpenUI generation expects the model content to be openui-lang text, so the

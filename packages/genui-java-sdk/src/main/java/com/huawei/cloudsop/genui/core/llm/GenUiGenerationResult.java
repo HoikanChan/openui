@@ -24,7 +24,7 @@ import java.util.Map;
  * ({@link com.huawei.cloudsop.genui.core.validation.ValidationConfigMode#DISABLED}) 时二者均为 {@code null}。
  */
 public record GenUiGenerationResult(String dsl, Map<String, Object> dataModel, ValidationStatus validationStatus,
-        ValidationResult validationResult) {
+        ValidationResult validationResult, GenerationEndReason endReason) {
     public GenUiGenerationResult {
         dataModel = immutableOrderedMap(dataModel);
     }
@@ -35,6 +35,20 @@ public record GenUiGenerationResult(String dsl, Map<String, Object> dataModel, V
      */
     public GenUiGenerationResult(String dsl, Map<String, Object> dataModel) {
         this(dsl, dataModel, null, null);
+    }
+
+    public GenUiGenerationResult(String dsl, Map<String, Object> dataModel, ValidationStatus status,
+            ValidationResult validation) {
+        this(dsl, dataModel, status, validation,
+                status == ValidationStatus.VALID
+                        ? GenerationEndReason.CHECK_PASSED
+                        : status == ValidationStatus.INVALID
+                                ? GenerationEndReason.VALIDATION_FAILED
+                                : GenerationEndReason.UNCHECKED);
+    }
+
+    public GenUiGenerationResult withEndReason(GenerationEndReason reason) {
+        return new GenUiGenerationResult(dsl, dataModel, validationStatus, validationResult, reason);
     }
 
     private static Map<String, Object> immutableOrderedMap(Map<String, Object> value) {

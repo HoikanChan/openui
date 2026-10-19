@@ -12,7 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.GenerationValidationException;
-import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
@@ -385,7 +384,9 @@ class GenUiGeneratorValidationTest {
 
     // ── Fake transport (mirrors GenUiGeneratorTest.FakeTransport) ─────────────
 
-    private static final class FakeTransport implements LlmTransport {
+    private static final class FakeTransport
+            implements
+                com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
         private final String response;
         private final boolean fail;
 

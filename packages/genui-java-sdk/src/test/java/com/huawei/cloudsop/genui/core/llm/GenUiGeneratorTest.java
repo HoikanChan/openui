@@ -21,7 +21,6 @@ import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.ToolSpec;
 import com.huawei.cloudsop.genui.core.llm.stream.SseFrames;
-import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 
 import org.junit.jupiter.api.Test;
@@ -186,7 +185,7 @@ class GenUiGeneratorTest {
         RenderStreamEnvelope done = envelopes.get(envelopes.size() - 1);
         assertEquals(RenderStreamEnvelope.TYPE_ERROR, error.type());
         Map<String, Object> payload = Json.asObject(error.content(), "error");
-        assertEquals("LLM_STREAM_FAILED", payload.get("code"));
+        assertEquals("MARKDOWN_REQUEST_FAILED", payload.get("code"));
         assertEquals(true, payload.get("retryable"));
         assertEquals(RenderStreamEnvelope.TYPE_DONE, done.type());
         assertTrue(error.seq() < done.seq(), "error seq must precede done seq");
@@ -200,7 +199,9 @@ class GenUiGeneratorTest {
         assertSeqStrictlyIncreasing(envelopes);
 
         // 返回结果包含已累计内容的提取结果
-        assertEquals("root = Stack([])", result.dsl());
+        assertEquals("", result.dsl());
+        assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.endReason());
+        assertEquals(1, envelopes.stream().filter(e -> "replace".equals(e.type())).count());
     }
 
     /** 断言 envelope 列表中的 seq 严格单调递增(seq 顺序即发出顺序)。 */
@@ -231,8 +232,8 @@ class GenUiGeneratorTest {
 
     @Test
     void createDoesNotExposeSdkOrTransport() {
-        assertNotNull(GenUiGenerator.create());
-        assertNotNull(GenUiGenerator.create(GenUiLlmConfig.defaults()));
+        assertNotNull(GenUiGenerator.create(GenUiLlmConfig.builder().endpoint("http://localhost/chat").build()));
+        assertThrows(IllegalArgumentException.class, GenUiGenerator::create);
     }
 
     @Test
@@ -262,7 +263,9 @@ class GenUiGeneratorTest {
         return map;
     }
 
-    private static final class FakeTransport implements LlmTransport {
+    private static final class FakeTransport
+            implements
+                com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
         private final String response;
         private final String stream;
         private final boolean fail;

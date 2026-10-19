@@ -119,6 +119,18 @@ class EvalCliMainTest {
     /** user message 含 boom 时抛错,否则返回固定 DSL 响应。 */
     private static final class FlakyTransport implements LlmTransport {
         @Override
+        public com.huawei.cloudsop.genui.core.llm.transport.LlmCall newCall(String body, boolean stream) {
+            return new com.huawei.cloudsop.genui.core.llm.transport.LlmCall() {
+                private boolean cancelled;
+                public synchronized InputStream execute() throws LlmTransportException {
+                    if (cancelled) throw new LlmTransportException("cancelled");
+                    return new java.io.ByteArrayInputStream(post(body).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                }
+                public synchronized void cancel() { cancelled = true; }
+            };
+        }
+
+        @Override
         public String post(String body) throws LlmTransportException {
             if (body != null && body.contains("boom")) {
                 throw new LlmTransportException("boom upstream");

@@ -8,7 +8,7 @@ info:
     - generations / prompts 端点由 swagger-codegen 生成接口,手写 Controller 实现。
     - /generate 为手写流式实现(text/event-stream, Server-Sent Events),本文档中仅作契约声明;
       codegen 生成的接口签名无法表达流式,故该接口不被实现。每个 SSE `data:` 行是一个 JSON
-      RenderStreamEnvelope 帧(dataModel/dsl/error/done)。
+      RenderStreamEnvelope 帧(dataModel/dsl/replace/error/done)。
 basePath: /v1
 # 不设全局 consumes:codegen 会把它刻进 GET 映射,导致无 Content-Type 的 GET 请求 415
 schemes:
@@ -111,21 +111,14 @@ paths:
       operationId: generate
       summary: 生成 openui-lang(SSE 流式,SDK 校验门包络)
       description: |
-        以 Server-Sent Events(text/event-stream)流式返回 SDK 校验门包络帧。手写实现,不经 codegen。
-
-        每个 SSE `data:` 行是一个 JSON RenderStreamEnvelope {type, seq, content}:
-        - `dataModel`(seq=0):首帧,回显请求的 dataModel(content 为 JSON 对象)。
-        - `dsl`(seq 递增):经 SDK 校验门放行、可安全渲染的 openui-lang 内容(一条完整语句,
-          content 为字符串);**不是** LLM 原始增量,未通过校验门的语句永不出现在此帧。
-        - `error`:SDK 判定无法产出可信 DSL(content 为 {code, message, retryable})。
-          code=VALIDATION_FAILED 表示某完整语句被校验门 withhold(retryable=false);
-          code=LLM_STREAM_FAILED 表示流中途失败或 finish_reason 非 stop(retryable=true)。
-        - `done`:流结束(无 content 字段),仅表示 SSE 结束,不承载业务成功语义。
-
-        错误边界:拼装/连接在响应体开始前失败仍返回 JSON(400/404/502),任何 SSE 帧都在
-        LLM 连接成功之后;流中途或 finish_reason 非 stop 改为发 error 帧(取代旧的 "[ERROR: ...]" 文本尾巴)。
-      consumes:
-        - application/json
+        Streams SDK envelopes over SSE. dataModel(seq=0) is followed by realtime dsl fragments.
+        The DSL session has one 20-second deadline, including response-header and body waits.
+        On timeout or model failure, replace(scope=page, format=Markdown, reason=...) tells
+        consumers to discard all previous DSL, parser state and page content. The host then
+        starts an independent Markdown request with the original input/data. Its generation
+        is outside the DSL deadline. Markdown fragments follow replace; one done ends the stream.
+        Assembly errors still return JSON 400/404. Model errors occur in the stream; if Markdown
+        also fails, error(MARKDOWN_REQUEST_FAILED) precedes done. No automatic recursive fallback.
       produces:
         - text/event-stream
       parameters:
@@ -147,10 +140,6 @@ paths:
             $ref: "#/definitions/ErrorResponse"
         404:
           description: extensionId 未注册
-          schema:
-            $ref: "#/definitions/ErrorResponse"
-        502:
-          description: LLM 调用在产生首个 token 前失败
           schema:
             $ref: "#/definitions/ErrorResponse"
 
@@ -383,18 +372,20 @@ definitions:
   RenderStreamEnvelope:
     type: object
     description: |
-      /generate SSE 流的单帧,序列化为一行 `data: <json>`。content 的 JSON 类型由 type 决定:
-      dataModel→对象;dsl→字符串;error→StreamEnvelopeError;done→省略 content。
+      One SSE envelope: dataModel is the original data object; dsl is a realtime fragment;
+      replace requires resetting the entire page/parser before consuming Markdown DSL;
+      error is StreamEnvelopeError; done omits content.
     required:
       - type
       - seq
     properties:
       type:
         type: string
-        description: dataModel | dsl | error | done
+        description: dataModel | dsl | replace | error | done
         enum:
           - dataModel
           - dsl
+          - replace
           - error
           - done
       seq:
@@ -404,8 +395,9 @@ definitions:
       content:
         type: object
         description: |
-          按 type 变化的载荷:dataModel 为原始数据模型对象;dsl 为已放行的 openui-lang 字符串;
-          error 为 StreamEnvelopeError;done 无此字段。
+          dataModel is an object; dsl is a string (possibly incomplete);
+          replace is {scope: page, format: Markdown, reason: TIMEOUT or MODEL_REQUEST_FAILED};
+          error is StreamEnvelopeError; done has no content.
         additionalProperties: true
 
   ErrorResponse:
