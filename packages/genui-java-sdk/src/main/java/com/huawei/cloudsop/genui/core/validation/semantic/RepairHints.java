@@ -13,8 +13,7 @@ import java.util.Set;
  * 面向修复的未解析引用提示路由（设计决策 11.2）。
  *
  * <p>
- * 增强信息<em>只</em>放在 {@code hint} 字段中。问题的 {@code message} 受 TypeScript 对齐约束： {@code CrossLanguageParityTest} 从 message
- * 的首尾引号中提取被引用的名称，因此在 message 中添加带引号的内容 会破坏名称提取。
+ * 增强信息<em>只</em>放在 {@code hint} 字段中，保持问题的 {@code message} 稳定。
  *
  * <p>
  * 提示文案与 {@link #isRootCauseHint} 判定逻辑刻意放在同一个类中：{@code ReaskPromptBuilder} 使用该判定来豁免
