@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.llm.stream.SseFrames;
-import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
+import com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -259,16 +260,18 @@ class GenUiGeneratorRoundEndTest {
     // ── 流失败:已有失败处理不变 ─────────────────────────────────────────────
 
     @Test
-    void midStreamFailureEmitsErrorThenDoneWithoutRoundEndCheck() {
-        FakeStream t = FakeStream.failAfterFrames(frame("root = Stack([])\n"));
+    void midStreamFailureTriggersMarkdownFallbackWithoutRoundEndCheck() {
+        // #57 语义:DSL 流中途失败 → 取消请求、发整页 replace,再走独立 Markdown 降级;轮末校验不运行(内容不可信)。
+        // 第二个脚本(降级请求)返回一个空流,模拟降级也无内容。
+        FakeStream t = FakeStream.ofScripts(frame("root = Stack([])\n"), "");
+        t.failAfterFirstStream();
         ArrayList<RenderStreamEnvelope> envelopes = new ArrayList<>();
         GenUiGenerationResult result = generator(t).generateStream(req(), envelopes::add);
 
-        assertEquals("error", envelopes.get(envelopes.size() - 2).type());
-        Map<String, Object> payload = Json.asObject(envelopes.get(envelopes.size() - 2).content(), "error");
-        assertEquals("LLM_STREAM_FAILED", payload.get("code"));
+        List<String> types = types(envelopes);
+        assertTrue(types.contains(RenderStreamEnvelope.TYPE_REPLACE), "流失败后发整页 replace 帧: " + types);
         assertEquals("done", envelopes.get(envelopes.size() - 1).type());
-        assertNull(result.validationStatus(), "流失败后不运行轮末校验(内容不可信)");
+        assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.endReason());
         assertTrue(result.rounds().isEmpty(), "流失败不产生轮记录");
         assertSeqStrictlyIncreasing(envelopes);
     }
@@ -295,22 +298,26 @@ class GenUiGeneratorRoundEndTest {
         return "data: {\"choices\":[{\"delta\":{\"content\":" + Json.stringify(content) + "}}]}\n\n";
     }
 
-    private static final class FakeStream implements LlmTransport {
-        private final String stream;
-        private final boolean failAfterFrames;
+    private static final class FakeStream implements InMemoryLlmTransport {
+        private final ArrayDeque<String> scripts;
+        private boolean failFirstStream = false;
         private int streamCount = 0;
 
-        private FakeStream(String stream, boolean failAfterFrames) {
-            this.stream = stream;
-            this.failAfterFrames = failAfterFrames;
+        private FakeStream(ArrayDeque<String> scripts) {
+            this.scripts = scripts;
         }
 
         static FakeStream of(String... frames) {
-            return new FakeStream(String.join("", frames), false);
+            return new FakeStream(new ArrayDeque<>(List.of(String.join("", frames))));
         }
 
-        static FakeStream failAfterFrames(String... frames) {
-            return new FakeStream(String.join("", frames), true);
+        static FakeStream ofScripts(String... streams) {
+            return new FakeStream(new ArrayDeque<>(List.of(streams)));
+        }
+
+        /** 首个脚本流在吐完内容后断连(模拟流中途失败);后续脚本正常。 */
+        void failAfterFirstStream() {
+            failFirstStream = true;
         }
 
         int streamCount() {
@@ -325,8 +332,9 @@ class GenUiGeneratorRoundEndTest {
         @Override
         public InputStream postStream(String body) throws LlmTransportException {
             streamCount++;
-            InputStream frames = new ByteArrayInputStream(stream.getBytes(StandardCharsets.UTF_8));
-            return failAfterFrames ? new FrameThenFailStream(frames) : frames;
+            String script = scripts.isEmpty() ? "" : scripts.poll();
+            InputStream frames = new ByteArrayInputStream(script.getBytes(StandardCharsets.UTF_8));
+            return failFirstStream && streamCount == 1 ? new FrameThenFailStream(frames) : frames;
         }
     }
 

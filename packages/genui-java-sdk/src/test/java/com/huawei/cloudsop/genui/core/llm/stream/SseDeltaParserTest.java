@@ -19,6 +19,20 @@ import java.util.List;
 
 class SseDeltaParserTest {
     @Test
+    void rejectsTruncatedFinishEvenWithoutDelta() {
+        String stream = frame("partial") + "data: {\"choices\":[{\"finish_reason\":\"length\"}]}\n\n";
+        assertThrows(IOException.class, () -> SseDeltaParser.parse(input(stream), delta -> {
+        }));
+    }
+
+    @Test
+    void doneStopsConsumptionAndDiscardsQueuedFragments() throws IOException {
+        String stream = frame("first") + SseFrames.done() + frame("late");
+        assertEquals("first", SseDeltaParser.parse(input(stream), delta -> {
+        }));
+    }
+
+    @Test
     void parsesJoinedFramesAndSkipsDone() throws IOException {
         String stream = frame("hel") + frame("lo") + SseFrames.done();
         ArrayList<String> deltas = new ArrayList<>();

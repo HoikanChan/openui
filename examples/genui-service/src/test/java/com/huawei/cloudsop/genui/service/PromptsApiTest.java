@@ -37,13 +37,11 @@ class PromptsApiTest {
     @Test
     void baseAssemblyMatchesSdkByteForByte() throws Exception {
         JsonNode result = assemble("{}");
-        String expected = GenerationSdk.create()
-                .assemblePrompt(new GenUIPromptRequest(null, null, List.of(), null, null, null, null)).prompt();
+        GenerationSdk sdk = GenerationSdk.create();
+        String expected = sdk.assemblePrompt(new GenUIPromptRequest(null, null, List.of(), null, null, null, null))
+                .prompt();
         assertEquals(expected, result.get("prompt").asText());
-        // 契约版本跟随 SDK 打包的 base-contract.json(不硬编码,契约升级后此处自动跟随)。
-        assertEquals(GenerationSdk.create()
-                .mergedContract(new GenUIPromptRequest(null, null, List.of(), null, null, null, null))
-                .contractVersion(), result.get("metadata").get("baseContractVersion").asText());
+        assertEquals(sdk.baseContract().contractVersion(), result.get("metadata").get("baseContractVersion").asText());
     }
 
     @Test

@@ -161,7 +161,9 @@ class RepairCoordinatorTest {
                 "re-validation must receive the Render Data Model");
     }
 
-    private static final class ScriptedPosts implements LlmTransport {
+    private static final class ScriptedPosts
+            implements
+                com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
         private final Deque<String> responses;
         private final boolean fail;
         private int count = 0;

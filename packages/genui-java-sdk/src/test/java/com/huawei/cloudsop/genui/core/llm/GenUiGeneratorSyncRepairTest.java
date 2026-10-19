@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.GenerationValidationException;
-import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 import com.huawei.cloudsop.genui.core.validation.RepairPolicyKind;
@@ -90,12 +89,11 @@ class GenUiGeneratorSyncRepairTest {
     @Test
     void finalRepairRepairTransportFailsThrows() {
         ScriptedTransport t = ScriptedTransport.forPostsThenFail(syncResponse("root = Bogus(\"x\")"));
-
         GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), t, finalRepair(), null);
-
-        GenerationValidationException ex = assertThrows(GenerationValidationException.class,
+        var error = assertThrows(com.huawei.cloudsop.genui.core.GenerationSdkException.class,
                 () -> generator.generate(req()));
-        assertEquals(ValidationStatus.INVALID, ex.validationResult().status());
+        assertEquals("Markdown request failed: repair transport boom", error.getMessage());
+        assertEquals(3, t.postCount(), "initial + failed repair + independent Markdown");
     }
 
     // ── repair revalidation must inject `data` external ref ───────────────────
@@ -134,7 +132,9 @@ class GenUiGeneratorSyncRepairTest {
 
     // ── scripted fake transport ───────────────────────────────────────────────
 
-    private static final class ScriptedTransport implements LlmTransport {
+    private static final class ScriptedTransport
+            implements
+                com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
         private final Deque<String> posts;
         private final boolean failAfterScript;
         private int postCount = 0;

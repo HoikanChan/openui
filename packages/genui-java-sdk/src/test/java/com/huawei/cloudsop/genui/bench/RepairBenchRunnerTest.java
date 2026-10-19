@@ -76,7 +76,9 @@ class RepairBenchRunnerTest {
     }
 
     /** 按 DSL 脚本化的假 transport：从请求体里提取修复提示词携带的无效 DSL，反查脚本队列。 */
-    private static final class ScriptedTransport implements LlmTransport {
+    private static final class ScriptedTransport
+            implements
+                com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
         private final Map<String, Deque<String>> scriptByDsl = new LinkedHashMap<>();
 
         private final int[] postCount = {0};
@@ -438,7 +440,7 @@ class RepairBenchRunnerTest {
         writeCase("case-a", "a", invalidDsl, "\"originalIntent\":\"show the dashboard\"");
         // 用一个捕获型 transport 验证请求体里带着原始意图与温度 0。
         List<String> bodies = new ArrayList<>();
-        LlmTransport capturing = new LlmTransport() {
+        LlmTransport capturing = new com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport() {
             @Override
             public String post(String body) {
                 bodies.add(body);

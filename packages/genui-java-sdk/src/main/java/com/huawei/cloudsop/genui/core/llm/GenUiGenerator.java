@@ -16,9 +16,9 @@ import com.huawei.cloudsop.genui.core.llm.protocol.ChatCompletionRequest;
 import com.huawei.cloudsop.genui.core.llm.protocol.ChatCompletionResponse;
 import com.huawei.cloudsop.genui.core.llm.protocol.ChatMessage;
 import com.huawei.cloudsop.genui.core.llm.stream.SseDeltaParser;
+import com.huawei.cloudsop.genui.core.llm.transport.HttpClientLlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
-import com.huawei.cloudsop.genui.core.llm.transport.RestfulLlmTransport;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig;
@@ -60,6 +60,8 @@ public final class GenUiGenerator {
     private final LlmTransport transport;
     private final GenUiValidationConfig validationConfig;
     private final OpenuiLangValidator validator;
+    private GenerationTiming timing = GenerationTiming.system();
+    private String systemPromptOverride;
 
     private GenUiGenerator(GenerationSdk sdk, GenUiLlmConfig config, LlmTransport transport,
             GenUiValidationConfig validationConfig, OpenuiLangValidator validator) {
@@ -81,7 +83,7 @@ public final class GenUiGenerator {
 
     public static GenUiGenerator create(GenUiLlmConfig config) {
         GenUiLlmConfig effectiveConfig = config == null ? GenUiLlmConfig.defaults() : config;
-        return new GenUiGenerator(GenerationSdk.create(), effectiveConfig, new RestfulLlmTransport(effectiveConfig));
+        return new GenUiGenerator(GenerationSdk.create(), effectiveConfig, new HttpClientLlmTransport(effectiveConfig));
     }
 
     public static GenUiGenerator create(GenUiLlmConfig config, CharacterizationConfig characterization) {
@@ -89,7 +91,7 @@ public final class GenUiGenerator {
         GenerationSdk sdk = GenerationSdk.builder()
                 .characterization(characterization == null ? CharacterizationConfig.defaults() : characterization)
                 .build();
-        return new GenUiGenerator(sdk, effectiveConfig, new RestfulLlmTransport(effectiveConfig));
+        return new GenUiGenerator(sdk, effectiveConfig, new HttpClientLlmTransport(effectiveConfig));
     }
 
     public static GenUiGenerator withTransport(GenUiLlmConfig config, LlmTransport transport) {
@@ -131,6 +133,43 @@ public final class GenUiGenerator {
      * {@link GenerationValidationException},FINAL_REPAIR 走整份修复。
      */
     public GenUiGenerationResult generate(UiGenerationRequest request) {
+        long started = timing.nanoTime().getAsLong();
+        UiGenerationRequest effective = request == null ? UiGenerationRequest.builder().build() : request;
+        if ("Markdown".equals(effective.renderComponentsKey()))
+            return markdown().generate(effective);
+        GenerationSession session = new GenerationSession(transport, timing, started, null);
+        var outcome = session.run(() -> scoped(session).generateInternal(effective));
+        if (outcome.failure() == null)
+            return outcome.result();
+        return markdown().generate(effective).withEndReason(outcome.failure());
+    }
+
+    /** Configure before use. Copies share the SDK's registered contracts, not invocation state. */
+    public GenUiGenerator withTiming(GenerationTiming value) {
+        GenUiGenerator copy = scoped(transport);
+        copy.timing = Objects.requireNonNull(value);
+        return copy;
+    }
+
+    /** Host-supplied system prompt, e.g. the reference service's debug override. */
+    public GenUiGenerator withSystemPrompt(String prompt) {
+        GenUiGenerator copy = scoped(transport);
+        copy.systemPromptOverride = prompt;
+        return copy;
+    }
+
+    private GenUiGenerator scoped(LlmTransport scopedTransport) {
+        GenUiGenerator copy = new GenUiGenerator(sdk, config, scopedTransport, validationConfig, validator);
+        copy.timing = timing;
+        copy.systemPromptOverride = systemPromptOverride;
+        return copy;
+    }
+
+    private MarkdownGeneration markdown() {
+        return new MarkdownGeneration(config, transport);
+    }
+
+    private GenUiGenerationResult generateInternal(UiGenerationRequest request) {
         UiGenerationRequest effectiveRequest = request == null ? UiGenerationRequest.builder().build() : request;
         try {
             RequestBody requestBody = buildRequest(effectiveRequest, false);
@@ -160,7 +199,7 @@ public final class GenUiGenerator {
                                     merged, merged.root(), requestBody.systemPrompt());
                     if (outcome.repaired()) {
                         return new GenUiGenerationResult(outcome.dsl(), effectiveRequest.response(),
-                                ValidationStatus.VALID, markRepaired(outcome.result()), List.of(round));
+                                ValidationStatus.VALID, markRepaired(outcome.result()), null, List.of(round));
                     }
                     // Exhausted / still invalid / timeout / transport error → throw with the last result.
                     ValidationResult last = outcome.result() == null ? validationResult : outcome.result();
@@ -172,7 +211,7 @@ public final class GenUiGenerator {
             }
 
             return new GenUiGenerationResult(round.currentDefinitions(), effectiveRequest.response(),
-                    validationResult.status(), validationResult, List.of(round));
+                    validationResult.status(), validationResult, null, List.of(round));
         } catch (GenerationValidationException e) {
             // Re-throw directly — do not wrap in a generic GenerationSdkException.
             throw e;
@@ -181,109 +220,15 @@ public final class GenUiGenerator {
         }
     }
 
-    /**
-     * 流式生成(#56 实时展示)。首帧固定发出 {@code dataModel} envelope(seq=0),随后每个模型 delta 实时转发为 {@code dsl} envelope(seq
-     * 递增)——不因校验扣留、不做逐语句门控、不增加生成前请求。模型本轮输出结束并干净收尾后, 在返回结果上携带轮末统一校验(当前有效程序)与轮记录;校验失败不发 error 帧(状态由结果承载,错误交给已有失败处理)。
-     * 首帧发出后若流读取/传输失败,SDK 不向调用方抛出该异常,而是发出 {@code error} 再发 {@code done},并返回已累计内容 的当前定义提取结果(不运行轮末校验——内容不可信)。
-     */
-    public GenUiGenerationResult generateStream(UiGenerationRequest request, Consumer<RenderStreamEnvelope> sink) {
-        Objects.requireNonNull(sink, "sink must not be null");
-        UiGenerationRequest effectiveRequest = request == null ? UiGenerationRequest.builder().build() : request;
-        boolean validate = validationConfig.validationMode() != ValidationConfigMode.DISABLED;
-        Map<String, Object> dataModel = effectiveRequest.response();
-
-        // 首帧:dataModel,seq=0。一旦发出,后续 LLM 流错误改为 error envelope 而不再抛给调用方。
-        sink.accept(RenderStreamEnvelope.dataModel(dataModel));
-        int[] nextSeq = {1};
-
-        String body = buildRequestBody(effectiveRequest, true);
-        ProgramRoundSession session = validate
-                ? newRoundSession(effectiveRequest, mergedContract(effectiveRequest))
-                : null;
-        StringBuilder accumulated = new StringBuilder();
-        try (InputStream stream = transport.postStream(body)) {
-            SseDeltaParser.parse(stream, delta -> {
-                accumulated.append(delta);
-                sink.accept(RenderStreamEnvelope.dsl(nextSeq[0]++, delta)); // 实时转发,不扣留
-                if (session != null) {
-                    session.onDelta(delta);
-                }
-            });
-            sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
-
-            if (session == null) {
-                // DISABLED: raw accumulation, no validation, no round record.
-                return new GenUiGenerationResult(OpenuiCodeExtractor.extract(accumulated.toString()), dataModel);
-            }
-            // 轮末统一校验:流已收尾(done 帧已发),状态由返回结果承载。
-            RoundEndResult round = session.onRoundEnd();
-            return new GenUiGenerationResult(round.currentDefinitions(), dataModel, round.validationResult().status(),
-                    round.validationResult(), List.of(round));
-        } catch (LlmTransportException | IOException error) {
-            sink.accept(RenderStreamEnvelope.error(nextSeq[0]++, "LLM_STREAM_FAILED", error.getMessage(), true));
-            sink.accept(RenderStreamEnvelope.done(nextSeq[0]++));
-            // Transport failed mid-stream; content is partial. Do not run a round-end validation — the
-            // error frame already signals SDK inability to produce a trustworthy final DSL. The returned
-            // DSL is the best-effort current program (drained, unvalidated).
-            return new GenUiGenerationResult(session == null
-                    ? OpenuiCodeExtractor.extract(accumulated.toString())
-                    : session.drainToCurrentDefinitions(), dataModel);
-        }
-    }
-
-    /** 每轮创建的轮末校验会话:使用当前请求生效契约 + 完整 Render Data Model,无第二份能力白名单。 */
-    private ProgramRoundSession newRoundSession(UiGenerationRequest request, GenerationContract merged) {
-        return new ProgramRoundSession(validator, merged, merged.root(), externalRefsFor(toPromptRequest(request)),
-                dataModelFor(request));
-    }
-
-    private GenerationContract mergedContract(UiGenerationRequest request) {
-        return sdk.mergedContract(toPromptRequest(request));
-    }
-
-    /** Build a repair coordinator bound to this generator's transport/validator + a policy. */
-    private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs) {
-        return repairCoordinator(policy, externalRefs, null);
-    }
-
-    /**
-     * Build a repair coordinator that also carries the render data model, so every re-validation attempt runs the same
-     * data-path/prop type validation as the initial round-end gate.
-     */
-    private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs,
-            Map<String, Object> dataModel) {
-        return new RepairCoordinator(transport, validator, policy).withBodyBuilder(this::buildBodyFromMessages)
-                .withExternalRefs(externalRefs).withDataModel(dataModel);
-    }
-
-    /**
-     * External reference names for validation: when the request carries a dataModel, the host binds {@code data} at
-     * render time (the prompt teaches the model to use {@code data.<field>}), so the validator must treat it as
-     * runtime-resolved. Without a dataModel a {@code data} reference is genuinely unresolved — inject nothing.
-     */
-    private static Set<String> externalRefsFor(GenUIPromptRequest promptRequest) {
-        return promptRequest.dataModel() == null ? Set.of() : Set.of("data");
-    }
-
-    /**
-     * Render Data Model for validation, or {@code null} when the request carries none. {@code
-     * UiGenerationRequest.response()} normalizes absent to an EMPTY map (never null), while {@code
-     * ValidationRequest.dataModel} distinguishes null (no model → type validation off, {@code data} unresolved) from an
-     * empty map (concrete empty model). Translate at this seam so absent stays "no model".
-     */
-    private static Map<String, Object> dataModelFor(UiGenerationRequest request) {
-        return request.response().isEmpty() ? null : request.response();
+    private GenUiLlmConfig repairConfig() {
+        return GenUiLlmConfig.builder().endpoint(config.endpoint()).defaultModel(config.defaultModel()).temperature(0)
+                .enableThinking(false).jsonObjectResponse(config.jsonObjectResponse())
+                .extraHeaders(config.extraHeaders()).build();
     }
 
     /** Serialize repair chat messages into a transport body, reusing the generation request shape. */
     private String buildBodyFromMessages(List<ChatMessage> messages, boolean stream) {
         return ChatCompletionRequest.of(repairConfig(), null, messages, stream).toJson();
-    }
-
-    private GenUiLlmConfig repairConfig() {
-        return GenUiLlmConfig.builder().endpoint(config.endpoint()).defaultModel(config.defaultModel()).temperature(0)
-                .enableThinking(false).jsonObjectResponse(config.jsonObjectResponse())
-                .extraHeaders(config.extraHeaders()).build();
     }
 
     /** Tag a repaired result's metadata with {@code repaired=true} for service-layer logging. */
@@ -307,6 +252,112 @@ public final class GenUiGenerator {
                 .limit(3).map(i -> "[" + i.code() + "] " + i.message()).collect(Collectors.joining("; "));
     }
 
+    /**
+     * Stream realtime DSL under one 20-second deadline. On timeout/model failure, cancel the DSL request, emit a
+     * whole-page {@code replace}, and invoke the independent Markdown path. One {@code done} ends the entire
+     * invocation; Markdown failure emits {@code error} before it.
+     */
+    public GenUiGenerationResult generateStream(UiGenerationRequest request, Consumer<RenderStreamEnvelope> sink) {
+        return generateStream(request, sink, (original, reason, output) -> markdown().generateStream(original, output));
+    }
+
+    /** The host may hand off to its existing independent Markdown flow at this public seam. */
+    public GenUiGenerationResult generateStream(UiGenerationRequest request, Consumer<RenderStreamEnvelope> sink,
+            MarkdownFallback fallback) {
+        long started = timing.nanoTime().getAsLong();
+        Objects.requireNonNull(sink, "sink must not be null");
+        Objects.requireNonNull(fallback, "fallback must not be null");
+        UiGenerationRequest effective = request == null ? UiGenerationRequest.builder().build() : request;
+        if ("Markdown".equals(effective.renderComponentsKey()))
+            return markdown().generateStream(effective, sink);
+        GenerationSession session = new GenerationSession(transport, timing, started, sink);
+        var outcome = session.run(() -> {
+            session.ensureInitial(effective.response());
+            return scoped(session).generateStreamInternal(effective, session::emit);
+        });
+        session.ensureInitial(effective.response());
+        if (outcome.failure() == null) {
+            sink.accept(RenderStreamEnvelope.done(session.nextSeq()));
+            return outcome.result();
+        }
+        sink.accept(RenderStreamEnvelope.replace(session.nextSeq(), outcome.failure()));
+        try {
+            GenUiGenerationResult result = fallback.generate(effective, outcome.failure(), event -> {
+                if (!RenderStreamEnvelope.TYPE_DATA_MODEL.equals(event.type())
+                        && !RenderStreamEnvelope.TYPE_DONE.equals(event.type())) {
+                    sink.accept(new RenderStreamEnvelope(event.type(), session.nextSeq(), event.content()));
+                }
+            });
+            sink.accept(RenderStreamEnvelope.done(session.nextSeq()));
+            return result.withEndReason(outcome.failure());
+        } catch (GenerationSdkException error) {
+            sink.accept(
+                    RenderStreamEnvelope.error(session.nextSeq(), "MARKDOWN_REQUEST_FAILED", error.getMessage(), true));
+            sink.accept(RenderStreamEnvelope.done(session.nextSeq()));
+            return new GenUiGenerationResult("", effective.response()).withEndReason(outcome.failure());
+        }
+    }
+
+    /**
+     * 轮内实时转发(#56):不因校验扣留、不逐语句修复;流干净结束后由外层 {@code done} 收尾,轮末统一校验结果随 返回值携带。DISABLED 时跳过程序状态与校验。
+     */
+    private GenUiGenerationResult generateStreamInternal(UiGenerationRequest request,
+            Consumer<RenderStreamEnvelope> sink) {
+        Objects.requireNonNull(sink, "sink must not be null");
+        UiGenerationRequest effectiveRequest = request == null ? UiGenerationRequest.builder().build() : request;
+        boolean validate = validationConfig.validationMode() != ValidationConfigMode.DISABLED;
+        Map<String, Object> dataModel = effectiveRequest.response();
+
+        String body = buildRequestBody(effectiveRequest, true);
+        ProgramRoundSession roundSession = validate
+                ? newRoundSession(effectiveRequest, mergedContract(effectiveRequest))
+                : null;
+        StringBuilder accumulated = new StringBuilder();
+        try (InputStream stream = transport.postStream(body)) {
+            SseDeltaParser.parse(stream, delta -> {
+                sink.accept(RenderStreamEnvelope.dsl(0, delta)); // seq 由 GenerationSession 重排
+                if (roundSession != null) {
+                    roundSession.onDelta(delta);
+                }
+            });
+
+            if (roundSession == null) {
+                // DISABLED: raw accumulation, no validation, no round record.
+                return new GenUiGenerationResult(OpenuiCodeExtractor.extract(accumulated.toString()), dataModel);
+            }
+            // 轮末统一校验:流已干净收尾,状态由返回结果承载(不发 error 帧);endReason 随校验结论推导。
+            RoundEndResult round = roundSession.onRoundEnd();
+            ValidationStatus status = round.validationResult().status();
+            return new GenUiGenerationResult(round.currentDefinitions(), dataModel, status, round.validationResult(),
+                    status == ValidationStatus.VALID
+                            ? GenerationEndReason.CHECK_PASSED
+                            : GenerationEndReason.VALIDATION_FAILED,
+                    List.of(round));
+        } catch (LlmTransportException | IOException error) {
+            // 流中途失败:发 error 帧(GenerationSession 拦截 LLM_STREAM_FAILED 转 MODEL_REQUEST_FAILED 并触发
+            // 整页 Markdown 降级),尽力返回已累计的当前程序;不运行轮末校验(内容不可信)。
+            sink.accept(RenderStreamEnvelope.error(0, "LLM_STREAM_FAILED", error.getMessage(), true));
+            return new GenUiGenerationResult(roundSession == null
+                    ? OpenuiCodeExtractor.extract(accumulated.toString())
+                    : roundSession.drainToCurrentDefinitions(), dataModel);
+        }
+    }
+
+    /** Build a repair coordinator bound to this generator's transport/validator + a policy. */
+    private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs) {
+        return repairCoordinator(policy, externalRefs, null);
+    }
+
+    /**
+     * Build a repair coordinator that also carries the render data model, so every re-validation attempt runs the same
+     * data-path/prop type validation as the initial round-end check.
+     */
+    private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs,
+            Map<String, Object> dataModel) {
+        return new RepairCoordinator(transport, validator, policy).withBodyBuilder(this::buildBodyFromMessages)
+                .withExternalRefs(externalRefs).withDataModel(dataModel);
+    }
+
     private String buildRequestBody(UiGenerationRequest request, boolean stream) {
         return buildRequest(request, stream).json();
     }
@@ -314,15 +365,49 @@ public final class GenUiGenerator {
     private RequestBody buildRequest(UiGenerationRequest request, boolean stream) {
         UiGenerationRequest effectiveRequest = request == null ? UiGenerationRequest.builder().build() : request;
         GenUIPromptAssemblyResult assembly = sdk.assemblePrompt(toPromptRequest(effectiveRequest));
-        List<ChatMessage> messages = List.of(ChatMessage.system(assembly.prompt()),
+        String systemPrompt = systemPromptOverride == null ? assembly.prompt() : systemPromptOverride;
+        List<ChatMessage> messages = List.of(ChatMessage.system(systemPrompt),
                 ChatMessage.user(userMessage(effectiveRequest)));
-        return new RequestBody(ChatCompletionRequest.of(config, null, messages, stream).toJson(), assembly.prompt());
+        return new RequestBody(ChatCompletionRequest.of(config, null, messages, stream).toJson(), systemPrompt);
     }
 
     private record RequestBody(String json, String systemPrompt) {
     }
 
+    /** 每轮创建的轮末校验会话:使用当前请求生效契约 + 完整 Render Data Model,无第二份能力白名单。 */
+    private ProgramRoundSession newRoundSession(UiGenerationRequest request, GenerationContract merged) {
+        return new ProgramRoundSession(validator, merged, merged.root(), externalRefsFor(toPromptRequest(request)),
+                dataModelFor(request));
+    }
+
+    private GenerationContract mergedContract(UiGenerationRequest request) {
+        return sdk.mergedContract(toPromptRequest(request));
+    }
+
+    /**
+     * External reference names for validation: when the request carries a dataModel, the host binds {@code data} at
+     * render time (the prompt teaches the model to use {@code data.<field>}), so the validator must treat it as
+     * runtime-resolved. Without a dataModel a {@code data} reference is genuinely unresolved — inject nothing.
+     */
+    private static Set<String> externalRefsFor(GenUIPromptRequest promptRequest) {
+        return promptRequest.dataModel() == null ? Set.of() : Set.of("data");
+    }
+
+    /**
+     * Render Data Model for validation, or {@code null} when the request carries none. {@code
+     * UiGenerationRequest.response()} normalizes absent to an EMPTY map (never null), while {@code
+     * ValidationRequest.dataModel} distinguishes null (no model → type validation off, {@code data} unresolved) from an
+     * empty map (concrete empty model). Translate at this seam so absent stays "no model".
+     */
+    private static Map<String, Object> dataModelFor(UiGenerationRequest request) {
+        return request.response().isEmpty() ? null : request.response();
+    }
+
     private GenUIPromptRequest toPromptRequest(UiGenerationRequest request) {
+        if (request.includeBasic() != null || !request.specifiedComponents().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Component filtering (includeBasic/specifiedComponents) is not supported by this SDK version");
+        }
         List<String> extraRules = request.suggestion() == null || request.suggestion().isBlank()
                 ? List.of()
                 : List.of(request.suggestion());

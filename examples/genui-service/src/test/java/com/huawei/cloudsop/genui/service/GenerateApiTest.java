@@ -1,24 +1,17 @@
 /*
  * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
  */
-
 package com.huawei.cloudsop.genui.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.huawei.cloudsop.genui.core.Json;
+import com.huawei.cloudsop.genui.core.llm.transport.*;
 import com.huawei.cloudsop.genui.service.llm.LlmClient;
-import com.huawei.cloudsop.genui.service.llm.LlmStream;
-import com.huawei.cloudsop.genui.service.llm.LlmUpstreamException;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -28,22 +21,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 
-import java.io.ByteArrayInputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-/**
- * 生成端点行为:SDK 校验门产生的 dataModel/dsl/error/done envelope 序列化为 SSE JSON。
- *
- * <p>
- * 协议(#56:首次生成实时展示,轮末统一校验):首帧 dataModel(seq=0)→ 若干 dsl(模型原始增量,实时转发)→ done; 轮末统一校验当前有效程序(同名 last-wins),结果只记日志,不发
- * VALIDATION_FAILED 帧; 流前失败 502 不变; finish_reason 非 stop / 流中途失败 → error(LLM_STREAM_FAILED)→ done(取代旧文本尾巴); 空 prompt
- * 400 / 未知 extensionId 404 / promptOverride 不变。
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 class GenerateApiTest {
@@ -52,97 +34,52 @@ class GenerateApiTest {
     @MockBean
     LlmClient llmClient;
 
-  @Test
-  void streamsAcceptedDslAsEnvelopeFrames() throws Exception {
-    when(llmClient.openStream(anyString(), anyString())).thenReturn(stream(
-        "data: {\"choices\":[{\"delta\":{\"content\":\"root = Stack([])\\n\"}}]}\n\n"
-            + "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"
-            + "data: [DONE]\n"));
+    @Test
+    void streamsRawFragmentsAndOneTerminal() throws Exception {
+        when(llmClient.newCall(anyString(), eq(true))).thenReturn(call("root = ", "Stack([])"));
+        var frames = perform("{\"prompt\":\"show UI\"}");
+        assertEquals(List.of("dataModel", "dsl", "dsl", "done"), types(frames));
+        assertEquals("root = ", frames.get(1).get("content"));
+        verify(llmClient, times(1)).newCall(anyString(), eq(true));
+    }
 
-    List<Frame> frames = performGenerate("{\"prompt\":\"展示UI\"}");
+    @Test
+    void realHostHandsOffOnceAndReplacesPageOnFailure() throws Exception {
+        LlmCall failed = new LlmCall() {
+            public InputStream execute() throws LlmTransportException {
+                throw new LlmTransportException("network failed");
+            }
+            public void cancel() {
+            }
+        };
+        when(llmClient.newCall(anyString(), eq(true))).thenReturn(failed, call("# Answer", "\n42"));
+        var frames = perform("{\"prompt\":\"show original\",\"dataModel\":{\"answer\":42}}");
+        assertEquals(1, types(frames).stream().filter("replace"::equals).count());
+        assertEquals(1, types(frames).stream().filter("done"::equals).count());
+        var replace = Json.asObject(frames.get(1).get("content"), "replace");
+        assertEquals("page", replace.get("scope"));
+        assertEquals("MODEL_REQUEST_FAILED", replace.get("reason"));
+        String dsl = frames.stream().filter(f -> "dsl".equals(f.get("type"))).map(f -> String.valueOf(f.get("content")))
+                .reduce("", String::concat);
+        assertEquals("root = Stack([MarkDownRenderer(\"# Answer\n42\")])", dsl);
+        ArgumentCaptor<String> bodies = ArgumentCaptor.forClass(String.class);
+        verify(llmClient, times(2)).newCall(bodies.capture(), eq(true));
+        String markdown = bodies.getAllValues().get(1);
+        assertTrue(markdown.contains("Markdown only"));
+        assertTrue(markdown.contains("show original"));
+        assertTrue(markdown.contains("42"));
+        for (int i = 0; i < frames.size(); i++)
+            assertEquals(i, ((Number) frames.get(i).get("seq")).intValue());
+    }
 
-    assertEquals("dataModel", frames.get(0).type);
-    assertEquals(0, frames.get(0).seq);
-    // 接受的 DSL 出现在某个 dsl 帧的 content 里
-    assertTrue(
-        frames.stream()
-            .anyMatch(f -> "dsl".equals(f.type) && String.valueOf(f.content).contains("root = Stack([])")),
-        "accepted DSL must appear in a dsl frame: " + frames);
-    assertEquals("done", frames.get(frames.size() - 1).type);
-    assertFalse(hasType(frames, "error"), "clean stream must not emit an error frame: " + frames);
-    assertSeqMonotonic(frames);
-
-    // 未带 promptOverride 时,system prompt 必须来自 SDK 拼装(以契约 preamble 开头)
-    ArgumentCaptor<String> systemPrompt = ArgumentCaptor.forClass(String.class);
-    verify(llmClient).openStream(systemPrompt.capture(), anyString());
-    assertTrue(systemPrompt.getValue().startsWith("You are an AI assistant"));
-  }
-
-  @Test
-  void invalidStatementIsForwardedLiveAndRoundEndCheckStaysInternal() throws Exception {
-    // #56: NoSuchComponent 是未知组件,但生成过程不扣留——增量实时转发为 dsl 帧;
-    // 轮末统一校验只影响日志/结果状态,不发 VALIDATION_FAILED error 帧,流以 done 结束。
-    when(llmClient.openStream(anyString(), anyString())).thenReturn(stream(
-        "data: {\"choices\":[{\"delta\":{\"content\":\"root = NoSuchComponent([])\\n\"}}]}\n\n"
-            + "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"
-            + "data: [DONE]\n"));
-
-    List<Frame> frames = performGenerate("{\"prompt\":\"展示UI\"}");
-
-    assertEquals("dataModel", frames.get(0).type);
-    // 增量实时出现在 dsl 帧(实时展示,不因校验扣留)
-    assertTrue(
-        frames.stream()
-            .anyMatch(f -> "dsl".equals(f.type) && String.valueOf(f.content).contains("NoSuchComponent")),
-        "model delta must be forwarded live in a dsl frame: " + frames);
-    assertFalse(hasType(frames, "error"), "round-end check must not emit an error frame: " + frames);
-    assertEquals("done", frames.get(frames.size() - 1).type);
-    assertSeqMonotonic(frames);
-  }
-
-  @Test
-  void sameNameOverrideIsForwardedLive() throws Exception {
-    // #56: 同名语句以最新定义为准。两条增量都实时转发(前端按同名覆盖消费),流干净结束。
-    when(llmClient.openStream(anyString(), anyString())).thenReturn(stream(
-        "data: {\"choices\":[{\"delta\":{\"content\":\"root = NoSuchComponent([])\\n\"}}]}\n\n"
-            + "data: {\"choices\":[{\"delta\":{\"content\":\"root = Stack([])\\n\"}}]}\n\n"
-            + "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n"
-            + "data: [DONE]\n"));
-
-    List<Frame> frames = performGenerate("{\"prompt\":\"展示UI\"}");
-
-    List<Frame> dslFrames = frames.stream().filter(f -> "dsl".equals(f.type)).toList();
-    assertEquals(2, dslFrames.size(), "both deltas forwarded live: " + frames);
-    assertTrue(String.valueOf(dslFrames.get(0).content).contains("NoSuchComponent"));
-    assertTrue(String.valueOf(dslFrames.get(1).content).contains("Stack"));
-    assertFalse(hasType(frames, "error"), "same-name override makes the current program valid: " + frames);
-    assertEquals("done", frames.get(frames.size() - 1).type);
-  }
-
-  @Test
-  void promptOverrideBypassesAssembly() throws Exception {
-    when(llmClient.openStream(anyString(), anyString())).thenReturn(stream(
-        "data: {\"choices\":[{\"delta\":{\"content\":\"root = Stack([])\\n\"},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n"));
-
-    performGenerate("{\"prompt\":\"展示UI\",\"promptOverride\":\"CUSTOM SYSTEM PROMPT\"}");
-
-    ArgumentCaptor<String> systemPrompt = ArgumentCaptor.forClass(String.class);
-    verify(llmClient).openStream(systemPrompt.capture(), anyString());
-    assertEquals("CUSTOM SYSTEM PROMPT", systemPrompt.getValue());
-  }
-
-  @Test
-  void emitsErrorFrameWhenFinishReasonIsNotStop() throws Exception {
-    when(llmClient.openStream(anyString(), anyString())).thenReturn(stream(
-        "data: {\"choices\":[{\"delta\":{\"content\":\"root = Stack([])\\n\"},\"finish_reason\":\"length\"}]}\n\ndata: [DONE]\n"));
-
-    List<Frame> frames = performGenerate("{\"prompt\":\"展示UI\"}");
-
-    Frame error = lastOfType(frames, "error");
-    assertEquals("LLM_STREAM_FAILED", errorCode(error));
-    assertTrue(String.valueOf(errorMessage(error)).contains("finish_reason=length"), frames.toString());
-    assertEquals("done", frames.get(frames.size() - 1).type);
-  }
+    @Test
+    void promptOverrideIsUsedOnlyForDsl() throws Exception {
+        when(llmClient.newCall(anyString(), eq(true))).thenReturn(call("root = Stack([])"));
+        perform("{\"prompt\":\"show\",\"promptOverride\":\"CUSTOM SYSTEM PROMPT\"}");
+        ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+        verify(llmClient).newCall(body.capture(), eq(true));
+        assertTrue(body.getValue().contains("CUSTOM SYSTEM PROMPT"));
+    }
 
     @Test
     void emptyPromptReturns400() throws Exception {
@@ -150,100 +87,46 @@ class GenerateApiTest {
                 .andExpect(status().isBadRequest());
     }
 
-  @Test
-  void upstreamFailureBeforeFirstTokenReturns502() throws Exception {
-    when(llmClient.openStream(anyString(), anyString()))
-        .thenThrow(new LlmUpstreamException("LLM HTTP 401: bad key"));
-    mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON).content("{\"prompt\":\"展示UI\"}"))
-        .andExpect(status().isBadGateway());
-  }
-
     @Test
-    void unknownextensionIdReturns404BeforeStreaming() throws Exception {
+    void unknownExtensionReturns404() throws Exception {
         mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"prompt\":\"展示UI\",\"extensionId\":\"no-such\"}")).andExpect(status().isNotFound());
+                .content("{\"prompt\":\"show\",\"extensionId\":\"no-such\"}")).andExpect(status().isNotFound());
     }
 
-    // ── SSE frame parsing helpers ─────────────────────────────────────────────
-
-    private static final class Frame {
-        final String type;
-        final int seq;
-        final Object content;
-
-        Frame(String type, int seq, Object content) {
-            this.type = type;
-            this.seq = seq;
-            this.content = content;
-        }
-
-        @Override
-        public String toString() {
-            return "Frame{" + type + ", seq=" + seq + ", content=" + content + "}";
-        }
-    }
-
-    private List<Frame> performGenerate(String body) throws Exception {
-        MvcResult started = mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON).content(body))
+    private List<Map<String, Object>> perform(String body) throws Exception {
+        var started = mvc.perform(post("/v1/generate").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(request().asyncStarted()).andReturn();
         String raw = mvc.perform(asyncDispatch(started)).andExpect(status().isOk()).andReturn().getResponse()
                 .getContentAsString(StandardCharsets.UTF_8);
-        return parseFrames(raw);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static List<Frame> parseFrames(String raw) {
-        List<Frame> frames = new ArrayList<>();
+        List<Map<String, Object>> frames = new ArrayList<>();
         for (String block : raw.split("\n\n")) {
-            String line = block.trim();
-            if (!line.startsWith("data:")) {
-                continue;
-            }
-            String json = line.substring("data:".length()).trim();
-            if (json.isEmpty()) {
-                continue;
-            }
-            Map<String, Object> obj = (Map<String, Object>) Json.parse(json);
-            frames.add(new Frame(String.valueOf(obj.get("type")), ((Number) obj.get("seq")).intValue(),
-                    obj.get("content")));
+            if (block.startsWith("data: "))
+                frames.add(Json.asObject(Json.parse(block.substring(6)), "frame"));
         }
         return frames;
     }
 
-    private static boolean hasType(List<Frame> frames, String type) {
-        return frames.stream().anyMatch(f -> type.equals(f.type));
+    private static List<String> types(List<Map<String, Object>> frames) {
+        return frames.stream().map(f -> String.valueOf(f.get("type"))).toList();
     }
 
-    private static Frame lastOfType(List<Frame> frames, String type) {
-        Frame found = null;
-        for (Frame f : frames) {
-            if (type.equals(f.type)) {
-                found = f;
+    private static LlmCall call(String... deltas) {
+        StringBuilder sse = new StringBuilder();
+        for (String delta : deltas)
+            sse.append("data: ")
+                    .append(Json.stringify(Map.of("choices", List.of(Map.of("delta", Map.of("content", delta))))))
+                    .append("\n\n");
+        sse.append("data: [DONE]\n\n");
+        return new LlmCall() {
+            private boolean cancelled;
+            public synchronized InputStream execute() throws LlmTransportException {
+                if (cancelled)
+                    throw new LlmTransportException("cancelled");
+                return new ByteArrayInputStream(sse.toString().getBytes(StandardCharsets.UTF_8));
             }
-        }
-        if (found == null) {
-            throw new AssertionError("no frame of type " + type + " in " + frames);
-        }
-        return found;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Object errorCode(Frame f) {
-        return ((Map<String, Object>) f.content).get("code");
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Object errorMessage(Frame f) {
-        return ((Map<String, Object>) f.content).get("message");
-    }
-
-    private static void assertSeqMonotonic(List<Frame> frames) {
-        for (int i = 1; i < frames.size(); i++) {
-            assertTrue(frames.get(i).seq > frames.get(i - 1).seq, "seq must strictly increase: " + frames);
-        }
-    }
-
-    private static LlmStream stream(String sse) {
-        return new LlmStream(new ByteArrayInputStream(sse.getBytes(StandardCharsets.UTF_8)));
+            public synchronized void cancel() {
+                cancelled = true;
+            }
+        };
     }
 }

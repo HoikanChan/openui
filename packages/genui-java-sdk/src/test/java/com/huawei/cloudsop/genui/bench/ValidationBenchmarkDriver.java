@@ -89,6 +89,16 @@ public final class ValidationBenchmarkDriver {
         }
 
         @Override
+        public com.huawei.cloudsop.genui.core.llm.transport.LlmCall newCall(String body, boolean stream) {
+            calls.incrementAndGet();
+            firstBody.compareAndSet(null, body);
+            bodies.add(body);
+            var config = GenUiLlmConfig.builder().endpoint(url).putHeader("Authorization", "Bearer " + apiKey).build();
+            return new com.huawei.cloudsop.genui.core.llm.transport.HttpClientLlmTransport(config, client).newCall(body,
+                    stream);
+        }
+
+        @Override
         public String post(String body) throws LlmTransportException {
             try (InputStream stream = postStream(body)) {
                 return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
