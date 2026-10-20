@@ -19,11 +19,16 @@ package com.huawei.cloudsop.genui.bench;
  *            按目录名排序取前 N 个案例（冒烟用）；{@code null} = 全部
  * @param repair
  *            是否跑修复：默认 false = 每案例只做 FINAL 校验（零 LLM 调用）；true = 完整修复流程
+ * @param out
+ *            JSONL 输出文件；{@code null} = 写 stdout
+ * @param html
+ *            HTML 报告输出文件；{@code null} = 与 {@code --out} 同名 .html，未给 {@code --out} 时写入 {@code target/repair-bench/}
+ *            下的时间戳文件
  *
  * @since 2026
  */
 record RepairBenchArgs(String casesDir, int concurrency, int maxAttempts, long timeoutMinutes, Integer limit,
-        boolean repair) {
+        boolean repair, String out, String html) {
 
     static final int DEFAULT_CONCURRENCY = 4;
 
@@ -43,6 +48,8 @@ record RepairBenchArgs(String casesDir, int concurrency, int maxAttempts, long t
         long timeoutMinutes = 0;
         Integer limit = null;
         boolean repair = false;
+        String out = null;
+        String html = null;
         for (String arg : args) {
             if (arg.startsWith("--cases=")) {
                 cases = arg.substring("--cases=".length());
@@ -56,6 +63,10 @@ record RepairBenchArgs(String casesDir, int concurrency, int maxAttempts, long t
                 limit = parsePositiveInt(arg, "--limit");
             } else if (arg.equals("--repair")) {
                 repair = true;
+            } else if (arg.startsWith("--out=")) {
+                out = nonBlankPath(arg, "--out");
+            } else if (arg.startsWith("--html=")) {
+                html = nonBlankPath(arg, "--html");
             } else {
                 throw new IllegalArgumentException("Unknown argument: " + arg);
             }
@@ -63,7 +74,15 @@ record RepairBenchArgs(String casesDir, int concurrency, int maxAttempts, long t
         if (cases == null || cases.isBlank()) {
             throw new IllegalArgumentException("Missing required argument: --cases=<dir>");
         }
-        return new RepairBenchArgs(cases, concurrency, maxAttempts, timeoutMinutes, limit, repair);
+        return new RepairBenchArgs(cases, concurrency, maxAttempts, timeoutMinutes, limit, repair, out, html);
+    }
+
+    private static String nonBlankPath(String arg, String name) {
+        String value = arg.substring(name.length() + 1);
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(name + " must be a non-empty path");
+        }
+        return value;
     }
 
     private static int parsePositiveInt(String arg, String name) {

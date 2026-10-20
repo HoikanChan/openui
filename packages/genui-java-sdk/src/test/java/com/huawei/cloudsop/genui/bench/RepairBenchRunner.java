@@ -6,22 +6,27 @@ package com.huawei.cloudsop.genui.bench;
 
 import com.huawei.cloudsop.genui.core.GenerationSdk;
 import com.huawei.cloudsop.genui.core.Json;
-import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
+import com.huawei.cloudsop.genui.core.llm.GenUiGenerationResult;
+import com.huawei.cloudsop.genui.core.llm.GenUiGenerator;
 import com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig;
-import com.huawei.cloudsop.genui.core.llm.protocol.ChatCompletionRequest;
+import com.huawei.cloudsop.genui.core.llm.GenerationEndReason;
+import com.huawei.cloudsop.genui.core.llm.GenerationTiming;
+import com.huawei.cloudsop.genui.core.llm.UiGenerationRequest;
+import com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
-import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
+import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
-import com.huawei.cloudsop.genui.core.validation.RepairPolicyKind;
+import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
-import com.huawei.cloudsop.genui.core.validation.repair.RepairCoordinator;
-import com.huawei.cloudsop.genui.core.validation.repair.RepairCoordinator.FullRepairOutcome;
-import com.huawei.cloudsop.genui.core.validation.repair.RepairPolicy;
+import com.huawei.cloudsop.genui.core.validation.repair.IncrementalRepairPromptBuilder;
+import com.huawei.cloudsop.genui.core.validation.stream.RoundEndResult;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.io.PrintStream;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -33,14 +38,19 @@ import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * repair-bench 批量执行器。照 {@code JobRunner} 形态：有界固定线程池、按完成顺序逐行 JSONL、 {@code synchronized} emit；加载阶段的语料损坏已在 loader
  * 层整批终止（退出码 1），执行阶段单案例异常转 {@code error} 行不中断批次。
  *
  * <p>
- * 单案例流程（实现设计 §3）：案例契约现算 originalSystemPrompt → FINAL 复现判定（非 INVALID 即 {@code not-reproduced}）→
- * {@link RepairCoordinator#repairFull} 驱动修复 → outcome kind 映射输出状态。 全链路 issue code 一律取 <b>actionable</b> 视图（与修复提示词所见一致）。
+ * 单案例流程（实现设计 §3）：案例契约现算 initial FINAL 校验 → 复现判定（非 INVALID 即 {@code not-reproduced}）→ 用公开 {@link GenUiGenerator}
+ * 跑一次真实生成会话：transport 把案例 DSL 当作"历史初次生成"返回，生成会话随后做轮末统一校验与增量修复 → 由轮记录映射输出状态。 全链路 issue code 一律取 <b>actionable</b>
+ * 视图（与修复提示词所见一致）。
+ *
+ * <p>
+ * 每个案例独立构建 {@link GenerationSdk}（案例契约）与生成器，避免跨案例共享契约/会话状态。
  *
  * @since 2026
  */
@@ -56,7 +66,10 @@ final class RepairBenchRunner {
 
     private final PrintStream out;
 
-    /** 全批共享的确定性修复配置：温度 0 + 不开 thinking（镜像 GenUiGenerator.repairConfig 的纪律）。 */
+    /** 已写出的 JSONL 行；报告生成在批次结束后复用同一份数据，不再回读文件。 */
+    private final List<String> emitted = java.util.Collections.synchronizedList(new ArrayList<>());
+
+    /** 全批共享的确定性生成/修复配置：温度 0 + 不开 thinking（镜像 GenUiGenerator.repairConfig 的纪律）。 */
     private final GenUiLlmConfig repairConfig;
 
     /** 是否跑修复：false = 每案例只做 FINAL 校验（validation-only，不初始化 transport、零 LLM 调用）。 */
@@ -127,13 +140,6 @@ final class RepairBenchRunner {
     private void runOne(RepairCasePack.RepairCase benchCase, SummaryAccumulator summary) {
         long started = System.currentTimeMillis();
 
-        // originalSystemPrompt 现算：案例契约即"当时契约"，assemblePrompt 从同一契约现算与原始生成自洽；
-        // 入参带案例自己的 dataModel（镜像 GenUiGenerator.toPromptRequest 的装配）。
-        GenerationSdk sdk = GenerationSdk.builder().baseContract(benchCase.contract()).build();
-        GenUIPromptRequest promptRequest = new GenUIPromptRequest(null,
-                benchCase.dataModel() == null ? null : new DataModelSpec("Response data", benchCase.dataModel()),
-                List.of(), null, null, null, null);
-        String systemPrompt = sdk.assemblePrompt(promptRequest).prompt();
         // 与 ValidateCli 一致固定 data:bench 案例 DSL 全部引用 data(提示词契约根名),dataModel 为 null 只关
         // 类型校验;若随之清空 externalRefs,这些案例会被整批误报 unresolved-ref。
         Set<String> externalRefs = Set.of("data");
@@ -172,43 +178,101 @@ final class RepairBenchRunner {
             return;
         }
 
-        // ── 步骤 2：repairFull ──
-        RepairCoordinator coordinator = new RepairCoordinator(transport, DefaultOpenuiLangValidator.INSTANCE,
-                new RepairPolicy(RepairPolicyKind.FINAL_REPAIR, maxAttempts, timeout))
-                .withBodyBuilder(
-                        (messages, stream) -> ChatCompletionRequest.of(repairConfig, null, messages, stream).toJson())
-                .withExternalRefs(externalRefs).withDataModel(benchCase.dataModel());
-        FullRepairOutcome outcome = coordinator.repairFull(benchCase.originalIntent(), benchCase.dsl(), v0,
-                benchCase.contract(), benchCase.contract().root(), systemPrompt);
+        // ── 步骤 2：真实生成会话（transport 重放历史 DSL 作为初次生成，轮末校验 + 增量修复）──
+        GenerationSdk sdk = GenerationSdk.builder().baseContract(benchCase.contract()).build();
+        CaseReplayTransport replay = new CaseReplayTransport(transport, benchCase.dsl(), timeout);
+        GenUiGenerator generator = GenUiGenerator.withTransport(sdk, repairConfig, replay,
+                GenUiValidationConfig.incremental(maxAttempts), null);
+        UiGenerationRequest request = UiGenerationRequest.builder().userInput(benchCase.originalIntent())
+                .response(benchCase.dataModel()).build();
+        GenUiGenerationResult generated = generator.generate(request);
 
-        String status = switch (outcome.kind()) {
-            case REPAIRED -> "repaired";
-            case STILL_INVALID -> "still-invalid";
-            case TRANSPORT_ERROR -> "transport-error";
-            case TIMED_OUT -> "timeout";
-        };
+        List<RoundEndResult> rounds = generated.rounds();
+        RoundEndResult lastValidated = null;
+        for (RoundEndResult round : rounds) {
+            if (round.validationResult() != null) {
+                lastValidated = round;
+            }
+        }
+        // Strict success: the DSL session itself passed the check. CHECK_PASSED is only set on validated programs, and
+        // the equality guard rejects any wrapped fallback output, so a Markdown handoff can never count as repaired.
+        boolean repaired = generated.endReason() == GenerationEndReason.CHECK_PASSED
+                && generated.validationStatus() == ValidationStatus.VALID && lastValidated != null
+                && lastValidated.validationResult().status() == ValidationStatus.VALID
+                && generated.dsl().equals(lastValidated.currentDefinitions());
+
+        String status;
+        if (repaired) {
+            status = "repaired";
+        } else if (replay.timedOut()) {
+            status = "timeout";
+        } else if (generated.endReason() == GenerationEndReason.TIMEOUT) {
+            status = "timeout";
+        } else if (generated.endReason() == GenerationEndReason.MODEL_REQUEST_FAILED) {
+            status = "transport-error";
+        } else {
+            status = "still-invalid";
+        }
 
         LinkedHashMap<String, Object> line = baseLine(benchCase);
         line.put("status", status);
-        line.put("success", outcome.repaired());
+        line.put("success", repaired);
         line.put("reproduced", true);
         line.put("initialIssueCodes", initialCodes);
         putInternalCodes(line, benchCase);
-        line.put("attemptCount", outcome.attempts());
-        List<Object> attempts = new ArrayList<>();
-        for (FullRepairOutcome.AttemptRecord record : outcome.attemptLog()) {
-            LinkedHashMap<String, Object> attemptLine = new LinkedHashMap<>();
-            attemptLine.put("attempt", record.attempt());
-            attemptLine.put("valid", record.valid());
-            attemptLine.put("issueCodes", record.issues() == null ? null : actionableCodes(record.issues()));
-            attempts.add(attemptLine);
-        }
+        List<Object> attempts = attempts(rounds, replay, generated);
+        line.put("attemptCount", attempts.size());
         line.put("attempts", attempts);
-        line.put("finalIssueCodes", outcome.result() == null ? List.of() : actionableCodes(outcome.result()));
-        line.put("finalDsl", outcome.dsl());
+        line.put("endReason", generated.endReason() == null ? null : generated.endReason().name());
+        line.put("markdownFallback", generated.endReason() != GenerationEndReason.CHECK_PASSED);
+        line.put("outputDsl", generated.dsl());
+        line.put("rounds", rounds.stream().map(round -> {
+            LinkedHashMap<String, Object> record = new LinkedHashMap<>();
+            record.put("rawOutput", round.rawOutput());
+            record.put("currentDefinitions", round.currentDefinitions());
+            record.put("durationMs", round.durationMs());
+            record.put("endReason", round.endReason() == null ? null : round.endReason().name());
+            record.put("status", round.validationResult() == null ? null : round.validationResult().status().name());
+            record.put("issues", round.validationResult() == null ? List.of() : round.validationResult().issues());
+            return record;
+        }).toList());
+        line.put("finalIssueCodes",
+                lastValidated == null ? List.of() : actionableCodes(lastValidated.validationResult()));
+        line.put("finalDsl", lastValidated == null ? null : lastValidated.currentDefinitions());
         line.put("durationMs", System.currentTimeMillis() - started);
         emit(Json.stringify(line));
         summary.record(status, initialCodes);
+    }
+
+    /**
+     * 把生成会话的轮记录映射为旧的逐 attempt 输出：跳过初次生成轮；被中断/预算拒绝的请求没有校验结论，除 传输失败外不计入 attempt。
+     */
+    private static List<Object> attempts(List<RoundEndResult> rounds, CaseReplayTransport replay,
+            GenUiGenerationResult generated) {
+        List<Object> attempts = new ArrayList<>();
+        for (int index = 1; index < rounds.size(); index++) {
+            RoundEndResult round = rounds.get(index);
+            if (round.validationResult() == null) {
+                continue;
+            }
+            attempts.add(attemptLine(attempts.size() + 1, round.validationResult().isValid(),
+                    actionableCodes(round.validationResult())));
+        }
+        boolean interruptedTransportFailure = generated.endReason() == GenerationEndReason.MODEL_REQUEST_FAILED
+                && !replay.timedOut() && !rounds.isEmpty() && rounds.get(rounds.size() - 1).validationResult() == null;
+        if (interruptedTransportFailure) {
+            // 传输失败的请求没有轮末结论：旧输出的 attempt 行 valid=false、issueCodes=null。
+            attempts.add(attemptLine(attempts.size() + 1, false, null));
+        }
+        return attempts;
+    }
+
+    private static LinkedHashMap<String, Object> attemptLine(int attempt, boolean valid, List<String> issueCodes) {
+        LinkedHashMap<String, Object> attemptLine = new LinkedHashMap<>();
+        attemptLine.put("attempt", attempt);
+        attemptLine.put("valid", valid);
+        attemptLine.put("issueCodes", issueCodes);
+        return attemptLine;
     }
 
     private static LinkedHashMap<String, Object> baseLine(RepairCasePack.RepairCase benchCase) {
@@ -234,8 +298,111 @@ final class RepairBenchRunner {
     }
 
     private synchronized void emit(String line) {
+        emitted.add(line);
         out.println(line);
         out.flush();
+    }
+
+    /** 本次运行已写出的全部 JSONL 行（含末尾 summary），供报告生成复用，避免二次解析丢失字段。 */
+    List<String> emittedLines() {
+        synchronized (emitted) {
+            return List.copyOf(emitted);
+        }
+    }
+
+    /**
+     * 单案例 transport 包装：初次生成请求直接返回案例 DSL（bench 复现历史失败，不打模型），增量修复请求转交真实 transport，整页 Markdown 降级请求返回桩（修复失败不应额外消耗一次模型调用）。
+     *
+     * <p>
+     * 修复尝试次数由生成会话的 {@code maxIncrementalAttempts} 控制（与 CLI 的 {@code --max-attempts} 同值）； 本包装只额外执行
+     * {@code --timeout-minutes} 的墙钟检查，命中后抛 {@link LlmTransportException} 并记录原因。
+     */
+    private static final class CaseReplayTransport implements InMemoryLlmTransport {
+
+        /** 与 {@code MarkdownGeneration} 的固定 system 文案对齐，用于识别整页降级请求。 */
+        private static final String MARKDOWN_SYSTEM_HINT = "Answer the user's request in Markdown only.";
+
+        private final LlmTransport delegate;
+
+        private final String initialDsl;
+
+        private final Duration timeout;
+
+        private final long repairStartedNanos = System.nanoTime();
+
+        private final AtomicInteger repairCalls = new AtomicInteger();
+
+        private volatile boolean timedOut;
+
+        CaseReplayTransport(LlmTransport delegate, String initialDsl, Duration timeout) {
+            this.delegate = delegate;
+            this.initialDsl = initialDsl;
+            this.timeout = timeout == null ? Duration.ZERO : timeout;
+        }
+
+        boolean timedOut() {
+            return timedOut;
+        }
+
+        @Override
+        public String post(String body) throws LlmTransportException {
+            return switch (classify(body)) {
+                case INITIAL -> syncResponse(initialDsl);
+                case MARKDOWN -> syncResponse("Incremental repair did not produce a valid page.");
+                case REPAIR -> repair(body);
+            };
+        }
+
+        @Override
+        public InputStream postStream(String body) throws LlmTransportException {
+            return switch (classify(body)) {
+                case INITIAL, MARKDOWN -> new ByteArrayInputStream(new byte[0]);
+                case REPAIR -> delegate.postStream(body);
+            };
+        }
+
+        private String repair(String body) throws LlmTransportException {
+            if (!timeout.isZero() && System.nanoTime() - repairStartedNanos >= timeout.toNanos()) {
+                timedOut = true;
+                throw new LlmTransportException("repair timeout after " + repairCalls.get() + " attempt(s)");
+            }
+            repairCalls.incrementAndGet();
+            return delegate.post(body);
+        }
+
+        private static RequestKind classify(String body) {
+            try {
+                Map<String, Object> parsed = Json.asObject(Json.parse(body), "request body");
+                List<Object> messages = Json.asList(parsed.get("messages"), "messages");
+                StringBuilder system = new StringBuilder();
+                for (Object item : messages) {
+                    Map<String, Object> message = Json.asObject(item, "message");
+                    if ("system".equals(message.get("role")) && message.get("content") != null) {
+                        system.append(message.get("content"));
+                    }
+                }
+                String text = system.toString();
+                if (text.contains(IncrementalRepairPromptBuilder.INCREMENTAL_REPAIR_MARKER)) {
+                    return RequestKind.REPAIR;
+                }
+                if (text.contains(MARKDOWN_SYSTEM_HINT)) {
+                    return RequestKind.MARKDOWN;
+                }
+                return RequestKind.INITIAL;
+            } catch (RuntimeException error) {
+                // 无法解析的请求按修复处理：交给真实 transport 暴露问题，而不是伪造初次生成。
+                return RequestKind.REPAIR;
+            }
+        }
+
+        private static String syncResponse(String dsl) {
+            return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\""
+                    + dsl.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"}}]}";
+        }
+
+        private enum RequestKind {
+            INITIAL, REPAIR, MARKDOWN
+        }
     }
 
     /**
@@ -243,7 +410,9 @@ final class RepairBenchRunner {
      *
      * <ul>
      * <li>主口径 = repaired / (repaired + still-invalid)——transport-error 与 timeout 剔除分母（基础设施噪声与 自设预算不算"修不动"，可筛出重跑）；分母为 0
-     * 时 rate 为 null。
+     * 时 rate 为 null，并通过 {@code mainRateExcludes} 明示被剔除的状态。
+     * <li>端到端口径 = repaired / (repaired + still-invalid + timeout + transport-error + error)——不剔除任何运行期 失败，not-reproduced
+     * 仍排除（它不是修复尝试）。
      * <li>副口径 = repaired / total（not-reproduced 计入惩罚，度量外部环境保真度）。
      * <li>issueBuckets 仅统计 reproduced 案例，按 initialIssueCodes 分桶（一案例可入多桶）。
      * </ul>
@@ -291,6 +460,16 @@ final class RepairBenchRunner {
             mainRate.put("denominator", mainDenominator);
             mainRate.put("rate", mainDenominator == 0 ? null : (double) repaired / mainDenominator);
             line.put("mainRate", mainRate);
+            line.put("mainRateExcludes", List.of("timeout", "transport-error", "error", "not-reproduced"));
+            long endToEndDenominator = repaired + stillInvalid + count("timeout") + count("transport-error")
+                    + count("error");
+            LinkedHashMap<String, Object> endToEndRate = new LinkedHashMap<>();
+            endToEndRate.put("success", repaired);
+            endToEndRate.put("denominator", endToEndDenominator);
+            endToEndRate.put("rate", endToEndDenominator == 0 ? null : (double) repaired / endToEndDenominator);
+            line.put("endToEndRate", endToEndRate);
+            line.put("sessionBudgetSeconds",
+                    java.util.concurrent.TimeUnit.NANOSECONDS.toSeconds(GenerationTiming.BUDGET_NANOS));
 
             LinkedHashMap<String, Object> secondaryRate = new LinkedHashMap<>();
             secondaryRate.put("success", repaired);

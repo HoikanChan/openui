@@ -2,18 +2,19 @@
 
 repair-bench 是真实错误语料的修复基准（内部迭代工具,住 genui-java-sdk **test scope**,永不进交付物）。设计背景见 `docs/superpowers/specs/2026-10-13-repair-bench-design.md` 与实现设计 `2026-10-14-repair-bench-impl-design.md`。
 
-形态：**案例包进 → stdout JSONL 出**。bench 自身无状态,不写任何文件;run 目录 / manifest / HTML 报告由外部脚本消费 JSONL 生成（切片 2 职责）。
+形态：**案例包进 → JSONL 出 → 同批自动生成一份自包含 HTML 报告**。JSONL 默认写 stdout;报告每次都生成,数据内嵌、不依赖网络或外部资源,跑完直接打开即可看结果。bench 自身不维护 run 目录 / manifest 等跨轮状态。
 
 ## 运行
 
 ```bash
 # 默认 validation-only：零 LLM 调用,不需要 .env
 java -cp <test-classpath> com.huawei.cloudsop.genui.bench.RepairBenchCli \
-  --cases=repair-cases/ [--concurrency=4] [--limit=N]
+  --cases=repair-cases/ [--concurrency=4] [--limit=N] [--out=target/run.jsonl]
 
 # 完整修复：显式加 --repair 才烧 LLM
 java -cp <test-classpath> com.huawei.cloudsop.genui.bench.RepairBenchCli \
-  --cases=repair-cases/ --repair [--max-attempts=3] [--timeout-minutes=0]
+  --cases=repair-cases/ --repair [--max-attempts=3] [--timeout-minutes=0] \
+  [--out=target/run.jsonl] [--html=target/run.html]
 ```
 
 | 参数 | 默认 | 说明 |
@@ -24,6 +25,10 @@ java -cp <test-classpath> com.huawei.cloudsop.genui.bench.RepairBenchCli \
 | `--max-attempts` | 3 | 单案例修复尝试预算（仅 `--repair`） |
 | `--timeout-minutes` | 0（关） | 尝试之间的墙钟预算;关闭时靠 transport 的 10 分钟请求上限兜底 |
 | `--limit` | 无 | 按目录名取前 N,冒烟用 |
+| `--out` | stdout | JSONL 输出文件;父目录自动创建 |
+| `--html` | 派生 | HTML 报告路径。不传时：有 `--out` 则以其同名 `.html` 落盘;没有 `--out` 则写 `target/repair-bench/repair-bench-<yyyyMMdd-HHmmss>.html` |
+
+报告路径始终打印到 stderr（`[repair-bench] report: <abs path>`）。报告是运行结果的视图,写失败只打 warning,不影响批次退出码。
 
 ### 语料从哪来
 
@@ -102,6 +107,23 @@ repair-cases/
 - **副口径**：`repaired / total`,含 not-reproduced 惩罚
 - `initialIssueCodes` / `attempts[].issueCodes` / `finalIssueCodes` 全部是 **actionable 视图**（修复提示词消费的去噪视图,与完整 raw issues 有差）
 - `issueBuckets` 只统计 reproduced 案例,按初始 codes 分桶——迭代循环"按 code 看哪类修不动"的直接数据源
+
+## HTML 报告
+
+每次运行结束自动生成（`RepairBenchReport`）：用本批 JSONL 行 + `--cases` 目录里的 `case.json` 元数据拼成 payload,内嵌进单个 `.html`。CSS/JS/数据全内联,无 CDN、无外链,可直接离线打开或作为附件发出。
+
+页面内容：
+
+- **顶部汇总**：模型、尝试预算、超时、总案例数、已修复 / 仍无效 / 仅校验无效 / 未复现 / 错误 / 超时、主口径与副口径、issue 分桶表;状态过滤条按案例数着色
+- **每案例卡片**：原始意图、数据模型、根因、初始 DSL、修复轮次
+- **修复轮次**：每轮可展开看该轮**累积后的完整 DSL**、原始模型输出、轮末诊断（issue code / message / hint / 关联语句）;默认只展开最后一轮
+- **反思 Prompt**：按 `IncrementalRepairPromptBuilder` 的段落结构逐段重建（标注为"重建",因为原始 prompt 不落盘）
+- **最终态**：最后一次校验通过的 DSL,以及与上一轮的逐行 diff
+- **降级不展示**：修复失败时 `outputDsl` 是 Markdown 兜底页,报告不嵌入它;只展示 `finalDsl`（最后一次真实校验的 DSL）
+
+validation-only 运行同样有报告：案例状态为 `invalid` / `not-reproduced`,顶部多一个"仅校验无效"计数与过滤项,卡片里注明"无轮次记录"。
+
+布局在 720 / 600 / 420px 三个断点下均做了适配,手机上可正常阅读。
 
 ## 注意事项
 

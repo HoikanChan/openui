@@ -6,26 +6,38 @@ package com.huawei.cloudsop.genui.bench;
 
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
 /**
- * repair-bench 入口：真实错误语料修复基准（内部迭代工具，test scope，永不进交付物）。 案例包进 → stdout JSONL 出（无状态计算器）；run 目录 / manifest / 报告由外部脚本负责。
+ * repair-bench 入口：真实错误语料修复基准（内部迭代工具，test scope，永不进交付物）。 案例包进 → JSONL 出，并在每次运行后自动生成一份 自包含 HTML 报告。
  *
  * <p>
  * 用法：
  *
  * <pre>{@code
  * java -cp <test-classpath> com.huawei.cloudsop.genui.bench.RepairBenchCli \
- *   --cases=repair-cases/ [--concurrency=4] [--max-attempts=3] [--timeout-minutes=0] [--limit=N] [--repair]
+ *   --cases=repair-cases/ [--concurrency=4] [--max-attempts=3] [--timeout-minutes=0] [--limit=N] [--repair] \
+ *   [--out=target/bench.jsonl] [--html=target/bench.html]
  * }</pre>
  *
  * 默认（不带 {@code --repair}）为 validation-only：每案例只做 FINAL 校验并输出 status + issueCodes， 不读 .env、不建 transport、零 LLM 调用。带
  * {@code --repair} 才走完整修复（此时才需要 LLM 配置）。
  *
+ * <p>
+ * 输出：JSONL 默认写 stdout；{@code --out} 指定文件时写该文件。HTML 报告始终生成：{@code --html} 显式指定， 否则与 {@code --out} 同名 .html；未给
+ * {@code --out} 时写入 {@code target/repair-bench/} 下的时间戳文件，并在 stderr 打印路径。
+ *
+ * <p>
  * LLM 配置：{@code LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / HTTPS_PROXY}，真实环境变量优先，其次从仓库根 {@code .env} 读取。
  *
  * <p>
@@ -44,7 +56,7 @@ public final class RepairBenchCli {
             parsed = RepairBenchArgs.parse(args);
         } catch (IllegalArgumentException error) {
             System.err.println("usage: RepairBenchCli --cases=<dir> [--concurrency=4] [--max-attempts=3] "
-                    + "[--timeout-minutes=0] [--limit=N] [--repair]");
+                    + "[--timeout-minutes=0] [--limit=N] [--repair] [--out=<file.jsonl>] [--html=<file.html>]");
             System.err.println("error: " + error.getMessage());
             System.exit(2);
             return;
@@ -79,15 +91,62 @@ public final class RepairBenchCli {
             }
         }
 
+        Path outPath = parsed.out() == null ? null : Paths.get(parsed.out());
+        PrintStream jsonlOut = System.out;
+        try {
+            if (outPath != null) {
+                Path parent = outPath.toAbsolutePath().getParent();
+                if (parent != null) {
+                    Files.createDirectories(parent);
+                }
+                jsonlOut = new PrintStream(Files.newOutputStream(outPath), true, StandardCharsets.UTF_8);
+            }
+        } catch (IOException error) {
+            System.err.println("[repair-bench] failed to open --out: " + error.getMessage());
+            System.exit(1);
+            return;
+        }
+
         RepairBenchRunner runner = new RepairBenchRunner(transport, model, parsed.maxAttempts(),
-                Duration.ofMinutes(parsed.timeoutMinutes()), System.out, parsed.repair());
+                Duration.ofMinutes(parsed.timeoutMinutes()), jsonlOut, parsed.repair());
         try {
             runner.runAll(cases, parsed.concurrency());
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
             System.err.println("[repair-bench] interrupted");
             System.exit(1);
+            return;
+        } finally {
+            if (jsonlOut != System.out) {
+                jsonlOut.close();
+            }
         }
+
+        Path reportPath = reportPath(parsed, outPath);
+        String sourceLabel = outPath == null ? "stdout" : outPath.getFileName().toString();
+        try {
+            RepairBenchReport.write(runner.emittedLines(), Paths.get(parsed.casesDir()), reportPath, sourceLabel);
+            System.err.println("[repair-bench] report: " + reportPath.toAbsolutePath());
+        } catch (Exception error) {
+            // 报告是运行结果的视图，写失败不应把已完成的基准批次判为失败。
+            System.err.println("[repair-bench] failed to write HTML report: " + error);
+        }
+    }
+
+    /** 报告路径：显式 --html > --out 同名 .html > target/repair-bench/时间戳。 */
+    private static Path reportPath(RepairBenchArgs parsed, Path outPath) {
+        if (parsed.html() != null) {
+            return Paths.get(parsed.html());
+        }
+        if (outPath != null) {
+            String name = outPath.getFileName().toString();
+            int dot = name.lastIndexOf('.');
+            String base = dot > 0 ? name.substring(0, dot) : name;
+            Path parent = outPath.getParent();
+            return parent == null ? Paths.get(base + ".html") : parent.resolve(base + ".html");
+        }
+        String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+        return Paths.get("target", "repair-bench", "repair-bench-" + stamp + ".html");
     }
 
     /** 定位仓库根（.env 所在）：用户目录或其祖先中第一个含 .git 者；找不到退回用户目录。 */

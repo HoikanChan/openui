@@ -108,8 +108,9 @@ class GenUiGeneratorValidationTest {
         String dsl = "root = BogusWidget()";
         FakeTransport transport = FakeTransport.sync(syncResponse(dsl));
 
+        // Explicit NONE: the #58 default is incremental repair, so pin the no-repair behavior here.
         GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport,
-                null /* finalOnly */, null /* default validator */);
+                GenUiValidationConfig.finalOnly(), null /* default validator */);
 
         GenerationValidationException ex = assertThrows(GenerationValidationException.class,
                 () -> generator.generate(UiGenerationRequest.builder().userInput("show bogus").build()));

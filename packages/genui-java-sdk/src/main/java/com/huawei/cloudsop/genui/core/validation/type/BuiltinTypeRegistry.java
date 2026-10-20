@@ -49,7 +49,7 @@ final class BuiltinTypeRegistry {
 
         void reportArgumentMismatch(String builtin, int argumentIndex, String expected, ValueType actual);
 
-        void reportArgumentCountMismatch(String builtin, int minimum, int maximum, int actual);
+        void reportArgumentCountMismatch(String builtin, int minimum, Integer maximum, int actual);
     }
 
     private final Map<String, BuiltinSpec> specs;

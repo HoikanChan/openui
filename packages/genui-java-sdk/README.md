@@ -56,8 +56,9 @@ the DSL outcome (`CHECK_PASSED`, `TIMEOUT`, `MODEL_REQUEST_FAILED`, or a distinc
 unchecked/validation-failed status), even after successful fallback.
 
 This ticket preserves existing optional validation/repair strategies; the incremental
-repair loop from #54 is separate. Actual BSP/company-host adaptation and frontend
-whole-page replacement verification remain tracked in #62.
+repair loop from #54 is implemented in #58 (see "Incremental repair" below). Actual
+BSP/company-host adaptation and frontend whole-page replacement verification remain
+tracked in #62.
 
 For a user-facing integration walkthrough, see [INTEGRATION.md](INTEGRATION.md).
 
@@ -172,11 +173,14 @@ render it. The validation data model lives under `core.validation`:
 - `RepairPolicyKind` (`NONE`, `FINAL_REPAIR`)
 - `GenUiValidationConfig`, the top-level generator config record
 
-`GenUiValidationConfig` intentionally exposes two axes only: when to validate
-and what coarse repair policy to apply. Use the presets for the common modes:
+`GenUiValidationConfig` exposes three axes: when to validate, what coarse repair
+policy to apply, and an optional cap on incremental repair rounds. Use the
+presets for the common modes:
 
 ```java
-GenUiValidationConfig cfg = GenUiValidationConfig.finalOnly(); // default
+GenUiValidationConfig cfg = GenUiValidationConfig.incremental(); // default: deadline-bound
+GenUiValidationConfig capped = GenUiValidationConfig.incremental(3); // at most 3 repair rounds
+GenUiValidationConfig strict = GenUiValidationConfig.finalOnly(); // no repair; sync throws on INVALID
 GenUiValidationConfig off = GenUiValidationConfig.disabled();
 ```
 
@@ -187,10 +191,13 @@ errors. With `DISABLED`, it skips validation and returns a backward-compatible
 `GenUiGenerationResult(dsl, dataModel)`, leaving `validationStatus()` and
 `validationResult()` as `null`. With `FINAL_ONLY`, a valid result returns the
 current effective DSL plus the populated `validationStatus()` and
-`validationResult()`. Any `INVALID` result throws
+`validationResult()`. An `INVALID` result with `FINAL_ONLY` throws
 `GenerationValidationException`; callers can inspect
 `e.validationResult().actionableIssues()` for the low-noise blocking diagnostics.
 The complete parser-parity view remains available through `issues()`.
+With the default `INCREMENTAL_REPAIR`, an unrecoverable `INVALID` instead ends
+the DSL session and hands off to whole-page Markdown (see "Incremental repair"
+below).
 
 Final validation is data-aware. The generator forwards the concrete response
 data through initial validation and every repair attempt, so the validator can
@@ -244,6 +251,28 @@ tries reflection repair before throwing. Repaired output is re-validated in
 `FINAL` mode and returned as `VALID`; the result metadata includes
 `extra["repaired"] = "true"`.
 
+### Incremental repair (default, #58)
+
+Normal generation defaults to `GenUiValidationConfig.incremental()`:
+`FINAL_ONLY` validation plus `INCREMENTAL_REPAIR`. After a round ends with blocking
+errors, the model is asked for **only overriding or new statements** (pure
+openui-lang, no full page/JSON/deletion). The SDK merges the patch into the same
+current program (last-wins by statement id), forwards the patch live on the stream,
+and re-checks the **whole merged program** after the round. Rounds repeat until the
+program is valid or the shared 20-second budget expires; duplicate errors, empty
+patches, and lack of progress are not separate early-exit conditions.
+
+All rounds share the original contract, system prompt, and one characterized data
+snapshot; each round's scanner is reset, so half statements never splice across
+model requests. Completed and interrupted rounds remain on `rounds()`.
+
+If repair cannot reach `VALID` before the budget ends, the DSL session ends
+unsuccessfully and the public entry performs exactly one whole-page Markdown
+handoff (`replace` + `done` on the stream; Markdown result on sync). Explicit
+`GenUiValidationConfig.finalOnly()` keeps the no-repair behavior (sync throws
+`GenerationValidationException`), and `disabled()` bypasses validation/repair
+entirely.
+
 ```java
 GenUiValidationConfig cfg =
     new GenUiValidationConfig(
@@ -254,17 +283,17 @@ GenUiGenerator generator =
 ```
 
 The lower-level `RepairPolicy` value object carries advanced attempt and timeout
-knobs for repair coordination:
+knobs for FINAL_REPAIR (whole-page DSL repair):
 
 ```java
 RepairPolicy policy = RepairPolicy.of(RepairPolicyKind.FINAL_REPAIR, 2);
 ```
 
-Today the top-level `GenUiValidationConfig` stores only `RepairPolicyKind`; the
-generator uses `RepairPolicy.from(...)`, whose default attempt budget is one.
-If a service needs non-default attempt budgets or timeout integration, wire that
-at the repair-coordinator boundary rather than adding fields to
-`GenUiValidationConfig`.
+Incremental repair does not read `RepairPolicy.maxAttempts`: by default it runs
+until the shared session deadline, because #58 forbids early exit on repeated
+errors, empty patches, or lack of progress. Pass
+`GenUiValidationConfig.incremental(n)` when a host needs a hard round cap instead.
+`RepairPolicy.from(...)` only governs the legacy FINAL_REPAIR path.
 
 ### Streaming: live forwarding + end-of-round unified check (#56)
 
@@ -293,8 +322,13 @@ missing at round end are errors. Types that cannot be proven are not reported
 as definite mismatches.
 
 Each round is recorded on the result (`GenUiGenerationResult.rounds()`): raw
-output, current definitions, diagnostics, duration, and contract version — the
-input for the upcoming incremental repair loop (#58) and for evaluation.
+output, current definitions, diagnostics, duration, contract version, and end
+reason. A normally completed round has a `null` end reason (its verdict is in
+`validationResult`); an interrupted round records the session terminal reason
+(e.g. `TIMEOUT` / `MODEL_REQUEST_FAILED`) because it has no validation verdict.
+The same records feed the incremental repair loop (#58) and evaluation;
+completed and interrupted rounds survive a timeout, model failure, or Markdown
+handoff.
 
 If the stream fails mid-flight, the SDK emits `error("LLM_STREAM_FAILED")` then
 `done` and returns the best-effort current program without running a round-end

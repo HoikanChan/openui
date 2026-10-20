@@ -233,6 +233,7 @@ class GenUiGeneratorRoundEndTest {
         assertNotNull(round.validationResult(), "记录诊断");
         assertTrue(round.durationMs() >= 0, "记录耗时");
         assertNotNull(round.contractVersion(), "记录契约版本");
+        assertNull(round.endReason(), "a completed round leaves endReason null");
     }
 
     @Test
@@ -272,7 +273,10 @@ class GenUiGeneratorRoundEndTest {
         assertTrue(types.contains(RenderStreamEnvelope.TYPE_REPLACE), "流失败后发整页 replace 帧: " + types);
         assertEquals("done", envelopes.get(envelopes.size() - 1).type());
         assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.endReason());
-        assertTrue(result.rounds().isEmpty(), "流失败不产生轮记录");
+        assertEquals(1, result.rounds().size(), "失败保留中断轮记录(#58),但不做轮末校验");
+        assertNull(result.rounds().get(0).validationResult(), "中断轮没有校验结论");
+        assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.rounds().get(0).endReason(), "中断轮单独记录终态原因");
+        assertTrue(result.rounds().get(0).rawOutput().contains("Stack"), "中断轮保留已收到的原始输出");
         assertSeqStrictlyIncreasing(envelopes);
     }
 

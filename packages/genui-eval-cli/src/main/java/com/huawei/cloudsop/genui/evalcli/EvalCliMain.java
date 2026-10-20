@@ -12,7 +12,9 @@ import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerationResult;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerator;
 import com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig;
+import com.huawei.cloudsop.genui.core.llm.UiGenerationRequest;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
+import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
@@ -90,7 +92,10 @@ public final class EvalCliMain {
         OpenAiCompatibleLlmTransport transport = new OpenAiCompatibleLlmTransport(env.get("LLM_BASE_URL"),
                 env.get("LLM_API_KEY"), env.get("HTTPS_PROXY"));
         GenUiLlmConfig config = GenUiLlmConfig.builder().defaultModel(model).temperature(0).build();
-        GenUiGenerator generator = GenUiGenerator.withTransport(sdk, config, transport);
+        // Eval regen records the model's raw DSL (including invalid output); it must not spend the 20s budget on
+        // validation/repair, and a Markdown fallback must still be reported as a failure by JobRunner.
+        GenUiGenerator generator = GenUiGenerator.withTransport(sdk, config, transport,
+                GenUiValidationConfig.disabled(), null);
 
         List<GenerationJob> jobs = GenerationJob.parseAll(readFile(cli.jobsPath(), "jobs"));
         JobRunner.runAll(jobs, cli.concurrency(), generator, out);
@@ -183,8 +188,8 @@ public final class EvalCliMain {
         }
 
         static GenUiGenerationResult execute(GenerationJob job, GenUiGenerator generator) {
-            return generator.generate(com.huawei.cloudsop.genui.core.llm.UiGenerationRequest.builder()
-                    .userInput(job.userInput()).response(new LinkedHashMap<>(job.dataModel())).build());
+            return generator.generate(UiGenerationRequest.builder().userInput(job.userInput())
+                    .response(new LinkedHashMap<>(job.dataModel())).build());
         }
     }
 

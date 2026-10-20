@@ -75,6 +75,22 @@ class RepairBenchRunnerTest {
                 + dsl.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"}}]}";
     }
 
+    /** 提取增量修复提示词中的当前有效 DSL 段；非修复请求返回 {@code null}。 */
+    private static String currentDsl(String prompt) {
+        String marker = "## Current effective DSL";
+        int markerAt = prompt.indexOf(marker);
+        if (markerAt < 0) {
+            return null;
+        }
+        int fenceAt = prompt.indexOf("```openui", markerAt);
+        int contentStart = fenceAt < 0 ? -1 : prompt.indexOf('\n', fenceAt);
+        int contentEnd = contentStart < 0 ? -1 : prompt.indexOf("```", contentStart);
+        if (contentStart < 0 || contentEnd < 0) {
+            return null;
+        }
+        return prompt.substring(contentStart + 1, contentEnd);
+    }
+
     /** 按 DSL 脚本化的假 transport：从请求体里提取修复提示词携带的无效 DSL，反查脚本队列。 */
     private static final class ScriptedTransport
             implements
@@ -105,23 +121,28 @@ class RepairBenchRunnerTest {
                     allContent.append(content).append('\n');
                 }
             }
-            String haystack = allContent.toString();
+            // 增量修复提示词同时携带“当前有效 DSL”和历史轮原始输出。按当前 DSL 段匹配脚本，
+            // 避免历史轮里的旧 DSL 抢先命中已耗尽的队列。
+            String currentDsl = currentDsl(allContent.toString());
+            Map.Entry<String, Deque<String>> matched = null;
             for (Map.Entry<String, Deque<String>> entry : scriptByDsl.entrySet()) {
-                // ReaskPromptBuilder 会把 DSL 原样（含换行/引号）拼进提示词，
-                // 但 ChatCompletionRequest.toJson 已把换行转义为 \n、引号转义为 \"，
-                // 因此匹配前先把 key 转成同样的 JSON 转义形式。
-                String jsonEscapedKey = entry.getKey().replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
-                if (haystack.contains(jsonEscapedKey) || haystack.contains(entry.getKey())) {
-                    Deque<String> queue = entry.getValue();
-                    if (queue.isEmpty()) {
-                        throw new LlmTransportException("no scripted response for " + entry.getKey());
-                    }
-                    String next = queue.poll();
-                    if ("<boom>".equals(next)) {
-                        throw new LlmTransportException("scripted boom");
-                    }
-                    return syncResponse(next);
+                boolean hit = currentDsl == null
+                        ? allContent.toString().contains(entry.getKey())
+                        : currentDsl.contains(entry.getKey());
+                if (hit && (matched == null || entry.getKey().length() > matched.getKey().length())) {
+                    matched = entry;
                 }
+            }
+            if (matched != null) {
+                Deque<String> queue = matched.getValue();
+                if (queue.isEmpty()) {
+                    throw new LlmTransportException("no scripted response for " + matched.getKey());
+                }
+                String next = queue.poll();
+                if ("<boom>".equals(next)) {
+                    throw new LlmTransportException("scripted boom");
+                }
+                return syncResponse(next);
             }
             throw new LlmTransportException("no script matches body");
         }
