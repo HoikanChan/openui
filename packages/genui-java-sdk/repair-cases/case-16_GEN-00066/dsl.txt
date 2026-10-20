@@ -1,4 +1,4 @@
-root = Stack([infoCard, metricsCard], "column", "m")
+root = Stack([infoCard, metricsCard], "column")
 infoCard = Card([infoHeader, infoDescriptions])
 infoHeader = CardHeader("设备信息")
 infoDescriptions = Descriptions([ipField, nameField, interfaceField], true)

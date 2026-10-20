@@ -1,4 +1,4 @@
-root = Stack([cpuCard, dropCard], "column", "l")
+root = Stack([cpuCard, dropCard], "column")
 cpuCard = Card([cpuHeader, cpuText])
 cpuHeader = CardHeader("设备CPU利用率", "单位：%")
 cpuText = TextContent("当前数据源中未包含 CPU 利用率（cpu_usage）指标，仅包含接口丢包数据。", "default")
