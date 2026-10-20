@@ -235,4 +235,31 @@ class IncrementalRepairPromptBuilderTest {
                 round("", "root = Stack([])", List.of())));
         assertTrue(text.contains("(no earlier rounds)"), "empty history rendered explicitly");
     }
+
+    @Test
+    void longHistoryRawOutputIsCutAtACompleteStatementBoundary() {
+        // 每行 63 字符:2048 恰好落在 s032 语句中间。截断必须退回到 s031 的结尾。
+        StringBuilder raw = new StringBuilder();
+        for (int i = 0; i < 80; i++) {
+            raw.append(String.format("s%03d = TextContent(\"%s\")\n", i, "x".repeat(40)));
+        }
+        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
+                round("root = Stack([])", "root = Stack([])", List.of()),
+                List.of(round(raw.toString(), "root = Stack([])", List.of()))));
+
+        assertTrue(text.contains("truncated at a complete statement boundary"), "truncation is stated, not silent");
+        assertTrue(text.contains("s031 = TextContent("), "the last statement that fits the limit is kept whole");
+        assertFalse(text.contains("s032"), "the statement straddling the limit is dropped, never emitted half-cut");
+    }
+
+    @Test
+    void historyRawOutputWithNoCompleteStatementIsOmittedNotCut() {
+        String raw = "huge = TextContent(\"" + "x".repeat(3000) + "\")\n";
+        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
+                round("root = Stack([])", "root = Stack([])", List.of()),
+                List.of(round(raw, "root = Stack([])", List.of()))));
+
+        assertTrue(text.contains("exceeds the history excerpt limit"), "an unrepresentable history round is omitted");
+        assertFalse(text.contains("huge = TextContent"), "no partial single statement is pasted into the prompt");
+    }
 }

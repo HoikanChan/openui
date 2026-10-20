@@ -16,6 +16,8 @@ import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssueReducer;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
+import com.huawei.cloudsop.genui.core.validation.parser.OpenuiLexer;
+import com.huawei.cloudsop.genui.core.validation.parser.StatementSplitter;
 import com.huawei.cloudsop.genui.core.validation.semantic.StatementRelations;
 import com.huawei.cloudsop.genui.core.validation.stream.RoundEndResult;
 
@@ -59,7 +61,10 @@ public final class IncrementalRepairPromptBuilder {
     /** 历史只保留最近 N 轮：当前 DSL 与最新诊断才是权威，更早的轮次仅作趋势参考。 */
     private static final int HISTORY_ROUND_LIMIT = 3;
 
-    /** 单轮历史原始输出上限；超出部分截断，避免提示词逐轮膨胀。 */
+    /**
+     * 单轮历史原始输出上限；超出部分截断，避免提示词逐轮膨胀。截断只落在完整语句边界——半句表达式会让模型以为当前程序残缺，
+     * 从而去“修”一个并不存在的断裂。
+     */
     private static final int HISTORY_RAW_OUTPUT_LIMIT = 2048;
 
     private IncrementalRepairPromptBuilder() {
@@ -408,13 +413,50 @@ public final class IncrementalRepairPromptBuilder {
             sb.append(" (").append(round.durationMs()).append(" ms)\n");
             sb.append("- issue codes: ").append(issueCodes(result)).append('\n');
             sb.append("- raw output:\n");
-            String raw = round.rawOutput();
-            appendTextBlock(sb,
-                    raw != null && raw.length() > HISTORY_RAW_OUTPUT_LIMIT
-                            ? raw.substring(0, HISTORY_RAW_OUTPUT_LIMIT)
-                                    + "\n[history excerpt truncated; current definitions above are authoritative]"
-                            : raw);
+            appendTextBlock(sb, historyExcerpt(round.rawOutput()));
         }
+    }
+
+    /**
+     * 历史轮原始输出的截断视图。只在完整语句边界截断,并显式声明被截断:前缀再长也只是叙述,当前 DSL 与最新诊断才是修复依据。
+     */
+    private static String historyExcerpt(String raw) {
+        if (raw == null || raw.length() <= HISTORY_RAW_OUTPUT_LIMIT) {
+            return raw;
+        }
+        int cut = completeStatementEnd(raw);
+        if (cut <= 0) {
+            return "(the first statement of this earlier output exceeds the history excerpt limit; "
+                    + "read the current effective DSL instead)";
+        }
+        return raw.substring(0, cut).stripTrailing()
+                + "\n[history excerpt truncated at a complete statement boundary; the current effective DSL above "
+                + "is the authoritative state — do not patch from this excerpt alone]";
+    }
+
+    /**
+     * 在 {@link #HISTORY_RAW_OUTPUT_LIMIT} 内最后一个完整语句的结束偏移；找不到时退回最后一个换行边界，再退回 {@code 0}。
+     */
+    private static int completeStatementEnd(String raw) {
+        int limit = HISTORY_RAW_OUTPUT_LIMIT;
+        int boundary = 0;
+        try {
+            for (StatementSplitter.RawStmt statement : StatementSplitter.split(OpenuiLexer.tokenize(raw))) {
+                int end = statement.span().endOffset();
+                if (end < 0 || end > limit) {
+                    break;
+                }
+                boundary = Math.max(boundary, end);
+            }
+        } catch (RuntimeException ignored) {
+            // Fall through to the newline boundary: a malformed fragment must not break prompt building.
+            boundary = 0;
+        }
+        if (boundary > 0) {
+            return boundary;
+        }
+        int newline = raw.lastIndexOf('\n', limit - 1);
+        return newline < 0 ? 0 : newline + 1;
     }
 
     // ── shared rendering ─────────────────────────────────────────────────────
