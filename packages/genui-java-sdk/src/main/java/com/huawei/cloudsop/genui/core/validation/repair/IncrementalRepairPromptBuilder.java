@@ -62,8 +62,7 @@ public final class IncrementalRepairPromptBuilder {
     private static final int HISTORY_ROUND_LIMIT = 3;
 
     /**
-     * 单轮历史原始输出上限；超出部分截断，避免提示词逐轮膨胀。截断只落在完整语句边界——半句表达式会让模型以为当前程序残缺，
-     * 从而去“修”一个并不存在的断裂。
+     * 单轮历史原始输出上限；超出部分截断，避免提示词逐轮膨胀。截断只落在完整语句边界——半句表达式会让模型以为当前程序残缺， 从而去“修”一个并不存在的断裂。
      */
     private static final int HISTORY_RAW_OUTPUT_LIMIT = 2048;
 

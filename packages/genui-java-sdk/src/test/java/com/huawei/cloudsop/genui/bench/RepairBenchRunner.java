@@ -66,6 +66,9 @@ final class RepairBenchRunner {
 
     private final PrintStream out;
 
+    /** 已写出的 JSONL 行；报告生成在批次结束后复用同一份数据，不再回读文件。 */
+    private final List<String> emitted = java.util.Collections.synchronizedList(new ArrayList<>());
+
     /** 全批共享的确定性生成/修复配置：温度 0 + 不开 thinking（镜像 GenUiGenerator.repairConfig 的纪律）。 */
     private final GenUiLlmConfig repairConfig;
 
@@ -295,8 +298,16 @@ final class RepairBenchRunner {
     }
 
     private synchronized void emit(String line) {
+        emitted.add(line);
         out.println(line);
         out.flush();
+    }
+
+    /** 本次运行已写出的全部 JSONL 行（含末尾 summary），供报告生成复用，避免二次解析丢失字段。 */
+    List<String> emittedLines() {
+        synchronized (emitted) {
+            return List.copyOf(emitted);
+        }
     }
 
     /**

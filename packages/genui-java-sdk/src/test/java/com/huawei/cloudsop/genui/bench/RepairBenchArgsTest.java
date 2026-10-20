@@ -25,17 +25,28 @@ class RepairBenchArgsTest {
         assertEquals(0, args.timeoutMinutes());
         assertEquals(null, args.limit(), "limit defaults to null (no limit)");
         assertEquals(false, args.repair(), "repair defaults to false (validation-only)");
+        assertEquals(null, args.out(), "out defaults to stdout");
+        assertEquals(null, args.html(), "html defaults to derived path");
     }
 
     @Test
     void allFlagsParsed() {
         RepairBenchArgs args = RepairBenchArgs.parse(new String[]{"--cases=c", "--concurrency=2", "--max-attempts=5",
-                "--timeout-minutes=10", "--limit=3", "--repair"});
+                "--timeout-minutes=10", "--limit=3", "--repair", "--out=target/run.jsonl", "--html=target/run.html"});
         assertEquals(2, args.concurrency());
         assertEquals(5, args.maxAttempts());
         assertEquals(10, args.timeoutMinutes());
         assertEquals(3, args.limit());
         assertEquals(true, args.repair());
+        assertEquals("target/run.jsonl", args.out());
+        assertEquals("target/run.html", args.html());
+    }
+
+    @Test
+    void blankOutputPathRejected() {
+        assertThrows(IllegalArgumentException.class, () -> RepairBenchArgs.parse(new String[]{"--cases=c", "--out="}));
+        assertThrows(IllegalArgumentException.class,
+                () -> RepairBenchArgs.parse(new String[]{"--cases=c", "--html= "}));
     }
 
     @Test

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>修复基准报告 — __MODEL__</title>
+<style>
+__CSS__
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="eyebrow">GenUI · 修复基准</div>
+  <h1>修复基准报告 <span class="model" id="hdr-model"></span></h1>
+  <div class="sub">数据源：<span class="mono" id="hdr-source"></span> · 生成时间 <span id="hdr-generated"></span> · 所有数据已内嵌，可离线打开。</div>
+
+  <div class="meta-strip">
+    <span>模型 <b id="hdr-model2"></b></span>
+    <span>最大尝试次数 <b id="hdr-attempts"></b></span>
+    <span>会话预算 <b id="hdr-budget"></b></span>
+    <span>并发 <b id="hdr-concurrency"></b></span>
+    <span>总超时 <b id="hdr-timeout"></b></span>
+    <span>批次耗时 <b id="hdr-duration"></b></span>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="k">案例总数</div><div class="v" id="tile-total">0</div><div class="s">每案一条记录</div></div>
+    <div class="tile good"><div class="k">已修复</div><div class="v" id="tile-repaired">0</div><div class="s" id="tile-repaired-sub"></div></div>
+    <div class="tile bad"><div class="k">仍无效</div><div class="v" id="tile-still">0</div><div class="s">尝试耗尽 · 未修复</div></div>
+    <div class="tile warn"><div class="k">未复现</div><div class="v" id="tile-notrep">0</div><div class="s">未执行修复 · 不计入</div></div>
+    <div class="tile invalid" id="tile-invalid" hidden><div class="k">仅校验无效</div><div class="v" id="tile-invalid-v">0</div><div class="s">validation-only · 未修复</div></div>
+    <div class="tile rate"><div class="k">主修复率（端到端）</div><div class="v" id="tile-rate">n/a</div><div class="s" id="tile-rate-sub"></div></div>
+  </div>
+
+  <div class="stack-wrap">
+    <div class="stack" id="stack" role="img" aria-label="状态分布"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <section class="panel buckets">
+    <h2>初始问题分桶</h2>
+    <p class="panel-sub">仅统计已复现案例；同一案例可进入多个分桶。修复率 = 已修复 / 案例数。</p>
+    <div class="table-scroll">
+    <table class="grid">
+      <thead><tr>
+        <th>初始问题码</th><th class="num">案例数</th><th class="num">已修复</th>
+        <th class="num">仍无效</th><th>修复率</th>
+      </tr></thead>
+      <tbody id="bucket-body"></tbody>
+    </table>
+    </div>
+  </section>
+</header>
+
+<noscript>
+  <div class="noscript">JavaScript 已禁用。案例卡片、diff 与反思 Prompt 需要 JavaScript。汇总数据已内嵌在页面中。</div>
+</noscript>
+
+<div class="toolbar" role="region" aria-label="筛选">
+  <div class="frow">
+    <span class="flabel">状态</span>
+    <div class="chips" id="status-chips"></div>
+  </div>
+  <div class="frow">
+    <span class="flabel">初始问题码</span>
+    <div class="chips" id="code-chips"></div>
+  </div>
+  <div class="frow">
+    <span class="flabel">搜索</span>
+    <div class="searchrow">
+      <input id="search" type="search" autocomplete="off" spellcheck="false"
+             placeholder="案例 ID、问题码、endReason、DSL 文本、诊断信息…" aria-label="搜索案例">
+      <button class="btn" id="reset" type="button">重置筛选</button>
+      <button class="btn" id="expand-all" type="button">展开全部 diff</button>
+      <button class="btn" id="collapse-all" type="button">收起全部 diff</button>
+      <span class="count" id="count"></span>
+    </div>
+  </div>
+</div>
+
+<main id="cards" aria-label="案例卡片"></main>
+<div id="empty" hidden>没有符合当前筛选条件的案例。</div>
+
+<footer>
+  <div><b>状态口径。</b>只有会话以 <code>CHECK_PASSED</code> 结束、最终校验为 VALID，且输出 DSL 与最后一次通过校验的 DSL
+  完全一致时，才计为「已修复」。其余一律以红色标记为「未修复」：<code>still-invalid</code> 尝试耗尽并输出 Markdown
+  降级占位；<code>not-reproduced</code> 的原始 DSL 本身通过校验（未执行修复），不计入主修复率。</div>
+  <div style="margin-top:6px"><b>Diff 口径。</b>BEFORE 为 <code>repair-cases/&lt;案例目录&gt;/dsl.txt</code>
+  中的原始 DSL（按 <code>case.json</code> 的 id 匹配）；AFTER 对已修复案例为 JSONL <code>outputDsl</code>，
+  对未修复案例为最后一次校验的 DSL（<code>finalDsl</code>）。Markdown 降级占位不展示，也不参与 diff。</div>
+  <div style="margin-top:6px"><b>反思 Prompt。</b>运行产物未保存 Prompt 原文；报告按 SDK
+  <code>IncrementalRepairPromptBuilder</code> 的模板，从每轮已存字段还原用户消息（原始需求、当前有效 DSL、
+  本轮原始输出、最新诊断、历史轮摘要）。系统消息中的完整契约、原始 system prompt 与固定增量规则未展开；
+  「相关语句」按文本引用近似还原，专项指导按 <code>RepairGuidance</code> 规则还原。</div>
+  <div style="margin-top:6px"><b>每轮详情。</b>多轮案例默认只展开最后一轮；其余轮次点击展开。每轮的
+  「累积 DSL」可单独展开，内容是该轮 <code>currentDefinitions</code>，并高亮诊断语句与诊断行。
+  「问题语句」取该轮 DSL 中诊断 <code>statementId</code> 对应的完整语句；无 id 时按诊断行号归属。
+  反思 Prompt 是<b>下一轮</b>的用户消息：第 0 轮的 Prompt 用于第 1 轮修复；最后一轮若已通过校验则不再生成，
+  若未通过则因尝试次数/预算耗尽而未发送。</div>
+  <div style="margin-top:6px">本报告由 <code>repair-bench</code> 每次运行后自动生成。源文件：
+  <code id="foot-source"></code> · 模型 <b id="foot-model"></b> · 生成时间 <span id="foot-generated"></span>。
+  初始问题码来自原始 DSL 的校验；内部问题码是案例 <code>issues.json</code> 的元数据，不是校验结果。
+  页面不使用任何网络资源。</div>
+</footer>
+</div>
+<script type="application/json" id="bench-data">__DATA__</script>
+<script>
+__JS__
+</script>
+</body>
+</html>
