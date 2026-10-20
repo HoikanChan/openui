@@ -34,20 +34,23 @@ import java.util.Set;
  * 仍可提取,因此它保留在当前程序中,其语法错误在轮末被报告。
  *
  * <p>
- * 本类不发模型请求、不控制展示;校验使用当前请求生效契约(无第二份能力白名单)。非线程安全:每轮一个实例,由单一 消费线程驱动。后续 #58 的修复轮将复用同一实例继续叠加覆盖语句。
+ * 本类不发模型请求、不控制展示;校验使用当前请求生效契约(无第二份能力白名单)。public 方法均 {@code synchronized}: 实例跨轮复用,消费线程(流式泵/修复循环)与调度/快照线程可能并发访问。
+ *
+ * <p>
+ * #58 起一个生成会话复用一个实例:{@link #beginRound()} 清空语句边界扫描器与本轮计时,但保留当前程序,使修复补丁按同名覆盖合并; 不同模型请求的半句绝不跨轮拼接。
  *
  * @since 2026
  */
 public final class ProgramRoundSession {
 
-    private final StatementBoundaryScanner scanner = new StatementBoundaryScanner();
+    private StatementBoundaryScanner scanner = new StatementBoundaryScanner();
     private final OpenuiLangValidator validator;
     private final GenerationContract contract;
     private final String rootName;
     private final Set<String> externalRefs;
     private final Map<String, Object> dataModel;
     private final String contractVersion;
-    private final long startNanos;
+    private long startNanos;
 
     /** 语句 id → 最新语句文本(LinkedHashMap:同名 put 覆盖值、保留首次出现顺序)。 */
     private final LinkedHashMap<String, String> currentStatements = new LinkedHashMap<>();
@@ -78,12 +81,41 @@ public final class ProgramRoundSession {
     }
 
     /**
+     * 开始新一轮模型输出(#58):重置语句边界扫描器与本轮计时,<b>保留</b>跨轮的同名 last-wins 当前程序。
+     *
+     * <p>
+     * 修复请求是独立的模型输出,不得与上一轮半句拼接:新请求从空缓冲区开始,上一轮未完成的尾部已由 {@link #onRoundEnd()} / {@link #drainToCurrentDefinitions()} 处理。
+     */
+    public synchronized void beginRound() {
+        scanner.reset();
+        startNanos = System.nanoTime();
+    }
+
+    /**
+     * 本轮已进行的墙钟毫秒数。供中断轮记录使用。
+     *
+     * @return 本轮耗时(毫秒)
+     */
+    public synchronized long elapsedMs() {
+        return (System.nanoTime() - startNanos) / 1_000_000;
+    }
+
+    /**
+     * 本会话使用的合并契约版本;无契约时为 {@code null}。
+     *
+     * @return 契约版本或 {@code null}
+     */
+    public String contractVersion() {
+        return contractVersion;
+    }
+
+    /**
      * 送入一段模型原始输出增量。语句以语法完整性为准识别;识别出的完整语句按 id 覆盖或追加进当前程序。
      *
      * @param delta
      *            增量文本,可为 {@code null}
      */
-    public void onDelta(String delta) {
+    public synchronized void onDelta(String delta) {
         for (String statement : scanner.onDelta(delta)) {
             apply(statement);
         }
@@ -94,7 +126,7 @@ public final class ProgramRoundSession {
      *
      * @return 轮末结果与记录
      */
-    public RoundEndResult onRoundEnd() {
+    public synchronized RoundEndResult onRoundEnd() {
         for (String statement : scanner.drainAtEnd()) {
             apply(statement);
         }
@@ -102,7 +134,7 @@ public final class ProgramRoundSession {
         ValidationResult result = validator.validate(ValidationRequest.builder().dsl(definitions).contract(contract)
                 .rootName(rootName).externalRefs(externalRefs).dataModel(dataModel).mode(ValidationMode.FINAL).build());
         long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
-        return new RoundEndResult(rawOutput(), definitions, result, durationMs, contractVersion);
+        return new RoundEndResult(rawOutput(), definitions, result, durationMs, contractVersion, null);
     }
 
     /**
@@ -110,7 +142,7 @@ public final class ProgramRoundSession {
      *
      * @return 当前有效定义文本;空程序返回空字符串
      */
-    public String currentDefinitions() {
+    public synchronized String currentDefinitions() {
         return String.join("\n", currentStatements.values());
     }
 
@@ -119,7 +151,7 @@ public final class ProgramRoundSession {
      *
      * @return 刷出待定尾部后的当前有效定义文本
      */
-    public String drainToCurrentDefinitions() {
+    public synchronized String drainToCurrentDefinitions() {
         for (String statement : scanner.drainAtEnd()) {
             apply(statement);
         }
@@ -131,7 +163,7 @@ public final class ProgramRoundSession {
      *
      * @return 原始输出文本
      */
-    public String rawOutput() {
+    public synchronized String rawOutput() {
         return scanner.rawBuffer();
     }
 

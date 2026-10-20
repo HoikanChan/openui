@@ -17,6 +17,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /** Per-invocation budget and output ownership; shared by all model calls including existing repairs. */
 final class GenerationSession implements LlmTransport {
@@ -35,6 +36,8 @@ final class GenerationSession implements LlmTransport {
     private LlmCall active;
     private Thread worker;
     private int nextSeq = 1;
+    /** Snapshot of completed/interrupted rounds for an abnormal terminal (#58: timeout/model failure keeps rounds). */
+    private volatile Supplier<GenUiGenerationResult> partialSnapshot;
 
     GenerationSession(LlmTransport delegate, GenerationTiming timing, long started,
             Consumer<RenderStreamEnvelope> sink) {
@@ -126,6 +129,39 @@ final class GenerationSession implements LlmTransport {
         }
     }
 
+    /**
+     * Publish a live snapshot so an abnormal terminal (timeout or transport failure) can retain completed and
+     * interrupted round records (#58). The supplier must be cheap and must not emit to the sink.
+     */
+    void partialSnapshot(Supplier<GenUiGenerationResult> supplier) {
+        this.partialSnapshot = supplier;
+    }
+
+    /** Whether the shared 20-second budget is already exhausted. */
+    boolean expiredNow() {
+        return expired();
+    }
+
+    /**
+     * End the whole session from the worker with a non-success reason (#58). Used when incremental repair stops while
+     * the current program is still invalid, so the public entry performs exactly one whole-page fallback.
+     */
+    void terminate(GenerationEndReason reason) {
+        fail(reason);
+    }
+
+    private GenUiGenerationResult snapshotOrNull() {
+        Supplier<GenUiGenerationResult> supplier = partialSnapshot;
+        if (supplier == null) {
+            return null;
+        }
+        try {
+            return supplier.get();
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
     private boolean expired() {
         return timing.nanoTime().getAsLong() - started >= GenerationTiming.BUDGET_NANOS;
     }
@@ -145,7 +181,7 @@ final class GenerationSession implements LlmTransport {
         } finally {
             if (worker != null && worker != Thread.currentThread())
                 worker.interrupt();
-            completion.complete(new Outcome(null, reason));
+            completion.complete(new Outcome(snapshotOrNull(), reason));
         }
     }
 

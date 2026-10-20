@@ -13,5 +13,9 @@ public enum RepairPolicyKind {
     /** 不修复:将校验失败直接暴露给调用方。 */
     NONE,
     /** 轮末校验失败后尝试整份 DSL 修复(已有失败处理)。 */
-    FINAL_REPAIR
+    FINAL_REPAIR,
+    /**
+     * 轮末校验失败后由模型只输出覆盖或新增语句,实时转发并合并进当前程序,轮末再次校验;在会话截止时间内持续修复(#58)。 正常生成的默认策略。
+     */
+    INCREMENTAL_REPAIR
 }

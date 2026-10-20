@@ -183,6 +183,18 @@ public final class GenerationSdk {
     }
 
     /**
+     * Characterizes a host data model for prompt use (#58 capture-once snapshot). The returned spec carries the
+     * characterized prompt copy; the original raw map is unchanged. Callers reuse one result across all repair rounds.
+     *
+     * @param in
+     *            render data model, may be {@code null}
+     * @return characterized prompt data model, or {@code null} when {@code in} is {@code null}
+     */
+    public DataModelSpec promptDataModel(DataModelSpec in) {
+        return characterize(in);
+    }
+
+    /**
      * Characterizes the prompt copy of the data model for the convergence point in {@link #assemblePrompt}. When the
      * gate passes through (small/disabled/empty raw data), this returns the SAME {@code in} instance unchanged — no
      * sidecar is attached, so {@code dataModelSection} stays byte-identical and existing golden prompts are unaffected.

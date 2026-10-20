@@ -7,6 +7,7 @@ package com.huawei.cloudsop.genui.core.validation.stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
@@ -56,6 +57,7 @@ class ProgramRoundSessionTest {
         assertEquals(ValidationStatus.VALID, round.validationResult().status(), "旧定义的 unknown-component 不得继续产生当前错误");
         assertTrue(round.durationMs() >= 0);
         assertEquals(baseContract().contractVersion(), round.contractVersion());
+        assertNull(round.endReason(), "正常完成的轮末检查不记录退出原因");
         assertTrue(round.rawOutput().contains("Bogus"), "原始输出保留历史定义供排查");
     }
 
@@ -79,6 +81,23 @@ class ProgramRoundSessionTest {
 
         RoundEndResult round = s.onRoundEnd();
         assertTrue(round.currentDefinitions().contains("CardHeader"), "自动闭合后的尾部语句进入当前程序");
+    }
+
+    @Test
+    void beginRoundStartsFreshBufferAndKeepsDrainedTailSeparate() {
+        // 首轮半句在轮末被 drain 自动闭合;新一轮是小请求的独立输出,不得拼接到上一请求的半句上。
+        ProgramRoundSession s = session(baseContract(), Set.of(), null);
+        s.onDelta("keep = TextContent(\"k\")\nlate = Stack([");
+        RoundEndResult first = s.onRoundEnd();
+        assertTrue(first.currentDefinitions().contains("late = Stack([])"), "late fragment is drained at round end");
+
+        s.beginRound();
+        s.onDelta("root = Stack([keep])\n");
+        RoundEndResult second = s.onRoundEnd();
+
+        assertEquals("root = Stack([keep])\n", second.rawOutput(), "a new request starts from an empty raw buffer");
+        assertEquals("keep = TextContent(\"k\")\nlate = Stack([])\nroot = Stack([keep])", second.currentDefinitions(),
+                "prior program survives, while the new request's statements are parsed independently");
     }
 
     @Test

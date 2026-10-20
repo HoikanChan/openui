@@ -4,7 +4,6 @@
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
 
-import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
@@ -455,13 +454,13 @@ public final class ProgramAnalyzer {
      * binder scope — e.g. too few args or a non-literal binder — so the caller falls back to the generic builtin walk.
      */
     private boolean walkLazyBuiltin(AstNode.Comp comp, WalkCtx ctx) {
-        List<Integer> binderIndexes = lazyBinderIndexes(comp);
+        List<Integer> binderIndexes = LazyBuiltinBinders.binderIndexes(comp, builtins);
         if (binderIndexes.isEmpty()) {
             return false;
         }
         Set<String> binders = new LinkedHashSet<>();
         for (int index : binderIndexes) {
-            String binderName = binderName(comp.args().get(index));
+            String binderName = LazyBuiltinBinders.binderName(comp.args().get(index));
             if (binderName == null) {
                 return false;
             }
@@ -478,39 +477,6 @@ public final class ProgramAnalyzer {
             ctx.scopeFrames.pop();
         }
         return true;
-    }
-
-    /**
-     * Binder 参数位置——从契约 params 的 {@code binder} 标记派生（Each 为 1；Render 为除模板外的全部前缀参数）。 仅对实参充足的调用返回非空（Each 需 3 参、Render 需 2
-     * 参），与旧硬编码行为一致。
-     */
-    private List<Integer> lazyBinderIndexes(AstNode.Comp comp) {
-        if (!builtins.isLazyBuiltin(comp.name())) {
-            return List.of();
-        }
-        BuiltinSpec spec = builtins.spec(comp.name());
-        if (spec == null) {
-            return List.of();
-        }
-        List<Integer> declared = spec.binderIndexes();
-        int argc = comp.args().size();
-        // Each 的 3-arg 形式才绑定；Render 至少 2 参才绑定。
-        int minBindArgs = "Each".equals(comp.name()) ? 3 : 2;
-        if (argc < minBindArgs) {
-            return List.of();
-        }
-        return declared.stream().filter(index -> index < argc - 1 || "Each".equals(comp.name())).toList();
-    }
-
-    /** A binder may be a bare identifier ({@code Ref}) or a string literal ({@code Str}); anything else is invalid. */
-    private static String binderName(AstNode arg) {
-        if (arg instanceof AstNode.Ref ref) {
-            return ref.n();
-        }
-        if (arg instanceof AstNode.Str str) {
-            return str.v();
-        }
-        return null;
     }
 
     /** Resolve a Ref: inline from symbol table, track cycles + unresolved. Mirrors resolveRef. */

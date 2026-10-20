@@ -5,6 +5,7 @@
 package com.huawei.cloudsop.genui.evalcli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,13 +13,19 @@ import com.huawei.cloudsop.genui.core.GenerationSdk;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
+import com.huawei.cloudsop.genui.core.llm.GenUiGenerationResult;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerator;
 import com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig;
+import com.huawei.cloudsop.genui.core.llm.GenerationEndReason;
+import com.huawei.cloudsop.genui.core.llm.transport.LlmCall;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
+import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
+import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -89,8 +96,11 @@ class EvalCliMainTest {
 
     @Test
     void jobRunnerEmitsOkAndErrorLines() throws Exception {
+        // Eval regen uses raw generation with validation disabled (same as EvalCliMain); JobRunner still rejects
+        // Markdown fallbacks by endReason.
         GenUiGenerator generator = GenUiGenerator.withTransport(sdk(),
-                GenUiLlmConfig.builder().defaultModel("test-model").temperature(0).build(), new FlakyTransport());
+                GenUiLlmConfig.builder().defaultModel("test-model").temperature(0).build(), new FlakyTransport(),
+                GenUiValidationConfig.disabled(), null);
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         List<EvalCliMain.GenerationJob> jobs = EvalCliMain.GenerationJob
                 .parseAll("[{\"id\":\"ok-case\",\"userInput\":\"u\"},{\"id\":\"fail-case\",\"userInput\":\"boom\"}]");
@@ -109,6 +119,23 @@ class EvalCliMainTest {
         assertTrue(String.valueOf(fail.get("error")).contains("boom"));
     }
 
+    @Test
+    void markdownFallbackIsNotReportedAsDslSuccess() {
+        GenUiGenerationResult fallback = new GenUiGenerationResult("root = Stack([MarkDownRenderer(\"# page\")])",
+                Map.of(), null, null, GenerationEndReason.TIMEOUT, List.of());
+        String failure = JobRunner.dslFailure(fallback);
+        assertTrue(failure != null && failure.contains("TIMEOUT"),
+                "Markdown fallback must be an error and keep the end reason: " + failure);
+
+        GenUiGenerationResult checked = new GenUiGenerationResult("root = Stack([])", Map.of(), ValidationStatus.VALID,
+                null, GenerationEndReason.CHECK_PASSED, List.of());
+        assertNull(JobRunner.dslFailure(checked), "validated DSL is ok");
+
+        GenUiGenerationResult unchecked = new GenUiGenerationResult("root = Stack([])", Map.of(), null, null,
+                GenerationEndReason.UNCHECKED, List.of());
+        assertNull(JobRunner.dslFailure(unchecked), "explicitly disabled validation keeps raw DSL usable");
+    }
+
     private static GenerationSdk sdk() {
         GenerationContract contract = new GenerationContract("test@1.0.0", "Stack",
                 Map.of("Stack", new ComponentPromptSpec("Stack(children)", "Layout container")), List.of(), List.of(),
@@ -119,14 +146,13 @@ class EvalCliMainTest {
     /** user message 含 boom 时抛错,否则返回固定 DSL 响应。 */
     private static final class FlakyTransport implements LlmTransport {
         @Override
-        public com.huawei.cloudsop.genui.core.llm.transport.LlmCall newCall(String body, boolean stream) {
-            return new com.huawei.cloudsop.genui.core.llm.transport.LlmCall() {
+        public LlmCall newCall(String body, boolean stream) {
+            return new LlmCall() {
                 private boolean cancelled;
                 public synchronized InputStream execute() throws LlmTransportException {
                     if (cancelled)
                         throw new LlmTransportException("cancelled");
-                    return new java.io.ByteArrayInputStream(
-                            post(body).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    return new ByteArrayInputStream(post(body).getBytes(StandardCharsets.UTF_8));
                 }
                 public synchronized void cancel() {
                     cancelled = true;

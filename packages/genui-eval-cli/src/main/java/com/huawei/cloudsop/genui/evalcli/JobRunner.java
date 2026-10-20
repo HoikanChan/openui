@@ -7,6 +7,7 @@ package com.huawei.cloudsop.genui.evalcli;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerationResult;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerator;
+import com.huawei.cloudsop.genui.core.llm.GenerationEndReason;
 
 import java.io.PrintStream;
 import java.util.LinkedHashMap;
@@ -46,8 +47,12 @@ final class JobRunner {
         line.put("id", job.id());
         try {
             GenUiGenerationResult result = EvalCliMain.GenerationJob.execute(job, generator);
+            String failure = dslFailure(result);
             String dsl = result.dsl() == null ? "" : result.dsl().strip();
-            if (dsl.isEmpty()) {
+            if (failure != null) {
+                line.put("status", "error");
+                line.put("error", dsl.isEmpty() ? failure + " (empty DSL)" : failure);
+            } else if (dsl.isEmpty()) {
                 line.put("status", "error");
                 line.put("error", "LLM returned empty DSL");
             } else {
@@ -59,6 +64,22 @@ final class JobRunner {
             line.put("error", String.valueOf(error.getMessage()));
         }
         emit(out, Json.stringify(line));
+    }
+
+    /**
+     * A Markdown fallback also fills {@code result.dsl()} with the whole-page Markdown wrapper. Only a DSL session that
+     * finished successfully may be reported as {@code ok}: validation passed, or validation was explicitly disabled
+     * (nothing was checked). TIMEOUT / MODEL_REQUEST_FAILED / VALIDATION_FAILED keep their reason.
+     */
+    static String dslFailure(GenUiGenerationResult result) {
+        GenerationEndReason reason = result.endReason();
+        if (reason == GenerationEndReason.CHECK_PASSED) {
+            return null;
+        }
+        if (reason == GenerationEndReason.UNCHECKED && result.validationStatus() == null) {
+            return null;
+        }
+        return "DSL session did not produce a validated page: " + reason;
     }
 
     private static synchronized void emit(PrintStream out, String line) {

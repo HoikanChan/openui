@@ -258,7 +258,18 @@ public final class PromptAssembler {
         return dataModel != null && dataModel.raw() != null && !dataModel.raw().isEmpty();
     }
 
-    private static String dataModelSection(DataModelSpec dataModel) {
+    /**
+     * Render the {@code ## Data Model} prompt section for a caller-supplied data model.
+     *
+     * <p>
+     * Shared by initial prompt assembly ({@link #assemble}) and the incremental repair prompt (#58), so both describe
+     * the same data shape, samples and scale.
+     *
+     * @param dataModel
+     *            caller data model; must not be {@code null}
+     * @return the rendered section text
+     */
+    public static String dataModelSection(DataModelSpec dataModel) {
         ArrayList<String> lines = new ArrayList<>();
         lines.add("## Data Model");
         lines.add("");
