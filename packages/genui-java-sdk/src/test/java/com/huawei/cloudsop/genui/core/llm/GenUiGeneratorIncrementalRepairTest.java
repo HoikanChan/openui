@@ -106,6 +106,50 @@ class GenUiGeneratorIncrementalRepairTest {
         assertTrue(result.dsl().contains("TextContent(row.name)"), "new helper definition is retained");
     }
 
+    // ── 修复轮异常:空 content 不穿透,走 Markdown 降级并保留轮记录 ─────────────
+
+    @Test
+    void syncInitialEmptyContentHandsOffToMarkdown() {
+        // The very first response has no usable content (refusal / tool call only); the Markdown handoff follows.
+        ScriptedTransport transport = ScriptedTransport.sync(
+                "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null}}]}",
+                syncResponse("# Markdown fallback"));
+
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generate(req());
+
+        assertTrue(result.dsl().contains("MarkDownRenderer") && result.dsl().contains("# Markdown fallback"),
+                "an empty initial response hands off to the Markdown wrapper instead of escaping; got: "
+                        + result.dsl());
+        assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.endReason());
+        assertEquals(2, transport.postCount(), "initial + markdown; no repair round is possible");
+        assertEquals(1, result.rounds().size(), "the interrupted initial request is recorded as an interrupted round");
+        assertNull(result.rounds().get(0).validationResult(), "no verdict for an interrupted initial round");
+        assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.rounds().get(0).endReason());
+    }
+
+    @Test
+    void syncRepairEmptyContentHandsOffToMarkdownAndKeepsRounds() {
+        // Round 1: INVALID DSL. Round 2 (repair): first choice has null content (e.g. tool-call only response).
+        // Round 3 (Markdown handoff): plain markdown text.
+        ScriptedTransport transport = ScriptedTransport.sync(syncResponse("root = Bogus(\"x\")"),
+                "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null}}]}",
+                syncResponse("# Markdown fallback"));
+
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generate(req());
+
+        assertEquals("root = Stack([MarkDownRenderer(\"# Markdown fallback\")])", result.dsl(),
+                "empty repair content hands off to Markdown, not a throw");
+        assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.endReason(),
+                "the session terminates as MODEL_REQUEST_FAILED, not as a runtime exception");
+        assertEquals(3, transport.postCount(), "initial + repair + markdown");
+        assertEquals(2, result.rounds().size(), "the completed first round survives; the repair round is recorded");
+        assertNull(result.rounds().get(0).endReason(), "first round completed normally");
+        assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.rounds().get(1).endReason(),
+                "the empty repair round is recorded as interrupted by request failure");
+    }
+
     // ── 流式:修复片段实时转发,不额外 done ────────────────────────────────
 
     @Test

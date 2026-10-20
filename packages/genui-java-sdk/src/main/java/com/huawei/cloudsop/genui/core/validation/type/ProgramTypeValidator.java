@@ -229,8 +229,10 @@ public final class ProgramTypeValidator {
                     }
 
                     @Override
-                    public void reportArgumentCountMismatch(String builtin, int minimum, int maximum, int actual) {
-                        String expected = minimum == maximum ? String.valueOf(minimum) : minimum + "-" + maximum;
+                    public void reportArgumentCountMismatch(String builtin, int minimum, Integer maximum, int actual) {
+                        String expected = maximum == null
+                                ? "at least " + minimum
+                                : minimum == maximum ? String.valueOf(minimum) : minimum + "-" + maximum;
                         emit("builtin-argument-count-mismatch",
                                 "@" + builtin + " expects " + expected + " argument(s), but received " + actual + ".",
                                 statementId, null, "/args", "Use the documented @" + builtin + " signature.");

@@ -96,7 +96,7 @@ public final class RepairGuidance {
             return;
         }
 
-        if (code.startsWith("type-data-") || source.startsWith("data")) {
+        if (code.startsWith("type-data-")) {
             selected.add("`data.<path>` must exist in the caller-supplied data context. Do not invent fields, "
                     + "invent rows, or traverse a field that is not described there.");
             selected.add("Do not derive counts, sums, averages, or other statistics from sample rows as if they "
@@ -105,7 +105,7 @@ public final class RepairGuidance {
             return;
         }
 
-        if (code.startsWith("type-") || "type".equals(source)) {
+        if (code.startsWith("type-")) {
             selected.add("Match the declared prop, operator, chart, and table types. If a value's type cannot be "
                     + "proven from the available data, do not assert a definite mismatch; render real data and "
                     + "state the limitation in the page.");

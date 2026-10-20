@@ -173,11 +173,13 @@ render it. The validation data model lives under `core.validation`:
 - `RepairPolicyKind` (`NONE`, `FINAL_REPAIR`)
 - `GenUiValidationConfig`, the top-level generator config record
 
-`GenUiValidationConfig` intentionally exposes two axes only: when to validate
-and what coarse repair policy to apply. Use the presets for the common modes:
+`GenUiValidationConfig` exposes three axes: when to validate, what coarse repair
+policy to apply, and an optional cap on incremental repair rounds. Use the
+presets for the common modes:
 
 ```java
-GenUiValidationConfig cfg = GenUiValidationConfig.incremental(); // default
+GenUiValidationConfig cfg = GenUiValidationConfig.incremental(); // default: deadline-bound
+GenUiValidationConfig capped = GenUiValidationConfig.incremental(3); // at most 3 repair rounds
 GenUiValidationConfig strict = GenUiValidationConfig.finalOnly(); // no repair; sync throws on INVALID
 GenUiValidationConfig off = GenUiValidationConfig.disabled();
 ```
@@ -281,17 +283,17 @@ GenUiGenerator generator =
 ```
 
 The lower-level `RepairPolicy` value object carries advanced attempt and timeout
-knobs for repair coordination:
+knobs for FINAL_REPAIR (whole-page DSL repair):
 
 ```java
 RepairPolicy policy = RepairPolicy.of(RepairPolicyKind.FINAL_REPAIR, 2);
 ```
 
-Today the top-level `GenUiValidationConfig` stores only `RepairPolicyKind`; the
-generator uses `RepairPolicy.from(...)`, whose default attempt budget is one.
-If a service needs non-default attempt budgets or timeout integration, wire that
-at the repair-coordinator boundary rather than adding fields to
-`GenUiValidationConfig`.
+Incremental repair does not read `RepairPolicy.maxAttempts`: by default it runs
+until the shared session deadline, because #58 forbids early exit on repeated
+errors, empty patches, or lack of progress. Pass
+`GenUiValidationConfig.incremental(n)` when a host needs a hard round cap instead.
+`RepairPolicy.from(...)` only governs the legacy FINAL_REPAIR path.
 
 ### Streaming: live forwarding + end-of-round unified check (#56)
 

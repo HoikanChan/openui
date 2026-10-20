@@ -14,13 +14,18 @@ import java.util.Objects;
  * 包装在一起;这些高级参数刻意不放在 顶层公共配置中。
  *
  * <p>
+ * 本对象只服务 {@code FINAL_REPAIR}(整份 DSL 修复);{@code INCREMENTAL_REPAIR} 的轮次上限由
+ * {@link com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig#maxIncrementalAttempts()} 控制, 不读取本对象的
+ * {@code maxAttempts}。
+ *
+ * <p>
  * 生成器通过 {@link #from(RepairPolicyKind)} 将 {@code config.repairPolicy()}(一个 KIND)映射为
  * {@code RepairPolicy},并应用合理的默认值({@code maxAttempts = 1})。
  *
  * @param kind
- *            粗粒度策略(NONE / FINAL_REPAIR)
+ *            粗粒度策略(NONE / FINAL_REPAIR / INCREMENTAL_REPAIR)
  * @param maxAttempts
- *            最大修复尝试次数(同步场景为整份 DSL 修复次数),必须 {@code >= 1},默认 {@code 1}
+ *            最大修复尝试次数(仅 FINAL_REPAIR:整份 DSL 修复次数),必须 {@code >= 1},默认 {@code 1}
  * @param timeout
  *            单次完整修复请求的时间预算;{@code Duration.ZERO} 表示“无显式超时”(依赖传输层自身的超时)
  *

@@ -21,7 +21,6 @@ import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptAssemblyResult;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
-import com.huawei.cloudsop.genui.core.prompt.PromptAssembler;
 import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
@@ -139,8 +138,15 @@ public final class GenUiGenerator {
     }
 
     /**
-     * 同步生成:一次模型请求,轮末对当前有效程序统一校验。同名覆盖后旧定义及其错误不再生效;结果 dsl 是去重后的当前 有效定义。INVALID 时按已有失败处理:NONE 抛
-     * {@link GenerationValidationException},FINAL_REPAIR 走整份修复。
+     * 同步生成:一次模型请求,轮末对当前有效程序统一校验。同名覆盖后旧定义及其错误不再生效;结果 dsl 是去重后的当前 有效定义。INVALID 时按
+     * {@link GenUiValidationConfig#repairPolicy()} 分流:
+     * <ul>
+     * <li>{@code INCREMENTAL_REPAIR}(默认):进入多轮增量修复;仍 INVALID 或 20 秒预算耗尽时返回整页 Markdown 降级结果,DSL 侧以
+     * {@code endReason=VALIDATION_FAILED}/{@code TIMEOUT}/{@code MODEL_REQUEST_FAILED} 标识。降级结果的
+     * {@code validationStatus()} 为 null;宿主必须检查 endReason,不能把 Markdown 包装 DSL 当作校验成功。
+     * <li>{@code NONE}:直接抛 {@link GenerationValidationException}。
+     * <li>{@code FINAL_REPAIR}:整份修复;仍 INVALID 抛 {@link GenerationValidationException}。
+     * </ul>
      */
     public GenUiGenerationResult generate(UiGenerationRequest request) {
         long started = timing.nanoTime().getAsLong();
@@ -188,14 +194,20 @@ public final class GenUiGenerator {
             boolean validate = validationConfig.validationMode() != ValidationConfigMode.DISABLED;
             GenerationContract merged = validate ? sdk.mergedContract(promptRequest) : null;
             final ProgramRoundSession roundSession = validate ? newRoundSession(promptRequest, merged) : null;
-            String dataContext = validate ? dataContext(promptRequest) : null;
-
             RequestBody requestBody = buildRequest(promptRequest, effectiveRequest, false);
             state.beginInFlight();
             budget.partialSnapshot(
                     () -> partialResult(effectiveRequest, roundSession, state, rounds, interruptedReason(budget)));
             String response = transport.post(requestBody.json());
-            String content = ChatCompletionResponse.parse(response).firstContent();
+            String content;
+            try {
+                content = ChatCompletionResponse.parse(response).firstContent();
+            } catch (GenerationSdkException error) {
+                // Refusal / tool-call-only / truncated initial response: no usable text. Treat it as a failed
+                // model request so the session falls back to Markdown instead of leaking a runtime exception.
+                throw new LlmTransportException("initial round returned no usable content: " + error.getMessage(),
+                        error);
+            }
             String extracted = OpenuiCodeExtractor.extract(content);
 
             if (!validate) {
@@ -216,7 +228,7 @@ public final class GenUiGenerator {
                 RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
                 if (policy.kind() == RepairPolicyKind.INCREMENTAL_REPAIR) {
                     IncrementalRepairLoop loop = new IncrementalRepairLoop(requestBody.systemPrompt(), effectiveRequest,
-                            roundSession, rounds, merged, dataContext, budget, state, false);
+                            roundSession, rounds, merged, requestBody.dataContext(), budget, state, false);
                     RoundEndResult current = runIncrementalSync(loop, round);
                     if (current.validationResult().status() == ValidationStatus.VALID) {
                         return new GenUiGenerationResult(current.currentDefinitions(), effectiveRequest.response(),
@@ -263,7 +275,13 @@ public final class GenUiGenerator {
             // Re-throw directly — do not wrap in a generic GenerationSdkException.
             throw e;
         } catch (LlmTransportException error) {
-            throw new GenerationSdkException("Failed to invoke LLM: " + error.getMessage(), error);
+            // A repair or initial round whose response carries no usable content (refusal / tool call only /
+            // length-truncated) surfaces here as LlmTransportException. Terminate the session as
+            // MODEL_REQUEST_FAILED so the public entry performs the Markdown handoff and retains the completed +
+            // interrupted round records, instead of letting a runtime exception escape. The worker's return value is
+            // discarded: terminate() already completed the session with its failure snapshot.
+            budget.terminate(GenerationEndReason.MODEL_REQUEST_FAILED);
+            return new GenUiGenerationResult("", effectiveRequest.response());
         }
     }
 
@@ -272,16 +290,20 @@ public final class GenUiGenerator {
      */
     private RoundEndResult runIncrementalSync(IncrementalRepairLoop loop, RoundEndResult current)
             throws LlmTransportException {
-        try {
-            return runIncrementalRepair(loop, current, body -> {
-                String response = transport.post(body);
-                String extracted = OpenuiCodeExtractor.extract(ChatCompletionResponse.parse(response).firstContent());
-                loop.roundSession().onDelta(extracted);
-            });
-        } catch (LlmTransportException | RuntimeException error) {
-            loop.state().endInFlight();
-            throw error;
-        }
+        return runIncrementalRepair(loop, current, body -> {
+            String response = transport.post(body);
+            // A refusal / tool-call-only / length-truncated response has no text content; treat the round
+            // as a failed request so the session terminates via Markdown handoff, not a runtime exception.
+            String content;
+            try {
+                content = ChatCompletionResponse.parse(response).firstContent();
+            } catch (GenerationSdkException error) {
+                throw new LlmTransportException("repair round returned no usable content: " + error.getMessage(),
+                        error);
+            }
+            String extracted = OpenuiCodeExtractor.extract(content);
+            loop.roundSession().onDelta(extracted);
+        });
     }
 
     /**
@@ -289,7 +311,10 @@ public final class GenUiGenerator {
      */
     private RoundEndResult runIncrementalRepair(IncrementalRepairLoop loop, RoundEndResult current,
             RepairRoundExecutor executor) throws LlmTransportException {
-        while (!loop.budget().expiredNow()) {
+        int attempts = 0;
+        int limit = validationConfig.maxIncrementalAttempts();
+        while (!loop.budget().expiredNow() && (limit == 0 || attempts < limit)) {
+            attempts++;
             String body = incrementalRepairBody(loop, current);
             loop.state().beginInFlight();
             loop.roundSession().beginRound();
@@ -461,13 +486,17 @@ public final class GenUiGenerator {
         GenUIPromptRequest promptRequest = toPromptRequest(effectiveRequest);
         GenerationContract merged = validate ? sdk.mergedContract(promptRequest) : null;
         ProgramRoundSession roundSession = validate ? newRoundSession(promptRequest, merged) : null;
-        String dataContext = validate ? dataContext(promptRequest) : null;
         RepairLoopState state = new RepairLoopState();
         List<RoundEndResult> rounds = new ArrayList<>();
-        StringBuilder accumulated = new StringBuilder();
+        // StringBuffer: the timeout/failure snapshot reads it from another thread while the stream thread appends.
+        StringBuffer accumulated = new StringBuffer();
         if (roundSession != null) {
             budget.partialSnapshot(
                     () -> partialResult(effectiveRequest, roundSession, state, rounds, interruptedReason(budget)));
+        } else {
+            // DISABLED keeps validation off but must not discard partial streamed output on timeout/request failure.
+            budget.partialSnapshot(() -> new GenUiGenerationResult(OpenuiCodeExtractor.extract(accumulated.toString()),
+                    dataModel, null, null, interruptedReason(budget), List.of()));
         }
 
         try {
@@ -494,7 +523,7 @@ public final class GenUiGenerator {
             boolean incremental = policy.kind() == RepairPolicyKind.INCREMENTAL_REPAIR;
             if (current.validationResult().status() == ValidationStatus.INVALID && incremental) {
                 IncrementalRepairLoop loop = new IncrementalRepairLoop(requestBody.systemPrompt(), effectiveRequest,
-                        roundSession, rounds, merged, dataContext, budget, state, true);
+                        roundSession, rounds, merged, requestBody.dataContext(), budget, state, true);
                 current = runIncrementalStream(loop, current, sink);
             }
 
@@ -518,6 +547,11 @@ public final class GenUiGenerator {
             // 流/修复请求中途失败:发 error 帧(GenerationSession 拦截 LLM_STREAM_FAILED 转 MODEL_REQUEST_FAILED),
             // 保留已完成轮与中断轮记录;轮末校验不运行(内容不可信)。
             sink.accept(RenderStreamEnvelope.error(0, "LLM_STREAM_FAILED", error.getMessage(), true));
+            if (roundSession == null) {
+                // DISABLED: no round record; keep the streamed prefix so the interrupted result is not empty.
+                return new GenUiGenerationResult(OpenuiCodeExtractor.extract(accumulated.toString()), dataModel, null,
+                        null, interruptedReason(budget), List.of());
+            }
             return partialResult(effectiveRequest, roundSession, state, rounds, interruptedReason(budget));
         }
     }
@@ -566,26 +600,17 @@ public final class GenUiGenerator {
         GenUIPromptAssemblyResult assembly = sdk.assemblePrompt(promptRequest);
         String systemPrompt = systemPromptOverride == null ? assembly.prompt() : systemPromptOverride;
         List<ChatMessage> messages = List.of(ChatMessage.system(systemPrompt), ChatMessage.user(userMessage(request)));
-        return new RequestBody(ChatCompletionRequest.of(config, null, messages, stream).toJson(), systemPrompt);
+        return new RequestBody(ChatCompletionRequest.of(config, null, messages, stream).toJson(), systemPrompt,
+                assembly.dataContext());
     }
 
-    private record RequestBody(String json, String systemPrompt) {
+    private record RequestBody(String json, String systemPrompt, String dataContext) {
     }
 
     /** 每轮创建的轮末校验会话:使用当前请求生效契约 + 完整 Render Data Model,无第二份能力白名单。 */
     private ProgramRoundSession newRoundSession(GenUIPromptRequest promptRequest, GenerationContract merged) {
         return new ProgramRoundSession(validator, merged, merged.root(), externalRefsFor(promptRequest),
                 dataModelFor(promptRequest));
-    }
-
-    /**
-     * Characterized prompt data snapshot captured once per invocation (#58): all repair rounds reuse the same data
-     * description, samples and scale information; the Render Data Model itself is never reduced.
-     */
-    private String dataContext(GenUIPromptRequest promptRequest) {
-        return promptRequest.dataModel() == null
-                ? null
-                : PromptAssembler.dataModelSection(sdk.promptDataModel(promptRequest.dataModel()));
     }
 
     /**

@@ -56,6 +56,12 @@ public final class IncrementalRepairPromptBuilder {
     /** 机器可解析的标记，供测试/日志识别增量修复系统消息。 */
     public static final String INCREMENTAL_REPAIR_MARKER = "[REPAIR:INCREMENTAL]";
 
+    /** 历史只保留最近 N 轮：当前 DSL 与最新诊断才是权威，更早的轮次仅作趋势参考。 */
+    private static final int HISTORY_ROUND_LIMIT = 3;
+
+    /** 单轮历史原始输出上限；超出部分截断，避免提示词逐轮膨胀。 */
+    private static final int HISTORY_RAW_OUTPUT_LIMIT = 2048;
+
     private IncrementalRepairPromptBuilder() {
     }
 
@@ -160,7 +166,8 @@ public final class IncrementalRepairPromptBuilder {
         sb.append("3. Do not output a full page, JSON, prose explanations, or markdown outside a single "
                 + "```openui fenced block.\n");
         sb.append("4. Never emit a deletion. To remove behavior, redefine the owning parent so the old statement "
-                + "is no longer referenced; unreferenced statements are dropped.\n");
+                + "is no longer referenced. Definitions remain in the program and are still type-checked; "
+                + "also replace any invalid unused definition with a valid expression.\n");
         sb.append("5. Keep exactly one reachable `root` and keep every reference resolvable. Everything not "
                 + "redefined stays exactly as it is in the current effective DSL.\n");
         sb.append("6. Use only components, builtins, tools, examples, and rules present in the current full "
@@ -386,7 +393,11 @@ public final class IncrementalRepairPromptBuilder {
         }
         sb.append("Historical diagnostics describe past states. They never override the current DSL or the "
                 + "latest diagnostics above.\n\n");
-        for (int index = 0; index < rounds.size(); index++) {
+        int first = Math.max(0, rounds.size() - HISTORY_ROUND_LIMIT);
+        if (first > 0) {
+            sb.append("- Earlier rounds omitted: ").append(first).append('\n');
+        }
+        for (int index = first; index < rounds.size(); index++) {
             RoundEndResult round = rounds.get(index);
             ValidationResult result = round.validationResult();
             sb.append("### Earlier round ").append(index + 1).append(" — ")
@@ -397,7 +408,12 @@ public final class IncrementalRepairPromptBuilder {
             sb.append(" (").append(round.durationMs()).append(" ms)\n");
             sb.append("- issue codes: ").append(issueCodes(result)).append('\n');
             sb.append("- raw output:\n");
-            appendTextBlock(sb, round.rawOutput());
+            String raw = round.rawOutput();
+            appendTextBlock(sb,
+                    raw != null && raw.length() > HISTORY_RAW_OUTPUT_LIMIT
+                            ? raw.substring(0, HISTORY_RAW_OUTPUT_LIMIT)
+                                    + "\n[history excerpt truncated; current definitions above are authoritative]"
+                            : raw);
         }
     }
 

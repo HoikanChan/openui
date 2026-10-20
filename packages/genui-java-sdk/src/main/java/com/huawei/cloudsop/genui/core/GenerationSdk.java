@@ -124,13 +124,13 @@ public final class GenerationSdk {
         MergedParts parts = merge(effectiveRequest);
         Set<String> registeredToolNames = toolNames(parts.tools());
 
+        DataModelSpec characterizedData = characterize(effectiveRequest.dataModel());
         String prompt = PromptAssembler.assemble(new PromptAssembler.PromptInput(null, // preamble — the SDK always uses
                                                                                        // the default openui-lang
                                                                                        // preamble
-                baseContract.root(), parts.components(), parts.componentGroups(),
-                characterize(effectiveRequest.dataModel()), parts.tools(), parts.examples(), parts.additionalRules(),
-                effectiveRequest.editMode(), effectiveRequest.inlineMode(), effectiveRequest.toolCalls(),
-                effectiveRequest.bindings()), baseContract.builtins());
+                baseContract.root(), parts.components(), parts.componentGroups(), characterizedData, parts.tools(),
+                parts.examples(), parts.additionalRules(), effectiveRequest.editMode(), effectiveRequest.inlineMode(),
+                effectiveRequest.toolCalls(), effectiveRequest.bindings()), baseContract.builtins());
 
         GenUIExtension generation = effectiveRequest.extensionId() == null
                 ? null
@@ -138,7 +138,14 @@ public final class GenerationSdk {
         GenUIPromptAssemblyMetadata metadata = new GenUIPromptAssemblyMetadata(effectiveRequest.extensionId(),
                 baseContract.contractVersion(), generation == null ? null : generation.version(),
                 new ArrayList<>(registeredToolNames));
-        return new GenUIPromptAssemblyResult(prompt, metadata);
+        return new GenUIPromptAssemblyResult(prompt, metadata, dataContext(characterizedData));
+    }
+
+    /** Repair rounds reuse the exact data section the initial system prompt rendered; empty raw data renders none. */
+    private static String dataContext(DataModelSpec characterizedData) {
+        return characterizedData == null || characterizedData.raw() == null || characterizedData.raw().isEmpty()
+                ? null
+                : PromptAssembler.dataModelSection(characterizedData);
     }
 
     /**
@@ -180,18 +187,6 @@ public final class GenerationSdk {
     private record MergedParts(LinkedHashMap<String, ComponentPromptSpec> components,
             ArrayList<ComponentGroup> componentGroups, ArrayList<ToolSpec> tools, ArrayList<String> examples,
             ArrayList<String> additionalRules) {
-    }
-
-    /**
-     * Characterizes a host data model for prompt use (#58 capture-once snapshot). The returned spec carries the
-     * characterized prompt copy; the original raw map is unchanged. Callers reuse one result across all repair rounds.
-     *
-     * @param in
-     *            render data model, may be {@code null}
-     * @return characterized prompt data model, or {@code null} when {@code in} is {@code null}
-     */
-    public DataModelSpec promptDataModel(DataModelSpec in) {
-        return characterize(in);
     }
 
     /**
