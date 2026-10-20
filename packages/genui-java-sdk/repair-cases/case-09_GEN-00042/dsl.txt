@@ -2,7 +2,7 @@ root = Stack([summaryCard, modelTabs])
 
 summaryCard = Card([summaryHeader, summaryContent])
 summaryHeader = CardHeader("Fabric 版本补丁统计", data.summary.fabricName)
-summaryContent = Stack([totalDevicesKpi, totalModelsKpi], "row", "m")
+summaryContent = Stack([totalDevicesKpi, totalModelsKpi], "row")
 totalDevicesKpi = Card([TextContent("设备总数", "small"), TextContent("" + data.summary.totalDevices, "large-heavy")])
 totalModelsKpi = Card([TextContent("设备型号数", "small"), TextContent("" + data.summary.totalModels, "large-heavy")])
 

@@ -1,4 +1,4 @@
-root = Stack([headerCard, moduleTabs], "column", "m")
+root = Stack([headerCard, moduleTabs], "column")
 headerCard = Card([CardHeader("光模块性能指标", "设备: " + data.queryOpticalModuleMetrics.telemetryData[0].neName + " | 数据时间: 近30分钟平均值")])
 
 // Group data by optical module (opt_uniq_id)
@@ -7,7 +7,7 @@ moduleTabs = Tabs(@Each(modules, "modGroup", TabItem(modGroup[0].opt_uniq_id, mo
 
 moduleSummaryCard = Card([
   CardHeader("光模块维度指标", modGroup[0].opt_uniq_id),
-  Stack([tempCard, voltCard], "row", "m")
+  Stack([tempCard, voltCard], "row")
 ])
 tempCard = Card([TextContent("温度", "small"), TextContent("N/A ℃", "large-heavy")])
 voltCard = Card([TextContent("电压", "small"), TextContent("N/A V", "large-heavy")])

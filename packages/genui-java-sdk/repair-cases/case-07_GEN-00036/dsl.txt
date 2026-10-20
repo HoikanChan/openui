@@ -1,7 +1,7 @@
 root = Stack([summaryCard, typeDistCard, deviceTableCard])
 summaryCard = Card([summaryHeader, summaryContent])
 summaryHeader = CardHeader("Fabric 设备概览", "Fabric: default1")
-summaryContent = Stack([totalKpi, sceneKpi], "row", "m")
+summaryContent = Stack([totalKpi, sceneKpi], "row")
 totalKpi = Card([TextContent("设备总数", "small"), TextContent("" + data.queryDeviceInfo.deviceTotal, "large-heavy")])
 sceneKpi = Card([TextContent("部署场景", "small"), TextContent(data.queryDeviceInfo.deployScene, "large-heavy")])
 
