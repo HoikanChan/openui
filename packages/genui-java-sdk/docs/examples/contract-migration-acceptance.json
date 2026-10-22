@@ -1,0 +1,168 @@
+{
+  "issue": 79,
+  "evidenceKind": "contract-definition; examples are acceptance requirements, not runtime test results",
+  "contractVersion": "@cloudsop/openui-react-ui-dsl@1.1.6",
+  "cases": [
+    {
+      "id": "merge-rightmost-field",
+      "expression": "@MergeObject({a:1, keep:true}, {a:\"last\"})",
+      "acceptance": "accepted-by-params",
+      "expectedValue": {"a":"last", "keep":true},
+      "source": "builtins.MergeObject.description"
+    },
+    {
+      "id": "merge-arity-and-tolerance",
+      "expressions": ["@MergeObject()", "@MergeObject({a:1})", "@MergeObject({a:1}, null)", "@MergeObject({}, {}, {}, 4)"],
+      "acceptance": "reject-by-params; includes fourth rest argument",
+      "tolerance": "description says skip nonobjects and return {} when no objects are provided; this does not widen params",
+      "source": "builtins.MergeObject.params/description"
+    },
+    {
+      "id": "flatten-one-level",
+      "expression": "@Flatten([[[1]], [[2,3]]])",
+      "acceptance": "accepted-by-params",
+      "expectedValue": [[1],[2,3]],
+      "source": "builtins.Flatten.description"
+    },
+    {
+      "id": "flatten-fallback",
+      "expressions": ["@Flatten(null)", "@Flatten(1)"],
+      "acceptance": "reject-by-params",
+      "toleranceValue": [],
+      "source": "builtins.Flatten.params/description"
+    },
+    {
+      "id": "flatten-mixed",
+      "expression": "@Flatten([[1], null, 2, [3]])",
+      "acceptance": "reject-by-params: null and number are not arrays",
+      "preciseResult": "unresolved; no keep/drop/reject runtime rule defined",
+      "source": "builtins.Flatten.params/description"
+    },
+    {
+      "id": "selection-empty",
+      "expressions": ["@First([])", "@Last([])"],
+      "acceptance": "array input; no nonempty precondition declared",
+      "preciseResult": "unresolved; return T does not define the empty case",
+      "source": "builtins.First/Last"
+    },
+    {
+      "id": "aggregates-empty",
+      "expressions": ["@Sum([])", "@Avg([])", "@Min([])", "@Max([])"],
+      "acceptance": "accepted-by-params",
+      "declaredResultType": "number",
+      "preciseResult": "unresolved; do not assume zero or NaN",
+      "source": "builtins.Sum/Avg/Min/Max"
+    },
+    {
+      "id": "count-empty",
+      "expression": "@Count([])",
+      "acceptance": "accepted-by-params",
+      "expectedValue": 0,
+      "source": "builtins.Count.description"
+    },
+    {
+      "id": "object-maps-empty-and-null",
+      "expressions": ["@ObjectKeys({})", "@ObjectValues({})", "@ObjectEntries({})"],
+      "acceptance": "accepted-by-params",
+      "expectedValue": [],
+      "tolerance": "null, array, unsupported input also return [] but fail record params",
+      "source": "builtins.ObjectKeys/ObjectValues/ObjectEntries"
+    },
+    {
+      "id": "object-entries-correlation",
+      "expression": "@ObjectEntries({port:1, name:\"a\"})",
+      "acceptance": "accepted-by-params",
+      "expectedValue": [{"key":"port","value":1},{"key":"name","value":"a"}],
+      "analysisRequirement": "preserve port-number and name-string correlation, not Cartesian combinations",
+      "source": "builtins.ObjectEntries.description; design 7.4"
+    },
+    {
+      "id": "number-and-string-conversions",
+      "expressionsAndValues": [
+        {"expression":"@Number(true)","value":1},
+        {"expression":"@Number(false)","value":0},
+        {"expression":"@Number(\"bad\")","value":0},
+        {"expression":"@String(true)","value":"true"},
+        {"expression":"@String(\"already text\")","value":""}
+      ],
+      "source": "builtins.Number/String.description"
+    },
+    {
+      "id": "switch-default",
+      "expressionsAndValues": [
+        {"expression":"@Switch(1, {\"1\":\"one\"})","value":"one"},
+        {"expression":"@Switch(\"missing\", {})","value":null},
+        {"expression":"@Switch(\"missing\", {}, false)","value":false}
+      ],
+      "source": "builtins.Switch.description"
+    },
+    {
+      "id": "format-number-invalid-kind",
+      "expressions": ["@FormatNumber({a:1})", "@FormatNumber(true)", "@FormatNumber(null)"],
+      "acceptance": "accepted-by-params: any",
+      "declaredResultType": "string",
+      "preciseResult": "unresolved: raw input wording conflicts with fixed string return",
+      "source": "builtins.FormatNumber.returnType/description"
+    },
+    {
+      "id": "format-return-shapes",
+      "expressionsAndTypes": [
+        {"expression":"@FormatDate([1,2])","type":"string[]","length":2},
+        {"expression":"@FormatDate(1)","type":"string"},
+        {"expression":"@FormatBytes(null)","type":"string","value":""},
+        {"expression":"@FormatPercent(0.125)","type":"string"},
+        {"expression":"@FormatDuration(1000, \"ms\")","type":"string"}
+      ],
+      "source": "format builtin params/returnType/description; locale-dependent text not asserted"
+    },
+    {
+      "id": "join-null-elements",
+      "expression": "@Join([\"a\", null, \"b\"], \"|\")",
+      "expectedValue": "a|b",
+      "source": "builtins.Join.description"
+    },
+    {
+      "id": "sort-filter-structure",
+      "expression": "@Sort(@Filter(data.rows, \"status\", \"==\", \"up\"), \"name\", \"asc\")",
+      "dataModel": {"rows":[{"name":"b","status":"up"},{"name":"a","status":"down"}]},
+      "analysisRequirement": "retain row fields; Filter permits zero rows, Sort preserves its count; do not infer a specific retained row from type alone",
+      "source": "builtins.Sort/Filter; design 7.5"
+    },
+    {
+      "id": "projection-layering",
+      "expression": "data.groups.items",
+      "dataModel": {"groups":[{"items":[1]},{"items":[2,3]}]},
+      "expectedValue": [[1],[2,3]],
+      "source": "additionalRules array projection; Flatten.description"
+    },
+    {
+      "id": "projection-missing-null",
+      "expression": "data.rows.x",
+      "dataModel": {"rows":[{"x":1},{},{"x":null},null]},
+      "preciseResult": "unresolved; contract does not define missing/null projection",
+      "analysisRequirement": "retain missing branch and distinguish absent from present-null; do not claim every row has x",
+      "source": "design 7.2; contract additionalRules lacks exception policy"
+    },
+    {
+      "id": "each-named-transitive-template",
+      "dsl": "root = Tabs(@Each(data.groups, \"group\", groupTemplate))\ngroupTemplate = TabItem(group.model, group.model, [groupTable])\ngroupTable = Table([nameCol], group.devices)\nnameCol = Col(\"Device Name\", \"name\")",
+      "dataModel": {"groups":[{"model":"CE12804S","devices":[{"name":"DC1-spine-01"}]}]},
+      "validatorRequirement": "VALID; group binder available in groupTemplate and groupTable",
+      "source": "ADR0006; StaticTypeValidationTest.acceptsEachBinderAcrossReferencedTemplateStatements"
+    },
+    {
+      "id": "each-empty-independent-errors",
+      "expression": "@Each([], \"item\", @NotInContract(item))",
+      "validatorRequirement": "unknown-component still checked; no fabricated missing item-field error from Never",
+      "source": "design 7.5/13.2; builtin vocabulary from effective contract"
+    },
+    {
+      "id": "render-context-separation",
+      "dsl": "root = Table([nameCol, countCol], data.rows)\nnameCol = Col(\"Name\", \"name\", {cell: tpl})\ncountCol = Col(\"Count\", \"count\", {cell: tpl})\ntpl = @Render(\"v\", TextContent(@Round(v)))",
+      "dataModel": {"rows":[{"name":"a","count":2}]},
+      "validatorRequirement": "name use has number-parameter error; count use satisfies number parameter; cache must not mix use contexts",
+      "source": "design 10.3/13.2; builtins.Round/Render"
+    }
+  ],
+  "note": "Round/Abs/Floor/Ceil and all call layouts are also enumerated by runtime-semantics-probe.mts; this file is a documentation corpus, not production evaluator code. Unresolved cases deliberately have no expectedValue."
+}

@@ -1,0 +1,132 @@
+# 契约迁移语义与验收依据（#79）
+
+本次以 **生效 Base Contract 的接口定义**为依据，不以 TS 执行结果定义语言。默认 29 项均已逐项核对；契约明确的规则可进入迁移验收，契约没有定义的边界不能补成猜测值。本文件不宣称完成生产运行时验证，也不修改现有校验政策。
+
+范围：[#79](https://github.com/HoikanChan/openui/issues/79)，父需求 [#77](https://github.com/HoikanChan/openui/issues/77)。依据为[完整设计](https://github.com/HoikanChan/openui/issues/77#issuecomment-6340992323)第 7、8、10、12、13、14 节；已阅读[多系统调研](https://github.com/HoikanChan/openui/issues/77#issuecomment-6340983889)和 [Go 调研](https://github.com/HoikanChan/openui/issues/77#issuecomment-6340985384)。调研支持类型表示、关系与局部求解分层，不提供本项目 builtin 的具体返回值。
+
+## 证据版本与复现
+
+核对基点：`bfc9c760f3b3feaa09a2ad8b23d5c357193b0574`。默认资源：`src/main/resources/openui/base-contract.json`，`contractVersion = @cloudsop/openui-react-ui-dsl@1.1.6`，SHA-256 `fcacf88ca74858ba653975aa05889bf839686972afe8b0cd82dc086d2e0c9fc2`，Git blob `f4f70c7c5747acfae078db0ad3b994eb6aebd134`。行号均指此版本。
+
+从仓库根目录运行：
+
+```sh
+pnpm exec tsx packages/genui-java-sdk/docs/examples/runtime-semantics-probe.mts
+```
+
+环境：Node `v24.14.1`，tsx `v4.21.0`。退出码 0。脚本打印每个 builtin 的参数、机械推导的参数数量、返回声明及完整描述，并断言下列冲突仍存在。末行实测输出：
+
+```json
+{"contractVersion":"@cloudsop/openui-react-ui-dsl@1.1.6","builtins":29,"sha256":"fcacf88ca74858ba653975aa05889bf839686972afe8b0cd82dc086d2e0c9fc2","evidence":"contract-only; no runtime execution"}
+```
+
+这是可执行的**契约证据检查**，不运行 DSL、不证明生产返回值。配套 [验收输入](examples/contract-migration-acceptance.json)将“确定结果”“只确定类型”“尚待定义”分开；后续实施将其接入公开 validator/确定性生成校验入口，不构造内部分析快照。
+
+## 阅读矩阵的约定
+
+- “接受”指结构化 `params` 允许生成的输入；`?` 为可选，`...` 为剩余参数。数量从 params 推导，不能解析展示 signature。
+- “容错”指 description 明确规定的异常输入行为。容错不自动扩大生成接受范围，例如 `Join(null)` 可以有容错结果，同时不满足 array 参数政策。
+- “声明”是返回类型承诺；“未定”表示契约未给具体值或自相矛盾。不得用本地 TS、Java 推断器当前实现填空。
+- `any` 作为输入允许任意值；作为返回值只说明信息未知。空数组与未知数组分开，缺字段与显式 null 分开。
+- `templateBuiltin` 只决定提示词分节，不表示惰性调用。MergeObject/Switch 均不能因此被当成 binder。
+
+## 默认 29 项矩阵
+
+来源统一为默认资源的 `/builtins` 中同名条目（从第 1623 行开始）；表中保留现有接受政策，没有新增 enum 限制。
+
+| 名称 | 接受输入；参数数量 | 返回/边界证据；迁移要求 |
+| --- | --- | --- |
+| Count | array；1 | number；数组长度，`[] → 0`。null/非数组不被参数接受，未定义容错。 |
+| First | T[]；1 | T；非空取首。空数组无返回值定义，不能把空数组的元素 Never 当作实际返回值。 |
+| Last | T[]；1 | T；非空取尾。空数组同上，不能自行补 null。 |
+| Sum | number[]；1 | number；数字求和。空数组具体值未写明，非数字不因潜在转换而接受。 |
+| Avg | number[]；1 | number；平均值。空数组具体值未定。 |
+| Min | number[]；1 | number；最小值。空数组具体值未定。 |
+| Max | number[]；1 | number；最大值。空数组具体值未定。 |
+| Sort | T[], string, string?；2–3 | T[]；按 field 排序，direction 描述为 asc 默认/desc。保留元素与数量。其他 direction 的行为未定；当前 params 仅 string，不能称已有 enum 校验。 |
+| Filter | T[], string, string, any；4 | T[]；筛选子集，数量下界 0。signature 列出 ==、!=、>、<、>=、<=、contains；参数未结构化为枚举。比较/转换细节未定；不声称谓词收窄或某行必保留。 |
+| Flatten | array[]；1 | array；展平一层。description 定义 null/非数组容错为 []。混合元素（标量/null/数组）的策略未定，不能假定 JS flat、过滤或递归展平。 |
+| ObjectEntries | Record<string,T>；1 | {key:string,value:T}[]；有序键值行，原字段只在 value 下。空对象 → []；null/数组/不支持输入容错 → []。类型迁移保留每个 key/value 对应关系。 |
+| ObjectKeys | Record<string,any>；1 | string[]；有序键，空对象 → []；null/数组/不支持输入容错 → []。具体数字键排序规则未写明。 |
+| ObjectValues | Record<string,any>；1 | any[]；有序值，空对象 → []；null/数组/不支持输入容错 → []。新结构规则应保留已知字段值的类型，不能将空对象推成含 null 元素。 |
+| Round | number, number?；1–2 | number；小数位默认 0。负位数、非整数精度、舍入平局规则未定。 |
+| Abs | number；1 | number；绝对值。无非数字转换承诺。 |
+| Floor | number；1 | number；向下取整。无非数字转换承诺。 |
+| Ceil | number；1 | number；向上取整。无非数字转换承诺。 |
+| Number | any；1 | number；字符串解析、boolean 转 0/1、无效值 → 0。空串、特殊进制、非有限数的具体判断未定义。 |
+| Switch | any, Record<string,T>, any?；2–3 | T 或 default；数字查键转字符串。未命中且省略 default → null；cases 在当前模板环境分析。显式 null default 与省略分别记录，即使结果可同为 null。 |
+| FormatDate | any, string?, string?；1–3 | 标量 → string，数组 → string[]，保留数量。输入秒/毫秒自动识别，ISO 字符串；style 默认 dateTime，可用 date/time/relative。null/无效值输出和时区细节未写明；不据本地 Date 行为定规则。 |
+| FormatBytes | any；1 | string；SI 单位，nullish → 空串。只声明 1 参，不能按其他实现添加 locale 参数。 |
+| FormatNumber | any, number?, string?；1–3 | 声明 string，description 却称无效值返回 raw input。无效 object/boolean/null 的结果种类待裁定；不能直接扩大为任意联合或无条件证明 string。 |
+| FormatPercent | any, number?, string?；1–3 | string；0.125 是比例，格式为百分比。null/无效值和精度边界未写明。 |
+| FormatDuration | any, string?, string?；1–3 | string；默认秒，支持 ms。signature 未显示 locale，但 params 接受第三个 string；以 params 为调用政策。null/无效值输出未写明。 |
+| MergeObject | object, object, ...object；至少 2 | object；从左到右后写覆盖。description：非对象跳过、没有对象时 {}。后两项是容错，不隐式放宽至少 2 个对象的政策；零参/一参调用仍不满足 params。每个剩余参数都须检查。 |
+| Join | array, string?；1–2 | string；separator 默认 ", "，null/undefined 元素跳过，其余转字符串；null/非数组/空输入容错 → 空串。嵌套对象字符串表示未定。 |
+| String | any；1 | string；number/boolean 转字符串，其他类型 → 空串（包括已是字符串、object、array、null）。不要擅自改成 JavaScript String。 |
+| Each | T[], binder, body；3 | 每个元素求值 body，结果序列保持输入数量。跨语句模板由 ADR 0006 保留，见下节；空输入 → 空序列，不免除 body 中独立的名称/调用检查。 |
+| Render | binder, body 或 binder,binder,body；2–3 | 延迟模板，不是立即执行后的组件。调用期提供 v/row，覆盖同名捕获绑定；不能把可选 row 当普通 optional 参数错配 body。 |
+
+## 已有模板行为必须保留
+
+[ADR 0006](../../../docs/adr/0006-openui-lang-lexical-template-scope.md)与 [2026-08-12 设计](../../../docs/superpowers/specs/2026-08-12-openui-lang-template-scope-design.md)明确允许 Each 引用独立模板及其传递依赖。Java 公开 validator 已有 `StaticTypeValidationTest.acceptsEachBinderAcrossReferencedTemplateStatements`：
+
+```openui
+root = Tabs(@Each(data.groups, "group", groupTemplate))
+groupTemplate = TabItem(group.model, group.model, [groupTable])
+groupTable = Table([nameCol], group.devices)
+nameCol = Col("Device Name", "name")
+```
+
+数据：`{"groups":[{"model":"CE12804S","devices":[{"name":"DC1-spine-01"}]}]}`。迁移验收保持 VALID，group 绑定须传到 groupTable。默认契约 Each 描述的 inline-only 文本落后于此决策，不能拿它删除合法行为。模板的不同使用位置分别检查；binder 未提供时应报告引用问题，不转 null。裸标识符 binder 的既有合法形式按 #77 第 10.1 节保留；结构化布局须表示名称语法，不能把 binder 当普通 string 值求值。
+
+更深的捕获与遮蔽按 ADR 0006：每轮独立环境；Render 捕获外层 iterator，调用时自身 binder 遮蔽；离开内层 Each 后恢复外层；$state 仍实时读取。本任务记录验收要求，不声称这些均已在生产打包产物验证。
+
+## 缺字段、null 与数组投影
+
+`additionalRules` 第 1610、1615 行定义完整路径和数组字段投影；Flatten description 明确 `data.groups.items` 先产生 items[][] 再展平。可确认：投影保留数组层级，不能偷偷 flatten。
+
+契约未定义缺字段/null 元素是保留 null、保留缺失、跳过还是失败。输入 `{"rows":[{"x":1},{},{"x":null},null]}` 的 `data.rows.x` **没有可确认的精确输出**。迁移须保留每个分支的字段存在性，不能省略缺失分支后宣称所有行有 x。已知空数组不提供字段证据；字段值为 null 与不存在不能合并成同一个字段事实。精确投影结果规则等待契约补充，不阻塞其他结构运算。
+
+## 权威导出与结构规则传递
+
+当前验证和提示词的权威输入是生效契约，默认由 `GenerationContractLoader.loadDefault()` 读取 classpath `openui/base-contract.json`。Case Contract 优先级及 Base Supplement/Extension 合并仍按既有 SDK 定义；不能因缺规则偷偷回退另一份默认词表。
+
+历史前端导出入口可以精确定位：`258997028bd79cb49a3207c692cb5f16d9ad379c:packages/react-ui-dsl/scripts/generate-base-contract.mts`，运行入口为该包 `generate:base-contract`。它调用 `dslLibrary.toSpec()`，再将 `getBuiltinsManifest()` 放到顶层 builtins，同时写前端 generated JSON 和 SDK resource。`react-lang@0.2.0` 从 workspace `lang-core` 重新导出 manifest；lockfile 是 workspace link，没有独立 registry 锁定版本。该历史 manifest 仅有 signature/description/templateBuiltin，不能承载默认资源现有的 name/params/returnType，更不能承载 #77 新规则。该脚本随前端移除，当前工作树不能运行它。
+
+因此只能确认**历史入口**，不能称它已是支持新结构的可运行导出器。后续迁移必须在维护该接口的权威导出端传递：
+
+```text
+权威接口源（29 builtin、调用形式、binder、结果规则、规则版本）
+  → 导出器保留结构字段（不得退成只有展示文本的 manifest）
+  → 前端导出 JSON 与 SDK resource 同一内容/版本
+  → GenerationContractLoader / ContractCompiler
+  → 同一生效契约的 parser、语义、类型分析、提示词
+```
+
+新字段具体 JSON schema 由契约编译任务交付，不在 #79 虚构可运行字段。加载未知规则必须失败，不能丢弃。导出验收要求：29 名称完整、结构字段往返不丢失、两端规则版本一致、未知 op 加载失败、新 Identity<T> 可只改契约组合已有运算。未提供权威新导出器及往返证据前，**结构化规则发布链路未验收**；这是接口迁移缺口，不是缺 TS 实现造成的阻塞。
+
+## 仍需裁定的精确规则
+
+| 缺口 | 已知事实 | 阻塞范围 |
+| --- | --- | --- |
+| First/Last 空数组 | params 无非空限制，return T | 空输入返回规则；不得断言 Never、null 或 undefined |
+| 聚合空数组 | number[] → number | 精确空值；number 类型承诺可保留，不编造 0/NaN/异常 |
+| Flatten 混合元素 | 接受 array[]，只定义一层及 null/非数组容错 | 不能为混合数组定义 keep/drop/reject 运算；严格 params 下可拒绝明确非数组元素 |
+| FormatNumber 无效值 | any 输入 + string 声明 + raw input 描述 | 对冲突输入不能证明具体输出种类，需明确 raw 指原值还是原值的文本 |
+| 缺字段/null 投影 | 有数组 pluck，无异常分支规则 | 精确值与数量，缺失分支不能删除 |
+| MergeObject 容错是否扩展政策 | params ≥2 object，描述可跳过/无对象回 {} | 不自动改政策；若产品要接受 0/1/非对象，须显式改调用形式 |
+| Each 文本冲突 | ADR 与公开测试已接受跨语句 | 文档按 ADR 保留；后续权威导出须删除 inline-only 文本 |
+| 新规则导出 | 历史入口只传展示 manifest | 新规则端到端发布必须补导出器/往返证据 |
+
+以上精确规则待接口维护方裁定。迁移内核可继续实现已确认的结构语义；不得将“未决定”包装成运行时事实。
+
+## #79 验收映射
+
+| issue 要求 | 本次交付 |
+| --- | --- |
+| 默认 29 项及重点边界 | 上述逐项矩阵、可执行契约证据脚本、验收 JSON |
+| 运行时容错与校验政策分开 | 矩阵独立记录 params 与 description；不改 params |
+| Each 独立模板 binder | ADR 0006、公开 validator 既有测试和完整 DSL/数据 |
+| 权威导出与类型规则路径 | 历史 commit/入口/manifest 限制、目标传递链与发布验收 |
+| 可复现输入输出或契约证据 | 脚本 29 项输出/摘要指纹、JSON 样例；明确非运行时测试 |
+| 必要规范决定与未决项 | [ADR 0005](adr/0005-contract-semantics-evidence.md)，本文件未决表 |
