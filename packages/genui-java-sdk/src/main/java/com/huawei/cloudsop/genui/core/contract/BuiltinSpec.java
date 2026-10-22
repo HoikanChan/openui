@@ -5,6 +5,7 @@
 package com.huawei.cloudsop.genui.core.contract;
 
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr;
+import com.huawei.cloudsop.genui.core.validation.contract.RulePlan.TypeRule;
 
 import java.util.List;
 import java.util.Optional;
@@ -22,10 +23,20 @@ import java.util.Optional;
  * 校验侧结构字段：{@link #name()}（查找键）、{@link #params()}（含 optional/variadic/binder 修饰）、{@link #returnType()}（类型表达式；Each/Render
  * 无——binder 作用域推断留代码侧兜底）。{@code signature} 降级为纯展示字段，只喂提示词，不承载任何校验规则。
  *
+ * <p>
+ * {@link #typeRule()} 是契约驱动的结构化类型规则（#77 第 8 节）：普通 builtin 的调用形式、参数模式与结果运算 在加载期编译为封闭语法树，词表与类型规则来自同一次契约解析；{@code null}
+ * 表示该 builtin 未声明结构化规则 （模板类 Each/Render 及未迁移条目），由调用方走既有兜底路径。
+ *
  * @since 2026
  */
 public record BuiltinSpec(String name, String signature, String description, boolean templateBuiltin,
-        List<ParamSpec> params, TypeExpr returnType) {
+        List<ParamSpec> params, TypeExpr returnType, TypeRule typeRule) {
+
+    /** 兼容构造：无结构化类型规则的条目。 */
+    public BuiltinSpec(String name, String signature, String description, boolean templateBuiltin,
+            List<ParamSpec> params, TypeExpr returnType) {
+        this(name, signature, description, templateBuiltin, params, returnType, null);
+    }
 
     /**
      * builtin 的单个参数声明。

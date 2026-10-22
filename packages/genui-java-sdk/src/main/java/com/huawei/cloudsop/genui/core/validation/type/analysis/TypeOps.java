@@ -11,8 +11,7 @@ import java.util.Set;
  * 集中类型运算(#77 第 7 节):字段读取、对象覆盖、keys/values/entries、数组元素与数量传播、展平。
  *
  * <p>
- * 运算遵守抽象解释的保守要求:结果必须覆盖真实运算可能产生的值(可以宽,不能漏);证据按运算声明的规则
- * 传播——Sort/Each 保留数量与元素存在证据,Filter 下界归零并删除行保留证据,字段覆盖替换该字段旧证据。
+ * 运算遵守抽象解释的保守要求:结果必须覆盖真实运算可能产生的值(可以宽,不能漏);证据按运算声明的规则 传播——Sort/Each 保留数量与元素存在证据,Filter 下界归零并删除行保留证据,字段覆盖替换该字段旧证据。
  * 所有运算按分支分配;预算耗尽时返回覆盖原可能值的安全摘要并记录 {@link Fact.Loss#PRECISION_BUDGET}。
  *
  * @since 2026
@@ -30,14 +29,12 @@ public final class TypeOps {
     // ───────────────────────────────────────────────────────────────────────
 
     /**
-     * 读取对象字段。字段存在但类型未知时保留字段、返回 Unknown;确定缺失与可能缺失分开:确定缺失(关闭对象
-     * 无此字段)返回 Never + 缺失标记;开放对象未列出字段按 extra 值类型;OPTIONAL 字段存在性未知,值类型不并
-     * null(缺失与 null 分开)。
+     * 读取对象字段。字段存在但类型未知时保留字段、返回 Unknown;确定缺失与可能缺失分开:确定缺失(关闭对象 无此字段)返回 Never + 缺失标记;开放对象未列出字段按 extra 值类型;OPTIONAL
+     * 字段存在性未知,值类型不并 null(缺失与 null 分开)。
      */
     public Fact readField(Fact object, String name) {
         if (object.hasUpstreamErrors()) {
-            return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR)
-                    .withUpstreamErrors(object.upstreamErrors());
+            return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamErrors(object.upstreamErrors());
         }
         if (object.type() instanceof Type.Unknown) {
             return Fact.unknown(Fact.Loss.UNKNOWN_INPUT).withLosses(object.losses());
@@ -83,8 +80,7 @@ public final class TypeOps {
     // ───────────────────────────────────────────────────────────────────────
 
     /**
-     * 按实参顺序覆盖(#77 第 7.2 节):确定后字段覆盖前字段;可选后字段保留两种值可能;未知额外字段可能覆盖
-     * 前字段,但不抹去已证明的字段存在性(存在性保留 REQUIRED,值类型放宽为 Unknown)。
+     * 按实参顺序覆盖(#77 第 7.2 节):确定后字段覆盖前字段;可选后字段保留两种值可能;未知额外字段可能覆盖 前字段,但不抹去已证明的字段存在性(存在性保留 REQUIRED,值类型放宽为 Unknown)。
      *
      * @param operands
      *            按调用顺序排列的对象事实
@@ -144,8 +140,7 @@ public final class TypeOps {
                     fields.put(name, next);
                 } else {
                     // 可选后字段保留两种值可能。
-                    fields.put(name, new Type.Field(Types.union(previous.type(), next.type()),
-                            previous.presence()));
+                    fields.put(name, new Type.Field(Types.union(previous.type(), next.type()), previous.presence()));
                 }
             }
             if (!record.extra().isClosed()) {
@@ -171,8 +166,7 @@ public final class TypeOps {
     // ───────────────────────────────────────────────────────────────────────
 
     /**
-     * 对象键集合(#77 第 7.4 节):已知字段生成字符串字面值联合;开放尾部增加 string 标量;Closed 空对象产生
-     * 已知空数组;Open 不能误作空对象。
+     * 对象键集合(#77 第 7.4 节):已知字段生成字符串字面值联合;开放尾部增加 string 标量;Closed 空对象产生 已知空数组;Open 不能误作空对象。
      */
     public Fact keys(Fact object) {
         return project(object, Projection.KEYS);
@@ -189,9 +183,7 @@ public final class TypeOps {
     }
 
     private enum Projection {
-        KEYS,
-        VALUES,
-        ENTRIES
+        KEYS, VALUES, ENTRIES
     }
 
     private Fact project(Fact object, Projection projection) {
@@ -229,10 +221,9 @@ public final class TypeOps {
             alternatives.add(switch (projection) {
                 case KEYS -> Types.stringLiterals(Set.of(entry.getKey()));
                 case VALUES -> entry.getValue().type();
-                case ENTRIES -> Types.record(
-                        Map.of("key", Type.Field.required(Types.stringLiterals(Set.of(entry.getKey()))), "value",
-                                Type.Field.required(entry.getValue().type())),
-                        Type.Extra.closed());
+                case ENTRIES ->
+                    Types.record(Map.of("key", Type.Field.required(Types.stringLiterals(Set.of(entry.getKey()))),
+                            "value", Type.Field.required(entry.getValue().type())), Type.Extra.closed());
             });
         }
         if (open) {
@@ -240,10 +231,8 @@ public final class TypeOps {
             alternatives.add(switch (projection) {
                 case KEYS -> Types.scalar(Type.ScalarKind.STRING);
                 case VALUES -> record.extra().valueType();
-                case ENTRIES -> Types.record(
-                        Map.of("key", Type.Field.required(Types.scalar(Type.ScalarKind.STRING)), "value",
-                                Type.Field.required(record.extra().valueType())),
-                        Type.Extra.closed());
+                case ENTRIES -> Types.record(Map.of("key", Type.Field.required(Types.scalar(Type.ScalarKind.STRING)),
+                        "value", Type.Field.required(record.extra().valueType())), Type.Extra.closed());
             });
         }
         Type element = Types.union(alternatives);
@@ -297,7 +286,7 @@ public final class TypeOps {
             min = Math.min(min, seq.minLength());
             max = Math.max(max, seq.maxLength());
         }
-        return min == Long.MAX_VALUE ? null : new long[] {min, max};
+        return min == Long.MAX_VALUE ? null : new long[]{min, max};
     }
 
     /** Sort:元素类型不变,保留数量区间;保留元素存在证据,顺序证据失效(本模型不承载顺序证据)。 */
@@ -357,8 +346,7 @@ public final class TypeOps {
     }
 
     /**
-     * Flatten 一层(#79 矩阵:接受 array[],null/非数组容错为空数组;混合元素策略未定——严格 params 下可拒绝
-     * 已知非数组元素,但类型上界不能把元素未知误作空数组)。
+     * Flatten 一层(#79 矩阵:接受 array[],null/非数组容错为空数组;混合元素策略未定——严格 params 下可拒绝 已知非数组元素,但类型上界不能把元素未知误作空数组)。
      */
     public Fact flattenOne(Fact sequence) {
         if (sequence.hasUpstreamErrors()) {
@@ -395,7 +383,8 @@ public final class TypeOps {
                 results.add(Type.Unknown.INSTANCE);
                 continue;
             }
-            long min = outer.minLength() == 0 ? 0
+            long min = outer.minLength() == 0
+                    ? 0
                     : sequenceBranches.stream().mapToLong(s -> ((Type.Sequence) s).minLength()).min().orElse(0);
             long max = 0;
             boolean unbounded = outer.maxLength() == Type.Sequence.UNBOUNDED;
@@ -407,8 +396,7 @@ public final class TypeOps {
                     max = Math.max(max, safeMultiply(outer.maxLength(), innerSeq.maxLength()));
                 }
             }
-            Type element = Types.union(
-                    sequenceBranches.stream().map(s -> ((Type.Sequence) s).element()).toList());
+            Type element = Types.union(sequenceBranches.stream().map(s -> ((Type.Sequence) s).element()).toList());
             results.add(Types.sequence(element, min, unbounded ? Type.Sequence.UNBOUNDED : max));
         }
         return new Fact(unionWithinBudget(results, sequence), Set.of(), losses, sequence.upstreamErrors());
@@ -426,8 +414,8 @@ public final class TypeOps {
     // 联合分支工具
     // ───────────────────────────────────────────────────────────────────────
 
-    /** 展开联合为分支列表(非联合类型返回单元素列表)。 */
-    static List<Type> flatten(Type type) {
+    /** 展开联合为分支列表(非联合类型返回单元素列表)。公开供契约规则求值等运算消费方复用同一分支语义。 */
+    public static List<Type> flatten(Type type) {
         return type instanceof Type.Union union ? union.alternatives() : List.of(type);
     }
 

@@ -115,8 +115,9 @@ public final class ValidationSnapshot {
                     .map(param -> new BuiltinSpec.ParamSpec(param.name(), param.type(), copyType(param.typeExpr()),
                             param.optional(), param.variadic(), param.binder()))
                     .toList();
+            // 结构化类型规则随词表一并进入快照（#81）：词表与类型规则来自同一次契约解析，不在快照层剥离。
             builtins.add(new BuiltinSpec(spec.name(), spec.signature(), spec.description(), spec.templateBuiltin(),
-                    params, copyType(spec.returnType())));
+                    params, copyType(spec.returnType()), spec.typeRule()));
         }
         return List.copyOf(builtins);
     }

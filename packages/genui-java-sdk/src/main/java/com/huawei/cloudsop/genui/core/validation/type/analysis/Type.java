@@ -10,11 +10,9 @@ import java.util.Set;
  * #80 子集的类型代数:不可变值类型,构造即归一化。
  *
  * <p>
- * 身份语义:#77 第 5.1 节。{@link Union} 构造时展平嵌套联合、去重、删除 Never 分支、按结构键排序;
- * {@link Sequence} 对 Never 元素执行两条归一规则——允许零长度时归一为确知空数组 {@code Sequence(never, 0, 0)},
- * 长度下界大于零时没有合法值,归一为 {@link Never}; {@link RecordType} 中 {@link Extra#closed()} 以
- * {@code open(never)} 归一表示。证据与精度损失不进类型身份(它们在 {@link Fact} 上),类型相等可直接用
- * {@code equals}。
+ * 身份语义:#77 第 5.1 节。{@link Union} 构造时展平嵌套联合、去重、删除 Never 分支、按结构键排序; {@link Sequence} 对 Never 元素执行两条归一规则——允许零长度时归一为确知空数组
+ * {@code Sequence(never, 0, 0)}, 长度下界大于零时没有合法值,归一为 {@link Never}; {@link RecordType} 中 {@link Extra#closed()} 以
+ * {@code open(never)} 归一表示。证据与精度损失不进类型身份(它们在 {@link Fact} 上),类型相等可直接用 {@code equals}。
  *
  * @since 2026
  */
@@ -32,10 +30,7 @@ public sealed interface Type {
 
     /** 基础标量种类。 */
     enum ScalarKind {
-        NUMBER("number"),
-        STRING("string"),
-        BOOLEAN("boolean"),
-        NULL("null");
+        NUMBER("number"), STRING("string"), BOOLEAN("boolean"), NULL("null");
 
         private final String displayName;
 
@@ -79,8 +74,7 @@ public sealed interface Type {
 
         public Sequence {
             if (minLength < 0 || maxLength < 0 || minLength > maxLength) {
-                throw new IllegalArgumentException(
-                        "invalid length interval [" + minLength + ", " + maxLength + "]");
+                throw new IllegalArgumentException("invalid length interval [" + minLength + ", " + maxLength + "]");
             }
             if (element instanceof Never && minLength > 0) {
                 throw new IllegalArgumentException(
@@ -95,8 +89,7 @@ public sealed interface Type {
 
     /** 字段存在性:必有 / 可能有。OPTIONAL 表示可能不存在,不是“存在且值为 null”。 */
     enum Presence {
-        REQUIRED,
-        OPTIONAL
+        REQUIRED, OPTIONAL
     }
 
     /** 对象字段:值类型 + 存在性。 */
@@ -126,15 +119,15 @@ public sealed interface Type {
             }
         }
 
-        static Extra closed() {
+        public static Extra closed() {
             return new Extra(Never.INSTANCE, true);
         }
 
-        static Extra open(Type valueType) {
+        public static Extra open(Type valueType) {
             return new Extra(valueType, false);
         }
 
-        boolean isClosed() {
+        public boolean isClosed() {
             return valueType instanceof Never;
         }
     }
@@ -188,8 +181,7 @@ public sealed interface Type {
                                 + (sequence.maxLength() == Sequence.UNBOUNDED ? "*" : sequence.maxLength());
                 yield sequence.element().displayName() + "[" + cardinality + "]";
             }
-            case RecordType record -> record.extra().isClosed() && record.fields().isEmpty() ? "object{}"
-                    : "object";
+            case RecordType record -> record.extra().isClosed() && record.fields().isEmpty() ? "object{}" : "object";
             case Union union -> union.alternatives().stream().map(Type::displayName).distinct()
                     .reduce((a, b) -> a + " | " + b).orElse("never");
             case Component component -> "Component<" + component.name() + ">";
