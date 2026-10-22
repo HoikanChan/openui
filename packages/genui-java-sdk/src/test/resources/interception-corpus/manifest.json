@@ -92,8 +92,11 @@
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-syslog-steps.dsl",
       "contractFile": "contracts/openui-frozen-0.1.11.json",
-      "expectedOutcome": "valid",
-      "expectedCodes": []
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "type-prop-mismatch"
+      ],
+      "notes": "#80: no-data static checks now catch this frozen-contract violation the old engine skipped (type checks previously required a data model)."
     },
     {
       "id": "valid-scope-online-device-info",
@@ -172,8 +175,11 @@
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-device-cpu-detail.dsl",
       "contractFile": "contracts/openui-frozen-0.1.11.json",
-      "expectedOutcome": "valid",
-      "expectedCodes": []
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "type-prop-mismatch"
+      ],
+      "notes": "#80: no-data static checks now catch this frozen-contract violation the old engine skipped (type checks previously required a data model)."
     },
     {
       "id": "valid-scope-port-summary-table",
@@ -192,8 +198,11 @@
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-nested-device-version-cards.dsl",
       "contractFile": "contracts/openui-frozen-0.1.11.json",
-      "expectedOutcome": "valid",
-      "expectedCodes": []
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "type-prop-mismatch"
+      ],
+      "notes": "#80: no-data static checks now catch this frozen-contract violation the old engine skipped (type checks previously required a data model)."
     },
     {
       "id": "valid-scope-device-type-tabs-render-each",
@@ -202,8 +211,11 @@
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-device-type-tabs-render-each.dsl",
       "contractFile": "contracts/openui-frozen-0.1.11.json",
-      "expectedOutcome": "valid",
-      "expectedCodes": []
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "type-prop-mismatch"
+      ],
+      "notes": "#80: no-data static checks now catch this frozen-contract violation the old engine skipped (type checks previously required a data model)."
     },
     {
       "id": "valid-scope-nested-device-version-compact",
@@ -212,8 +224,11 @@
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-nested-device-version-compact.dsl",
       "contractFile": "contracts/openui-frozen-0.1.11.json",
-      "expectedOutcome": "valid",
-      "expectedCodes": []
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "type-prop-mismatch"
+      ],
+      "notes": "#80: no-data static checks now catch this frozen-contract violation the old engine skipped (type checks previously required a data model)."
     },
     {
       "id": "valid-scope-link-optical-tabs",
@@ -242,8 +257,11 @@
       "expectedClass": "valid-scope-control",
       "dslFile": "dsl/valid/scope-device-monitoring-logs.dsl",
       "contractFile": "contracts/openui-frozen-0.1.11.json",
-      "expectedOutcome": "valid",
-      "expectedCodes": []
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "type-prop-mismatch"
+      ],
+      "notes": "#80: no-data static checks now catch this frozen-contract violation the old engine skipped (type checks previously required a data model)."
     },
     {
       "id": "valid-scope-fabric-device-inventory",
@@ -932,8 +950,11 @@
       "expectedClass": "valid-control",
       "dslFile": "dsl/valid/ex-sort-filter.dsl",
       "contractFile": "contracts/openui-shared.json",
-      "expectedOutcome": "valid",
-      "expectedCodes": []
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "builtin-argument-count-mismatch"
+      ],
+      "notes": "#80: no-data static checks now catch this frozen-contract violation the old engine skipped (type checks previously required a data model)."
     },
     {
       "id": "valid-ex-string-concat",
@@ -1175,8 +1196,11 @@
       "expectedClass": "valid-control",
       "dslFile": "dsl/valid/tb-stack-title.dsl",
       "contractFile": "contracts/openui-shared.json",
-      "expectedOutcome": "valid",
-      "expectedCodes": []
+      "expectedOutcome": "intercepted",
+      "expectedCodes": [
+        "type-prop-mismatch"
+      ],
+      "notes": "#80: no-data static checks now catch this frozen-contract violation the old engine skipped (type checks previously required a data model)."
     },
     {
       "id": "valid-tb-switch-status",

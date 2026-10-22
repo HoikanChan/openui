@@ -4,49 +4,36 @@
 
 package com.huawei.cloudsop.genui.core.validation;
 
-import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
-import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
-import com.huawei.cloudsop.genui.core.validation.parser.Program;
-import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
-import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalysis;
-import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalyzer;
-import com.huawei.cloudsop.genui.core.validation.type.ProgramTypeValidator;
+import com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget;
+import com.huawei.cloudsop.genui.core.validation.type.analysis.TypeAnalysis;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 /**
- * {@link OpenuiLangValidator} 的默认 Java 原生实现。
+ * Java 原生校验器:从同一不可变快照执行语法、语义及 FINAL 类型分析。
  *
  * <p>
- * 处理流程：
- * <ol>
- * <li>通过 {@link OpenuiParser#parse(String, ParseMode)} 预处理并解析 DSL。</li>
- * <li>根据请求中的合约构建 {@link ContractCatalog}（合约为 null 时得到空目录，导致每个组件都被报告为未知组件；不支持 “仅语法”模式）。</li>
- * <li>执行 {@link ProgramAnalyzer#analyze(Program, ValidationMode, String, java.util.Set)}。</li>
- * <li>当请求携带具体数据模型时，对最终程序执行 {@link ProgramTypeValidator} 类型校验（dataModel 存在时 {@code data} 自动并入外部引用集合）。</li>
- * <li>将问题映射为 {@link ValidationStatus}：只要存在 {@link ValidationSeverity#ERROR} 级别问题即为 {@code INVALID}； 仅在
- * {@link ValidationMode#STREAMING} 下存在非 ERROR 问题时为 {@code PARTIAL}；否则为 {@code VALID}。</li>
- * </ol>
- *
- * <p>
- * 无状态，可安全并发使用。
+ * 无 Render Data Model 时仍检查静态可知部分;数据依赖部分的未证明结论进入 metadata。
+ * 分析预算为不可变配置,每次请求独立计数,实例可安全并发使用。
  *
  * @since 2026
  */
 public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
 
-    /** 单例句柄 —— 本类无状态、无配置。 */
+    /** 使用默认分析预算的共享实例。 */
     public static final DefaultOpenuiLangValidator INSTANCE = new DefaultOpenuiLangValidator();
 
-    /**
-     * 构造校验器实例。
-     *
-     * <p>
-     * 构造方法保持 public，便于调用方通过 {@code new} 自行注入；优先使用 {@link #INSTANCE} 这一无参句柄。
-     */
+    private final AnalysisBudget analysisBudget;
+
+    /** 构造使用默认分析预算的校验器。 */
     public DefaultOpenuiLangValidator() {
+        this(null);
+    }
+
+    /** 使用指定的单次分析预算;null 使用默认预算。 */
+    public DefaultOpenuiLangValidator(AnalysisBudget analysisBudget) {
+        this.analysisBudget = analysisBudget;
     }
 
     @Override
@@ -54,25 +41,26 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
         Objects.requireNonNull(request, "request");
 
         ValidationSnapshot snapshot = ValidationSnapshot.build(request);
-        ProgramAnalysis analysis = snapshot.analysis();
+        var analysis = snapshot.analysis();
         String normalizedDsl = snapshot.normalizedDsl();
-
-        List<ValidationIssue> issues = new ArrayList<>(analysis.issues());
-        issues.addAll(new ProgramTypeValidator().validate(snapshot));
+        var issues = new ArrayList<>(analysis.issues());
+        java.util.Map<String, String> extra = new java.util.LinkedHashMap<>();
+        if (snapshot.mode() == ValidationMode.FINAL) {
+            TypeAnalysis.Result typeResult = TypeAnalysis.analyze(snapshot.program(), snapshot.catalog(),
+                    snapshot.builtins(), snapshot.dataModel(), analysis.entryId(), analysisBudget);
+            issues.addAll(typeResult.issues());
+            extra.putAll(typeResult.coverage().metadataSummary());
+        }
         boolean hasError = issues.stream().anyMatch(i -> i.severity() == ValidationSeverity.ERROR);
-
         ValidationMetadata metadata = new ValidationMetadata(analysis.statementCount(), analysis.entryId(),
-                snapshot.mode(), null);
+                snapshot.mode(), extra);
 
         if (hasError) {
             return ValidationResult.invalid(issues, metadata);
         }
-
-        boolean hasWarningsOrInfo = !issues.isEmpty();
-        if (snapshot.mode() == ValidationMode.STREAMING && hasWarningsOrInfo) {
+        if (snapshot.mode() == ValidationMode.STREAMING && !issues.isEmpty()) {
             return ValidationResult.partial(normalizedDsl, issues, metadata);
         }
-
         return ValidationResult.valid(normalizedDsl, issues, metadata);
     }
 }
