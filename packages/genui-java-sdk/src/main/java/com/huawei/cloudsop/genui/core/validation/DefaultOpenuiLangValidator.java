@@ -12,7 +12,7 @@ import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
 import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalysis;
 import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalyzer;
-import com.huawei.cloudsop.genui.core.validation.type.ProgramTypeValidator;
+import com.huawei.cloudsop.genui.core.validation.type.analysis.TypeAnalysis;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -28,7 +28,7 @@ import java.util.Objects;
  * <li>通过 {@link OpenuiParser#parse(String, ParseMode)} 预处理并解析 DSL。</li>
  * <li>根据请求中的合约构建 {@link ContractCatalog}（合约为 null 时得到空目录，导致每个组件都被报告为未知组件；不支持 “仅语法”模式）。</li>
  * <li>执行 {@link ProgramAnalyzer#analyze(Program, ValidationMode, String, java.util.Set)}。</li>
- * <li>当请求携带具体数据模型时，对最终程序执行 {@link ProgramTypeValidator} 类型校验（dataModel 存在时 {@code data} 自动并入外部引用集合）。</li>
+ * <li>FINAL 模式下执行 {@link TypeAnalysis} 类型分析（#80;无 dataModel 时仍检查静态可知部分,dataModel 存在时 {@code data} 自动并入外部引用集合）。</li>
  * <li>将问题映射为 {@link ValidationStatus}：只要存在 {@link ValidationSeverity#ERROR} 级别问题即为 {@code INVALID}； 仅在
  * {@link ValidationMode#STREAMING} 下存在非 ERROR 问题时为 {@code PARTIAL}；否则为 {@code VALID}。</li>
  * </ol>
@@ -80,14 +80,20 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
         // cleaned text directly. We re-derive it the same way: call preprocess() directly.
         String normalizedDsl = OpenuiPreprocessor.process(request.dsl() != null ? request.dsl() : "", parseMode).text();
 
-        // 4. Type validation against the concrete data model (only when supplied), then combine.
+        // 4. Type analysis (#80): FINAL 模式执行完整分析;无 Render Data Model 时仍检查静态可知部分,
+        // 数据依赖部分记 UNPROVEN(只进覆盖报告,不产生诊断、不单独触发修复)。STREAMING 保留既有结构行为。
         List<ValidationIssue> issues = new ArrayList<>(analysis.issues());
-        issues.addAll(
-                new ProgramTypeValidator(builtins).validate(program, catalog, request.dataModel(), request.mode()));
+        java.util.Map<String, String> extra = new java.util.LinkedHashMap<>();
+        if (request.mode() == ValidationMode.FINAL) {
+            TypeAnalysis.Result typeResult = TypeAnalysis.analyze(program, catalog, builtins,
+                    request.dataModel(), analysis.entryId(), null);
+            issues.addAll(typeResult.issues());
+            extra.putAll(typeResult.coverage().metadataSummary());
+        }
         boolean hasError = issues.stream().anyMatch(i -> i.severity() == ValidationSeverity.ERROR);
 
         ValidationMetadata metadata = new ValidationMetadata(analysis.statementCount(), analysis.entryId(),
-                request.mode(), null);
+                request.mode(), extra);
 
         if (hasError) {
             return ValidationResult.invalid(issues, metadata);

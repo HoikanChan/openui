@@ -1,0 +1,125 @@
+package com.huawei.cloudsop.genui.core.validation.type.analysis;
+
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * 类型检查覆盖报告(#77 第 11.3 节):统计对象是稳定的检查要求,不是缓存访问次数或逐行展开的数量。
+ *
+ * <p>
+ * {@code discovered = matched + mismatched + unproven};未完成遍历显式标记,不能以已发现检查的通过比例声称
+ * 完整覆盖。简要计数进入 {@code ValidationMetadata.extra};完整结构留在内部报告。
+ *
+ * @since 2026
+ */
+public final class CoverageReport {
+
+    /** 一条检查要求的稳定身份:语句/表达式路径 + 使用位置 + 要求种类 + 契约路径。 */
+    public record Obligation(String statementId, String useSite, String kind, String contractPath,
+            String display) {
+
+        /** 稳定身份键(同一次分析内去重)。 */
+        String identity() {
+            return statementId + "|" + useSite + "|" + kind + "|" + contractPath;
+        }
+    }
+
+    /** 单条检查要求的结论记录。 */
+    public record Entry(Obligation obligation, Checks.Verdict verdict, List<Checks.Reason> reasons,
+            Set<String> upstreamErrors) {
+
+        public Entry {
+            reasons = reasons == null ? List.of() : List.copyOf(reasons);
+            upstreamErrors = upstreamErrors == null ? Set.of() : Set.copyOf(upstreamErrors);
+        }
+    }
+
+    private final Map<String, Entry> entries = new LinkedHashMap<>();
+    private boolean traversalTruncated;
+
+    /** 登记一条检查结论;同一身份重复登记时保留首条(同一检查不因重试重复计数)。 */
+    public void record(Entry entry) {
+        entries.putIfAbsent(entry.obligation().identity(), entry);
+    }
+
+    /** 标记遍历被截断(预算或访问限制导致后续要求尚未发现)。 */
+    public void markTraversalTruncated() {
+        this.traversalTruncated = true;
+    }
+
+    /** 全部结论(登记顺序)。 */
+    public List<Entry> entries() {
+        return List.copyOf(entries.values());
+    }
+
+    public int discovered() {
+        return entries.size();
+    }
+
+    public long matched() {
+        return count(Checks.Verdict.MATCH);
+    }
+
+    public long mismatched() {
+        return count(Checks.Verdict.MISMATCH);
+    }
+
+    public long unproven() {
+        return count(Checks.Verdict.UNPROVEN);
+    }
+
+    private long count(Checks.Verdict verdict) {
+        return entries.values().stream().filter(e -> e.verdict() == verdict).count();
+    }
+
+    /** 分析是否完整:遍历未截断即完整(未证明项不影响完整性,它们已被显式发现)。 */
+    public boolean analysisComplete() {
+        return !traversalTruncated;
+    }
+
+    public boolean traversalTruncated() {
+        return traversalTruncated;
+    }
+
+    /** 未证明原因计数(按首次出现原因归类一条要求)。 */
+    public Map<Checks.Reason, Long> unprovenReasons() {
+        Map<Checks.Reason, Long> counts = new EnumMap<>(Checks.Reason.class);
+        for (Entry entry : entries.values()) {
+            if (entry.verdict() == Checks.Verdict.UNPROVEN && !entry.reasons().isEmpty()) {
+                counts.merge(entry.reasons().getFirst(), 1L, Long::sum);
+            } else if (entry.verdict() == Checks.Verdict.UNPROVEN) {
+                counts.merge(Checks.Reason.INSUFFICIENT_EVIDENCE, 1L, Long::sum);
+            }
+        }
+        return Collections.unmodifiableMap(counts);
+    }
+
+    /** 进入 {@code ValidationMetadata.extra} 的简要计数(字符串值)。 */
+    public Map<String, String> metadataSummary() {
+        Map<String, String> summary = new LinkedHashMap<>();
+        summary.put("typeChecks.discovered", String.valueOf(discovered()));
+        summary.put("typeChecks.matched", String.valueOf(matched()));
+        summary.put("typeChecks.mismatched", String.valueOf(mismatched()));
+        summary.put("typeChecks.unproven", String.valueOf(unproven()));
+        summary.put("typeChecks.analysisComplete", String.valueOf(analysisComplete()));
+        if (traversalTruncated) {
+            summary.put("typeChecks.traversalTruncated", "true");
+        }
+        Map<Checks.Reason, Long> reasons = unprovenReasons();
+        if (!reasons.isEmpty()) {
+            StringBuilder text = new StringBuilder();
+            reasons.forEach((reason, count) -> {
+                if (text.length() > 0) {
+                    text.append(',');
+                }
+                text.append(reason.name()).append('=').append(count);
+            });
+            summary.put("typeChecks.unprovenReasons", text.toString());
+        }
+        return summary;
+    }
+}
