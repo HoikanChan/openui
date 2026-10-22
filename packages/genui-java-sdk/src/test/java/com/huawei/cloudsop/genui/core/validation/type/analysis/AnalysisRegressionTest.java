@@ -29,22 +29,26 @@ class AnalysisRegressionTest {
         Fact alternatives = Fact.of(Types.union(java.util.List.of(
                 Types.record(Map.of("value", Type.Field.required(number)), Type.Extra.closed()),
                 Types.record(Map.of("value", Type.Field.required(string)), Type.Extra.closed()))));
-        TypeOps ops = new TypeOps(new AnalysisBudget(4096, 1, 16, 256, 2048).tracker());
+        var tracker = new AnalysisBudget(4096, 1, 16, 256, 2048).tracker();
+        TypeOps ops = new TypeOps(tracker);
 
         Fact result = ops.overlay(java.util.List.of(alternatives));
 
         assertEquals(Type.Unknown.INSTANCE, result.type());
         assertTrue(result.losses().contains(Fact.Loss.PRECISION_BUDGET));
+        assertTrue(tracker.precisionLost());
     }
 
     @Test
     void overlayTypeNodeBudgetReturnsSafeSummaryWithPrecisionLoss() {
-        TypeOps ops = new TypeOps(new AnalysisBudget(0, 64, 16, 256, 2048).tracker());
+        var tracker = new AnalysisBudget(0, 64, 16, 256, 2048).tracker();
+        TypeOps ops = new TypeOps(tracker);
 
         Fact result = ops.overlay(java.util.List.of(Fact.of(Types.record(Map.of(), Type.Extra.closed()))));
 
         assertEquals(Type.Unknown.INSTANCE, result.type());
         assertTrue(result.losses().contains(Fact.Loss.PRECISION_BUDGET));
+        assertTrue(tracker.precisionLost());
     }
 
     @Test

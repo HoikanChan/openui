@@ -343,6 +343,30 @@ class StaticTypeValidationTest {
     }
 
     @Test
+    void anyAcceptanceKeepsValidVerdictButCannotHideSessionTruncation() {
+        ValidationRequest request = ValidationRequest.builder()
+                .dsl("root = DescField(label, @String(@ObjectValues(data)))\nlabel = \"label\"")
+                .contract(GenerationContractLoader.loadDefault())
+                .dataModel(Map.of("values", List.of("one", "two"))).mode(ValidationMode.FINAL).build();
+        var sampled = new DefaultOpenuiLangValidator(
+                new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(4096, 64, 16, 1, 2048))
+                .validate(request);
+        var complete = new DefaultOpenuiLangValidator(
+                new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(4096, 64, 16, 2, 2048))
+                .validate(request);
+
+        assertEquals(ValidationStatus.VALID, sampled.status());
+        assertEquals(ValidationStatus.VALID, complete.status());
+        assertEquals("0", sampled.metadata().extra().get("typeChecks.unproven"));
+        assertEquals("false", sampled.metadata().extra().get("typeChecks.analysisComplete"));
+        assertEquals("true", sampled.metadata().extra().get("typeChecks.traversalTruncated"));
+        assertEquals("PRECISION_BUDGET", sampled.metadata().extra().get("typeChecks.precisionLosses"));
+        assertEquals("true", complete.metadata().extra().get("typeChecks.analysisComplete"));
+        assertFalse(complete.metadata().extra().containsKey("typeChecks.traversalTruncated"));
+        assertFalse(complete.metadata().extra().containsKey("typeChecks.precisionLosses"));
+    }
+
+    @Test
     void sampleTruncationAloneCannotClaimCompleteAnalysis() {
         var validator = new DefaultOpenuiLangValidator(
                 new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(4096, 64, 16, 1, 2048));

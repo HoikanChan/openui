@@ -60,6 +60,7 @@ public final class SnapshotFacts {
         }
         if (depth > budget.budget().maxObjectDepth()) {
             // 对象深度超限:进入安全上界,不继续展开。
+            budget.markPrecisionLost();
             losses.add(Fact.Loss.PRECISION_BUDGET);
             return Type.Unknown.INSTANCE;
         }
@@ -90,6 +91,7 @@ public final class SnapshotFacts {
         }
         if (sample.size() < list.size()) {
             // 截断:未访问元素进入上界,不能把已扫描样本当完整数据。
+            budget.markPrecisionLost();
             losses.add(Fact.Loss.PRECISION_BUDGET);
             elementTypes.add(Type.Unknown.INSTANCE);
         }

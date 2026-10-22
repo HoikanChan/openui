@@ -34,6 +34,16 @@ public record AnalysisBudget(long maxTypeNodes, long maxUnionBranches, long maxO
         private final AnalysisBudget budget;
         private long typeNodes;
         private long checks;
+        private boolean precisionLost;
+
+        /** 会话级精度损失,独立于检查是否 MATCH 及事实是否继续传播。 */
+        public void markPrecisionLost() {
+            precisionLost = true;
+        }
+
+        public boolean precisionLost() {
+            return precisionLost;
+        }
 
         Tracker(AnalysisBudget budget) {
             this.budget = budget;
@@ -47,6 +57,7 @@ public record AnalysisBudget(long maxTypeNodes, long maxUnionBranches, long maxO
         /** 在创建 {@code count} 个类型节点之前检查;返回 false 表示预算耗尽。 */
         public boolean tryConsumeTypeNodes(long count) {
             if (typeNodes + count > budget.maxTypeNodes()) {
+                markPrecisionLost();
                 return false;
             }
             typeNodes += count;
@@ -55,12 +66,17 @@ public record AnalysisBudget(long maxTypeNodes, long maxUnionBranches, long maxO
 
         /** 联合展开前检查分支数是否超限。 */
         public boolean unionBranchesWithinBudget(long branches) {
-            return branches <= budget.maxUnionBranches();
+            if (branches > budget.maxUnionBranches()) {
+                markPrecisionLost();
+                return false;
+            }
+            return true;
         }
 
         /** 发现一条检查要求前检查;返回 false 表示不能再发现新检查。 */
         public boolean tryConsumeCheck() {
             if (checks + 1 > budget.maxChecks()) {
+                markPrecisionLost();
                 return false;
             }
             checks++;

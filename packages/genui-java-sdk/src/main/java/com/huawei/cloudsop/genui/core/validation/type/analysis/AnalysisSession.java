@@ -90,6 +90,9 @@ public final class AnalysisSession {
     public static Output analyze(Input input) {
         AnalysisSession session = new AnalysisSession(input);
         session.run();
+        if (session.budget.precisionLost()) {
+            session.coverage.markPrecisionLost();
+        }
         return new Output(List.copyOf(session.issues), session.coverage);
     }
 

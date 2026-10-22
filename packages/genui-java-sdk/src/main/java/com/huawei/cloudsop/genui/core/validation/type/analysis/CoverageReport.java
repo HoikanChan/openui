@@ -40,6 +40,13 @@ public final class CoverageReport {
 
     private final Map<String, Entry> entries = new LinkedHashMap<>();
     private boolean traversalTruncated;
+    private boolean precisionLost;
+
+    /** 预算生产方直接上报,不依赖检查结论及未证明原因。 */
+    public void markPrecisionLost() {
+        precisionLost = true;
+        markTraversalTruncated();
+    }
 
     /** 登记一条检查结论;同一身份重复登记时保留首条(同一检查不因重试重复计数)。 */
     public void record(Entry entry) {
@@ -113,6 +120,9 @@ public final class CoverageReport {
         summary.put("typeChecks.analysisComplete", String.valueOf(analysisComplete()));
         if (traversalTruncated) {
             summary.put("typeChecks.traversalTruncated", "true");
+        }
+        if (precisionLost) {
+            summary.put("typeChecks.precisionLosses", "PRECISION_BUDGET");
         }
         Map<Checks.Reason, Long> reasons = unprovenReasons();
         if (!reasons.isEmpty()) {
