@@ -25,11 +25,11 @@ The per-round audit entry (raw output, current definitions, diagnostics, duratio
 _Avoid_: session log, attempt log
 
 **Base Contract**:
-The frozen, frontend-exported description of the built-in component library (components, groups, examples, rules, builtins) that ships inside the SDK; the frontend is its single source of truth and the SDK only consumes it.
+The frozen, frontend-exported description of the built-in component library (components, groups, examples, rules, builtins, capabilityGaps) that ships inside the SDK; the frontend is its single source of truth and the SDK only consumes it.
 _Avoid_: default contract, built-in schema
 
 **GenUI Base Supplement**:
-A host-authored, build-time addition to the Base Contract that applies globally to every request: new component specs are added, a same-name component spec **replaces** the base one wholesale (despite the "supplement" name), same-name component groups merge by union, and examples/rules append. The host is responsible for keeping supplemented specs in sync with what its frontend can actually render.
+A host-authored, build-time addition to the Base Contract that applies globally to every request: new component specs are added, a same-name component spec **replaces** the base one wholesale (despite the "supplement" name), same-name component groups merge by union, examples/rules append, and `capabilityGaps` replace in place by `id` or append for new `id`s. The host is responsible for keeping supplemented specs in sync with what its frontend can actually render.
 _Avoid_: overlay, patch, base extension, custom components
 
 **Effective Base Contract**:
@@ -37,8 +37,16 @@ The result of merging the GenUI Base Supplement into the Base Contract when the 
 _Avoid_: merged contract, final contract
 
 **GenUI Extension**:
-A per-request component/tool package selected by extensionId on top of the Effective Base Contract; strictly append-only — name collisions with the effective base are rejected, never overridden.
+A per-request component/tool/capability-gap package selected by extensionId on top of the Effective Base Contract; strictly append-only — name/id collisions with the effective base are rejected, never overridden.
 _Avoid_: plugin, supplement (reserved for the global build-time GenUI Base Supplement layer)
+
+**Capability Gap**:
+A contract-declared operation or component capability (`id`, `kind`, `name`, `aliases`, `phrases`, `fallback`) that openui-lang intentionally does not support dynamically (e.g. `group-by`, `top-n`, `join`), surfaced both in the initial system prompt (`## Capability Boundary`) and in deterministic repair routing when a model calls one of its `aliases`.
+_Avoid_: unsupported feature list, hardcoded blacklist
+
+**Capability Notice**:
+The DSL convention `capabilityNotice = TextCallout("info", "部分需求暂不支持", "暂不支持<name>，以下按原始数据展示")` placed as the first child of `root` when a user request hits a **Capability Gap** and falls back to faithful raw-data display.
+_Avoid_: error banner, fallback markdown
 
 **Render Data Model**:
 The full host data the SDK forwards to the runtime as the seq=0 `dataModel` envelope; the rendered UI binds against this, so it is never sampled or reduced.
@@ -89,6 +97,7 @@ _Avoid_: suggestion, tip
 - A **Sidecar** carries the **Enum Domain** and counts that **Sample Rows** alone cannot guarantee
 - A **Reask Prompt** presents validation issues after **Cascade Suppression**; a **Root-cause Hint** always survives suppression
 - A **Derived Issue** is what **Cascade Suppression** removes
+- A **Capability Gap** declared in the **Effective Base Contract** (or **GenUI Extension**) drives both the initial `## Capability Boundary` prompt table and **Root-cause Hint** routing toward a **Capability Notice** fallback
 
 ## Flagged ambiguities
 

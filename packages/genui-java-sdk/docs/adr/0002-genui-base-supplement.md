@@ -32,7 +32,8 @@ A supplement component whose name exists in base replaces the base spec
 entirely — description and propsSchema together — while keeping the base
 position; new names are appended. Groups, by contrast, merge as an
 order-preserving de-duplicated member union (base first) with notes appended;
-examples and rules append; `contractVersion`/`root`/`tools`/`builtins` are
+examples and rules append; `capabilityGaps` replace in place by `id` (new `id`s
+append); `contractVersion`/`root`/`tools`/`builtins` are
 untouchable.
 
 Rejected: JSON-merge-patch-style partial component updates. A component spec
@@ -49,7 +50,7 @@ host truly needs that, the existing frontend re-export path is the answer.
 
 The only supported input is a JSON file (same shape as `base-contract.json`
 restricted to `supplementVersion`/`components`/`componentGroups`/`examples`/
-`additionalRules`), loaded via `GenUIBaseSupplementLoader.fromJson/fromResource`,
+`additionalRules`/`capabilityGaps`), loaded via `GenUIBaseSupplementLoader.fromJson/fromResource`,
 at most one per SDK instance.
 
 Rejected: a builder-style programmatic API for composing supplements. JSON

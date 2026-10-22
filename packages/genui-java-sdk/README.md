@@ -127,13 +127,14 @@ Merge rules:
 | `components` | Same name: **wholesale replacement** of the base spec (description and propsSchema together, never field-by-field), keeping the base position. New name: appended after base components. No deletion. |
 | `componentGroups` | Same name: **union** — order-preserving de-duplicated member union (base members first), notes appended. New group: appended. |
 | `examples` / `additionalRules` | Appended after the base entries. |
+| `capabilityGaps` | Same `id`: **wholesale replacement** of the base entry, keeping the base position. New `id`: appended after base entries. Finally, any remaining entry whose `id` matches a newly added supplement component name is automatically evicted. |
 | `contractVersion` / `root` / `tools` / `builtins` | Not allowed in the supplement; the base values always win. |
 
 Loading is strict: any top-level key outside
 `supplementVersion` / `components` / `componentGroups` / `examples` /
-`additionalRules` (including `tools`, `root`, `builtins`, `contractVersion`,
+`additionalRules` / `capabilityGaps` (including `tools`, `root`, `builtins`, `contractVersion`,
 or a typo like `additionalRule`) fails `fromJson` with an error listing the
-illegal keys. Supplement component schemas are validated at build time with
+illegal keys. Supplement component schemas and capability gaps are validated at build time with
 errors attributed to the supplement. At most one supplement per SDK instance;
 merging multiple team packages is the host's preprocessing job.
 
