@@ -10,11 +10,13 @@
 
 从仓库根目录运行：
 
-```sh
-pnpm exec tsx packages/genui-java-sdk/docs/examples/runtime-semantics-probe.mts
+```powershell
+mvn -f packages/genui-java-sdk/pom.xml -DskipTests compile
+$evidenceClasspath = "packages/genui-java-sdk/target/classes;$env:USERPROFILE/.m2/repository/com/alibaba/fastjson2/fastjson2/2.0.60/fastjson2-2.0.60.jar"
+java --class-path $evidenceClasspath packages/genui-java-sdk/docs/examples/ContractSemanticsEvidence.java
 ```
 
-环境：Node `v24.14.1`，tsx `v4.21.0`。退出码 0。脚本打印每个 builtin 的参数、机械推导的参数数量、返回声明及完整描述，并断言下列冲突仍存在。末行实测输出：
+环境：Java `21.0.10`、Maven `3.9.16`；两条命令退出码均为 0。示例通过 SDK 公开 `GenerationContractLoader.fromJson` 加载默认资源，打印 29 项名称、通过 `BuiltinSpec` 推导的参数数量和完整描述，并核对关键返回声明及现存冲突。21 个案例的版本、唯一 ID 与来源检查通过，5 个未定义精确结果均显式标为 UNPROVEN 且无伪造 expectedValue。末行实测输出（JSON 键顺序无语义）：
 
 ```json
 {"contractVersion":"@cloudsop/openui-react-ui-dsl@1.1.6","builtins":29,"sha256":"fcacf88ca74858ba653975aa05889bf839686972afe8b0cd82dc086d2e0c9fc2","evidence":"contract-only; no runtime execution"}
@@ -77,6 +79,8 @@ groupTable = Table([nameCol], group.devices)
 nameCol = Col("Device Name", "name")
 ```
 
+复核命令：`mvn -f packages/genui-java-sdk/pom.xml "-Dtest=StaticTypeValidationTest#acceptsEachBinderAcrossReferencedTemplateStatements" -DforkCount=0 test`，实测 1 test、0 failures/errors/skips，BUILD SUCCESS。使用不派生 JVM 的方式控制本机内存开销。
+
 数据：`{"groups":[{"model":"CE12804S","devices":[{"name":"DC1-spine-01"}]}]}`。迁移验收保持 VALID，group 绑定须传到 groupTable。默认契约 Each 描述的 inline-only 文本落后于此决策，不能拿它删除合法行为。模板的不同使用位置分别检查；binder 未提供时应报告引用问题，不转 null。裸标识符 binder 的既有合法形式按 #77 第 10.1 节保留；结构化布局须表示名称语法，不能把 binder 当普通 string 值求值。
 
 更深的捕获与遮蔽按 ADR 0006：每轮独立环境；Render 捕获外层 iterator，调用时自身 binder 遮蔽；离开内层 Each 后恢复外层；$state 仍实时读取。本任务记录验收要求，不声称这些均已在生产打包产物验证。
@@ -118,7 +122,9 @@ nameCol = Col("Device Name", "name")
 | Each 文本冲突 | ADR 与公开测试已接受跨语句 | 文档按 ADR 保留；后续权威导出须删除 inline-only 文本 |
 | 新规则导出 | 历史入口只传展示 manifest | 新规则端到端发布必须补导出器/往返证据 |
 
-以上精确规则待接口维护方裁定。迁移内核可继续实现已确认的结构语义；不得将“未决定”包装成运行时事实。
+以上精确规则待接口维护方裁定。对缺失或冲突的结果保证，目标分析记录 **UNPROVEN（未证明：现有接口信息不足）** 精度缺口；不猜返回值，不以这个缺口单独产生修复错误，也不把它计成完整 MATCH。独立、明确的 params 违规仍可报错，例如 Flatten 混合数组中的已知 number 元素；聚合函数的 number 类型声明仍可使用，只对未给出的精确空值保持未证明。迁移内核继续实现已确认的结构语义；缺 TS 实现不是 Java 开发阻塞。
+
+TS 后续工作集中跟踪于 [#91：权威契约导出与模板接口同步](https://github.com/HoikanChan/openui/issues/91)，关联 #77/#79/[#88](https://github.com/HoikanChan/openui/issues/88)。已去重：[#73](https://github.com/HoikanChan/openui/issues/73)完整覆盖 capabilityGaps 导出，本次复用该票；已关闭 #49 是 Java 资源回填，未覆盖权威 TS 导出。#91 只跟踪接口/导出缺口，本任务不修改 TS runtime/export 源码。
 
 ## #79 验收映射
 

@@ -21,7 +21,7 @@ Accepted for #79 evidence and acceptance scope (2026-10-22). Concrete rules mark
 
 ## Consequences
 
-可核实部分立即形成 [29 项语义矩阵](../runtime-semantics-contract.md)和[验收输入](../examples/contract-migration-acceptance.json)。未定义的 First/Last 空数组结果、聚合精确空值、FormatNumber 无效输入种类、Flatten 混合元素和缺失/null 投影，仅阻塞各自精确规则；不因为没有 TS 实现停止整体迁移工作。
+可核实部分立即形成 [29 项语义矩阵](../runtime-semantics-contract.md)和[验收输入](../examples/contract-migration-acceptance.json)。未定义的 First/Last 空数组结果、聚合精确空值、FormatNumber 无效输入种类、Flatten 混合元素和缺失/null 投影，作为 UNPROVEN 精度缺口保留，不猜值、不计完整 MATCH、不单独触发修复；独立的已知参数违规仍正常报告。不因为没有 TS 实现停止整体迁移工作。TS 接口源和结构规则导出跟踪 [#91](https://github.com/HoikanChan/openui/issues/91)，capabilityGaps 导出复用 [#73](https://github.com/HoikanChan/openui/issues/73)；Java 消费及往返验收仍由 #88 负责。
 
 没有新增 builtin、修改生产运行时或批量改默认/历史契约。对维护中的旧规则和 fixture 的实际替换由后续实施负责。本 ADR 不覆盖 ADR 0003 D1/D2/D4 的生效词表、诊断名称和允许 lang-core 落后的决定。
 

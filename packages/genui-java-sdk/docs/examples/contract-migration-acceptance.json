@@ -35,6 +35,7 @@
       "id": "flatten-mixed",
       "expression": "@Flatten([[1], null, 2, [3]])",
       "acceptance": "reject-by-params: null and number are not arrays",
+      "precisionStatus": "UNPROVEN",
       "preciseResult": "unresolved; no keep/drop/reject runtime rule defined",
       "source": "builtins.Flatten.params/description"
     },
@@ -42,6 +43,7 @@
       "id": "selection-empty",
       "expressions": ["@First([])", "@Last([])"],
       "acceptance": "array input; no nonempty precondition declared",
+      "precisionStatus": "UNPROVEN",
       "preciseResult": "unresolved; return T does not define the empty case",
       "source": "builtins.First/Last"
     },
@@ -50,6 +52,7 @@
       "expressions": ["@Sum([])", "@Avg([])", "@Min([])", "@Max([])"],
       "acceptance": "accepted-by-params",
       "declaredResultType": "number",
+      "precisionStatus": "UNPROVEN",
       "preciseResult": "unresolved; do not assume zero or NaN",
       "source": "builtins.Sum/Avg/Min/Max"
     },
@@ -101,6 +104,7 @@
       "expressions": ["@FormatNumber({a:1})", "@FormatNumber(true)", "@FormatNumber(null)"],
       "acceptance": "accepted-by-params: any",
       "declaredResultType": "string",
+      "precisionStatus": "UNPROVEN",
       "preciseResult": "unresolved: raw input wording conflicts with fixed string return",
       "source": "builtins.FormatNumber.returnType/description"
     },
@@ -139,6 +143,7 @@
       "id": "projection-missing-null",
       "expression": "data.rows.x",
       "dataModel": {"rows":[{"x":1},{},{"x":null},null]},
+      "precisionStatus": "UNPROVEN",
       "preciseResult": "unresolved; contract does not define missing/null projection",
       "analysisRequirement": "retain missing branch and distinguish absent from present-null; do not claim every row has x",
       "source": "design 7.2; contract additionalRules lacks exception policy"
@@ -164,5 +169,5 @@
       "source": "design 10.3/13.2; builtins.Round/Render"
     }
   ],
-  "note": "Round/Abs/Floor/Ceil and all call layouts are also enumerated by runtime-semantics-probe.mts; this file is a documentation corpus, not production evaluator code. Unresolved cases deliberately have no expectedValue."
+  "note": "Round/Abs/Floor/Ceil and all call layouts are also enumerated by ContractSemanticsEvidence.java; this file is a documentation corpus, not production evaluator code. Unresolved cases deliberately have no expectedValue."
 }
