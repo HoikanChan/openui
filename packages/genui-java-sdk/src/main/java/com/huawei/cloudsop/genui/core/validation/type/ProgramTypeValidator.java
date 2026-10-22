@@ -3,8 +3,8 @@ package com.huawei.cloudsop.genui.core.validation.type;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
+import com.huawei.cloudsop.genui.core.validation.ValidationSnapshot;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
-import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.parser.SourceSpan;
 import com.huawei.cloudsop.genui.core.validation.parser.Statement;
@@ -41,31 +41,22 @@ public final class ProgramTypeValidator {
     private final DataPathResolver pathResolver = new DataPathResolver();
     private final SchemaTypeCompiler schemaCompiler = new SchemaTypeCompiler();
     private final TypeAssignability assignability = new TypeAssignability();
-    private final BuiltinTypeRegistry builtinTypes;
-
-    public ProgramTypeValidator() {
-        this(BuiltinCatalog.getDefault());
-    }
-
-    public ProgramTypeValidator(BuiltinCatalog builtins) {
-        BuiltinCatalog effectiveBuiltins = builtins == null ? BuiltinCatalog.getDefault() : builtins;
-        this.builtinTypes = new BuiltinTypeRegistry(effectiveBuiltins.specsForTypeValidation());
-    }
 
     /**
      * Validate proven expression and component-prop types. Unsupported or unproven checks are skipped. Streaming
      * validation stays on the existing structural pass; the complete FINAL program is typed.
      */
-    public List<ValidationIssue> validate(Program program, ContractCatalog catalog, Map<String, Object> dataModel,
-            ValidationMode mode) {
-        if (mode != ValidationMode.FINAL || dataModel == null) {
+    public List<ValidationIssue> validate(ValidationSnapshot snapshot) {
+        if (snapshot.mode() != ValidationMode.FINAL || snapshot.dataModel() == null) {
             return List.of();
         }
-        Context context = new Context(program, catalog, dataModel);
+        Program program = snapshot.program();
+        Context context = new Context(snapshot);
         // #56 同名覆盖:类型检查只遍历当前有效定义(Program#currentById,与 ProgramAnalyzer 共用同一去重口径),
         // 被覆盖语句的历史类型错误不再产生当前错误;修改定义造成的下游不匹配仍会被发现。
         for (Statement statement : program.currentById().values()) {
-            if (statement instanceof Statement.Value value) {
+            if (statement instanceof Statement.Value value
+                    && !snapshot.analysis().orphaned().contains(statement.id())) {
                 context.infer(value.expr(), statement.id(), new LinkedHashMap<>(), new HashSet<>());
             }
         }
@@ -80,10 +71,13 @@ public final class ProgramTypeValidator {
         private final List<ValidationIssue> issues = new ArrayList<>();
         private final Set<String> emitted = new LinkedHashSet<>();
 
-        Context(Program program, ContractCatalog catalog, Map<String, Object> dataModel) {
-            this.catalog = catalog;
-            this.dataModel = dataModel;
-            for (Statement statement : program.statements()) {
+        private final BuiltinTypeRegistry builtinTypes;
+
+        Context(ValidationSnapshot snapshot) {
+            this.catalog = snapshot.catalog();
+            this.dataModel = snapshot.dataModel();
+            this.builtinTypes = new BuiltinTypeRegistry(snapshot.builtins().specsForTypeValidation());
+            for (Statement statement : snapshot.program().currentById().values()) {
                 spans.put(statement.id(), statement.span());
                 if (statement instanceof Statement.Value value) {
                     symbols.put(statement.id(), value.expr());
