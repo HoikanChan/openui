@@ -32,6 +32,8 @@ class CompositeRequirementTest {
 
     @Test
     void wholeSequenceCannotSatisfyScalarComposite() {
+        // 整体数组对标量复合要求:数组整体与候选值域互斥,确定 MISMATCH——空数组本身也是数组值,
+        // 同样不满足标量要求;空值不承载反例的 #82 口径由逐元素(SequenceOf)路径承载,不适用整体判定。
         Expectation scalar = new Expectation.AnyOf(List.of(accept(number())));
         assertEquals(Checks.Verdict.MISMATCH,
                 Checks.check(Fact.of(Types.sequence(number(), 0, 5)), scalar, null).verdict());

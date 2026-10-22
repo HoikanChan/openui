@@ -764,6 +764,16 @@ public final class Checks {
             return Tri.PASS;
         }
         if (Relations.proveDisjoint(type, target) == Relations.Outcome.PROVEN) {
+            if (type instanceof Type.Sequence sequence && !(target instanceof Type.Sequence)) {
+                // 跨种类整体互斥(数组 vs 非标量候选):元素为字面值/常量上界(First/Last 降维结果)
+                // 且与目标相容时,非空值可能满足,只能到 UNKNOWN(#82:样本不制造判定);
+                // 元素与目标是不同的具体值域(数组的整体值域与目标没有共同非空值)时确定 FAIL。
+                if (sequence.element() instanceof Type.StringLiterals
+                        && Relations.proveDisjoint(sequence.element(), target) != Relations.Outcome.PROVEN) {
+                    return Tri.UNKNOWN;
+                }
+                return Tri.FAIL;
+            }
             return Tri.FAIL;
         }
         return Tri.UNKNOWN;
