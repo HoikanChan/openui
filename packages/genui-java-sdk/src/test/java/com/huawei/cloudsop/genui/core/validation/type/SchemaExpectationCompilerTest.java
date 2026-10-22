@@ -13,22 +13,22 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
-/** Schema-subset compilation (#82): supported keywords compile fully; unsupported keywords are preserved, not dropped. */
+/**
+ * Schema-subset compilation (#82): supported keywords compile fully; unsupported keywords are preserved, not dropped.
+ */
 class SchemaExpectationCompilerTest {
 
     private final SchemaExpectationCompiler compiler = new SchemaExpectationCompiler();
 
     @Test
     void compilesAnyOfAsCompositeNotUnion() {
-        Expectation e = compiler.compile(Map.of("anyOf",
-                List.of(Map.of("type", "number"), Map.of("type", "string"))));
+        Expectation e = compiler.compile(Map.of("anyOf", List.of(Map.of("type", "number"), Map.of("type", "string"))));
         assertInstanceOf(Expectation.AnyOf.class, e);
     }
 
     @Test
     void compilesOneOfAsExactlyOneNotUnion() {
-        Expectation e = compiler.compile(Map.of("oneOf",
-                List.of(Map.of("type", "number"), Map.of("type", "string"))));
+        Expectation e = compiler.compile(Map.of("oneOf", List.of(Map.of("type", "number"), Map.of("type", "string"))));
         assertInstanceOf(Expectation.ExactlyOne.class, e);
     }
 
@@ -47,16 +47,15 @@ class SchemaExpectationCompilerTest {
 
     @Test
     void requiredFieldNotInPropertiesStillRequired() {
-        Expectation e = compiler.compile(
-                Map.of("type", "object", "required", List.of("id"), "properties", Map.of()));
+        Expectation e = compiler.compile(Map.of("type", "object", "required", List.of("id"), "properties", Map.of()));
         assertTrue(hasRequiredField(e, "id"), () -> "required must hold even without properties entry: " + e);
     }
 
     @Test
     void additionalPropertiesFalseClosesObject() {
         // additionalProperties:false marks the object closed; the closedObject requirement is preserved (a Predicate).
-        Expectation e = compiler.compile(Map.of("type", "object", "properties", Map.of(),
-                "additionalProperties", false));
+        Expectation e = compiler
+                .compile(Map.of("type", "object", "properties", Map.of(), "additionalProperties", false));
         assertEquals(new Expectation.Predicate("closedObject", List.of()), e);
     }
 

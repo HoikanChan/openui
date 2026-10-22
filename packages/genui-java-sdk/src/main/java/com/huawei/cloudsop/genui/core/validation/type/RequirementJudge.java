@@ -22,11 +22,10 @@ import com.huawei.cloudsop.genui.core.validation.type.ValueType.UnionType;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
- * The composite-requirement decider (#82). It checks a {@link Fact} against an {@link Expectation}, combining
- * composite sub-requirements on the SAME observed value or an aligned partition before aggregating (design §6.4).
+ * The composite-requirement decider (#82). It checks a {@link Fact} against an {@link Expectation}, combining composite
+ * sub-requirements on the SAME observed value or an aligned partition before aggregating (design §6.4).
  *
  * <p>
  * The quantifier is "there exists one value that violates every candidate", NOT "each candidate has some value that
@@ -264,7 +263,8 @@ public final class RequirementJudge {
             return Verdict.MISMATCH;
         }
         if (value instanceof StringDomainType) {
-            return target instanceof Primitive p && p.kind() == ValueType.PrimitiveKind.STRING ? Verdict.MATCH
+            return target instanceof Primitive p && p.kind() == ValueType.PrimitiveKind.STRING
+                    ? Verdict.MATCH
                     : Verdict.MISMATCH;
         }
         if (value instanceof Primitive p && target instanceof Primitive q) {

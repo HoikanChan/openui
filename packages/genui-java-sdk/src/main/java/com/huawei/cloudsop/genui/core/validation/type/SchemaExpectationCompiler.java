@@ -26,17 +26,16 @@ import java.util.Set;
  * <p>
  * The supported subset is compiled completely: {@code type}, {@code properties}, {@code required}, {@code items},
  * {@code additionalProperties}, string {@code enum}, {@code anyOf} and the {@code component} extension. Anything else
- * ({@code oneOf}→{@link ExactlyOne}, {@code allOf}, {@code integer}, {@code minLength}/{@code maxLength}/{@code pattern},
- * unknown validation keywords) is preserved as an {@link Unsupported} requirement rather than dropped — a schema with
- * both supported and unsupported parts still checks the supported part, but never reports a fabricated full MATCH for
- * the dropped constraint.
+ * ({@code oneOf}→{@link ExactlyOne}, {@code allOf}, {@code integer},
+ * {@code minLength}/{@code maxLength}/{@code pattern}, unknown validation keywords) is preserved as an
+ * {@link Unsupported} requirement rather than dropped — a schema with both supported and unsupported parts still checks
+ * the supported part, but never reports a fabricated full MATCH for the dropped constraint.
  */
 final class SchemaExpectationCompiler {
 
     /** Validation keywords this SDK fully supports; anything else on a schema node is preserved as Unsupported. */
-    private static final Set<String> SUPPORTED =
-            Set.of("type", "properties", "required", "items", "additionalProperties", "enum", "anyOf", "oneOf",
-                    "allOf", "component");
+    private static final Set<String> SUPPORTED = Set.of("type", "properties", "required", "items",
+            "additionalProperties", "enum", "anyOf", "oneOf", "allOf", "component");
 
     /** Pure annotations that carry no validation obligation and need no Unsupported marker. */
     private static final Set<String> ANNOTATIONS = Set.of("description", "title", "default", "examples", "$schema");

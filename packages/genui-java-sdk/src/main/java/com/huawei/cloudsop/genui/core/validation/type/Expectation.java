@@ -14,12 +14,11 @@ import java.util.List;
  * {@code oneOf} keep their own logic instead of being pressed into a union. Composite requirements
  * ({@link AnyOf}/{@link ExactlyOne}/{@link AllOf}) combine their sub-requirements on the SAME observed value or an
  * aligned partition before aggregation — they are never evaluated by stitching together per-candidate summaries.
- * {@link Unsupported} preserves a schema keyword this SDK cannot prove, so it is never silently dropped and reported
- * as a full MATCH.
+ * {@link Unsupported} preserves a schema keyword this SDK cannot prove, so it is never silently dropped and reported as
+ * a full MATCH.
  */
-public sealed interface Expectation
-        permits Expectation.Accept, Expectation.RequireField, Expectation.AllOf, Expectation.AnyOf,
-        Expectation.ExactlyOne, Expectation.Predicate, Expectation.Unsupported,
+public sealed interface Expectation permits Expectation.Accept, Expectation.RequireField, Expectation.AllOf,
+        Expectation.AnyOf, Expectation.ExactlyOne, Expectation.Predicate, Expectation.Unsupported,
         SchemaExpectationCompiler.ElementRequirement, SchemaExpectationCompiler.ExtraFieldsRequirement {
 
     /** A value-type constraint: the observed value must be provably included in {@code type}. */

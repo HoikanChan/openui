@@ -55,8 +55,8 @@ class RequirementJudgeTest {
     @Test
     void anyOfMatchesWhenEachElementSatisfiesSomeCandidate() {
         // [1, "x"] : every element passes AnyOf(number,string) on its own value.
-        ArrayType array = new ArrayType(new UnionType(
-                List.of(new Primitive(PrimitiveKind.NUMBER), new StringDomainType(Set.of("x")))));
+        ArrayType array = new ArrayType(
+                new UnionType(List.of(new Primitive(PrimitiveKind.NUMBER), new StringDomainType(Set.of("x")))));
         CheckResult result = judge.check(fact(array), new AnyOf(List.of(number(), string())));
         assertEquals(Verdict.MATCH, result.verdict());
     }
@@ -64,8 +64,8 @@ class RequirementJudgeTest {
     @Test
     void exactlyOneMatchesWhenEachElementSatisfiesExactlyOneCandidate() {
         // [1, "x"] : ExactlyOne(number,string) — 1 hits only number, "x" hits only string.
-        ArrayType array = new ArrayType(new UnionType(
-                List.of(new Primitive(PrimitiveKind.NUMBER), new StringDomainType(Set.of("x")))));
+        ArrayType array = new ArrayType(
+                new UnionType(List.of(new Primitive(PrimitiveKind.NUMBER), new StringDomainType(Set.of("x")))));
         CheckResult result = judge.check(fact(array), new ExactlyOne(List.of(number(), string())));
         assertEquals(Verdict.MATCH, result.verdict());
     }
@@ -83,8 +83,8 @@ class RequirementJudgeTest {
     @Test
     void exactlyOneMismatchesWhenOneValueSatisfiesTwoBranches() {
         // ExactlyOne(number, Unknown) over [1,"x"]: the same value 1 satisfies both branches.
-        ArrayType array = new ArrayType(new UnionType(
-                List.of(new Primitive(PrimitiveKind.NUMBER), new StringDomainType(Set.of("x")))));
+        ArrayType array = new ArrayType(
+                new UnionType(List.of(new Primitive(PrimitiveKind.NUMBER), new StringDomainType(Set.of("x")))));
         CheckResult result = judge.check(fact(array), new ExactlyOne(List.of(number(), unknownAccept())));
         assertEquals(Verdict.MISMATCH, result.verdict());
         assertTrue(result.counterExample().isPresent());
@@ -108,10 +108,9 @@ class RequirementJudgeTest {
 
     @Test
     void allOfMismatchesWhenOneValueFailsOneCandidate() {
-        ArrayType array = new ArrayType(new UnionType(
-                List.of(new Primitive(PrimitiveKind.NUMBER), new StringDomainType(Set.of("x")))));
-        CheckResult result = judge.check(fact(array),
-                new Expectation.AllOf(List.of(number(), number())));
+        ArrayType array = new ArrayType(
+                new UnionType(List.of(new Primitive(PrimitiveKind.NUMBER), new StringDomainType(Set.of("x")))));
+        CheckResult result = judge.check(fact(array), new Expectation.AllOf(List.of(number(), number())));
         assertEquals(Verdict.MISMATCH, result.verdict());
     }
 
@@ -139,8 +138,8 @@ class RequirementJudgeTest {
     void sameObservedValueNotStitchedAcrossCandidates() {
         // [1, "x"] vs AnyOf(number,string): candidate number has counterexample "x", candidate string has
         // counterexample 1. These are DIFFERENT values; they must NOT be stitched into one MISMATCH.
-        ArrayType array = new ArrayType(new UnionType(
-                List.of(new Primitive(PrimitiveKind.NUMBER), new StringDomainType(Set.of("x")))));
+        ArrayType array = new ArrayType(
+                new UnionType(List.of(new Primitive(PrimitiveKind.NUMBER), new StringDomainType(Set.of("x")))));
         CheckResult result = judge.check(fact(array), new AnyOf(List.of(number(), string())));
         assertEquals(Verdict.MATCH, result.verdict(),
                 "different candidates each having a counterexample on different values is not a violation");

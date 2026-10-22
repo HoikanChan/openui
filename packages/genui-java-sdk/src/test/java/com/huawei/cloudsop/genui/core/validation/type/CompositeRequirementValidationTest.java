@@ -31,7 +31,8 @@ class CompositeRequirementValidationTest {
 
     @Test
     void anyOfAcceptsNumberThenStringOnSameElements() {
-        // TextContent.text is anyOf [string, number]. A literal number and a literal string each pass on their own value.
+        // TextContent.text is anyOf [string, number]. A literal number and a literal string each pass on their own
+        // value.
         assertValid("root = Stack([TextContent(1), TextContent(\"x\")])");
     }
 
@@ -49,8 +50,8 @@ class CompositeRequirementValidationTest {
         // elements is not a violation (no single element fails both).
         ValidationResult result = validate("root = @Each(data.items, \"i\", TextContent(i))",
                 Map.of("items", List.of(1, "x")));
-        assertFalse(hasCode(result, "type-prop-mismatch"), () -> "must not stitch per-candidate counterexamples: "
-                + result.issues());
+        assertFalse(hasCode(result, "type-prop-mismatch"),
+                () -> "must not stitch per-candidate counterexamples: " + result.issues());
     }
 
     @Test
@@ -75,8 +76,8 @@ class CompositeRequirementValidationTest {
     void unsupportedSchemaKeywordStaysUnprovenNotFakeMatch() {
         // FormControl.rules has minLength/maxLength/pattern (unsupported). The check must not report a full MATCH for
         // the rules prop; the result metadata must expose the UNPROVEN requirement.
-        ValidationResult result = validate(
-                "root = FormControl(\"f\", Input(\"x\"), {rules: {minLength: 2}})", Map.of());
+        ValidationResult result = validate("root = FormControl(\"f\", Input(\"x\"), {rules: {minLength: 2}})",
+                Map.of());
         assertTrue(result.metadata().extra().containsKey("typeCheck.unproven"),
                 () -> "unsupported schema requirement must be visible as UNPROVEN in metadata: "
                         + result.metadata().extra());
@@ -104,8 +105,7 @@ class CompositeRequirementValidationTest {
     void componentSlotAnyOfAcceptsEachBranchOnItsOwnValue() {
         // FormControl.input is anyOf [Input, TextArea, ..., DatePicker]; an Input value and a DatePicker value each
         // match their own single component branch on their own observed value (neither takes required positional args).
-        assertValid(
-                "root = Stack([FormControl(\"a\", \"A\", Input(\"x\")), FormControl(\"b\", \"B\", DatePicker())])");
+        assertValid("root = Stack([FormControl(\"a\", \"A\", Input(\"x\")), FormControl(\"b\", \"B\", DatePicker())])");
     }
 
     private static void assertValid(String dsl) {

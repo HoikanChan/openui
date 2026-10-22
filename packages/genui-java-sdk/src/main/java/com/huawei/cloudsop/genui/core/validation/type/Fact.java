@@ -20,9 +20,9 @@ import java.util.Set;
  * algebra (per-field evidence, budget-driven loss) is owned by #80 and plugged in at integration.
  *
  * <p>
- * Identity is content-based and covers every dimension that may change a check conclusion: two facts with the same
- * type but different evidence, context or upstream-error identity are NOT interchangeable, so a cached check result is
- * never reused across them.
+ * Identity is content-based and covers every dimension that may change a check conclusion: two facts with the same type
+ * but different evidence, context or upstream-error identity are NOT interchangeable, so a cached check result is never
+ * reused across them.
  */
 public final class Fact {
 

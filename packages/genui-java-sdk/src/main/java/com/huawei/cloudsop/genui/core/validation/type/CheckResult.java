@@ -10,8 +10,8 @@ import java.util.Optional;
  * The outcome of checking one {@link Fact} against one {@link Expectation} (#82).
  *
  * <p>
- * Per design §6.2: MATCH = all relevant possible values provably satisfy the requirement; MISMATCH = a proven
- * violation or a real counterexample applicable to the current check target; UNPROVEN = could pass or fail, or
+ * Per design §6.2: MATCH = all relevant possible values provably satisfy the requirement; MISMATCH = a proven violation
+ * or a real counterexample applicable to the current check target; UNPROVEN = could pass or fail, or
  * rule/context/budget is insufficient. Only MATCH and MISMATCH are terminal; UNPROVEN is recorded, never repaired on
  * its own, and never reported as a fabricated MATCH.
  */

@@ -6,10 +6,9 @@ import java.util.List;
 import java.util.Map;
 
 /** Proven value types used by Java preflight validation. */
-public sealed interface ValueType
-        permits ValueType.Primitive, ValueType.ArrayType, ValueType.ObjectType, ValueType.UnionType,
-        ValueType.ComponentType, ValueType.TemplateType, ValueType.EmptyArrayType, ValueType.StringDomainType,
-        ValueType.UnknownType, ValueType.NeverType {
+public sealed interface ValueType permits ValueType.Primitive, ValueType.ArrayType, ValueType.ObjectType,
+        ValueType.UnionType, ValueType.ComponentType, ValueType.TemplateType, ValueType.EmptyArrayType,
+        ValueType.StringDomainType, ValueType.UnknownType, ValueType.NeverType {
 
     /** Stable human/model-facing type name. */
     String displayName();
@@ -19,7 +18,9 @@ public sealed interface ValueType
         return UnknownType.INSTANCE;
     }
 
-    /** The Never type: no legal value exists. Never produces evidence (e.g. a zero-length array is not a Never value). */
+    /**
+     * The Never type: no legal value exists. Never produces evidence (e.g. a zero-length array is not a Never value).
+     */
     static NeverType never() {
         return NeverType.INSTANCE;
     }
