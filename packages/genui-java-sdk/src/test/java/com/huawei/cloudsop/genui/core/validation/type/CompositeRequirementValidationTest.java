@@ -99,6 +99,49 @@ class CompositeRequirementValidationTest {
         assertValid("root = Stack([FormControl(\"a\", \"A\", Input(\"x\")), FormControl(\"b\", \"B\", DatePicker())])");
     }
 
+    @Test
+    void possibleSwitchBranchDoesNotInventCounterexample() {
+        ValidationResult result = validate("root = TextContent(@Switch(data.choice, {a:1,b:true}, 1))",
+                Map.of("choice", "a"));
+        assertFalse(hasCode(result, "type-prop-mismatch"), () -> String.valueOf(result.issues()));
+    }
+
+    @Test
+    void objectRequirementsReachPublicValidator() {
+        for (Map<String, Object> schema : List.of(
+                Map.<String, Object>of("type", "object", "required", List.of("id")),
+                Map.<String, Object>of("type", "object", "additionalProperties", false),
+                Map.<String, Object>of("type", "object", "additionalProperties", Map.of("type", "number")))) {
+            String value = schema.containsKey("required") ? "{}" : "{bad:true}";
+            ValidationResult result = validateWithTextSchema("root = TextContent(" + value + ")", schema);
+            assertTrue(hasCode(result, "type-prop-mismatch"), () -> schema + ": " + result.issues());
+        }
+    }
+
+    @Test
+    void anyOfSiblingUnsupportedRuleRemainsVisible() {
+        ValidationResult result = validateWithTextSchema("root = TextContent(1)",
+                Map.of("anyOf", List.of(Map.of("type", "number"), Map.of("type", "string")), "pattern", "^x"));
+        assertTrue(Long.parseLong(result.metadata().extra().getOrDefault("typeChecks.unproven", "0")) > 0,
+                () -> String.valueOf(result.metadata().extra()));
+        assertTrue(result.metadata().extra().toString().contains("UNSUPPORTED_RULE"),
+                () -> String.valueOf(result.metadata().extra()));
+        assertEquals("true", result.metadata().extra().get("typeChecks.analysisComplete"));
+    }
+
+    private static ValidationResult validateWithTextSchema(String dsl, Map<String, Object> schema) {
+        GenerationContract base = GenerationContractLoader.loadDefault();
+        Map<String, com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec> components =
+                new java.util.LinkedHashMap<>(base.components());
+        components.put("TextContent", new com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec("Text",
+                Map.of("type", "object", "properties", Map.of("text", schema), "required", List.of("text"))));
+        GenerationContract contract = new GenerationContract(base.contractVersion(), base.root(), components,
+                base.componentGroups(), base.tools(), base.examples(), base.additionalRules(), base.builtins(),
+                base.capabilityGaps());
+        return DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder().dsl(dsl).contract(contract)
+                .dataModel(Map.of()).mode(ValidationMode.FINAL).build());
+    }
+
     private static void assertValid(String dsl) {
         ValidationResult result = validate(dsl, Map.of("present", true));
         assertEquals(ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));

@@ -47,10 +47,11 @@ public final class SchemaCompiler {
         if (schema == null || schema.isEmpty()) {
             return new Expectation.Accept(Type.Unknown.INSTANCE);
         }
-        // component 扩展:名义约束,不参与结构放宽。
+        List<Expectation> requirements = new ArrayList<>();
+        // Schema siblings are conjunctive, including component extensions and unsupported keywords.
         Object component = schema.get("component");
         if (component instanceof String componentName) {
-            return new Expectation.Accept(new Type.Component(componentName));
+            requirements.add(new Expectation.Accept(new Type.Component(componentName)));
         }
         Object anyOf = schema.get("anyOf");
         if (anyOf instanceof List<?> alternatives) {
@@ -62,13 +63,10 @@ public final class SchemaCompiler {
                         : new Expectation.Unsupported(schemaPath + "/anyOf/" + index, "nonObjectSchema"));
                 index++;
             }
-            if (compiled.size() == 1) {
-                return compiled.getFirst();
-            }
-            return new Expectation.AnyOf(compiled);
+            requirements.add(compiled.isEmpty() ? new Expectation.Accept(Type.Never.INSTANCE)
+                    : compiled.size() == 1 ? compiled.getFirst() : new Expectation.AnyOf(compiled));
         }
         Object type = schema.get("type");
-        List<Expectation> requirements = new ArrayList<>();
         if (type instanceof String typeName) {
             requirements.addAll(switch (typeName) {
                 case "string" -> List.of(new Expectation.Accept(Types.scalar(Type.ScalarKind.STRING)));
@@ -161,22 +159,44 @@ public final class SchemaCompiler {
         }
         Object additional = schema.get("additionalProperties");
         if (additional instanceof Boolean allowed && !allowed) {
-            requirements.add(new ExtraClosed(schemaPath + "/additionalProperties"));
+            requirements.add(new ExtraClosed(schemaPath + "/additionalProperties", declaredFields(schema)));
         } else if (additional instanceof Map<?, ?> additionalSchema) {
             @SuppressWarnings("unchecked")
             Expectation compiled = compile((Map<String, Object>) additionalSchema,
                     schemaPath + "/additionalProperties");
-            requirements.add(new ExtraConstraint(compiled));
+            requirements.add(new ExtraConstraint(compiled, declaredFields(schema)));
         }
         return requirements;
     }
 
     /** 额外字段关闭要求(内部标记,分析层映射为结构检查)。 */
-    public record ExtraClosed(String schemaPath) implements Expectation {
+    public record ExtraClosed(String schemaPath, java.util.Set<String> declaredFields) implements Expectation {
+        public ExtraClosed {
+            declaredFields = java.util.Set.copyOf(declaredFields);
+        }
+
+        public ExtraClosed(String schemaPath) {
+            this(schemaPath, java.util.Set.of());
+        }
     }
 
     /** 额外字段受约束要求(内部标记)。 */
-    public record ExtraConstraint(Expectation expectation) implements Expectation {
+    public record ExtraConstraint(Expectation expectation, java.util.Set<String> declaredFields) implements Expectation {
+        public ExtraConstraint {
+            declaredFields = java.util.Set.copyOf(declaredFields);
+        }
+
+        public ExtraConstraint(Expectation expectation) {
+            this(expectation, java.util.Set.of());
+        }
+    }
+
+    private static java.util.Set<String> declaredFields(Map<String, Object> schema) {
+        java.util.Set<String> names = new java.util.LinkedHashSet<>();
+        if (schema.get("properties") instanceof Map<?, ?> properties) {
+            properties.keySet().forEach(key -> names.add(String.valueOf(key)));
+        }
+        return names;
     }
 
     private static Type openRecord() {

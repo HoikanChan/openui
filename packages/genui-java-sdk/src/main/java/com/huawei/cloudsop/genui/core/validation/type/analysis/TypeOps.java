@@ -272,7 +272,15 @@ public final class TypeOps {
                 elements.add(Type.Unknown.INSTANCE);
             }
         }
-        return new Fact(Types.union(elements), Set.of(), losses, sequence.upstreamErrors());
+        Set<Fact.Evidence> evidence = new LinkedHashSet<>();
+        for (Fact.Evidence item : sequence.evidence()) {
+            if (item instanceof Fact.Evidence.ObservedValue observed && observed.value() instanceof List<?> values) {
+                for (Object value : values) {
+                    evidence.add(new Fact.Evidence.ObservedValue(observed.path(), value));
+                }
+            }
+        }
+        return new Fact(Types.union(elements), evidence, losses, sequence.upstreamErrors());
     }
 
     /** 数量区间事实(供 Chart 长度等比较);来源不保持数量时返回 null 表示未知。 */

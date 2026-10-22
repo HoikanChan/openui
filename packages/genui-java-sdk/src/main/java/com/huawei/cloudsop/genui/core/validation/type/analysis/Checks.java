@@ -3,6 +3,7 @@ package com.huawei.cloudsop.genui.core.validation.type.analysis;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -92,8 +93,8 @@ public final class Checks {
         if (expectation instanceof Expectation.Accept accept) {
             return checkAccept(fact, accept, checkedPath);
         }
-        if (expectation instanceof SchemaCompiler.ExtraClosed) {
-            return checkExtraClosed(fact, checkedPath);
+        if (expectation instanceof SchemaCompiler.ExtraClosed extraClosed) {
+            return checkExtraClosed(fact, extraClosed, checkedPath);
         }
         if (expectation instanceof SchemaCompiler.ExtraConstraint extraConstraint) {
             return checkExtraConstraint(fact, extraConstraint, checkedPath);
@@ -114,7 +115,18 @@ public final class Checks {
             return checkPredicate(fact, predicate);
         }
         if (expectation instanceof Expectation.AllOf allOf) {
-            return checkComposite(fact, allOf.expectations(), CompositeKind.ALL_OF, checkedPath);
+            Set<Reason> reasons = new LinkedHashSet<>();
+            for (Expectation part : allOf.expectations()) {
+                CheckResult result = check(fact, part, checkedPath);
+                if (result.verdict() == Verdict.MISMATCH) {
+                    return result;
+                }
+                if (result.verdict() == Verdict.UNPROVEN) {
+                    reasons.addAll(result.reasons());
+                }
+            }
+            return reasons.isEmpty() ? CheckResult.match()
+                    : CheckResult.unproven(reasons, fact.upstreamErrors(), null);
         }
         if (expectation instanceof Expectation.AnyOf anyOf) {
             return checkComposite(fact, anyOf.expectations(), CompositeKind.ANY_OF, checkedPath);
@@ -234,44 +246,84 @@ public final class Checks {
     // ───────────────────────────────────────────────────────────────────────
 
     /** additionalProperties: false——已列出字段之外的字段不得出现。 */
-    private static CheckResult checkExtraClosed(Fact fact, String checkedPath) {
-        if (fact.type() instanceof Type.Unknown) {
-            Set<Reason> reasons = lossesAsReasons(fact);
-            reasons.add(Reason.UNKNOWN_INPUT);
-            return CheckResult.unproven(reasons, fact.upstreamErrors(), null);
-        }
-        for (Type branch : TypeOps.flatten(fact.type())) {
-            if (branch instanceof Type.Unknown) {
-                Set<Reason> reasons = lossesAsReasons(fact);
-                reasons.add(Reason.UNKNOWN_INPUT);
-                return CheckResult.unproven(reasons, fact.upstreamErrors(), null);
-            }
-            if (branch instanceof Type.RecordType record && !record.extra().isClosed()) {
-                // 开放尾部可能含未列出字段——无法证明关闭。
-                Set<Reason> reasons = lossesAsReasons(fact);
-                reasons.add(Reason.INSUFFICIENT_EVIDENCE);
-                return CheckResult.unproven(reasons, fact.upstreamErrors(), null);
-            }
-        }
-        return CheckResult.match();
+    private static CheckResult checkExtraClosed(Fact fact, SchemaCompiler.ExtraClosed extraClosed, String checkedPath) {
+        return checkExtraFields(fact, extraClosed.declaredFields(), new Expectation.Accept(Type.Never.INSTANCE),
+                checkedPath);
     }
 
     /** additionalProperties: schema——对象额外字段(未列出部分)的值须满足要求。 */
     private static CheckResult checkExtraConstraint(Fact fact, SchemaCompiler.ExtraConstraint extraConstraint,
             String checkedPath) {
-        // 第一版:仅当对象开放尾部值类型可证明满足时 MATCH;对象未知记 UNPROVEN,不虚构反例。
-        if (fact.type() instanceof Type.Unknown) {
-            Set<Reason> reasons = lossesAsReasons(fact);
-            reasons.add(Reason.UNKNOWN_INPUT);
-            return CheckResult.unproven(reasons, fact.upstreamErrors(), null);
-        }
-        for (Type branch : TypeOps.flatten(fact.type())) {
-            if (branch instanceof Type.RecordType record && !record.extra().isClosed()) {
-                return check(new Fact(record.extra().valueType(), Set.of(), fact.losses(),
-                        fact.upstreamErrors()), extraConstraint.expectation(), checkedPath);
+        return checkExtraFields(fact, extraConstraint.declaredFields(), extraConstraint.expectation(), checkedPath);
+    }
+
+    private static CheckResult checkExtraFields(Fact fact, Set<String> declaredFields, Expectation requirement,
+            String checkedPath) {
+        for (Fact.Evidence evidence : fact.evidence()) {
+            if (evidence instanceof Fact.Evidence.ObservedValue observed
+                    && checkedPath != null && checkedPath.equals(observed.path())
+                    && observed.value() instanceof Map<?, ?> values) {
+                for (Map.Entry<?, ?> entry : values.entrySet()) {
+                    if (!declaredFields.contains(String.valueOf(entry.getKey()))
+                            && check(SnapshotFacts.typeOfValue(entry.getValue(), null, 0), requirement, null)
+                                    .verdict() == Verdict.MISMATCH) {
+                        return CheckResult.mismatch("observed undeclared field violates additionalProperties");
+                    }
+                }
             }
         }
-        return CheckResult.match();
+        boolean sawPass = false;
+        boolean sawFail = false;
+        Set<Reason> reasons = lossesAsReasons(fact);
+        for (Type branch : TypeOps.flatten(fact.type())) {
+            if (branch instanceof Type.Never) {
+                continue;
+            }
+            if (!(branch instanceof Type.RecordType record)) {
+                reasons.add(Reason.UNKNOWN_INPUT);
+                continue;
+            }
+            boolean fails = false;
+            boolean uncertain = false;
+            for (Map.Entry<String, Type.Field> entry : record.fields().entrySet()) {
+                if (declaredFields.contains(entry.getKey())) {
+                    continue;
+                }
+                CheckResult result = check(Fact.of(entry.getValue().type()), requirement, null);
+                if (result.verdict() == Verdict.MISMATCH) {
+                    if (entry.getValue().presence() == Type.Presence.REQUIRED) {
+                        fails = true;
+                    } else {
+                        uncertain = true;
+                    }
+                } else if (result.verdict() == Verdict.UNPROVEN) {
+                    uncertain = true;
+                    reasons.addAll(result.reasons());
+                }
+            }
+            if (!record.extra().isClosed()) {
+                CheckResult tail = check(Fact.of(record.extra().valueType()), requirement, null);
+                if (tail.verdict() != Verdict.MATCH) {
+                    uncertain = true;
+                    reasons.addAll(tail.reasons());
+                }
+            }
+            if (fails) {
+                sawFail = true;
+            } else if (uncertain) {
+                reasons.add(Reason.INSUFFICIENT_EVIDENCE);
+            } else {
+                sawPass = true;
+            }
+        }
+        if (sawFail && !sawPass && reasons.isEmpty()) {
+            return CheckResult.mismatch("required extra field violates additionalProperties");
+        }
+        if (!sawFail && reasons.isEmpty()) {
+            return CheckResult.match();
+        }
+        reasons.add(Reason.INSUFFICIENT_EVIDENCE);
+        return CheckResult.unproven(reasons, fact.upstreamErrors(), null);
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -555,46 +607,29 @@ public final class Checks {
         // 1. 观察值路径:同一观察值上逐候选组合。
         List<Object> observedValues = observedValuesFor(fact, checkedPath);
         if (!observedValues.isEmpty()) {
-            boolean fullCoverage = observedCoverageComplete(fact, checkedPath);
             boolean sawFail = false;
             String failDetail = null;
-            boolean sawUnknown = false;
             for (Object value : observedValues) {
                 Fact valueFact = SnapshotFacts.typeOfValue(value, checkedPath, 0);
                 Tri tri = combineOnValue(valueFact, expectations, kind, checkedPath);
                 if (tri == Tri.FAIL) {
                     sawFail = true;
                     failDetail = "observed value at " + checkedPath + " fails composite requirement";
-                } else if (tri == Tri.UNKNOWN) {
-                    sawUnknown = true;
                 }
             }
             if (sawFail) {
                 return CheckResult.mismatch(failDetail);
             }
-            if (fullCoverage && !sawUnknown) {
-                return CheckResult.match();
-            }
-            Set<Reason> reasons = lossesAsReasons(fact);
-            reasons.add(Reason.INSUFFICIENT_EVIDENCE);
-            return CheckResult.unproven(reasons, fact.upstreamErrors(), null);
+            // Observations can refute a requirement, but passing samples do not cover the type upper bound.
+            // Continue with aligned type partitions to prove that every remaining possibility passes.
         }
         // 2. 抽象路径:按联合分支逐分支组合(分支即分区),任一分支 FAIL 即该分区的所有值都失败。
         List<Type> branches = TypeOps.flatten(fact.type());
         boolean sawFail = false;
+        boolean sawPass = false;
         boolean sawUnknown = false;
         for (Type branch : branches) {
             if (branch instanceof Type.Never) {
-                continue;
-            }
-            if (branch instanceof Type.Sequence sequence && sequence.minLength() == 0) {
-                // 空数组可能性:该分支不保证存在值——分区 UNKNOWN,除非元素组合 PASS(空数组也满足
-                // 逐元素要求)。
-                Tri elementTri = combineOnType(sequence.element(), expectations, kind);
-                if (elementTri == Tri.PASS) {
-                    continue;
-                }
-                sawUnknown = true;
                 continue;
             }
             Tri branchTri = combineOnType(branch, expectations, kind);
@@ -602,12 +637,14 @@ public final class Checks {
                 sawFail = true;
             } else if (branchTri == Tri.UNKNOWN) {
                 sawUnknown = true;
+            } else {
+                sawPass = true;
             }
         }
-        if (sawFail) {
-            return CheckResult.mismatch("composite requirement fails on a proven partition");
+        if (sawFail && !sawPass && !sawUnknown && !(fact.type() instanceof Type.Never)) {
+            return CheckResult.mismatch("composite requirement fails on every possible partition");
         }
-        if (!sawUnknown) {
+        if (!sawFail && !sawUnknown) {
             Set<Reason> reasons = lossesAsReasons(fact);
             return reasons.isEmpty() ? CheckResult.match()
                     : CheckResult.unproven(reasons, fact.upstreamErrors(), null);
@@ -630,12 +667,6 @@ public final class Checks {
             }
         }
         return values;
-    }
-
-    /** 观察是否覆盖了全部相关输入(数据值类型化完成、无预算截断、无未知输入损失)。 */
-    private static boolean observedCoverageComplete(Fact fact, String checkedPath) {
-        return fact.losses().stream().noneMatch(loss -> loss == Fact.Loss.PRECISION_BUDGET
-                || loss == Fact.Loss.UNKNOWN_INPUT || loss == Fact.Loss.UNSUPPORTED_RULE);
     }
 
     /** 同一确定值上的候选组合(每个候选先独立判定该值)。 */
@@ -677,7 +708,25 @@ public final class Checks {
             if (!(type instanceof Type.Sequence sequence)) {
                 return Tri.FAIL;
             }
-            return evaluateOnType(sequence.element(), sequenceOf.elementExpectation());
+            if (sequence.maxLength() == 0) {
+                return Tri.PASS;
+            }
+            List<Tri> elements = TypeOps.flatten(sequence.element()).stream()
+                    .map(element -> evaluateOnType(element, sequenceOf.elementExpectation())).toList();
+            if (elements.stream().allMatch(result -> result == Tri.PASS)) {
+                return Tri.PASS;
+            }
+            return sequence.minLength() > 0 && elements.stream().allMatch(result -> result == Tri.FAIL)
+                    ? Tri.FAIL : Tri.UNKNOWN;
+        }
+        if (expectation instanceof Expectation.RequireField
+                || expectation instanceof SchemaCompiler.ExtraClosed
+                || expectation instanceof SchemaCompiler.ExtraConstraint) {
+            return switch (check(Fact.of(type), expectation, null).verdict()) {
+                case MATCH -> Tri.PASS;
+                case MISMATCH -> Tri.FAIL;
+                case UNPROVEN -> Tri.UNKNOWN;
+            };
         }
         if (expectation instanceof Expectation.ConditionalField conditionalField) {
             return conditionalFieldOnType(type, conditionalField);
@@ -711,16 +760,6 @@ public final class Checks {
 
     /** 分区值集合对 Accept 的判定:数组分区按“逐元素满足”语义——包含看元素,互斥看元素且忽略空数组。 */
     private static Tri acceptOnType(Type type, Type target) {
-        if (type instanceof Type.Sequence sequence && target instanceof Type.Sequence targetSequence) {
-            if (Relations.proveIncluded(type, target) == Relations.Outcome.PROVEN) {
-                return Tri.PASS;
-            }
-            // 逐元素语义:元素互斥即所有非空值违反;空数组由调用方另行处理。
-            if (Relations.proveDisjoint(sequence.element(), targetSequence.element()) == Relations.Outcome.PROVEN) {
-                return Tri.FAIL;
-            }
-            return Tri.UNKNOWN;
-        }
         if (Relations.proveIncluded(type, target) == Relations.Outcome.PROVEN) {
             return Tri.PASS;
         }

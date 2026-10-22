@@ -15,6 +15,72 @@ import java.util.Map;
  */
 class CompositeRequirementTest {
 
+    @Test
+    void possibleFailingBranchWithoutObservationIsUnproven() {
+        Fact possible = Fact.of(Types.union(List.of(number(), boolean_())));
+        Expectation requirement = new Expectation.AnyOf(List.of(accept(number()), accept(string())));
+        assertEquals(Checks.Verdict.UNPROVEN, Checks.check(possible, requirement, "value").verdict());
+    }
+
+    @Test
+    void passingObservationDoesNotCoverFailingPossibility() {
+        Fact possible = Fact.of(Types.union(List.of(number(), boolean_())))
+                .withEvidence(new Fact.Evidence.ObservedValue("value", 1));
+        assertEquals(Checks.Verdict.UNPROVEN, Checks.check(possible,
+                new Expectation.AnyOf(List.of(accept(number()), accept(string()))), "value").verdict());
+    }
+
+    @Test
+    void wholeSequenceCannotSatisfyScalarComposite() {
+        Expectation scalar = new Expectation.AnyOf(List.of(accept(number())));
+        assertEquals(Checks.Verdict.MISMATCH,
+                Checks.check(Fact.of(Types.sequence(number(), 0, 5)), scalar, null).verdict());
+        assertEquals(Checks.Verdict.MISMATCH,
+                Checks.check(Fact.of(Types.emptySequence()), scalar, null).verdict());
+    }
+
+    @Test
+    void objectSchemaChecksRequiredAndExtraFields() {
+        Fact empty = SnapshotFacts.typeOfValue(Map.of(), "value", 0);
+        assertEquals(Checks.Verdict.MISMATCH, Checks.check(empty,
+                SchemaCompiler.compileParam(Map.of("type", "object", "required", List.of("id")), "/text"), "value").verdict());
+        Fact extra = SnapshotFacts.typeOfValue(Map.of("bad", true), "value", 0);
+        for (Object policy : List.of(false, Map.of("type", "number"))) {
+            assertEquals(Checks.Verdict.MISMATCH, Checks.check(extra,
+                    SchemaCompiler.compileParam(Map.of("type", "object", "additionalProperties", policy), "/text"), "value").verdict());
+        }
+    }
+
+    @Test
+    void checkConclusionIsContextAndEvidenceSensitive() {
+        Fact possible = Fact.of(Types.union(List.of(number(), boolean_())));
+        Fact budgeted = possible.withLoss(Fact.Loss.PRECISION_BUDGET);
+        Fact blocked = possible.withUpstreamError("data.items");
+        Expectation requirement = new Expectation.AnyOf(List.of(accept(number()), accept(boolean_())));
+        assertEquals(Checks.Verdict.MATCH, Checks.check(possible, requirement, "value").verdict());
+        assertEquals(Checks.Verdict.UNPROVEN, Checks.check(budgeted, requirement, "value").verdict());
+        Checks.CheckResult blockedResult = Checks.check(blocked, requirement, "value");
+        assertEquals(Checks.Verdict.UNPROVEN, blockedResult.verdict());
+        assertEquals(java.util.Set.of(Checks.Reason.BLOCKED_BY_ERROR), blockedResult.reasons());
+        assertEquals(java.util.Set.of("data.items"), blockedResult.upstreamErrors());
+        Expectation text = SchemaCompiler.compileParam(Map.of("type", "number"), "/text");
+        assertEquals(Checks.Verdict.MATCH, Checks.check(Fact.of(number()), text, "value").verdict());
+        assertEquals(Checks.Verdict.MISMATCH, Checks.check(Fact.of(Types.union(List.of(number(), boolean_())))
+                .withEvidence(new Fact.Evidence.ObservedValue("value", true)), text, "value").verdict());
+    }
+
+    @Test
+    void compositeObjectAndEmptySequenceRequirementsUseWholePartitions() {
+        Expectation object = SchemaCompiler.compileParam(Map.of("anyOf", List.of(
+                Map.of("type", "object", "required", List.of("id")), Map.of("type", "number"))), "/text");
+        assertEquals(Checks.Verdict.MATCH, Checks.check(Fact.of(Types.record(
+                Map.of("id", Type.Field.required(number())), Type.Extra.closed())), object, null).verdict());
+        Expectation arrays = new Expectation.AnyOf(List.of(new Expectation.SequenceOf(accept(number()))));
+        assertEquals(Checks.Verdict.MATCH, Checks.check(Fact.of(Types.emptySequence()), arrays, null).verdict());
+        assertEquals(Checks.Verdict.UNPROVEN,
+                Checks.check(Fact.of(Types.sequence(boolean_(), 0, 5)), arrays, null).verdict());
+    }
+
     private static Type number() {
         return Types.scalar(Type.ScalarKind.NUMBER);
     }
