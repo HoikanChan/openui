@@ -4,6 +4,7 @@
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
 
+import com.huawei.cloudsop.genui.core.contract.CapabilityGapSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 
@@ -33,10 +34,12 @@ public final class ContractCatalog {
 
     private final Map<String, ComponentDef> byName;
     private final String rootName;
+    private final List<CapabilityGapSpec> capabilityGaps;
 
-    private ContractCatalog(Map<String, ComponentDef> byName, String rootName) {
+    private ContractCatalog(Map<String, ComponentDef> byName, String rootName, List<CapabilityGapSpec> capabilityGaps) {
         this.byName = byName;
         this.rootName = rootName;
+        this.capabilityGaps = capabilityGaps == null ? List.of() : List.copyOf(capabilityGaps);
     }
 
     /**
@@ -54,7 +57,8 @@ public final class ContractCatalog {
             }
         }
         String root = contract == null ? null : contract.root();
-        return new ContractCatalog(Collections.unmodifiableMap(byName), root);
+        List<CapabilityGapSpec> gaps = contract == null ? List.of() : contract.capabilityGaps();
+        return new ContractCatalog(Collections.unmodifiableMap(byName), root, gaps);
     }
 
     /**
@@ -64,6 +68,15 @@ public final class ContractCatalog {
      */
     public String root() {
         return rootName;
+    }
+
+    /**
+     * 获取合约中声明的能力边界缺口列表。
+     *
+     * @return 不可变的能力缺口列表
+     */
+    public List<CapabilityGapSpec> capabilityGaps() {
+        return capabilityGaps;
     }
 
     /**

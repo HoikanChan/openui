@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -22,11 +23,11 @@ import java.util.Set;
  * machine-exported), supplement JSON is hand-written by the host, so unknown top-level keys are rejected: a silently
  * ignored typo (e.g. {@code additionalRule} missing the trailing {@code s}) would make the host believe the section
  * took effect. Allowed keys: {@code supplementVersion} (informational, not reported anywhere), {@code components},
- * {@code componentGroups}, {@code examples}, {@code additionalRules} — all optional.
+ * {@code componentGroups}, {@code examples}, {@code additionalRules}, {@code capabilityGaps} — all optional.
  */
 public final class GenUIBaseSupplementLoader {
     private static final Set<String> ALLOWED_KEYS = Set.of("supplementVersion", "components", "componentGroups",
-            "examples", "additionalRules");
+            "examples", "additionalRules", "capabilityGaps");
 
     private GenUIBaseSupplementLoader() {
     }
@@ -41,12 +42,15 @@ public final class GenUIBaseSupplementLoader {
         if (!illegalKeys.isEmpty()) {
             throw new GenerationSdkException("Illegal top-level key(s) in base supplement: "
                     + String.join(", ", illegalKeys) + "; allowed keys are supplementVersion, components, "
-                    + "componentGroups, examples, additionalRules");
+                    + "componentGroups, examples, additionalRules, capabilityGaps");
         }
-        return new GenUIBaseSupplement(GenerationContractLoader.componentMap(map.get("components")),
-                GenerationContractLoader.componentGroups(map.get("componentGroups")),
+        Map<String, ComponentPromptSpec> components = GenerationContractLoader.componentMap(map.get("components"));
+        List<CapabilityGapSpec> capabilityGaps = GenerationContractLoader.capabilityGaps(map.get("capabilityGaps"));
+        GenerationContractLoader.validateCapabilityGaps(capabilityGaps, components.keySet(), List.of(),
+                "base supplement");
+        return new GenUIBaseSupplement(components, GenerationContractLoader.componentGroups(map.get("componentGroups")),
                 GenerationContractLoader.strings(map.get("examples")),
-                GenerationContractLoader.strings(map.get("additionalRules")));
+                GenerationContractLoader.strings(map.get("additionalRules")), capabilityGaps);
     }
 
     public static GenUIBaseSupplement fromResource(String path) {

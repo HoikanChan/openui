@@ -12,7 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
+import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
+import com.huawei.cloudsop.genui.core.validation.ValidationIssueReducer;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 class SemanticValidationTest {
 
@@ -396,5 +399,60 @@ class SemanticValidationTest {
         ProgramAnalysis a = analyze(dsl, ValidationMode.FINAL);
         assertNull(issue(a, "unresolved-ref"),
                 "binder \"v\" must remain visible inside the referenced statement's template: " + a.issues());
+    }
+
+    // ── #75: unknown-component 3-tier routing & cascade suppression exemption ──
+
+    @Test
+    void unknownComponentRoutesThreeTiersFromCurrentContract() {
+        ContractCatalog defaultCat = ContractCatalog.from(GenerationContractLoader.loadDefault());
+        ProgramAnalyzer analyzer = new ProgramAnalyzer(defaultCat);
+
+        // Tier 1: Action step called without leading '@'
+        ProgramAnalysis tier1 = analyzer.analyze(OpenuiParser.parse("root = Set($count, 1)", ParseMode.FINAL),
+                ValidationMode.FINAL);
+        ValidationIssue i1 = issue(tier1, "unknown-component");
+        assertNotNull(i1);
+        assertEquals("Unknown component \"Set\" — not found in catalog or builtins", i1.message());
+        assertEquals("did you mean \"@Set\"? openui-lang builtins must be called with a leading '@'", i1.hint());
+        assertTrue(RepairHints.isRootCauseHint(i1.hint()));
+
+        // Tier 2: capabilityGaps alias (both @GroupBy and @ObjectFromEntries)
+        ProgramAnalysis tier2 = analyzer.analyze(OpenuiParser
+                .parse("grouped = @GroupBy(data.items, \"model\")\nroot = Stack([grouped])", ParseMode.FINAL),
+                ValidationMode.FINAL, "Stack", Set.of("data"));
+        ValidationIssue i2 = issue(tier2, "unknown-component");
+        assertNotNull(i2);
+        assertEquals("Unknown component \"GroupBy\" — not found in catalog or builtins", i2.message(),
+                "ADR-0003 D2: message must stay unchanged");
+        assertNotNull(i2.hint());
+        assertTrue(i2.hint().contains("分组展示"), "tier-2 hint must identify group-by gap: " + i2.hint());
+        assertTrue(RepairHints.isRootCauseHint(i2.hint()), "tier-2 hint must be a root-cause hint");
+
+        // Tier 3: ordinary unknown component name
+        ProgramAnalysis tier3 = analyzer.analyze(OpenuiParser.parse("root = ChartCard(\"T\")", ParseMode.FINAL),
+                ValidationMode.FINAL);
+        ValidationIssue i3 = issue(tier3, "unknown-component");
+        assertNotNull(i3);
+        assertEquals("Unknown component \"ChartCard\" — not found in catalog or builtins", i3.message());
+        assertNotNull(i3.hint());
+        assertFalse(RepairHints.isRootCauseHint(i3.hint()), "tier-3 hint must not be a root-cause hint");
+    }
+
+    @Test
+    void capabilityGapUnknownComponentIsExemptFromSyntaxCascadeSuppression() {
+        ContractCatalog defaultCat = ContractCatalog.from(GenerationContractLoader.loadDefault());
+        ProgramAnalyzer analyzer = new ProgramAnalyzer(defaultCat);
+
+        // Statement `grouped` has both a JS arrow function syntax error (`=>`) AND `@GroupBy(...)`.
+        Program program = OpenuiParser
+                .parse("grouped = @GroupBy(data.items, item => item.model)\nroot = Stack([grouped])", ParseMode.FINAL);
+        ProgramAnalysis analysis = analyzer.analyze(program, ValidationMode.FINAL, "Stack", Set.of("data"));
+        List<ValidationIssue> actionable = ValidationIssueReducer.actionable(analysis.issues());
+
+        assertTrue(
+                actionable.stream()
+                        .anyMatch(i -> "unknown-component".equals(i.code()) && "GroupBy".equals(i.component())),
+                "tier-2 capability gap unknown-component must survive syntax cascade suppression; got: " + actionable);
     }
 }

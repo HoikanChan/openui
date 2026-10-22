@@ -144,6 +144,11 @@ final class RepairBenchReport {
         item.put("durationMs", line.get("durationMs"));
         item.put("endReason", line.get("endReason"));
         item.put("markdownFallback", line.get("markdownFallback"));
+        item.put("capabilityNoticePresent", Boolean.TRUE.equals(line.get("capabilityNoticePresent")));
+        item.put("remainingCapabilityGapAliases", stringList(line.get("remainingCapabilityGapAliases")));
+        item.put("unreachedCapabilityGapAliases", stringList(line.get("unreachedCapabilityGapAliases")));
+        item.put("consecutiveUnmatchedUnknownComponents",
+                stringList(line.get("consecutiveUnmatchedUnknownComponents")));
         item.put("error", line.get("error"));
 
         String output = normText(line.get("outputDsl"));

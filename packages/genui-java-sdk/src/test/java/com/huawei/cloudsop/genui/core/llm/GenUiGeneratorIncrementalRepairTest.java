@@ -25,6 +25,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -104,6 +105,63 @@ class GenUiGeneratorIncrementalRepairTest {
 
         assertEquals(ValidationStatus.VALID, result.validationStatus(), String.valueOf(result.validationResult()));
         assertTrue(result.dsl().contains("TextContent(row.name)"), "new helper definition is retained");
+    }
+
+    // ── #75: 能力边界越界（如 @GroupBy）通过增量覆盖补丁收敛为 capabilityNotice + Table ──
+
+    @Test
+    void syncCapabilityGapGroupByConvergesInOneIncrementalPatchWithCapabilityNoticeAndTable() {
+        String initialDsl = "grouped = @GroupBy(data.boards, \"model\")\nroot = Stack([grouped])";
+        String patchDsl = "grouped = @Sort(data.boards, \"model\", \"asc\")\n"
+                + "capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\", \"暂不支持分组展示，以下按原始数据展示\")\n"
+                + "table = Table([Col(\"型号\", \"model\"), Col(\"槽位\", \"slot\")], grouped)\n"
+                + "root = Stack([capabilityNotice, table])";
+        ScriptedTransport transport = ScriptedTransport.sync(syncResponse(initialDsl), syncResponse(patchDsl));
+
+        UiGenerationRequest request = UiGenerationRequest.builder().userInput("按板卡型号分组展示")
+                .response(Map.of("boards", List.of(Map.of("model", "MPU", "slot", "1")))).build();
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generate(request);
+
+        assertEquals(ValidationStatus.VALID, result.validationStatus(), String.valueOf(result.validationResult()));
+        assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason());
+        assertEquals(2, transport.postCount());
+        assertEquals(2, result.rounds().size());
+        assertTrue(transport.bodies.get(1).contains("## Capability boundary (overrides the original request)"),
+                "repair request must carry the capability boundary override section");
+        assertTrue(transport.bodies.get(1).contains("## Original request (for context only)"),
+                "repair request must mark Original request as for context only");
+        assertFalse(result.dsl().contains("GroupBy"), "invalid @GroupBy definition must be overridden by last-wins");
+        assertTrue(result.dsl().contains("capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\""),
+                "converged DSL must include capabilityNotice");
+        assertTrue(result.dsl().contains("root = Stack([capabilityNotice, table])"),
+                "root must place capabilityNotice as its first child");
+    }
+
+    @Test
+    void streamCapabilityGapGroupByConvergesInOneIncrementalPatchWithCapabilityNoticeAndTable() {
+        String initialDsl = "grouped = @GroupBy(data.boards, \"model\")\nroot = Stack([grouped])\n";
+        String patchDsl = "grouped = @Sort(data.boards, \"model\", \"asc\")\n"
+                + "capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\", \"暂不支持分组展示，以下按原始数据展示\")\n"
+                + "table = Table([Col(\"型号\", \"model\"), Col(\"槽位\", \"slot\")], grouped)\n"
+                + "root = Stack([capabilityNotice, table])\n";
+        ScriptedTransport transport = ScriptedTransport.streams(frame(initialDsl) + SseFrames.done(),
+                frame(patchDsl) + SseFrames.done());
+        ArrayList<RenderStreamEnvelope> envelopes = new ArrayList<>();
+
+        UiGenerationRequest request = UiGenerationRequest.builder().userInput("按板卡型号分组展示")
+                .response(Map.of("boards", List.of(Map.of("model", "MPU", "slot", "1")))).build();
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generateStream(request, envelopes::add);
+
+        assertEquals(ValidationStatus.VALID, result.validationStatus(), String.valueOf(result.validationResult()));
+        assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason());
+        assertEquals(2, result.rounds().size());
+        assertTrue(transport.bodies.get(1).contains("## Capability boundary (overrides the original request)"));
+        assertTrue(transport.bodies.get(1).contains("## Original request (for context only)"));
+        assertFalse(result.dsl().contains("GroupBy"));
+        assertTrue(result.dsl().contains("capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\""));
+        assertSeqStrictlyIncreasing(envelopes);
     }
 
     // ── 修复轮异常:空 content 不穿透,走 Markdown 降级并保留轮记录 ─────────────

@@ -462,15 +462,11 @@ async function main() {
     }
   }
 
-  // 写包
+  // 写包（始终从权威 base-contract 同步 contract.json）
   fs.mkdirSync(opts.out, { recursive: true });
   const packContract = path.join(opts.out, 'contract.json');
-  if (fs.existsSync(packContract)) {
-    console.log(`包契约已存在,不覆盖: ${packContract}(需同步时手动改)`);
-  } else {
-    fs.copyFileSync(opts.contract, packContract);
-    console.log(`已生成包契约: ${packContract}`);
-  }
+  fs.copyFileSync(opts.contract, packContract);
+  console.log(`已同步包契约: ${packContract} <- ${opts.contract}`);
   const contractVersion = JSON.parse(fs.readFileSync(packContract, 'utf8')).contractVersion;
   const written = new Set();
   for (const c of cases) {

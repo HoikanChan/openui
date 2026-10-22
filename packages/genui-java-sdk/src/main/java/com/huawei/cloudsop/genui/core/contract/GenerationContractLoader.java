@@ -14,11 +14,14 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class GenerationContractLoader {
     private static final String DEFAULT_RESOURCE = "openui/base-contract.json";
+    private static final Set<String> ALLOWED_GAP_KINDS = Set.of("data", "component");
 
     private GenerationContractLoader() {
     }
@@ -42,10 +45,94 @@ public final class GenerationContractLoader {
     }
 
     static GenerationContract fromMap(Map<String, Object> map) {
-        return new GenerationContract(string(map.get("contractVersion")), string(map.get("root")),
-                componentMap(map.get("components")), componentGroups(map.get("componentGroups")),
-                tools(map.get("tools")), strings(map.get("examples")), strings(map.get("additionalRules")),
-                builtins(map.get("builtins")));
+        Map<String, ComponentPromptSpec> components = componentMap(map.get("components"));
+        List<BuiltinSpec> builtins = builtins(map.get("builtins"));
+        List<CapabilityGapSpec> capabilityGaps = capabilityGaps(map.get("capabilityGaps"));
+        validateCapabilityGaps(capabilityGaps, components.keySet(), builtins, "contract");
+        return new GenerationContract(string(map.get("contractVersion")), string(map.get("root")), components,
+                componentGroups(map.get("componentGroups")), tools(map.get("tools")), strings(map.get("examples")),
+                strings(map.get("additionalRules")), builtins, capabilityGaps);
+    }
+
+    static List<CapabilityGapSpec> capabilityGaps(Object value) {
+        ArrayList<CapabilityGapSpec> result = new ArrayList<>();
+        if (value == null)
+            return result;
+        for (Object item : Json.asList(value, "capabilityGaps")) {
+            Map<String, Object> entry = Json.asObject(item, "capabilityGap");
+            result.add(new CapabilityGapSpec(string(entry.get("id")), string(entry.get("kind")),
+                    string(entry.get("name")), strings(entry.get("aliases")), strings(entry.get("phrases")),
+                    string(entry.get("fallback"))));
+        }
+        return result;
+    }
+
+    /**
+     * Fail-fast validation for capabilityGaps: checks required fields, kind ("data" | "component"), duplicate ids, and
+     * alias collisions against components, builtins, or other capability gaps.
+     */
+    public static void validateCapabilityGaps(List<CapabilityGapSpec> gaps, Set<String> componentNames,
+            List<BuiltinSpec> builtins, String scope) {
+        if (gaps == null || gaps.isEmpty()) {
+            return;
+        }
+        Set<String> builtinNames = new LinkedHashSet<>();
+        if (builtins != null) {
+            for (BuiltinSpec builtin : builtins) {
+                if (builtin != null && builtin.name() != null) {
+                    builtinNames.add(builtin.name());
+                }
+            }
+        }
+        Set<String> seenIds = new LinkedHashSet<>();
+        Map<String, String> seenAliases = new LinkedHashMap<>();
+        for (CapabilityGapSpec gap : gaps) {
+            if (gap == null) {
+                throw new GenerationSdkException("capabilityGap entry must not be null in " + scope);
+            }
+            if (gap.id() == null || gap.id().isBlank()) {
+                throw new GenerationSdkException("capabilityGap entry is missing 'id' in " + scope);
+            }
+            if (!seenIds.add(gap.id())) {
+                throw new GenerationSdkException("duplicate capabilityGap id in " + scope + ": " + gap.id());
+            }
+            if (gap.kind() == null || !ALLOWED_GAP_KINDS.contains(gap.kind())) {
+                throw new GenerationSdkException("capabilityGap '" + gap.id() + "' in " + scope + " has invalid kind '"
+                        + gap.kind() + "' (expected 'data' or 'component')");
+            }
+            if (gap.name() == null || gap.name().isBlank()) {
+                throw new GenerationSdkException("capabilityGap '" + gap.id() + "' is missing 'name' in " + scope);
+            }
+            if (gap.fallback() == null || gap.fallback().isBlank()) {
+                throw new GenerationSdkException("capabilityGap '" + gap.id() + "' is missing 'fallback' in " + scope);
+            }
+            for (String rawAlias : gap.aliases()) {
+                String alias = CapabilityGapSpec.normalizeAlias(rawAlias);
+                if (alias.isEmpty()) {
+                    throw new GenerationSdkException(
+                            "capabilityGap '" + gap.id() + "' contains a blank alias in " + scope);
+                }
+                if (componentNames != null && componentNames.contains(alias)) {
+                    throw new GenerationSdkException("capabilityGap '" + gap.id() + "' alias '" + alias
+                            + "' collides with existing component in " + scope);
+                }
+                if (builtinNames.contains(alias)) {
+                    throw new GenerationSdkException("capabilityGap '" + gap.id() + "' alias '" + alias
+                            + "' collides with existing builtin in " + scope);
+                }
+                String previousGap = seenAliases.put(alias, gap.id());
+                if (previousGap != null && !previousGap.equals(gap.id())) {
+                    throw new GenerationSdkException("capabilityGap '" + gap.id() + "' alias '" + alias
+                            + "' collides with capabilityGap '" + previousGap + "' in " + scope);
+                }
+            }
+            for (String phrase : gap.phrases()) {
+                if (phrase == null || phrase.isBlank()) {
+                    throw new GenerationSdkException(
+                            "capabilityGap '" + gap.id() + "' contains a blank phrase in " + scope);
+                }
+            }
+        }
     }
 
     private static List<BuiltinSpec> builtins(Object value) {

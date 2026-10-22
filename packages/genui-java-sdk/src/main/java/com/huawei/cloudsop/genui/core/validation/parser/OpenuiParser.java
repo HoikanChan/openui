@@ -48,6 +48,22 @@ public final class OpenuiParser {
      * @return 解析得到的程序
      */
     public static Program parse(String input, ParseMode mode) {
+        return parse(input, mode, BuiltinCatalog.getDefault());
+    }
+
+    /**
+     * 按指定的 {@link ParseMode} 与 {@link BuiltinCatalog} 解析输入。
+     *
+     * @param input
+     *            待解析的源字符串
+     * @param mode
+     *            解析模式
+     * @param builtins
+     *            当前契约派生的 builtin 词表
+     * @return 解析得到的程序
+     */
+    public static Program parse(String input, ParseMode mode, BuiltinCatalog builtins) {
+        BuiltinCatalog effectiveBuiltins = builtins == null ? BuiltinCatalog.getDefault() : builtins;
         OpenuiPreprocessor.Result pre = OpenuiPreprocessor.process(input, mode);
         List<ParseDiagnostic> diagnostics = new ArrayList<>();
         List<Statement> statements = new ArrayList<>();
@@ -71,7 +87,7 @@ public final class OpenuiParser {
         }
 
         for (StatementSplitter.RawStmt raw : split.statements()) {
-            ExpressionParser exprParser = new ExpressionParser(raw.tokens(), raw.id());
+            ExpressionParser exprParser = new ExpressionParser(raw.tokens(), raw.id(), effectiveBuiltins);
             AstNode expr = exprParser.parse();
             diagnostics.addAll(exprParser.diagnostics());
             statements.add(classify(raw, expr));

@@ -484,4 +484,61 @@ class RepairBenchRunnerTest {
         assertTrue(bodies.get(0).contains("\"enable_thinking\":false"), "repair discipline: thinking off");
         assertTrue(bodies.get(0).contains("\"model\":\"test-model\""));
     }
+
+    @Test
+    void capabilityBoundaryMetricsTrackReachableAndUnreachedGapAliasesAndNotice() throws Exception {
+        String contractWithGap = "{\"contractVersion\":\"v1\",\"root\":\"Stack\",\"components\":{"
+                + "\"Stack\":{\"description\":\"Flex\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
+                + "\"children\":{\"type\":\"array\"}},\"required\":[\"children\"]}},"
+                + "\"TextContent\":{\"description\":\"Text\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
+                + "\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}},"
+                + "\"TextCallout\":{\"description\":\"Callout\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
+                + "\"variant\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"}},"
+                + "\"required\":[\"variant\",\"title\",\"description\"]}}},"
+                + "\"capabilityGaps\":[{\"id\":\"group-by\",\"kind\":\"data\",\"name\":\"分组展示\","
+                + "\"aliases\":[\"GroupBy\"],\"phrases\":[\"按X分组\"],\"fallback\":\"用单表展示\"}]}";
+        Files.writeString(tempDir.resolve("contract.json"), contractWithGap, StandardCharsets.UTF_8);
+
+        String invalidDsl = "grouped = @GroupBy(data.items, \"k\")\nroot = Stack([grouped])";
+        String repairedWithDeadCodeAndNotice = "capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\", \"暂不支持分组展示，以下按原始数据展示\")\n"
+                + "root = Stack([capabilityNotice, TextContent(\"ok\")])";
+        writeCase("case-gap", "gap-case", invalidDsl, null);
+
+        ScriptedTransport transport = new ScriptedTransport().answer(invalidDsl, repairedWithDeadCodeAndNotice);
+        List<RepairCase> cases = RepairCasePack.load(tempDir, null);
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        PrintStream print = new PrintStream(buffer, true, StandardCharsets.UTF_8);
+        new RepairBenchRunner(transport, "test-model", 3, Duration.ZERO, print).runAll(cases, 1);
+        print.flush();
+
+        Map<String, Object> caseLine = null;
+        Map<String, Object> summary = null;
+        for (String line : buffer.toString(StandardCharsets.UTF_8).split("\\R")) {
+            if (line.isBlank()) {
+                continue;
+            }
+            Map<String, Object> parsed = Json.asObject(Json.parse(line), "output line");
+            if ("summary".equals(parsed.get("type"))) {
+                summary = parsed;
+            } else {
+                caseLine = parsed;
+            }
+        }
+        assertNotNull(caseLine);
+        assertNotNull(summary);
+        assertEquals("repaired", caseLine.get("status"));
+        assertEquals(true, caseLine.get("capabilityNoticePresent"));
+        assertEquals(List.of(), strings(caseLine, "remainingCapabilityGapAliases"));
+        assertEquals(List.of("GroupBy"), strings(caseLine, "unreachedCapabilityGapAliases"));
+        assertEquals(List.of(), strings(caseLine, "consecutiveUnmatchedUnknownComponents"));
+
+        Map<String, Object> boundary = map(summary, "capabilityBoundary");
+        assertNotNull(boundary);
+        assertEquals(1L, longOf(boundary.get("capabilityGapCases")));
+        assertEquals(1L, longOf(boundary.get("capabilityGapRepaired")));
+        assertEquals(1L, longOf(boundary.get("capabilityNoticeCount")));
+        assertEquals(0L, longOf(boundary.get("casesWithRemainingGapCalls")));
+        assertEquals(1L, longOf(boundary.get("casesWithUnreachedGapCalls")));
+        assertEquals(0L, longOf(boundary.get("consecutiveUnmatchedUnknownComponentCases")));
+    }
 }

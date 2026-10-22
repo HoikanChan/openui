@@ -8,6 +8,7 @@ import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
+import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.parser.Statement;
 
@@ -46,16 +47,25 @@ public final class StatementRelations {
      * @return 语句 id → 关联 id 列表（上游在前、下游在后）；被诊断但无关联时为空列表
      */
     public static Map<String, List<String>> related(String currentDsl, List<ValidationIssue> issues) {
+        return related(currentDsl, issues, BuiltinCatalog.getDefault());
+    }
+
+    /**
+     * 按指定 {@link BuiltinCatalog} 计算被诊断语句 id 的传递上下游语句。
+     */
+    public static Map<String, List<String>> related(String currentDsl, List<ValidationIssue> issues,
+            BuiltinCatalog builtins) {
         if (currentDsl == null || currentDsl.isBlank() || issues == null || issues.isEmpty()) {
             return Map.of();
         }
-        Program program = OpenuiParser.parse(currentDsl);
+        BuiltinCatalog effectiveBuiltins = builtins == null ? BuiltinCatalog.getDefault() : builtins;
+        Program program = OpenuiParser.parse(currentDsl, ParseMode.FINAL, effectiveBuiltins);
         LinkedHashMap<String, Statement> current = program.currentById();
         if (current.isEmpty()) {
             return Map.of();
         }
 
-        Map<String, Set<String>> dependencies = directDependencies(current);
+        Map<String, Set<String>> dependencies = directDependencies(current, effectiveBuiltins);
         Map<String, Set<String>> dependents = reverse(dependencies);
 
         LinkedHashMap<String, List<String>> result = new LinkedHashMap<>();
@@ -77,9 +87,9 @@ public final class StatementRelations {
         return Collections.unmodifiableMap(result);
     }
 
-    private static Map<String, Set<String>> directDependencies(Map<String, Statement> statements) {
+    private static Map<String, Set<String>> directDependencies(Map<String, Statement> statements,
+            BuiltinCatalog builtins) {
         Set<String> knownIds = statements.keySet();
-        BuiltinCatalog builtins = BuiltinCatalog.getDefault();
         LinkedHashMap<String, Set<String>> dependencies = new LinkedHashMap<>();
         for (Map.Entry<String, Statement> entry : statements.entrySet()) {
             LinkedHashSet<String> refs = new LinkedHashSet<>();

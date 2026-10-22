@@ -7,6 +7,7 @@ package com.huawei.cloudsop.genui.core;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
+import com.huawei.cloudsop.genui.core.contract.CapabilityGapSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
@@ -44,7 +45,9 @@ class SdkPromptMergeTest {
         GenUIExtension generation = new GenUIExtension("genA", "gen-v1",
                 singleComponent("BizCard", "BizCard(title: string)", "Business card"),
                 List.of(new ComponentGroup("Business", List.of("BizCard"), List.of())), List.of(tool("loadOrders")),
-                List.of("root = Stack([BizCard(\"A\")])"), List.of("Generation rule"));
+                List.of("root = Stack([BizCard(\"A\")])"), List.of("Generation rule"),
+                List.of(new CapabilityGapSpec("gantt", "component", "甘特图", List.of("GanttChart"), List.of("甘特图"),
+                        "用 Table 展示")));
         sdk.register(generation);
 
         DataModelSpec dataModel = new DataModelSpec("Order data", orderedMap("orders", List.of(orderedMap("id", 1L))));
@@ -52,8 +55,10 @@ class SdkPromptMergeTest {
                 null, null);
 
         String actual = sdk.assemblePrompt(request).prompt();
+        List<CapabilityGapSpec> mergedGaps = new ArrayList<>(base.capabilityGaps());
+        mergedGaps.addAll(generation.capabilityGaps());
         String expected = PromptAssembler.assemble(mergedInput(base, generation, dataModel, List.of("Request rule")),
-                base.builtins());
+                base.builtins(), mergedGaps);
 
         assertEquals(expected, actual);
     }
@@ -68,7 +73,7 @@ class SdkPromptMergeTest {
 
         String actual = sdk.assemblePrompt(request).prompt();
         String expected = PromptAssembler.assemble(mergedInput(base, null, null, List.of("Request rule")),
-                base.builtins());
+                base.builtins(), base.capabilityGaps());
 
         assertEquals(expected, actual);
     }
@@ -102,7 +107,9 @@ class SdkPromptMergeTest {
         components.put("TextContent", new ComponentPromptSpec("TextContent(text: string)", "Text"));
         return new GenerationContract("base-v1", "Stack", components,
                 List.of(new ComponentGroup("Layout", List.of("Stack", "TextContent"), List.of("Layout note."))),
-                List.of(), List.of("root = Stack([])"), List.of("Base rule"), BUILTINS);
+                List.of(), List.of("root = Stack([])"), List.of("Base rule"), BUILTINS,
+                List.of(new CapabilityGapSpec("group-by", "data", "分组展示", List.of("GroupBy"), List.of("按X分组"),
+                        "用一张 Table 展示全部行")));
     }
 
     private static Map<String, ComponentPromptSpec> singleComponent(String name, String signature, String description) {

@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
+import com.huawei.cloudsop.genui.core.contract.CapabilityGapSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.GenUIBaseSupplement;
@@ -75,6 +76,61 @@ class GenerationSdkBaseSupplementTest {
     }
 
     @Test
+    void replacesSameIdCapabilityGapInPlaceAndAppendsNewGaps() {
+        CapabilityGapSpec replacedGroupBy = new CapabilityGapSpec("group-by", "data", "自定义分组",
+                List.of("GroupBy", "CustomGroup"), List.of("按X分组"), "自定义兜底");
+        CapabilityGapSpec appendedTree = new CapabilityGapSpec("tree-map", "component", "树图", List.of("TreeMap"),
+                List.of("树状图"), "用 Table 展示");
+        GenerationSdk sdk = GenerationSdk.builder().baseContract(testBaseContract())
+                .baseSupplement(new GenUIBaseSupplement(Map.of(), List.of(), List.of(), List.of(),
+                        List.of(appendedTree, replacedGroupBy)))
+                .build();
+
+        List<CapabilityGapSpec> gaps = sdk.baseContract().capabilityGaps();
+        assertEquals(List.of("group-by", "top-n", "tree-map"), gaps.stream().map(CapabilityGapSpec::id).toList(),
+                "replaced gap keeps its original base position; new gap appends");
+        assertEquals("自定义分组", gaps.get(0).name());
+        assertEquals(List.of("GroupBy", "CustomGroup"), gaps.get(0).aliases());
+    }
+
+    @Test
+    void rejectsCapabilityGapIdCollisionInExtensionAndAppendsNonCollidingExtensionGaps() {
+        GenerationSdk sdk = GenerationSdk.builder().baseContract(testBaseContract()).build();
+
+        GenUIExtension collidingId = new GenUIExtension("ext1", "v1", Map.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(new CapabilityGapSpec("group-by", "data", "冲突", List.of("G"), List.of("p"), "f")));
+        GenerationSdkException idError = assertThrows(GenerationSdkException.class, () -> sdk.register(collidingId));
+        assertTrue(idError.getMessage().contains("group-by"), idError.getMessage());
+
+        GenUIExtension validExtension = new GenUIExtension("ext2", "v1", Map.of(), List.of(), List.of(), List.of(),
+                List.of(), List.of(new CapabilityGapSpec("gantt", "component", "甘特图", List.of("GanttChart"),
+                        List.of("甘特图"), "用 Table 展示")));
+        sdk.register(validExtension);
+        GenerationContract merged = sdk
+                .mergedContract(new GenUIPromptRequest("ext2", null, List.of(), null, null, null, null));
+        assertEquals(List.of("group-by", "top-n", "gantt"),
+                merged.capabilityGaps().stream().map(CapabilityGapSpec::id).toList());
+    }
+
+    @Test
+    void rejectsCapabilityGapAliasCollidingWithComponentOrBuiltinAcrossLayers() {
+        // Supplement gap alias collides with base builtin "map"
+        GenerationSdkException builtinErr = assertThrows(GenerationSdkException.class, () -> GenerationSdk.builder()
+                .baseContract(testBaseContract())
+                .baseSupplement(new GenUIBaseSupplement(Map.of(), List.of(), List.of(), List.of(),
+                        List.of(new CapabilityGapSpec("bad-gap", "data", "X", List.of("map"), List.of("x"), "f"))))
+                .build());
+        assertTrue(builtinErr.getMessage().contains("map"), builtinErr.getMessage());
+
+        // Extension adds component "GroupBy" which collides with base capabilityGap alias "GroupBy"
+        GenerationSdk sdk = GenerationSdk.builder().baseContract(testBaseContract()).build();
+        GenUIExtension compCollision = new GenUIExtension("extComp", "v1", Map.ofEntries(component("GroupBy")),
+                List.of(), List.of(), List.of(), List.of());
+        GenerationSdkException compErr = assertThrows(GenerationSdkException.class, () -> sdk.register(compCollision));
+        assertTrue(compErr.getMessage().contains("GroupBy"), compErr.getMessage());
+    }
+
+    @Test
     void keepsImmutableSectionsFromBase() {
         GenerationContract base = testBaseContract();
         GenerationSdk sdk = GenerationSdk.builder().baseContract(base)
@@ -115,7 +171,22 @@ class GenerationSdkBaseSupplementTest {
                                 List.of()))
                         .build());
 
+        assertTrue(error.getMessage().contains("Invalid base supplement"));
         assertTrue(error.getMessage().contains("MissingChart"));
+    }
+
+    @Test
+    void attributesBaseContractErrorToBaseContractEvenWhenSupplementIsProvided() {
+        GenerationContract brokenBase = new GenerationContract("base-v1", "Stack", testBaseContract().components(),
+                List.of(new ComponentGroup("BrokenGroup", List.of("NonExistentBaseComp"), List.of())), List.of(),
+                List.of(), List.of(), List.of(), List.of());
+
+        GenerationSdkException error = assertThrows(GenerationSdkException.class,
+                () -> GenerationSdk.builder().baseContract(brokenBase)
+                        .baseSupplement(new GenUIBaseSupplement(Map.of(), List.of(), List.of(), List.of())).build());
+
+        assertTrue(error.getMessage().contains("base contract"));
+        assertFalse(error.getMessage().contains("Invalid base supplement"));
     }
 
     @Test
@@ -164,7 +235,10 @@ class GenerationSdkBaseSupplementTest {
                         new ComponentGroup("Charts", List.of("Tag"), List.of("base note"))),
                 List.of(new ToolSpec("loadOrders", "loads orders", Map.of(), Map.of(), null)),
                 List.of("root = Stack([])"), List.of("base rule"),
-                List.of(new BuiltinSpec("map", "map(items, fn)", "maps items", false, List.of(), null)));
+                List.of(new BuiltinSpec("map", "map(items, fn)", "maps items", false, List.of(), null)),
+                List.of(new CapabilityGapSpec("group-by", "data", "分组展示", List.of("GroupBy"), List.of("按X分组"),
+                        "单张 Table"),
+                        new CapabilityGapSpec("top-n", "data", "截取前 N 条", List.of("Slice"), List.of("前N"), "不截取")));
     }
 
     @SafeVarargs

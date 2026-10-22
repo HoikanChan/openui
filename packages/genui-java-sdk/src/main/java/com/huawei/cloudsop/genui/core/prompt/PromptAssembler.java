@@ -6,6 +6,7 @@ package com.huawei.cloudsop.genui.core.prompt;
 
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
+import com.huawei.cloudsop.genui.core.contract.CapabilityGapSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentPropsSchema;
@@ -36,7 +37,16 @@ public final class PromptAssembler {
     private PromptAssembler() {
     }
 
+    /**
+     * Test/legacy convenience overload without {@code capabilityGaps} (defaults to empty). Production code must call
+     * {@link #assemble(PromptInput, List, List)} so {@code capabilityGaps} are included.
+     */
     public static String assemble(PromptInput input, List<BuiltinSpec> builtins) {
+        return assemble(input, builtins, List.of());
+    }
+
+    public static String assemble(PromptInput input, List<BuiltinSpec> builtins,
+            List<CapabilityGapSpec> capabilityGaps) {
         String rootName = input.root() == null ? "Root" : input.root();
         boolean hasTools = input.tools() != null && !input.tools().isEmpty();
         boolean toolCalls = input.toolCalls() == null ? hasTools : input.toolCalls();
@@ -45,6 +55,8 @@ public final class PromptAssembler {
         boolean usesActionExpression = componentSignatures(input.components()).stream()
                 .anyMatch(signature -> signature.contains("ActionExpression"));
         boolean hasRawDataModel = hasRawDataModel(input.dataModel());
+        List<CapabilityGapSpec> gaps = capabilityGaps == null ? List.of() : capabilityGaps;
+        boolean hasCapabilityGaps = !gaps.isEmpty();
 
         ArrayList<String> parts = new ArrayList<>();
         parts.add(input.preamble() != null ? input.preamble() : PREAMBLE);
@@ -65,6 +77,11 @@ public final class PromptAssembler {
         if (supportsExpressions || hasRawDataModel) {
             parts.add("");
             parts.add(dataBuiltinsSection(builtins));
+        }
+
+        if (hasCapabilityGaps) {
+            parts.add("");
+            parts.add(capabilityBoundarySection(gaps));
         }
 
         if (toolCalls) {
@@ -117,7 +134,7 @@ public final class PromptAssembler {
             parts.add(INLINE_MODE_SECTION);
         }
 
-        parts.add(importantRules(rootName, toolCalls, bindings));
+        parts.add(importantRules(rootName, toolCalls, bindings, hasCapabilityGaps));
 
         if (!input.additionalRules().isEmpty()) {
             parts.add("");
@@ -297,7 +314,7 @@ public final class PromptAssembler {
         return String.join("\n", lines);
     }
 
-    // ─── Builtins (from manifest) ──────────────────────────────────────────────
+    // ─── Builtins (from manifest) & Capability Boundary ────────────────────────
 
     private static String templateBuiltinsSection(List<BuiltinSpec> builtins) {
         String entries = builtinLines(builtins, true);
@@ -321,6 +338,25 @@ public final class PromptAssembler {
                 + "\n" + entries + "\n" + "\n" + "Builtins compose — output of one is input to the next:\n"
                 + "`@Count(@Filter(data.rows, \"field\", \"==\", \"val\"))` for KPIs/chart values, `@Round(@Avg(data.rows.score), 1)`.\n"
                 + "Array pluck: `data.rows.field` extracts a field from every row → use with @Sum, @Avg, charts, tables.";
+    }
+
+    private static String capabilityBoundarySection(List<CapabilityGapSpec> capabilityGaps) {
+        ArrayList<String> lines = new ArrayList<>();
+        lines.add("## Capability Boundary");
+        lines.add(
+                "The components and @builtins listed above are the COMPLETE set. Anything not listed does not exist.");
+        lines.add(
+                "The following capabilities are NOT supported. If the request asks for one, first check whether the input data already contains the pre-aggregated/grouped result and display it directly if so; otherwise do NOT try to implement or approximate the capability — show the real data as-is using the fallback, and make `capabilityNotice` the first child of root.");
+        lines.add("");
+        lines.add("| Not supported | Typical wording | Show instead |");
+        lines.add("|---|---|---|");
+        for (CapabilityGapSpec gap : capabilityGaps) {
+            lines.add("| " + gap.name() + " | " + String.join(" / ", gap.phrases()) + " | " + gap.fallback() + " |");
+        }
+        lines.add("");
+        lines.add(CapabilityGapSpec.NOTICE_STATEMENT_TEMPLATE);
+        lines.add("Write the notice in the same language as the user's request.");
+        return String.join("\n", lines);
     }
 
     private static String builtinLines(List<BuiltinSpec> builtins, boolean templateBuiltin) {
@@ -555,20 +591,25 @@ public final class PromptAssembler {
 
     // ─── Important rules ───────────────────────────────────────────────────────
 
-    private static String importantRules(String rootName, boolean toolCalls, boolean bindings) {
+    private static String importantRules(String rootName, boolean toolCalls, boolean bindings,
+            boolean hasCapabilityGaps) {
         ArrayList<String> verifyLines = new ArrayList<>();
         verifyLines.add("1. root = " + rootName + "(...) is the FIRST line (for optimal streaming).");
         verifyLines.add(
                 "2. Every referenced name is defined. Every defined name (other than root) is reachable from root.");
         if (toolCalls) {
-            verifyLines.add("3. Every Query result is referenced by at least one component.");
+            verifyLines.add((verifyLines.size() + 1) + ". Every Query result is referenced by at least one component.");
         }
         if (bindings) {
-            verifyLines
-                    .add((toolCalls ? "4" : "3") + ". Every $binding appears in at least one component or expression.");
+            verifyLines.add(
+                    (verifyLines.size() + 1) + ". Every $binding appears in at least one component or expression.");
+        }
+        if (hasCapabilityGaps) {
+            verifyLines.add((verifyLines.size() + 1)
+                    + ". If a requested capability is not supported and fallback display is used, the first child of root is `capabilityNotice`.");
         }
 
-        return "## Important Rules\n" + "- When asked about data, generate realistic/plausible data\n"
+        return "## Important Rules\n"
                 + "- Choose components that best represent the content (tables for comparisons, charts for trends, forms for input, etc.)\n"
                 + "\n" + "## Final Verification\n" + "Before finishing, walk your output and verify:\n"
                 + String.join("\n", verifyLines);

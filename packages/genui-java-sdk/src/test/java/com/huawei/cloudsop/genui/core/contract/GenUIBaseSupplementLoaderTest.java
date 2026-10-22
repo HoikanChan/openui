@@ -36,7 +36,17 @@ class GenUIBaseSupplementLoaderTest {
                     { "name": "Charts", "components": ["TopoChart"], "notes": ["Topology first."] }
                   ],
                   "examples": ["root = TopoChart(data.nodes)"],
-                  "additionalRules": ["Prefer TopoChart for topology."]
+                  "additionalRules": ["Prefer TopoChart for topology."],
+                  "capabilityGaps": [
+                    {
+                      "id": "tree-map",
+                      "kind": "component",
+                      "name": "树图",
+                      "aliases": ["TreeMap"],
+                      "phrases": ["树状图"],
+                      "fallback": "用 Table 展示"
+                    }
+                  ]
                 }
                 """);
 
@@ -50,6 +60,9 @@ class GenUIBaseSupplementLoaderTest {
         assertEquals(List.of("Topology first."), supplement.componentGroups().get(0).notes());
         assertEquals(List.of("root = TopoChart(data.nodes)"), supplement.examples());
         assertEquals(List.of("Prefer TopoChart for topology."), supplement.additionalRules());
+        assertEquals(1, supplement.capabilityGaps().size());
+        assertEquals("tree-map", supplement.capabilityGaps().get(0).id());
+        assertEquals(List.of("TreeMap"), supplement.capabilityGaps().get(0).aliases());
     }
 
     @Test
@@ -60,6 +73,7 @@ class GenUIBaseSupplementLoaderTest {
         assertEquals(List.of(), supplement.componentGroups());
         assertEquals(List.of(), supplement.examples());
         assertEquals(List.of(), supplement.additionalRules());
+        assertEquals(List.of(), supplement.capabilityGaps());
     }
 
     @Test
@@ -97,5 +111,65 @@ class GenUIBaseSupplementLoaderTest {
                 () -> GenUIBaseSupplementLoader.fromResource("genui/does-not-exist.json"));
 
         assertTrue(error.getMessage().contains("genui/does-not-exist.json"));
+    }
+
+    @Test
+    void rejectsNullElementInCapabilityGapAliasesAndPhrasesWithSdkException() {
+        GenerationSdkException aliasError = assertThrows(GenerationSdkException.class,
+                () -> GenUIBaseSupplementLoader.fromJson("""
+                        {
+                          "capabilityGaps": [
+                            {
+                              "id": "gap-1",
+                              "kind": "data",
+                              "name": "测试缺口",
+                              "aliases": [null],
+                              "phrases": ["短语"],
+                              "fallback": "降级说明"
+                            }
+                          ]
+                        }
+                        """));
+        assertTrue(aliasError.getMessage().contains("blank alias"));
+
+        GenerationSdkException phraseError = assertThrows(GenerationSdkException.class,
+                () -> GenUIBaseSupplementLoader.fromJson("""
+                        {
+                          "capabilityGaps": [
+                            {
+                              "id": "gap-2",
+                              "kind": "data",
+                              "name": "测试缺口",
+                              "aliases": ["GapAlias"],
+                              "phrases": [null],
+                              "fallback": "降级说明"
+                            }
+                          ]
+                        }
+                        """));
+        assertTrue(phraseError.getMessage().contains("blank phrase"));
+    }
+
+    @Test
+    void rejectsSupplementCapabilityGapCollidingWithSupplementComponent() {
+        GenerationSdkException error = assertThrows(GenerationSdkException.class,
+                () -> GenUIBaseSupplementLoader.fromJson("""
+                        {
+                          "components": {
+                            "TopoChart": { "signature": "TopoChart(nodes: any[])", "description": "Topology chart." }
+                          },
+                          "capabilityGaps": [
+                            {
+                              "id": "topo-gap",
+                              "kind": "component",
+                              "name": "拓扑图",
+                              "aliases": ["TopoChart"],
+                              "phrases": ["拓扑"],
+                              "fallback": "用 Table 展示"
+                            }
+                          ]
+                        }
+                        """));
+        assertTrue(error.getMessage().contains("TopoChart"));
     }
 }

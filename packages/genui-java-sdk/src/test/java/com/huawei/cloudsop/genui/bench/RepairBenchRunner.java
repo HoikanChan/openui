@@ -6,6 +6,7 @@ package com.huawei.cloudsop.genui.bench;
 
 import com.huawei.cloudsop.genui.core.GenerationSdk;
 import com.huawei.cloudsop.genui.core.Json;
+import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerationResult;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerator;
 import com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig;
@@ -22,7 +23,17 @@ import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
+import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
+import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
+import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
+import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
+import com.huawei.cloudsop.genui.core.validation.parser.Program;
+import com.huawei.cloudsop.genui.core.validation.parser.Statement;
 import com.huawei.cloudsop.genui.core.validation.repair.IncrementalRepairPromptBuilder;
+import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
+import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalysis;
+import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalyzer;
+import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
 import com.huawei.cloudsop.genui.core.validation.stream.RoundEndResult;
 
 import java.io.ByteArrayInputStream;
@@ -31,10 +42,12 @@ import java.io.PrintStream;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -236,12 +249,21 @@ final class RepairBenchRunner {
             record.put("issues", round.validationResult() == null ? List.of() : round.validationResult().issues());
             return record;
         }).toList());
+        String finalDsl = lastValidated == null ? null : lastValidated.currentDefinitions();
+        boolean initialHasCapabilityGap = hasCapabilityGapIssue(v0);
+        CapabilityDslInspect dslInspect = inspectFinalDsl(finalDsl, benchCase.contract(), externalRefs);
+        List<String> consecutiveUnmatched = consecutiveUnmatchedUnknownComponents(rounds);
+
         line.put("finalIssueCodes",
                 lastValidated == null ? List.of() : actionableCodes(lastValidated.validationResult()));
-        line.put("finalDsl", lastValidated == null ? null : lastValidated.currentDefinitions());
+        line.put("finalDsl", finalDsl);
+        line.put("capabilityNoticePresent", dslInspect.capabilityNoticePresent());
+        line.put("remainingCapabilityGapAliases", dslInspect.reachableGapAliases());
+        line.put("unreachedCapabilityGapAliases", dslInspect.unreachedGapAliases());
+        line.put("consecutiveUnmatchedUnknownComponents", consecutiveUnmatched);
         line.put("durationMs", System.currentTimeMillis() - started);
         emit(Json.stringify(line));
-        summary.record(status, initialCodes);
+        summary.record(status, initialCodes, initialHasCapabilityGap, dslInspect, consecutiveUnmatched);
     }
 
     /**
@@ -295,6 +317,153 @@ final class RepairBenchRunner {
 
     private static List<String> actionableCodes(List<ValidationIssue> issues) {
         return issues.stream().map(ValidationIssue::code).distinct().sorted().toList();
+    }
+
+    private static boolean hasCapabilityGapIssue(ValidationResult result) {
+        if (result == null) {
+            return false;
+        }
+        return result.actionableIssues().stream()
+                .anyMatch(i -> "unknown-component".equals(i.code()) && RepairHints.isCapabilityGapHint(i.hint()));
+    }
+
+    private record CapabilityDslInspect(boolean capabilityNoticePresent, List<String> reachableGapAliases,
+            List<String> unreachedGapAliases) {
+    }
+
+    private static CapabilityDslInspect inspectFinalDsl(String dsl, GenerationContract contract,
+            Set<String> externalRefs) {
+        if (dsl == null || dsl.isBlank() || contract == null) {
+            return new CapabilityDslInspect(false, List.of(), List.of());
+        }
+        BuiltinCatalog builtins = BuiltinCatalog.fromContract(contract);
+        Program program = OpenuiParser.parse(dsl, ParseMode.FINAL, builtins);
+        Map<String, Statement> stmts = program.currentById();
+        if (stmts.isEmpty()) {
+            return new CapabilityDslInspect(false, List.of(), List.of());
+        }
+        String rootName = contract.root() == null ? "root" : contract.root();
+        ProgramAnalysis analysis = new ProgramAnalyzer(ContractCatalog.from(contract), builtins).analyze(program,
+                ValidationMode.FINAL, rootName, externalRefs);
+        Set<String> unreached = Set.copyOf(analysis.orphaned());
+
+        Statement noticeStmt = stmts.get("capabilityNotice");
+        boolean noticeDefined = noticeStmt instanceof Statement.Value val && val.expr() instanceof AstNode.Comp comp
+                && "TextCallout".equals(comp.name());
+        boolean capabilityNoticePresent = noticeDefined && !unreached.contains("capabilityNotice");
+
+        Set<String> reachableAliases = new TreeSet<>();
+        Set<String> unreachedAliases = new TreeSet<>();
+        for (Map.Entry<String, Statement> entry : stmts.entrySet()) {
+            AstNode expr = exprOf(entry.getValue());
+            Set<String> target = unreached.contains(entry.getKey()) ? unreachedAliases : reachableAliases;
+            collectGapAliases(expr, contract, target);
+        }
+        return new CapabilityDslInspect(capabilityNoticePresent, List.copyOf(reachableAliases),
+                List.copyOf(unreachedAliases));
+    }
+
+    private static AstNode exprOf(Statement stmt) {
+        if (stmt instanceof Statement.Value v) {
+            return v.expr();
+        }
+        if (stmt instanceof Statement.State s) {
+            return s.init();
+        }
+        if (stmt instanceof Statement.Query q) {
+            return q.expr();
+        }
+        if (stmt instanceof Statement.Mutation m) {
+            return m.expr();
+        }
+        return null;
+    }
+
+    private static void collectGapAliases(AstNode node, GenerationContract contract, Set<String> out) {
+        if (node == null) {
+            return;
+        }
+        if (node instanceof AstNode.Comp comp) {
+            if (RepairHints.findCapabilityGapByAlias(comp.name(), contract.capabilityGaps()) != null) {
+                out.add(comp.name());
+            }
+            for (AstNode arg : comp.args()) {
+                collectGapAliases(arg, contract, out);
+            }
+            return;
+        }
+        if (node instanceof AstNode.Arr arr) {
+            for (AstNode el : arr.els()) {
+                collectGapAliases(el, contract, out);
+            }
+            return;
+        }
+        if (node instanceof AstNode.Obj obj) {
+            for (AstNode.Obj.Entry e : obj.entries()) {
+                collectGapAliases(e.value(), contract, out);
+            }
+            return;
+        }
+        if (node instanceof AstNode.UnaryOp u) {
+            collectGapAliases(u.operand(), contract, out);
+            return;
+        }
+        if (node instanceof AstNode.BinOp b) {
+            collectGapAliases(b.left(), contract, out);
+            collectGapAliases(b.right(), contract, out);
+            return;
+        }
+        if (node instanceof AstNode.Ternary t) {
+            collectGapAliases(t.cond(), contract, out);
+            collectGapAliases(t.then(), contract, out);
+            collectGapAliases(t.otherwise(), contract, out);
+            return;
+        }
+        if (node instanceof AstNode.Member m) {
+            collectGapAliases(m.obj(), contract, out);
+            return;
+        }
+        if (node instanceof AstNode.Index idx) {
+            collectGapAliases(idx.obj(), contract, out);
+            collectGapAliases(idx.index(), contract, out);
+            return;
+        }
+        if (node instanceof AstNode.Assign a) {
+            collectGapAliases(a.value(), contract, out);
+        }
+    }
+
+    /**
+     * 统计连续两轮校验中重复出现的“未命中 capabilityGaps.aliases 且非 builtin 漏 @”的同名 unknown-component（#71 D7 / #75 AC 6）。
+     */
+    private static List<String> consecutiveUnmatchedUnknownComponents(List<RoundEndResult> rounds) {
+        if (rounds == null || rounds.size() < 2) {
+            return List.of();
+        }
+        Set<String> repeated = new TreeSet<>();
+        Set<String> prevUnmatched = null;
+        for (RoundEndResult round : rounds) {
+            if (round == null || round.validationResult() == null) {
+                continue;
+            }
+            Set<String> currentUnmatched = new LinkedHashSet<>();
+            for (ValidationIssue issue : round.validationResult().actionableIssues()) {
+                if ("unknown-component".equals(issue.code()) && issue.component() != null
+                        && !issue.component().isBlank() && !RepairHints.isMissingAtHint(issue.hint())
+                        && !RepairHints.isCapabilityGapHint(issue.hint())) {
+                    currentUnmatched.add(issue.component());
+                }
+            }
+            if (prevUnmatched != null) {
+                for (String name : currentUnmatched) {
+                    if (prevUnmatched.contains(name)) {
+                        repeated.add(name);
+                    }
+                }
+            }
+            prevUnmatched = currentUnmatched;
+        }
+        return List.copyOf(repeated);
     }
 
     private synchronized void emit(String line) {
@@ -424,7 +593,26 @@ final class RepairBenchRunner {
 
         private int total;
 
+        private int capabilityGapCases;
+
+        private int capabilityGapRepaired;
+
+        private int capabilityNoticeCount;
+
+        private int casesWithRemainingGapCalls;
+
+        private int casesWithUnreachedGapCalls;
+
+        private int consecutiveUnmatchedCases;
+
+        private int consecutiveUnmatchedTotal;
+
         synchronized void record(String status, List<String> initialCodes) {
+            record(status, initialCodes, false, null, List.of());
+        }
+
+        synchronized void record(String status, List<String> initialCodes, boolean initialHasCapabilityGap,
+                CapabilityDslInspect dslInspect, List<String> consecutiveUnmatched) {
             total++;
             byStatus.computeIfAbsent(status, key -> new int[1])[0]++;
             if (initialCodes != null) {
@@ -433,6 +621,27 @@ final class RepairBenchRunner {
                     bucket.put("cases", bucket.getOrDefault("cases", 0) + 1);
                     bucket.put(status, bucket.getOrDefault(status, 0) + 1);
                 }
+            }
+            if (initialHasCapabilityGap) {
+                capabilityGapCases++;
+                if ("repaired".equals(status)) {
+                    capabilityGapRepaired++;
+                    if (dslInspect != null && dslInspect.capabilityNoticePresent()) {
+                        capabilityNoticeCount++;
+                    }
+                }
+            }
+            if (dslInspect != null) {
+                if (!dslInspect.reachableGapAliases().isEmpty()) {
+                    casesWithRemainingGapCalls++;
+                }
+                if (!dslInspect.unreachedGapAliases().isEmpty()) {
+                    casesWithUnreachedGapCalls++;
+                }
+            }
+            if (consecutiveUnmatched != null && !consecutiveUnmatched.isEmpty()) {
+                consecutiveUnmatchedCases++;
+                consecutiveUnmatchedTotal += consecutiveUnmatched.size();
             }
         }
 
@@ -492,6 +701,17 @@ final class RepairBenchRunner {
                 issueBuckets.put(entry.getKey(), bucket);
             }
             line.put("issueBuckets", issueBuckets);
+            LinkedHashMap<String, Object> capabilityBoundary = new LinkedHashMap<>();
+            capabilityBoundary.put("capabilityGapCases", capabilityGapCases);
+            capabilityBoundary.put("capabilityGapRepaired", capabilityGapRepaired);
+            capabilityBoundary.put("capabilityNoticeCount", capabilityNoticeCount);
+            capabilityBoundary.put("capabilityNoticeRate",
+                    capabilityGapRepaired == 0 ? null : (double) capabilityNoticeCount / capabilityGapRepaired);
+            capabilityBoundary.put("casesWithRemainingGapCalls", casesWithRemainingGapCalls);
+            capabilityBoundary.put("casesWithUnreachedGapCalls", casesWithUnreachedGapCalls);
+            capabilityBoundary.put("consecutiveUnmatchedUnknownComponentCases", consecutiveUnmatchedCases);
+            capabilityBoundary.put("consecutiveUnmatchedUnknownComponentCount", consecutiveUnmatchedTotal);
+            line.put("capabilityBoundary", capabilityBoundary);
             line.put("durationMs", durationMs);
             return line;
         }

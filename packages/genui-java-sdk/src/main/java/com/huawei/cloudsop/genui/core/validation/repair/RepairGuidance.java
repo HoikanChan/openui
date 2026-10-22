@@ -7,6 +7,7 @@ package com.huawei.cloudsop.genui.core.validation.repair;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssueReducer;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
+import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -16,7 +17,7 @@ import java.util.List;
  *
  * <p>
  * 本类刻意与提示词装配分离：新增一种校验错误时只在这里补一条规则，{@link IncrementalRepairPromptBuilder} 不需要改动。选择只看<em>当前</em>诊断的
- * {@code code}/{@code source}，从不读取历史轮次的错误标签——同一语句在 last-wins 覆盖后，旧标签可能已经失效。
+ * {@code code}/{@code source}/{@code hint}，从不读取历史轮次的错误标签——同一语句在 last-wins 覆盖后，旧标签可能已经失效。
  *
  * <p>
  * 只输出与当前阻塞问题相关的指导；没有诊断时不生成任何「万能建议」。
@@ -52,6 +53,7 @@ public final class RepairGuidance {
     private static void select(LinkedHashSet<String> selected, ValidationIssue issue) {
         String code = issue.code() == null ? "" : issue.code();
         String source = issue.source() == null ? "" : issue.source();
+        String hint = issue.hint();
 
         if (SYNTAX.equals(source) || code.startsWith("syntax-")) {
             selected.add("Rewrite the whole diagnosed statement instead of patching one token. Keep one complete "
@@ -65,6 +67,18 @@ public final class RepairGuidance {
         }
 
         if (code.startsWith("unknown-component")) {
+            if (RepairHints.isMissingAtHint(hint)) {
+                selected.add("Builtins and action steps require a leading `@`: rewrite the diagnosed call as "
+                        + "`@Name(...)` matching the current contract signature.");
+                return;
+            }
+            if (RepairHints.isCapabilityGapHint(hint)) {
+                selected.add("Follow `## Capability boundary (overrides the original request)` above: stop trying to "
+                        + "implement or approximate the unsupported operation, redefine every diagnosed statement id "
+                        + "with a valid expression, display the real data using the fallback, and make "
+                        + "`capabilityNotice` the first child of `root`.");
+                return;
+            }
             selected.add("Use only components listed in the current full contract. Copy the exact component name "
                     + "and positional argument order from its signature; a capitalized call is a component, "
                     + "not a builtin.");

@@ -417,12 +417,14 @@ public final class ProgramAnalyzer {
             return null;
         }
 
-        ComponentDef def = catalog.get(name);
+        ComponentDef def = catalog == null ? null : catalog.get(name);
         if (def == null) {
             // unknown-component: definitively invalid (name fully received); always blocking in streaming.
+            String hint = RepairHints.unknownComponentHint(name, builtins,
+                    catalog == null ? List.of() : catalog.capabilityGaps());
             emit(ctx, "unknown-component", contractSeverity(ctx, "unknown-component"), "contract", name, "",
                     "Unknown component \"" + name + "\" — not found in catalog or builtins", ctx.currentStatementId,
-                    contractRetryable(ctx, "unknown-component"));
+                    hint, contractRetryable(ctx, "unknown-component"));
             // Still walk args so nested unresolved refs / unknown components are reported.
             for (AstNode a : comp.args()) {
                 walkExpr(a, ctx);
@@ -673,7 +675,12 @@ public final class ProgramAnalyzer {
 
     private void emit(WalkCtx ctx, String code, ValidationSeverity severity, String source, String component,
             String path, String message, String statementId, boolean retryable) {
-        ctx.issues.add(new ValidationIssue(code, severity, source, message, statementId, component, path, -1, -1, null,
+        emit(ctx, code, severity, source, component, path, message, statementId, null, retryable);
+    }
+
+    private void emit(WalkCtx ctx, String code, ValidationSeverity severity, String source, String component,
+            String path, String message, String statementId, String hint, boolean retryable) {
+        ctx.issues.add(new ValidationIssue(code, severity, source, message, statementId, component, path, -1, -1, hint,
                 retryable));
     }
 }

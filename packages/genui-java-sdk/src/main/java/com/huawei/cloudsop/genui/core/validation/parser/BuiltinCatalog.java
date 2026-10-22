@@ -5,6 +5,7 @@
 package com.huawei.cloudsop.genui.core.validation.parser;
 
 import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
+import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 
 import java.util.LinkedHashMap;
@@ -13,10 +14,12 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 校验链的 builtin 函数词表——恒从 SDK 默认 base-contract.json 资源派生（唯一真实来源），与请求契约无关。
+ * 校验链的 builtin 函数词表——从当前生效契约的 {@code builtins} 派生（参见 ADR 0003 D1）；当请求未携带契约或契约 {@code builtins} 为空（如仅构造组件目录的轻量测试契约）时回退到
+ * SDK 默认 {@code base-contract.json} 派生集。
  *
  * <p>
- * 解析器/分析器通过构造注入本词表识别 builtin 调用；契约里没有的函数名按幻觉（unknown）处理。Action 步骤名与 Query/Mutation 是 DSL 语法保留字，留在 {@link Builtins}。
+ * 解析器/分析器/类型求值器通过构造或参数注入本词表识别 builtin 调用；契约里没有的函数名按幻觉（unknown）处理。Action 步骤名与 Query/Mutation 是 DSL 语法保留字，留在
+ * {@link Builtins}。
  *
  * <p>
  * 惰性/模板类（lazy）判定由契约 params 的 {@code binder} 标记派生——带 binder 参数的 builtin 即 lazy，其绑定名会为模板参数引入局部作用域（与提示词分节标记
@@ -54,6 +57,14 @@ public final class BuiltinCatalog {
     /** 从契约 builtins 构造词表。 */
     public static BuiltinCatalog of(Iterable<BuiltinSpec> builtins) {
         return new BuiltinCatalog(builtins);
+    }
+
+    /** 从当前生效契约派生词表；当契约为 {@code null} 或未声明 {@code builtins} 时回退到默认词表。 */
+    public static BuiltinCatalog fromContract(GenerationContract contract) {
+        if (contract == null || contract.builtins() == null || contract.builtins().isEmpty()) {
+            return DEFAULT;
+        }
+        return of(contract.builtins());
     }
 
     /** 默认词表：SDK 默认契约的 builtins 全集。 */
