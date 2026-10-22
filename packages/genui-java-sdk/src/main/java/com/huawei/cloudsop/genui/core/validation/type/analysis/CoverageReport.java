@@ -44,6 +44,9 @@ public final class CoverageReport {
     /** 登记一条检查结论;同一身份重复登记时保留首条(同一检查不因重试重复计数)。 */
     public void record(Entry entry) {
         entries.putIfAbsent(entry.obligation().identity(), entry);
+        if (entry.reasons().contains(Checks.Reason.PRECISION_BUDGET)) {
+            markTraversalTruncated();
+        }
     }
 
     /** 标记遍历被截断(预算或访问限制导致后续要求尚未发现)。 */
@@ -85,12 +88,14 @@ public final class CoverageReport {
         return traversalTruncated;
     }
 
-    /** 未证明原因计数(按首次出现原因归类一条要求)。 */
+    /** 未证明原因计数;同一要求可计入多个原因,不依赖集合遍历顺序。 */
     public Map<Checks.Reason, Long> unprovenReasons() {
         Map<Checks.Reason, Long> counts = new EnumMap<>(Checks.Reason.class);
         for (Entry entry : entries.values()) {
             if (entry.verdict() == Checks.Verdict.UNPROVEN && !entry.reasons().isEmpty()) {
-                counts.merge(entry.reasons().getFirst(), 1L, Long::sum);
+                for (Checks.Reason reason : Set.copyOf(entry.reasons())) {
+                    counts.merge(reason, 1L, Long::sum);
+                }
             } else if (entry.verdict() == Checks.Verdict.UNPROVEN) {
                 counts.merge(Checks.Reason.INSUFFICIENT_EVIDENCE, 1L, Long::sum);
             }

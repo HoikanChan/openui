@@ -324,6 +324,54 @@ class StaticTypeValidationTest {
         issue(result, "type-chart-duplicate-series-value");
     }
 
+    @Test
+    void noDataModelReportsUnprovenReasonsWithoutIncompleteTraversal() {
+        ValidationResult result = DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder()
+                .dsl("root = TextContent(data.title)").contract(GenerationContractLoader.loadDefault())
+                .externalRefs(java.util.Set.of("data")).mode(ValidationMode.FINAL).build());
+
+        Map<String, String> extra = result.metadata().extra();
+        assertEquals(ValidationStatus.VALID, result.status());
+        assertTrue(Long.parseLong(extra.get("typeChecks.unproven")) > 0);
+        assertTrue(extra.get("typeChecks.unprovenReasons").contains("UNKNOWN_INPUT="));
+        assertEquals("true", extra.get("typeChecks.analysisComplete"));
+        assertEquals("0", extra.get("typeChecks.mismatched"));
+        assertEquals(Long.parseLong(extra.get("typeChecks.discovered")),
+                Long.parseLong(extra.get("typeChecks.matched"))
+                        + Long.parseLong(extra.get("typeChecks.mismatched"))
+                        + Long.parseLong(extra.get("typeChecks.unproven")));
+    }
+
+    @Test
+    void sampleTruncationAloneCannotClaimCompleteAnalysis() {
+        var validator = new DefaultOpenuiLangValidator(
+                new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(4096, 64, 16, 1, 2048));
+        ValidationResult result = validator.validate(ValidationRequest.builder()
+                .dsl("root = TextContent(@First(@First(@ObjectValues(data))))")
+                .contract(GenerationContractLoader.loadDefault())
+                .dataModel(Map.of("values", List.of("one", "two"))).mode(ValidationMode.FINAL).build());
+
+        assertEquals("false", result.metadata().extra().get("typeChecks.analysisComplete"));
+        assertEquals("true", result.metadata().extra().get("typeChecks.traversalTruncated"));
+        assertTrue(result.metadata().extra().get("typeChecks.unprovenReasons").contains("PRECISION_BUDGET="));
+    }
+
+    @Test
+    void tinyBudgetReportsTruncationAndPrecisionLossInPublicMetadata() {
+        var validator = new DefaultOpenuiLangValidator(
+                new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(4096, 64, 16, 1, 1));
+        ValidationResult result = validator.validate(ValidationRequest.builder()
+                .dsl("root = TextContent(value)\nvalue = @First(@First(@ObjectValues(data)))")
+                .contract(GenerationContractLoader.loadDefault())
+                .dataModel(Map.of("values", List.of("one", "two"))).mode(ValidationMode.FINAL).build());
+
+        Map<String, String> extra = result.metadata().extra();
+        assertEquals("true", extra.get("typeChecks.traversalTruncated"));
+        assertEquals("false", extra.get("typeChecks.analysisComplete"));
+        assertTrue(Long.parseLong(extra.get("typeChecks.unproven")) > 0);
+        assertTrue(extra.get("typeChecks.unprovenReasons").contains("PRECISION_BUDGET="));
+    }
+
     private static ValidationResult validate(String dsl, Map<String, Object> dataModel) {
         return DefaultOpenuiLangValidator.INSTANCE
                 .validate(ValidationRequest.builder().dsl(dsl).contract(GenerationContractLoader.loadDefault())

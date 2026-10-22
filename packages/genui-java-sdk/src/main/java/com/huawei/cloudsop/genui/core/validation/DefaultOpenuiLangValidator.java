@@ -12,6 +12,7 @@ import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
 import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalysis;
 import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalyzer;
+import com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget;
 import com.huawei.cloudsop.genui.core.validation.type.analysis.TypeAnalysis;
 
 import java.util.ArrayList;
@@ -43,6 +44,8 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
     /** 单例句柄 —— 本类无状态、无配置。 */
     public static final DefaultOpenuiLangValidator INSTANCE = new DefaultOpenuiLangValidator();
 
+    private final AnalysisBudget analysisBudget;
+
     /**
      * 构造校验器实例。
      *
@@ -50,6 +53,12 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
      * 构造方法保持 public，便于调用方通过 {@code new} 自行注入；优先使用 {@link #INSTANCE} 这一无参句柄。
      */
     public DefaultOpenuiLangValidator() {
+        this(null);
+    }
+
+    /** 使用指定的单次分析预算;null 使用默认预算。 */
+    public DefaultOpenuiLangValidator(AnalysisBudget analysisBudget) {
+        this.analysisBudget = analysisBudget;
     }
 
     @Override
@@ -86,7 +95,7 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
         java.util.Map<String, String> extra = new java.util.LinkedHashMap<>();
         if (request.mode() == ValidationMode.FINAL) {
             TypeAnalysis.Result typeResult = TypeAnalysis.analyze(program, catalog, builtins,
-                    request.dataModel(), analysis.entryId(), null);
+                    request.dataModel(), analysis.entryId(), analysisBudget);
             issues.addAll(typeResult.issues());
             extra.putAll(typeResult.coverage().metadataSummary());
         }
