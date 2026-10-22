@@ -11,7 +11,7 @@ import java.util.Map;
 
 public record GenerationContract(String contractVersion, String root, Map<String, ComponentPromptSpec> components,
         List<ComponentGroup> componentGroups, List<ToolSpec> tools, List<String> examples, List<String> additionalRules,
-        List<BuiltinSpec> builtins) {
+        List<BuiltinSpec> builtins, List<CapabilityGapSpec> capabilityGaps) {
     public GenerationContract {
         // Preserve insertion order — component order is significant for prompt byte-alignment,
         // so use an order-preserving unmodifiable LinkedHashMap (NOT Map.copyOf, which reorders).
@@ -21,12 +21,27 @@ public record GenerationContract(String contractVersion, String root, Map<String
         examples = examples == null ? List.of() : List.copyOf(examples);
         additionalRules = additionalRules == null ? List.of() : List.copyOf(additionalRules);
         builtins = builtins == null ? List.of() : List.copyOf(builtins);
+        capabilityGaps = capabilityGaps == null ? List.of() : List.copyOf(capabilityGaps);
     }
 
-    /** Backwards-compatible constructor for contracts assembled without a builtins manifest. */
+    /**
+     * Test/legacy convenience constructor for contracts assembled without {@code capabilityGaps} (defaults to empty).
+     * Production code must use the canonical 9-argument constructor so {@code capabilityGaps} are never dropped.
+     */
+    public GenerationContract(String contractVersion, String root, Map<String, ComponentPromptSpec> components,
+            List<ComponentGroup> componentGroups, List<ToolSpec> tools, List<String> examples,
+            List<String> additionalRules, List<BuiltinSpec> builtins) {
+        this(contractVersion, root, components, componentGroups, tools, examples, additionalRules, builtins, List.of());
+    }
+
+    /**
+     * Test/legacy convenience constructor for contracts assembled without {@code builtins} or {@code capabilityGaps}.
+     * Production code must use the canonical 9-argument constructor.
+     */
     public GenerationContract(String contractVersion, String root, Map<String, ComponentPromptSpec> components,
             List<ComponentGroup> componentGroups, List<ToolSpec> tools, List<String> examples,
             List<String> additionalRules) {
-        this(contractVersion, root, components, componentGroups, tools, examples, additionalRules, List.of());
+        this(contractVersion, root, components, componentGroups, tools, examples, additionalRules, List.of(),
+                List.of());
     }
 }

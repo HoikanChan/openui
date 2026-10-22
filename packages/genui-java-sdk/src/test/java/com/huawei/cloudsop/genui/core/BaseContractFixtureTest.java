@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
+import com.huawei.cloudsop.genui.core.contract.CapabilityGapSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 
@@ -165,6 +166,71 @@ class BaseContractFixtureTest {
         GenerationSdkException error = assertThrows(GenerationSdkException.class, () -> GenerationContractLoader
                 .fromJson("{\"builtins\":[" + builtinJson("A", "\"type\": \"any\"", "param(2)") + "]}"));
         assertTrue(error.getMessage().contains("out of range"), error.getMessage());
+    }
+
+    @Test
+    void loadsDefaultCapabilityGapsFromBaseContract() {
+        GenerationContract contract = GenerationContractLoader.loadDefault();
+
+        assertEquals(List.of("group-by", "top-n", "join"),
+                contract.capabilityGaps().stream().map(CapabilityGapSpec::id).toList());
+        CapabilityGapSpec groupBy = contract.capabilityGaps().get(0);
+        assertEquals("data", groupBy.kind());
+        assertEquals("分组展示", groupBy.name());
+        assertTrue(groupBy.aliases().containsAll(List.of("GroupBy", "Distinct", "ObjectFromEntries")));
+        assertEquals(List.of("按X分组", "每个X下列出", "按X汇总", "去重"), groupBy.phrases());
+        assertEquals("用一张 Table 展示全部行；用 @Sort 按分组字段排序，并把该字段放在第一列", groupBy.fallback());
+    }
+
+    @Test
+    void failsFastWhenCapabilityGapAliasCollidesWithBuiltinOrComponent() {
+        GenerationSdkException builtinCollision = assertThrows(GenerationSdkException.class,
+                () -> GenerationContractLoader.fromJson(
+                        """
+                                {
+                                  "builtins": [
+                                    {"name": "Join", "signature": "Join(a)", "description": "d", "params": [{"name": "a", "type": "any"}]}
+                                  ],
+                                  "capabilityGaps": [
+                                    {"id": "join", "kind": "data", "name": "关联", "aliases": ["Join"], "phrases": ["关联"], "fallback": "单表"}
+                                  ]
+                                }
+                                """));
+        assertTrue(builtinCollision.getMessage().contains("Join"), builtinCollision.getMessage());
+
+        GenerationSdkException componentCollision = assertThrows(GenerationSdkException.class,
+                () -> GenerationContractLoader.fromJson(
+                        """
+                                {
+                                  "components": {
+                                    "Table": {"signature": "Table(cols, rows)", "description": "t"}
+                                  },
+                                  "capabilityGaps": [
+                                    {"id": "tbl", "kind": "component", "name": "表格", "aliases": ["Table"], "phrases": ["表格"], "fallback": "单表"}
+                                  ]
+                                }
+                                """));
+        assertTrue(componentCollision.getMessage().contains("Table"), componentCollision.getMessage());
+    }
+
+    @Test
+    void failsFastOnDuplicateCapabilityGapIdOrInvalidKind() {
+        assertThrows(GenerationSdkException.class, () -> GenerationContractLoader.fromJson("""
+                {
+                  "capabilityGaps": [
+                    {"id": "g1", "kind": "data", "name": "A", "aliases": ["Foo"], "phrases": ["a"], "fallback": "f"},
+                    {"id": "g1", "kind": "data", "name": "B", "aliases": ["Bar"], "phrases": ["b"], "fallback": "f"}
+                  ]
+                }
+                """));
+
+        assertThrows(GenerationSdkException.class, () -> GenerationContractLoader.fromJson("""
+                {
+                  "capabilityGaps": [
+                    {"id": "g1", "kind": "unknown", "name": "A", "aliases": ["Foo"], "phrases": ["a"], "fallback": "f"}
+                  ]
+                }
+                """));
     }
 
     private static String builtinJson(String name, String firstParamTail, String returnType) {

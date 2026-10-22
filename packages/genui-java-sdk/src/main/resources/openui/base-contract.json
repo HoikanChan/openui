@@ -2105,5 +2105,31 @@
         }
       ]
     }
+  ],
+  "capabilityGaps": [
+    {
+      "id": "group-by",
+      "kind": "data",
+      "name": "分组展示",
+      "aliases": ["GroupBy", "Distinct", "Unique", "CountBy", "Pivot", "Aggregate", "Partition", "ObjectFromEntries"],
+      "phrases": ["按X分组", "每个X下列出", "按X汇总", "去重"],
+      "fallback": "用一张 Table 展示全部行；用 @Sort 按分组字段排序，并把该字段放在第一列"
+    },
+    {
+      "id": "top-n",
+      "kind": "data",
+      "name": "截取前 N 条",
+      "aliases": ["Slice", "Take", "Limit", "TopN"],
+      "phrases": ["前N", "Top N", "最多的几个"],
+      "fallback": "用 @Sort 排序后展示全部行，不截取"
+    },
+    {
+      "id": "join",
+      "kind": "data",
+      "name": "跨数组关联",
+      "aliases": ["Lookup", "LeftJoin", "InnerJoin", "Zip"],
+      "phrases": ["关联", "对应到", "合并两张表"],
+      "fallback": "每个数组分别用一张 Table 展示"
+    }
   ]
 }
