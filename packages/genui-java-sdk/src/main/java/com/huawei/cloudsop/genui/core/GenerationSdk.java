@@ -4,6 +4,7 @@
 
 package com.huawei.cloudsop.genui.core;
 
+import com.huawei.cloudsop.genui.core.contract.CapabilityGapSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentPropsSchema;
@@ -41,20 +42,30 @@ public final class GenerationSdk {
         if (baseContract.contractVersion() == null || baseContract.contractVersion().isBlank()) {
             throw new GenerationSdkException("baseContract.contractVersion is required");
         }
+        validateComponents(baseContract.components(), "base contract");
+        validateComponentGroups(baseContract.componentGroups(), baseContract.components().keySet(), "base contract");
+        GenerationContractLoader.validateCapabilityGaps(baseContract.capabilityGaps(),
+                baseContract.components().keySet(), baseContract.builtins(), "base contract");
         if (baseSupplement != null) {
-            // Validate the supplement's own components first so schema errors point at the supplement,
-            // not at the merged contract.
+            // Validate the supplement's own components and merged result under "base supplement"
+            // so schema/group/capabilityGap errors introduced by the supplement attribute to the supplement.
             try {
                 validateComponents(baseSupplement.components(), "base supplement");
+                LinkedHashSet<String> effectiveComponents = new LinkedHashSet<>(baseContract.components().keySet());
+                effectiveComponents.addAll(baseSupplement.components().keySet());
+                GenerationContractLoader.validateCapabilityGaps(baseSupplement.capabilityGaps(), effectiveComponents,
+                        baseContract.builtins(), "base supplement");
+                baseContract = baseSupplement.applyTo(baseContract);
+                validateComponentGroups(baseContract.componentGroups(), baseContract.components().keySet(),
+                        "base supplement");
+                GenerationContractLoader.validateCapabilityGaps(baseContract.capabilityGaps(),
+                        baseContract.components().keySet(), baseContract.builtins(), "base supplement");
             } catch (GenerationSdkException error) {
                 throw new GenerationSdkException("Invalid base supplement: " + error.getMessage(), error);
             }
-            baseContract = baseSupplement.applyTo(baseContract);
         }
         this.baseContract = baseContract;
         this.characterization = characterization == null ? CharacterizationConfig.defaults() : characterization;
-        validateComponents(baseContract.components(), "base contract");
-        validateComponentGroups(baseContract.componentGroups(), baseContract.components().keySet(), "base contract");
     }
 
     public static GenerationSdk create() {
@@ -96,6 +107,17 @@ public final class GenerationSdk {
             throw new GenerationSdkException("Tool name collision: " + String.join(", ", toolCollisions));
         }
 
+        Set<String> baseGapIds = gapIds(baseContract.capabilityGaps());
+        Set<String> generationGapIds = gapIds(generation.capabilityGaps());
+        Set<String> gapIdCollisions = intersection(baseGapIds, generationGapIds);
+        if (!gapIdCollisions.isEmpty()) {
+            throw new GenerationSdkException("Capability gap id collision: " + String.join(", ", gapIdCollisions));
+        }
+        ArrayList<CapabilityGapSpec> mergedGaps = new ArrayList<>(baseContract.capabilityGaps());
+        mergedGaps.addAll(generation.capabilityGaps());
+        GenerationContractLoader.validateCapabilityGaps(mergedGaps, finalComponentNames, baseContract.builtins(),
+                "generation " + generation.extensionId());
+
         generations.put(generation.extensionId(), generation);
     }
 
@@ -114,7 +136,7 @@ public final class GenerationSdk {
         MergedParts parts = merge(effectiveRequest);
         return new GenerationContract(baseContract.contractVersion(), baseContract.root(), parts.components(),
                 parts.componentGroups(), parts.tools(), parts.examples(), parts.additionalRules(),
-                baseContract.builtins());
+                baseContract.builtins(), parts.capabilityGaps());
     }
 
     public GenUIPromptAssemblyResult assemblePrompt(GenUIPromptRequest request) {
@@ -130,7 +152,8 @@ public final class GenerationSdk {
                                                                                        // preamble
                 baseContract.root(), parts.components(), parts.componentGroups(), characterizedData, parts.tools(),
                 parts.examples(), parts.additionalRules(), effectiveRequest.editMode(), effectiveRequest.inlineMode(),
-                effectiveRequest.toolCalls(), effectiveRequest.bindings()), baseContract.builtins());
+                effectiveRequest.toolCalls(), effectiveRequest.bindings()), baseContract.builtins(),
+                parts.capabilityGaps());
 
         GenUIExtension generation = effectiveRequest.extensionId() == null
                 ? null
@@ -149,8 +172,8 @@ public final class GenerationSdk {
     }
 
     /**
-     * Shared merge helper: base + registered extension components/groups/tools/examples/rules. Used by both
-     * {@link #assemblePrompt} and {@link #mergedContract} so the two never drift.
+     * Shared merge helper: base + registered extension components/groups/tools/examples/rules/capabilityGaps. Used by
+     * both {@link #assemblePrompt} and {@link #mergedContract} so the two never drift.
      */
     private MergedParts merge(GenUIPromptRequest effectiveRequest) {
         GenUIExtension generation = effectiveRequest.extensionId() == null
@@ -180,13 +203,17 @@ public final class GenerationSdk {
             additionalRules.addAll(generation.additionalRules());
         additionalRules.addAll(effectiveRequest.extraRules());
 
-        return new MergedParts(components, componentGroups, registeredTools, examples, additionalRules);
+        ArrayList<CapabilityGapSpec> capabilityGaps = new ArrayList<>(baseContract.capabilityGaps());
+        if (generation != null)
+            capabilityGaps.addAll(generation.capabilityGaps());
+
+        return new MergedParts(components, componentGroups, registeredTools, examples, additionalRules, capabilityGaps);
     }
 
     /** Value object carrying the merged contract parts from {@link #merge}. */
     private record MergedParts(LinkedHashMap<String, ComponentPromptSpec> components,
             ArrayList<ComponentGroup> componentGroups, ArrayList<ToolSpec> tools, ArrayList<String> examples,
-            ArrayList<String> additionalRules) {
+            ArrayList<String> additionalRules, ArrayList<CapabilityGapSpec> capabilityGaps) {
     }
 
     /**
@@ -244,6 +271,17 @@ public final class GenerationSdk {
             throw new GenerationSdkException("Tool name collision: " + String.join(", ", duplicates));
         }
         return names;
+    }
+
+    private static Set<String> gapIds(List<CapabilityGapSpec> gaps) {
+        LinkedHashSet<String> ids = new LinkedHashSet<>();
+        if (gaps == null)
+            return ids;
+        for (CapabilityGapSpec gap : gaps) {
+            if (gap != null && gap.id() != null)
+                ids.add(gap.id());
+        }
+        return ids;
     }
 
     private static Set<String> intersection(Set<String> left, Set<String> right) {

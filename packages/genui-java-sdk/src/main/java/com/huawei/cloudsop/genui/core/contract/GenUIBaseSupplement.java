@@ -23,21 +23,30 @@ import java.util.Map;
  * <li>{@code componentGroups} — a group with a name already in the base contract is merged as the order-preserving
  * de-duplicated union of members (base members first) with notes appended; new groups are appended.</li>
  * <li>{@code examples} / {@code additionalRules} — appended after the base entries.</li>
+ * <li>{@code capabilityGaps} — a gap whose {@code id} already exists in the base contract replaces the base gap in
+ * place; new {@code id}s are appended in supplement order.</li>
  * <li>{@code contractVersion} / {@code root} / {@code tools} / {@code builtins} — never touched.</li>
  * </ul>
  *
  * <p>
  * {@code GenUIBaseSupplementLoader} is the only supported construction path (a JSON document with the same shape as
- * base-contract.json restricted to the four sections above). The canonical record constructor is public only because
- * the Java language requires it; direct instantiation is reserved for tests.
+ * base-contract.json restricted to the sections above). The canonical record constructor is public only because the
+ * Java language requires it; direct instantiation is reserved for tests.
  */
 public record GenUIBaseSupplement(Map<String, ComponentPromptSpec> components, List<ComponentGroup> componentGroups,
-        List<String> examples, List<String> additionalRules) {
+        List<String> examples, List<String> additionalRules, List<CapabilityGapSpec> capabilityGaps) {
     public GenUIBaseSupplement {
         components = components == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(components));
         componentGroups = componentGroups == null ? List.of() : List.copyOf(componentGroups);
         examples = examples == null ? List.of() : List.copyOf(examples);
         additionalRules = additionalRules == null ? List.of() : List.copyOf(additionalRules);
+        capabilityGaps = capabilityGaps == null ? List.of() : List.copyOf(capabilityGaps);
+    }
+
+    /** Backwards-compatible constructor without capabilityGaps. */
+    public GenUIBaseSupplement(Map<String, ComponentPromptSpec> components, List<ComponentGroup> componentGroups,
+            List<String> examples, List<String> additionalRules) {
+        this(components, componentGroups, examples, additionalRules, List.of());
     }
 
     /**
@@ -66,8 +75,16 @@ public record GenUIBaseSupplement(Map<String, ComponentPromptSpec> components, L
         ArrayList<String> mergedRules = new ArrayList<>(base.additionalRules());
         mergedRules.addAll(additionalRules);
 
+        LinkedHashMap<String, CapabilityGapSpec> mergedGapsById = new LinkedHashMap<>();
+        for (CapabilityGapSpec baseGap : base.capabilityGaps()) {
+            mergedGapsById.put(baseGap.id(), baseGap);
+        }
+        for (CapabilityGapSpec suppGap : capabilityGaps) {
+            mergedGapsById.put(suppGap.id(), suppGap);
+        }
+
         return new GenerationContract(base.contractVersion(), base.root(), mergedComponents, mergedGroups, base.tools(),
-                mergedExamples, mergedRules, base.builtins());
+                mergedExamples, mergedRules, base.builtins(), new ArrayList<>(mergedGapsById.values()));
     }
 
     /** Order-preserving de-duplicated union of members (left first), notes appended. */
