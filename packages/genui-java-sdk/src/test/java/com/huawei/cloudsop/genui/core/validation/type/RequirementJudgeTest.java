@@ -92,10 +92,10 @@ class RequirementJudgeTest {
 
     @Test
     void emptyArrayDoesNotProveCompositeByMissingElements() {
-        // Possibly-empty array: element partitions failing is not proof; but also cannot claim full MATCH.
+        // A known-empty array has NO element to prove AnyOf(number,string) on. It must not claim full MATCH from
+        // missing elements, nor report MISMATCH without a present counterexample -> UNPROVEN (review finding #1).
         CheckResult result = judge.check(fact(new EmptyArrayType()), new AnyOf(List.of(number(), string())));
-        assertEquals(Verdict.MATCH, result.verdict(),
-                "empty array has no element counterexample, vacuously satisfies all-elements");
+        assertEquals(Verdict.UNPROVEN, result.verdict());
     }
 
     @Test
@@ -131,6 +131,56 @@ class RequirementJudgeTest {
     void requireFieldMismatchWhenFieldDefinitelyAbsent() {
         ObjectType closed = new ObjectType(Map.of());
         CheckResult result = judge.check(fact(closed), new RequireField("missing", number()));
+        assertEquals(Verdict.MISMATCH, result.verdict());
+    }
+
+    @Test
+    void elementCompositeDoesNotMatchWhenSomeElementFailsAllCandidates() {
+        // [1,2] vs AnyOf(string,number): element 1 and 2 each pass number, so this MATCHes on the element reading.
+        // The review guard is the INVERSE case below — a number array must NOT match a whole-array string target.
+        ArrayType array = new ArrayType(new Primitive(PrimitiveKind.NUMBER));
+        CheckResult result = judge.check(fact(array), new AnyOf(List.of(string(), number())));
+        assertEquals(Verdict.MATCH, result.verdict());
+    }
+
+    @Test
+    void numberArrayDoesNotMatchWholeArrayStringTarget() {
+        // [1,2] vs AnyOf(string) / a string target read per element: every element violates string, so the whole
+        // composite FAILs on each observed element -> MISMATCH (never a vacuous MATCH).
+        ArrayType array = new ArrayType(new Primitive(PrimitiveKind.NUMBER));
+        CheckResult result = judge.check(fact(array), new AnyOf(List.of(string())));
+        assertEquals(Verdict.MISMATCH, result.verdict());
+    }
+
+    @Test
+    void emptyArrayDoesNotSatisfyWholeArrayScalarRequirement() {
+        // [] vs a scalar/element requirement: an empty array has no element to prove the requirement on, so it is
+        // UNPROVEN — never a vacuous MATCH (review finding #1).
+        CheckResult result = judge.check(fact(new EmptyArrayType()), new Accept(new Primitive(PrimitiveKind.STRING)));
+        assertEquals(Verdict.UNPROVEN, result.verdict());
+    }
+
+    @Test
+    void emptyArraySatisfiesElementWiseRequirementVacuously() {
+        // [] vs an array-of-string element requirement: no element exists to violate it -> MATCH.
+        CheckResult result = judge.check(fact(new EmptyArrayType()),
+                new Expectation.Accept(new ArrayType(new Primitive(PrimitiveKind.STRING))));
+        assertEquals(Verdict.MATCH, result.verdict());
+    }
+
+    @Test
+    void concreteValueNeverMatchesAcceptNever() {
+        // Accept(Never): no legal value can satisfy it; a concrete value must NOT be MATCH.
+        CheckResult result = judge.check(fact(new Primitive(PrimitiveKind.NUMBER)), new Accept(ValueType.never()));
+        assertEquals(Verdict.MISMATCH, result.verdict());
+    }
+
+    @Test
+    void acceptNeverNotUsedAsWildPass() {
+        // An array whose element requirement is Accept(Never) must not MATCH on present elements.
+        ArrayType array = new ArrayType(new Primitive(PrimitiveKind.NUMBER));
+        CheckResult result = judge.check(fact(array),
+                new SchemaExpectationCompiler.ElementRequirement(new Accept(ValueType.never())));
         assertEquals(Verdict.MISMATCH, result.verdict());
     }
 

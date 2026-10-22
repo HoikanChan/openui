@@ -86,6 +86,12 @@ final class SchemaExpectationCompiler {
                 requirements.add(new RequireField(field, fieldExpectation));
             }
         }
+        // Review finding #2: a schema with NO recognized constraint must not be normalized into Accept(Unknown)
+        // (a silent wild-pass). Only an explicit `type:any` yields Accept(Unknown); anything unrecognized stays
+        // Unsupported so the check is UNPROVEN, never a fabricated MATCH.
+        if (requirements.isEmpty() && !"any".equals(type)) {
+            return new Unsupported(path, "unrecognized-schema");
+        }
 
         // Preserve every unsupported validation keyword; never drop it into a fake MATCH.
         for (Object keyObj : schema.keySet()) {

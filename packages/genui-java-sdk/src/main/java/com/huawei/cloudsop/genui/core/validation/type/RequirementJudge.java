@@ -78,14 +78,50 @@ public final class RequirementJudge {
         if (expectation instanceof Unsupported) {
             return Verdict.UNPROVEN;
         }
-        // Array targets are judged per element, honouring the empty-array possibility.
         if (fact.type() instanceof ArrayType array) {
+            if (!targetsElements(expectation)) {
+                // The requirement targets the array as a WHOLE (e.g. Accept(number) or a RequireField object shape),
+                // not each element. Judging it per element would misread the requirement, so evaluate the array value
+                // directly against the whole-value requirement instead of the vacuous element path.
+                return combineOnSameValue(fact, fact.type(), expectation);
+            }
+            // Element-targeted requirement: judge per element, honouring the empty-array possibility.
             return aggregateElements(fact, array.elementType(), expectation, false);
         }
         if (fact.type() instanceof EmptyArrayType) {
-            return Verdict.MATCH; // no element exists, so no element counterexample; vacuously satisfies all-elements
+            if (!targetsElements(expectation)) {
+                // The requirement targets the array VALUE as a whole (e.g. Accept(string[])). An empty array can
+                // satisfy an array-of-T target (no element violates it) but never a scalar/non-array target.
+                return combineOnSameValue(fact, fact.type(), expectation);
+            }
+            // An element-targeted requirement over a KNOWN-empty array has no element evidence. Per the review, an
+            // empty array must not "satisfy" a scalar/element requirement by vacuous truth when emptiness is the only
+            // fact: there is no element to prove the requirement on, so it is UNPROVEN (not MATCH, not MISMATCH).
+            return Verdict.UNPROVEN;
         }
         return combineOnSameValue(fact, fact.type(), expectation);
+    }
+
+    /**
+     * Whether {@code expectation} constrains each ELEMENT of an array (true) rather than the array VALUE as a whole
+     * (false). Element requirements are per-element composites/scalars; an {@link Accept} of an array target, a
+     * {@link SchemaExpectationCompiler.ElementRequirement}, a {@link RequireField} object shape, an
+     * {@link SchemaExpectationCompiler.ExtraFieldsRequirement} or a {@link com.huawei.cloudsop.genui.core.validation
+     * .type.Expectation.Predicate} about the container all target the whole array value.
+     */
+    private boolean targetsElements(Expectation expectation) {
+        if (expectation instanceof SchemaExpectationCompiler.ElementRequirement
+                || expectation instanceof SchemaExpectationCompiler.ExtraFieldsRequirement
+                || expectation instanceof RequireField || expectation instanceof Expectation.Predicate) {
+            return false;
+        }
+        if (expectation instanceof Accept accept) {
+            // An Accept of an array (or component/unknown) target constrains the array value itself, not each element.
+            return !(accept.type() instanceof ArrayType) && !(accept.type() instanceof EmptyArrayType);
+        }
+        // AnyOf/ExactlyOne/AllOf target each element only when ALL their candidates do; a mixed or whole-value
+        // candidate set targets the array as a whole.
+        return candidatesOf(expectation).stream().allMatch(this::targetsElements);
     }
 
     /**
@@ -241,17 +277,21 @@ public final class RequirementJudge {
 
     /** Whether a single observed value is provably accepted by a target value type. */
     private Verdict acceptOnSingleValue(ValueType value, ValueType target) {
+        // Never accepts NO legal value. Check it FIRST so a concrete value is a proven violation, not a wild-pass:
+        // a present value can never satisfy "no value is allowed". (Review finding #2.)
+        if (target instanceof ValueType.NeverType) {
+            return value instanceof ValueType.NeverType ? Verdict.MATCH : Verdict.MISMATCH;
+        }
         if (target instanceof ValueType.UnknownType) {
-            return Verdict.MATCH; // explicit "accept anything" is provably satisfiable
+            // Accept(Unknown) means the contract EXPLICITLY accepts any value (type:any), which is provably
+            // satisfiable. The compiler must only produce this for an explicit `any`, never as an inference fallback.
+            return Verdict.MATCH;
         }
         if (value instanceof ValueType.UnknownType) {
             return Verdict.UNPROVEN; // unknown input proves neither inclusion nor a counterexample
         }
         if (value instanceof ValueType.NeverType) {
             return Verdict.MATCH; // no value exists to violate the target
-        }
-        if (target instanceof ValueType.NeverType) {
-            return Verdict.MISMATCH;
         }
         if (target instanceof StringDomainType domain) {
             if (value instanceof StringDomainType observed) {

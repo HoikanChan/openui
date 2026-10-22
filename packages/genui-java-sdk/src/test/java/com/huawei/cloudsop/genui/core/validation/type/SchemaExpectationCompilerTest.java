@@ -80,6 +80,30 @@ class SchemaExpectationCompilerTest {
         assertEquals(new Expectation.Accept(new ValueType.ComponentType("Col")), e);
     }
 
+    @Test
+    void unrecognizableSchemaBecomesUnsupportedNotAcceptAny() {
+        // A schema the compiler cannot understand must NOT be normalized into Accept(Unknown) (a silent wild-pass);
+        // it stays Unsupported so the check is UNPROVEN. Review finding #2.
+        Expectation e = compiler.compile("not-a-schema-map");
+        assertInstanceOf(Expectation.Unsupported.class, e);
+    }
+
+    @Test
+    void explicitAnyTypeIsTheOnlyAcceptUnknownSource() {
+        // Accept(Unknown) is legitimate ONLY when the contract explicitly declares `type: any` (§5.4). It must never
+        // be the fallback for "could not infer".
+        Expectation explicitAny = compiler.compile(Map.of("type", "any"));
+        assertEquals(new Expectation.Accept(ValueType.unknown()), explicitAny);
+    }
+
+    @Test
+    void unknownValidationKeywordIsUnsupportedNotDroppedToAcceptAny() {
+        // An unknown keyword alongside a known type keeps the type check but preserves the keyword as Unsupported,
+        // so the requirement is not read as a clean full pass.
+        Expectation e = compiler.compile(Map.of("type", "string", "weirdRule", true));
+        assertTrue(containsUnsupported(e), () -> "unknown keyword must stay Unsupported: " + e);
+    }
+
     private static boolean containsUnsupported(Expectation e) {
         if (e instanceof Expectation.Unsupported) {
             return true;
