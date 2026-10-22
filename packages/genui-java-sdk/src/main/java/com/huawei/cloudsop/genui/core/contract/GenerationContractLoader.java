@@ -8,6 +8,8 @@ import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExprParser;
+import com.huawei.cloudsop.genui.core.validation.contract.RuleCompiler;
+import com.huawei.cloudsop.genui.core.validation.contract.RulePlan.TypeRule;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -181,8 +183,14 @@ public final class GenerationContractLoader {
             returnType = TypeExprParser.parse(string(returnTypeRaw), name + ".returnType");
         }
         requireBoundTypeVars(params, returnType, name);
+        // 结构化类型规则与词表同一次解析：未知 op/非法引用在此加载期失败（RuleCompilationException）。
+        TypeRule typeRule = null;
+        Object typeRuleRaw = entry.get("typeRule");
+        if (typeRuleRaw != null) {
+            typeRule = RuleCompiler.compile(name, Json.asObject(typeRuleRaw, "typeRule of builtin " + name));
+        }
         return new BuiltinSpec(name, string(entry.get("signature")), string(entry.get("description")),
-                Boolean.TRUE.equals(entry.get("templateBuiltin")), params, returnType);
+                Boolean.TRUE.equals(entry.get("templateBuiltin")), params, returnType, typeRule);
     }
 
     private static List<BuiltinSpec.ParamSpec> builtinParams(Object value, String builtinName) {

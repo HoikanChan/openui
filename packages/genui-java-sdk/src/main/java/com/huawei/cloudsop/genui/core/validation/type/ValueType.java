@@ -30,7 +30,20 @@ public sealed interface ValueType
         }
     }
 
-    record ArrayType(ValueType elementType) implements ValueType {
+    /**
+     * 数组类型。{@code elementPresenceProven} 是元素存在证据：为真表示已观察/已证明至少一个元素存在 （直接数据观察、数组字面量，或经 Sort 等声明保留证据的运算传播）。Filter
+     * 等子集运算删除该保证， 但类型上界不变——证据失效不是类型未知。证据属于类型身份（参与 equals/hashCode）， 相同元素类型、不同证据的数组不互换检查结论。
+     */
+    record ArrayType(ValueType elementType, boolean elementPresenceProven) implements ValueType {
+        public ArrayType(ValueType elementType) {
+            this(elementType, false);
+        }
+
+        /** 返回元素类型不变、证据按给定值调整的类型。 */
+        public ArrayType withElementPresence(boolean present) {
+            return present == elementPresenceProven ? this : new ArrayType(elementType, present);
+        }
+
         @Override
         public String displayName() {
             return elementType.displayName() + "[]";

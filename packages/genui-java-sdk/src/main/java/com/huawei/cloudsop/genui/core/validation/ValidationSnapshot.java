@@ -36,6 +36,7 @@ public final class ValidationSnapshot {
     private final String rootName;
     private final Set<String> externalRefs;
     private final String normalizedDsl;
+    private final TypeCoverageCounter typeCoverage = new TypeCoverageCounter();
 
     private ValidationSnapshot(ValidationRequest request) {
         GenerationContract contract = copyContract(request.contract());
@@ -96,6 +97,38 @@ public final class ValidationSnapshot {
         return normalizedDsl;
     }
 
+    /**
+     * 本次快照的类型检查覆盖计数（#81 公开有限模型 seam）：类型阶段记录已发现要求与已证明不匹配数， 供结果 metadata 呈现；检查是否完整与 VALID 状态分别观察。
+     */
+    public TypeCoverageCounter typeCoverage() {
+        return typeCoverage;
+    }
+
+    /** 覆盖计数器：限定在本快照生命周期内累计，线程安全不是目标（校验流水线单线程使用）。 */
+    public static final class TypeCoverageCounter {
+        private int checked;
+        private int mismatched;
+
+        private TypeCoverageCounter() {
+        }
+
+        /** 记录一批检查结果。 */
+        public void record(int newChecks, int newMismatches) {
+            checked += newChecks;
+            mismatched += newMismatches;
+        }
+
+        /** 已发现的检查要求数。 */
+        public int checked() {
+            return checked;
+        }
+
+        /** 已证明不匹配的检查要求数。 */
+        public int mismatched() {
+            return mismatched;
+        }
+    }
+
     private static GenerationContract copyContract(GenerationContract source) {
         if (source == null) {
             return null;
@@ -116,7 +149,7 @@ public final class ValidationSnapshot {
                             param.optional(), param.variadic(), param.binder()))
                     .toList();
             builtins.add(new BuiltinSpec(spec.name(), spec.signature(), spec.description(), spec.templateBuiltin(),
-                    params, copyType(spec.returnType())));
+                    params, copyType(spec.returnType()), spec.typeRule()));
         }
         return List.copyOf(builtins);
     }

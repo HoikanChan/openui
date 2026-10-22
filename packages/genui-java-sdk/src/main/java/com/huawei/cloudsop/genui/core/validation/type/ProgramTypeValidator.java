@@ -60,6 +60,7 @@ public final class ProgramTypeValidator {
                 context.infer(value.expr(), statement.id(), new LinkedHashMap<>(), new HashSet<>());
             }
         }
+        snapshot.typeCoverage().record(context.checked, context.mismatched);
         return List.copyOf(context.issues);
     }
 
@@ -70,6 +71,8 @@ public final class ProgramTypeValidator {
         private final Map<String, SourceSpan> spans = new LinkedHashMap<>();
         private final List<ValidationIssue> issues = new ArrayList<>();
         private final Set<String> emitted = new LinkedHashSet<>();
+        private int checked;
+        private int mismatched;
 
         private final BuiltinTypeRegistry builtinTypes;
 
@@ -141,7 +144,9 @@ public final class ProgramTypeValidator {
             if (dataPath.isPresent()) {
                 DataPathResolution resolution = pathResolver.resolve(dataModel, dataPath.get());
                 if (resolution instanceof Resolved resolved) {
-                    return Optional.of(resolved.type());
+                    // 直接数据观察：路径本身解析出的具体值列表也是观察证据。投影数组的存在证据由
+                    // DataPathResolver 依值列表标注；顶层路径（如 data.items 取到非空 List）在此补标。
+                    return Optional.of(withObservedPresence(resolved.type(), resolved.evidence()));
                 }
                 emitPathIssue(resolution, statementId);
                 return Optional.empty();
@@ -239,6 +244,12 @@ public final class ProgramTypeValidator {
                                 "@" + builtin + " expects " + expected + " argument(s), but received " + actual + ".",
                                 statementId, null, "/args", "Use the documented @" + builtin + " signature.");
                     }
+
+                    @Override
+                    public void recordProvenMismatch() {
+                        checked++;
+                        mismatched++;
+                    }
                 });
             }
             ComponentDef definition = catalog.get(component.name());
@@ -261,7 +272,11 @@ public final class ProgramTypeValidator {
                     continue;
                 }
                 Result result = assignability.check(actual.get(), expected.get());
+                if (result != Result.UNPROVEN) {
+                    checked++;
+                }
                 if (result == Result.MISMATCH) {
+                    mismatched++;
                     emitMismatch(component.name(), param.name(), expected.get(), actual.get(), statementId);
                 } else if (result == Result.UNPROVEN && actual.get() instanceof EmptyArrayType
                         && containsComponentConstraint(expected.get())) {
@@ -285,12 +300,13 @@ public final class ProgramTypeValidator {
                 validateTable(component, statementId, scope, resolving);
             }
             if ("LineChart".equals(component.name()) || "BarChart".equals(component.name())) {
-                validateChart(component, statementId);
+                validateChart(component, statementId, scope, resolving);
             }
             return Optional.of(new ComponentType(component.name()));
         }
 
-        private void validateChart(AstNode.Comp chart, String statementId) {
+        private void validateChart(AstNode.Comp chart, String statementId, Map<String, ValueType> scope,
+                Set<String> resolving) {
             if (chart.args().size() < 2) {
                 return;
             }
@@ -302,9 +318,25 @@ public final class ProgramTypeValidator {
                         || series.args().size() < 2) {
                     continue;
                 }
+                // 元素存在证据检查（#81）：LineChart 需要至少两个已证明存在的点。元素类型已知但
+                // 存在证据被 Filter 等运算删除时，检查显式未完成——按未证明记录，不虚构通过。
+                if ("LineChart".equals(chart.name())) {
+                    Optional<ValueType> valuesType = infer(series.args().get(1), statementId, scope, resolving);
+                    if (valuesType.isPresent() && lacksElementPresence(valuesType.get())) {
+                        checked++;
+                        emit("type-chart-insufficient-data", "LineChart series " + seriesIndex
+                                + " cannot prove at least two points: the source provides no element-presence evidence.",
+                                statementId, chart.name(), "/series/" + seriesIndex,
+                                "Provide a source with proven elements (direct data or evidence-preserving operations like Sort).");
+                        validateDuplicateSeriesValues(chart, series, seriesIndex, statementId);
+                        continue;
+                    }
+                }
                 OptionalInt valueCount = knownArraySize(series.args().get(1), new HashSet<>());
                 if (labelCount.isPresent() && valueCount.isPresent()
                         && labelCount.getAsInt() != valueCount.getAsInt()) {
+                    checked++;
+                    mismatched++;
                     emit("type-chart-length-mismatch",
                             chart.name() + " has " + labelCount.getAsInt() + " labels, but series " + seriesIndex
                                     + " has " + valueCount.getAsInt() + " values.",
@@ -312,6 +344,8 @@ public final class ProgramTypeValidator {
                             "Provide one series value for every chart label.");
                 }
                 if ("LineChart".equals(chart.name()) && valueCount.isPresent() && valueCount.getAsInt() < 2) {
+                    checked++;
+                    mismatched++;
                     emit("type-chart-insufficient-data",
                             "LineChart series " + seriesIndex + " has only " + valueCount.getAsInt()
                                     + " point(s), so it cannot draw a trend line.",
@@ -442,6 +476,18 @@ public final class ProgramTypeValidator {
             return node;
         }
 
+        /** 直接观察证据标注：解析值的 Evidence 覆盖非空数组时，为数组类型补元素存在证据。 */
+        private ValueType withObservedPresence(ValueType type, DataPathResolution.Evidence evidence) {
+            if (type instanceof ArrayType array && evidence.total() > 0) {
+                return array.withElementPresence(true);
+            }
+            if (type instanceof UnionType union) {
+                return ValueTypeOps.union(
+                        union.alternatives().stream().map(branch -> withObservedPresence(branch, evidence)).toList());
+            }
+            return type;
+        }
+
         private void emitPathIssue(DataPathResolution resolution, String statementId) {
             String code;
             String message;
@@ -481,6 +527,31 @@ public final class ProgramTypeValidator {
             issues.add(new ValidationIssue(code, ValidationSeverity.ERROR, "type", message, statementId, component,
                     path, span.line(), span.column(), hint, false));
         }
+    }
+
+    /** 期望中含数组元素约束（元素类型或元素组件槽位被限定）。 */
+    private static boolean requiresElementEvidence(ExpectedType expected) {
+        if (expected instanceof ExpectedType.ArrayConstraint array) {
+            return array.elementConstraint() != null;
+        }
+        if (expected instanceof ExpectedType.UnionConstraint union) {
+            return union.alternatives().stream().anyMatch(ProgramTypeValidator::requiresElementEvidence);
+        }
+        return false;
+    }
+
+    /** 实际值缺少元素存在证据：空数组，或被删除了存在保证的数组（Filter 子集）。 */
+    private static boolean lacksElementPresence(ValueType type) {
+        if (type instanceof EmptyArrayType) {
+            return true;
+        }
+        if (type instanceof ArrayType array) {
+            return !array.elementPresenceProven();
+        }
+        if (type instanceof UnionType union) {
+            return union.alternatives().stream().anyMatch(ProgramTypeValidator::lacksElementPresence);
+        }
+        return false;
     }
 
     private static boolean containsComponentConstraint(ExpectedType expected) {

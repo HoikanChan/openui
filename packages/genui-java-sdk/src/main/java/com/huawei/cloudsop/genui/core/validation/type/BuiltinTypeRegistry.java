@@ -6,6 +6,7 @@ package com.huawei.cloudsop.genui.core.validation.type;
 
 import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr;
+import com.huawei.cloudsop.genui.core.validation.contract.RuleEvaluator;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
 import com.huawei.cloudsop.genui.core.validation.type.ValueType.ArrayType;
 import com.huawei.cloudsop.genui.core.validation.type.ValueType.EmptyArrayType;
@@ -50,6 +51,10 @@ final class BuiltinTypeRegistry {
         void reportArgumentMismatch(String builtin, int argumentIndex, String expected, ValueType actual);
 
         void reportArgumentCountMismatch(String builtin, int minimum, Integer maximum, int actual);
+
+        /** 覆盖统计：一条 builtin 参数/数量检查被证明违反。默认实现供旧测试桩使用。 */
+        default void recordProvenMismatch() {
+        }
     }
 
     private final Map<String, BuiltinSpec> specs;
@@ -77,6 +82,11 @@ final class BuiltinTypeRegistry {
         if (spec == null) {
             return Optional.empty();
         }
+        // 契约声明了结构化类型规则的 builtin 走规则求值路径：调用形式、参数模式与结果运算全部来自
+        // 同一次契约解析，这里不保留任何按函数名的分派（#81；Each/Render 等模板类无 typeRule，走下方兜底）。
+        if (spec.typeRule() != null) {
+            return structured(spec, call, scope, context);
+        }
         int minimum = spec.minArity();
         Integer maximum = spec.maxArity().orElse(null);
         if (call.args().size() < minimum || (maximum != null && call.args().size() > maximum)) {
@@ -90,6 +100,34 @@ final class BuiltinTypeRegistry {
             return render(spec, call, scope, context);
         }
         return generic(spec, call, scope, context);
+    }
+
+    /** 结构化规则路径：先递归推断全部实参（发现独立错误），再交由规则求值器完成检查与求解。 */
+    private Optional<ValueType> structured(BuiltinSpec spec, AstNode.Comp call, Map<String, ValueType> scope,
+            Context context) {
+        List<Optional<ValueType>> arguments = new ArrayList<>();
+        for (AstNode argument : call.args()) {
+            arguments.add(context.infer(argument, scope));
+        }
+        ValueType result = RuleEvaluator.evaluate(spec.typeRule(), call.args().size(), new RuleEvaluator.CallSite() {
+            @Override
+            public Optional<ValueType> argumentType(int index) {
+                return arguments.get(index);
+            }
+
+            @Override
+            public void reportArgumentMismatch(int index, String expectedPattern, ValueType actual) {
+                context.recordProvenMismatch();
+                context.reportArgumentMismatch(spec.name(), index, expectedPattern, actual);
+            }
+
+            @Override
+            public void reportArityViolation(int minimum, Optional<Integer> maximum, int actual) {
+                context.recordProvenMismatch();
+                context.reportArgumentCountMismatch(spec.name(), minimum, maximum.orElse(null), actual);
+            }
+        });
+        return Optional.of(result);
     }
 
     /** 通用求值路径：推断实参 → 逐参检查 → 解 T → 代入 returnType。 */
@@ -322,7 +360,9 @@ final class BuiltinTypeRegistry {
         }
         Map<String, ValueType> nestedScope = new LinkedHashMap<>(scope);
         nestedScope.put(binder.v(), elementType.get());
-        return context.infer(call.args().get(2), nestedScope).map(ArrayType::new);
+        // sequence.map 语义：数量保留，元素存在证据随源数组传播（空输入 → 空结果，不虚构元素）。
+        boolean presence = input.get() instanceof ArrayType source && source.elementPresenceProven();
+        return context.infer(call.args().get(2), nestedScope).map(body -> new ArrayType(body, presence));
     }
 
     /** Render 兜底：前 n-1 参为 binder（值为 null 类型占位），返回 TemplateType。arity/binder 标记从契约读。 */

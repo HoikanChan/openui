@@ -61,8 +61,9 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
         issues.addAll(new ProgramTypeValidator().validate(snapshot));
         boolean hasError = issues.stream().anyMatch(i -> i.severity() == ValidationSeverity.ERROR);
 
+        // 类型检查覆盖随结果 metadata 呈现（#81）：VALID 只表示无阻塞错误，是否完整证明看覆盖计数。
         ValidationMetadata metadata = new ValidationMetadata(analysis.statementCount(), analysis.entryId(),
-                snapshot.mode(), null);
+                snapshot.mode(), typeCoverageExtra(snapshot));
 
         if (hasError) {
             return ValidationResult.invalid(issues, metadata);
@@ -74,5 +75,14 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
         }
 
         return ValidationResult.valid(normalizedDsl, issues, metadata);
+    }
+
+    private static java.util.Map<String, String> typeCoverageExtra(ValidationSnapshot snapshot) {
+        ValidationSnapshot.TypeCoverageCounter coverage = snapshot.typeCoverage();
+        if (coverage.checked() == 0) {
+            return null;
+        }
+        return java.util.Map.of("typeChecks", String.valueOf(coverage.checked()), "typeCheckMismatches",
+                String.valueOf(coverage.mismatched()));
     }
 }

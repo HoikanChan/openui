@@ -1632,7 +1632,23 @@
           "type": "array"
         }
       ],
-      "returnType": "number"
+      "returnType": "number",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "array",
+            "accept": "array"
+          }
+        ],
+        "result": {
+          "type": "number"
+        }
+      }
     },
     {
       "name": "First",
@@ -1671,7 +1687,26 @@
           "type": "number[]"
         }
       ],
-      "returnType": "number"
+      "returnType": "number",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "array",
+            "accept": {
+              "tag": "sequence",
+              "element": "number"
+            }
+          }
+        ],
+        "result": {
+          "type": "number"
+        }
+      }
     },
     {
       "name": "Avg",
@@ -1684,7 +1719,26 @@
           "type": "number[]"
         }
       ],
-      "returnType": "number"
+      "returnType": "number",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "array",
+            "accept": {
+              "tag": "sequence",
+              "element": "number"
+            }
+          }
+        ],
+        "result": {
+          "type": "number"
+        }
+      }
     },
     {
       "name": "Min",
@@ -1697,7 +1751,26 @@
           "type": "number[]"
         }
       ],
-      "returnType": "number"
+      "returnType": "number",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "array",
+            "accept": {
+              "tag": "sequence",
+              "element": "number"
+            }
+          }
+        ],
+        "result": {
+          "type": "number"
+        }
+      }
     },
     {
       "name": "Max",
@@ -1710,7 +1783,26 @@
           "type": "number[]"
         }
       ],
-      "returnType": "number"
+      "returnType": "number",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "array",
+            "accept": {
+              "tag": "sequence",
+              "element": "number"
+            }
+          }
+        ],
+        "result": {
+          "type": "number"
+        }
+      }
     },
     {
       "name": "Sort",
@@ -1732,7 +1824,45 @@
           "optional": true
         }
       ],
-      "returnType": "T[]"
+      "returnType": "T[]",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 2,
+          "max": 3
+        },
+        "parameters": [
+          {
+            "name": "array",
+            "accept": {
+              "tag": "sequence",
+              "element": {
+                "tag": "variable",
+                "name": "T"
+              }
+            }
+          },
+          {
+            "name": "field",
+            "accept": "string"
+          },
+          {
+            "name": "direction",
+            "accept": "string"
+          }
+        ],
+        "result": {
+          "op": "sequence.preserve",
+          "operands": [
+            {
+              "argument": 0
+            }
+          ],
+          "options": {
+            "keepsElementPresence": "true"
+          }
+        }
+      }
     },
     {
       "name": "Filter",
@@ -1757,7 +1887,46 @@
           "type": "any"
         }
       ],
-      "returnType": "T[]"
+      "returnType": "T[]",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 4,
+          "max": 4
+        },
+        "parameters": [
+          {
+            "name": "array",
+            "accept": {
+              "tag": "sequence",
+              "element": {
+                "tag": "variable",
+                "name": "T"
+              }
+            }
+          },
+          {
+            "name": "field",
+            "accept": "string"
+          },
+          {
+            "name": "operator",
+            "accept": "string"
+          },
+          {
+            "name": "value",
+            "accept": "any"
+          }
+        ],
+        "result": {
+          "op": "sequence.filter",
+          "operands": [
+            {
+              "argument": 0
+            }
+          ]
+        }
+      }
     },
     {
       "name": "Flatten",
@@ -1827,7 +1996,27 @@
           "optional": true
         }
       ],
-      "returnType": "number"
+      "returnType": "number",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 2
+        },
+        "parameters": [
+          {
+            "name": "number",
+            "accept": "number"
+          },
+          {
+            "name": "decimals",
+            "accept": "number"
+          }
+        ],
+        "result": {
+          "type": "number"
+        }
+      }
     },
     {
       "name": "Abs",
@@ -1840,7 +2029,23 @@
           "type": "number"
         }
       ],
-      "returnType": "number"
+      "returnType": "number",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "number",
+            "accept": "number"
+          }
+        ],
+        "result": {
+          "type": "number"
+        }
+      }
     },
     {
       "name": "Floor",
@@ -1853,7 +2058,23 @@
           "type": "number"
         }
       ],
-      "returnType": "number"
+      "returnType": "number",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "number",
+            "accept": "number"
+          }
+        ],
+        "result": {
+          "type": "number"
+        }
+      }
     },
     {
       "name": "Ceil",
@@ -1866,7 +2087,23 @@
           "type": "number"
         }
       ],
-      "returnType": "number"
+      "returnType": "number",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "number",
+            "accept": "number"
+          }
+        ],
+        "result": {
+          "type": "number"
+        }
+      }
     },
     {
       "name": "Number",
@@ -1879,7 +2116,23 @@
           "type": "any"
         }
       ],
-      "returnType": "number"
+      "returnType": "number",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "accept": "any"
+          }
+        ],
+        "result": {
+          "type": "number"
+        }
+      }
     },
     {
       "name": "Switch",
@@ -2028,7 +2281,29 @@
           "variadic": true
         }
       ],
-      "returnType": "object"
+      "returnType": "object",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 2,
+          "max": "unbounded"
+        },
+        "parameters": [
+          {
+            "name": "objects",
+            "rest": true,
+            "accept": "object"
+          }
+        ],
+        "result": {
+          "op": "record.overlay",
+          "operands": [
+            {
+              "argumentsFrom": 0
+            }
+          ]
+        }
+      }
     },
     {
       "name": "Join",
@@ -2046,7 +2321,27 @@
           "optional": true
         }
       ],
-      "returnType": "string"
+      "returnType": "string",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 2
+        },
+        "parameters": [
+          {
+            "name": "array",
+            "accept": "array"
+          },
+          {
+            "name": "separator",
+            "accept": "string"
+          }
+        ],
+        "result": {
+          "type": "string"
+        }
+      }
     },
     {
       "name": "String",
@@ -2059,7 +2354,23 @@
           "type": "any"
         }
       ],
-      "returnType": "string"
+      "returnType": "string",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "accept": "any"
+          }
+        ],
+        "result": {
+          "type": "string"
+        }
+      }
     },
     {
       "name": "Each",
@@ -2111,24 +2422,56 @@
       "id": "group-by",
       "kind": "data",
       "name": "分组展示",
-      "aliases": ["GroupBy", "Distinct", "Unique", "CountBy", "Pivot", "Aggregate", "Partition", "ObjectFromEntries"],
-      "phrases": ["按X分组", "每个X下列出", "按X汇总", "去重"],
+      "aliases": [
+        "GroupBy",
+        "Distinct",
+        "Unique",
+        "CountBy",
+        "Pivot",
+        "Aggregate",
+        "Partition",
+        "ObjectFromEntries"
+      ],
+      "phrases": [
+        "按X分组",
+        "每个X下列出",
+        "按X汇总",
+        "去重"
+      ],
       "fallback": "用一张 Table 展示全部行；用 @Sort 按分组字段排序，并把该字段放在第一列"
     },
     {
       "id": "top-n",
       "kind": "data",
       "name": "截取前 N 条",
-      "aliases": ["Slice", "Take", "Limit", "TopN"],
-      "phrases": ["前N", "Top N", "最多的几个"],
+      "aliases": [
+        "Slice",
+        "Take",
+        "Limit",
+        "TopN"
+      ],
+      "phrases": [
+        "前N",
+        "Top N",
+        "最多的几个"
+      ],
       "fallback": "用 @Sort 排序后展示全部行，不截取"
     },
     {
       "id": "join",
       "kind": "data",
       "name": "跨数组关联",
-      "aliases": ["Lookup", "LeftJoin", "InnerJoin", "Zip"],
-      "phrases": ["关联", "对应到", "合并两张表"],
+      "aliases": [
+        "Lookup",
+        "LeftJoin",
+        "InnerJoin",
+        "Zip"
+      ],
+      "phrases": [
+        "关联",
+        "对应到",
+        "合并两张表"
+      ],
       "fallback": "每个数组分别用一张 Table 展示"
     }
   ]

@@ -41,7 +41,8 @@ public final class DataPathResolver {
 
         ValueType type = inferValues(values);
         for (int i = 0; i < pluckDepth; i++) {
-            type = new ArrayType(type);
+            // 直接数据观察：非空数组携带元素存在证据（#81；Sort 可保留、Filter 会删除该保证）。
+            type = new ArrayType(type, !values.isEmpty());
         }
         return new DataPathResolution.Resolved(path.source(), type, evidence);
     }
