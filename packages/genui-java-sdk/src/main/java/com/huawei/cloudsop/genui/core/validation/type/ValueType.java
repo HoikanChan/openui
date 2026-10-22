@@ -8,10 +8,41 @@ import java.util.Map;
 /** Proven value types used by Java preflight validation. */
 public sealed interface ValueType
         permits ValueType.Primitive, ValueType.ArrayType, ValueType.ObjectType, ValueType.UnionType,
-        ValueType.ComponentType, ValueType.TemplateType, ValueType.EmptyArrayType, ValueType.StringDomainType {
+        ValueType.ComponentType, ValueType.TemplateType, ValueType.EmptyArrayType, ValueType.StringDomainType,
+        ValueType.UnknownType, ValueType.NeverType {
 
     /** Stable human/model-facing type name. */
     String displayName();
+
+    /** The Unknown type: information is insufficient; any value is possible. Distinct from a union and from Never. */
+    static UnknownType unknown() {
+        return UnknownType.INSTANCE;
+    }
+
+    /** The Never type: no legal value exists. Never produces evidence (e.g. a zero-length array is not a Never value). */
+    static NeverType never() {
+        return NeverType.INSTANCE;
+    }
+
+    /** Unknown = information insufficient (#82 minimal seam; full evidence identity arrives with #80's Fact layer). */
+    enum UnknownType implements ValueType {
+        INSTANCE;
+
+        @Override
+        public String displayName() {
+            return "unknown";
+        }
+    }
+
+    /** Never = no legal value. Kept distinct from a known-empty array (which is a real, observable value). */
+    enum NeverType implements ValueType {
+        INSTANCE;
+
+        @Override
+        public String displayName() {
+            return "never";
+        }
+    }
 
     enum PrimitiveKind {
         STRING("string"), NUMBER("number"), BOOLEAN("boolean"), NULL("null");

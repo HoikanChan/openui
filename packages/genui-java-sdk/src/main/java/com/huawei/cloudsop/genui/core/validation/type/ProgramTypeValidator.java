@@ -40,8 +40,15 @@ public final class ProgramTypeValidator {
 
     private final DataPathResolver pathResolver = new DataPathResolver();
     private final SchemaTypeCompiler schemaCompiler = new SchemaTypeCompiler();
+    private final SchemaExpectationCompiler expectationCompiler = new SchemaExpectationCompiler();
     private final TypeAssignability assignability = new TypeAssignability();
+    private final RequirementJudge requirementJudge = new RequirementJudge();
     private final BuiltinTypeRegistry builtinTypes;
+
+    /** Coverage counters for the last FINAL validation run (reset per run; this validator is used per-request). */
+    private int coverageMatch;
+    private int coverageMismatch;
+    private int coverageUnproven;
 
     public ProgramTypeValidator() {
         this(BuiltinCatalog.getDefault());
@@ -50,6 +57,15 @@ public final class ProgramTypeValidator {
     public ProgramTypeValidator(BuiltinCatalog builtins) {
         BuiltinCatalog effectiveBuiltins = builtins == null ? BuiltinCatalog.getDefault() : builtins;
         this.builtinTypes = new BuiltinTypeRegistry(effectiveBuiltins.specsForTypeValidation());
+    }
+
+    /** MATCH/MISMATCH/UNPROVEN counts for discovered component-schema requirements from the last run. */
+    public Map<String, String> coverageReport() {
+        Map<String, String> report = new LinkedHashMap<>();
+        report.put("typeCheck.match", String.valueOf(coverageMatch));
+        report.put("typeCheck.mismatch", String.valueOf(coverageMismatch));
+        report.put("typeCheck.unproven", String.valueOf(coverageUnproven));
+        return report;
     }
 
     /**
@@ -61,6 +77,9 @@ public final class ProgramTypeValidator {
         if (mode != ValidationMode.FINAL || dataModel == null) {
             return List.of();
         }
+        coverageMatch = 0;
+        coverageMismatch = 0;
+        coverageUnproven = 0;
         Context context = new Context(program, catalog, dataModel);
         // #56 同名覆盖:类型检查只遍历当前有效定义(Program#currentById,与 ProgramAnalyzer 共用同一去重口径),
         // 被覆盖语句的历史类型错误不再产生当前错误;修改定义造成的下游不匹配仍会被发现。
@@ -266,6 +285,11 @@ public final class ProgramTypeValidator {
                 if (expected.isEmpty()) {
                     continue;
                 }
+                // #82: composite requirements (anyOf/oneOf/required/additionalProperties/unsupported) are judged
+                // against the same observed value; supported subset fully checked, unsupported stays UNPROVEN.
+                Expectation requirement = expectationCompiler.compile(param.schema());
+                CheckResult verdict = requirementJudge.check(Fact.adapt(actual.get()), requirement);
+                recordCoverage(verdict);
                 Result result = assignability.check(actual.get(), expected.get());
                 if (result == Result.MISMATCH) {
                     emitMismatch(component.name(), param.name(), expected.get(), actual.get(), statementId);
@@ -486,6 +510,14 @@ public final class ProgramTypeValidator {
             SourceSpan span = spans.getOrDefault(statementId, SourceSpan.UNKNOWN);
             issues.add(new ValidationIssue(code, ValidationSeverity.ERROR, "type", message, statementId, component,
                     path, span.line(), span.column(), hint, false));
+        }
+    }
+
+    private void recordCoverage(CheckResult verdict) {
+        switch (verdict.verdict()) {
+            case MATCH -> coverageMatch++;
+            case MISMATCH -> coverageMismatch++;
+            case UNPROVEN -> coverageUnproven++;
         }
     }
 

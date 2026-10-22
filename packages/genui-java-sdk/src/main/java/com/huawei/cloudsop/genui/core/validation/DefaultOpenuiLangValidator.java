@@ -82,12 +82,14 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
 
         // 4. Type validation against the concrete data model (only when supplied), then combine.
         List<ValidationIssue> issues = new ArrayList<>(analysis.issues());
-        issues.addAll(
-                new ProgramTypeValidator(builtins).validate(program, catalog, request.dataModel(), request.mode()));
+        ProgramTypeValidator typeValidator = new ProgramTypeValidator(builtins);
+        issues.addAll(typeValidator.validate(program, catalog, request.dataModel(), request.mode()));
         boolean hasError = issues.stream().anyMatch(i -> i.severity() == ValidationSeverity.ERROR);
 
+        // #82: expose the component-schema requirement coverage (MATCH/MISMATCH/UNPROVEN) so an incomplete check
+        // (unsupported keyword, unprovable composite) is visible and never read as a fabricated full MATCH.
         ValidationMetadata metadata = new ValidationMetadata(analysis.statementCount(), analysis.entryId(),
-                request.mode(), null);
+                request.mode(), typeValidator.coverageReport());
 
         if (hasError) {
             return ValidationResult.invalid(issues, metadata);
