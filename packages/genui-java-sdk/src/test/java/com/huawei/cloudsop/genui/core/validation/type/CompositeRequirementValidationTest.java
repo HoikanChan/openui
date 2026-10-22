@@ -83,6 +83,17 @@ class CompositeRequirementValidationTest {
     }
 
     @Test
+    void missingRequiredPropIsCountedAsADiscoveredMismatch() {
+        // Table(columns) omits required rows: the required-rows requirement is discovered and checked against a
+        // provably-absent field, so it increments the mismatch coverage (the semantic pass reports the user-facing
+        // missing-required error; the type pass must not silently skip the requirement).
+        ValidationResult result = validate("root = Table([nameCol])\nnameCol = Col(\"Name\", \"name\")",
+                Map.of("users", List.of(Map.of("name", "Ada"))));
+        assertTrue(Integer.parseInt(result.metadata().extra().getOrDefault("typeCheck.mismatch", "0")) >= 1,
+                () -> "the absent required rows requirement must be counted: " + result.metadata().extra());
+    }
+
+    @Test
     void validatedPropCoverageIsReportedInMetadata() {
         ValidationResult result = validate("root = TextContent(true)");
         assertTrue(result.metadata().extra().containsKey("typeCheck.mismatch"),

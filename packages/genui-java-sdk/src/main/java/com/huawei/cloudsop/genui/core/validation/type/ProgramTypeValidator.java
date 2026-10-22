@@ -311,6 +311,17 @@ public final class ProgramTypeValidator {
                     }
                 }
             }
+            // #82: a required prop that received no argument is a discovered requirement checked against the
+            // provably-absent field (Never). An optional prop with a contract default is satisfied by that default.
+            for (int index = component.args().size(); index < params.size(); index++) {
+                ParamDef param = params.get(index);
+                if (!param.required()) {
+                    continue;
+                }
+                Expectation requirement = expectationCompiler.compile(param.schema());
+                ValueType presence = param.hasDefault() ? ValueType.unknown() : ValueType.never();
+                recordCoverage(requirementJudge.check(Fact.adapt(presence), requirement));
+            }
             if ("Table".equals(component.name())) {
                 validateTable(component, statementId, scope, resolving);
             }
