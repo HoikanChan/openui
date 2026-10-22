@@ -34,7 +34,7 @@ java --class-path $evidenceClasspath packages/genui-java-sdk/docs/examples/Contr
 
 ## 默认 29 项矩阵
 
-来源统一为默认资源的 `/builtins` 中同名条目（从第 1623 行开始）；表中保留现有接受政策，没有新增 enum 限制。
+来源统一为默认资源的 `/builtins` 中同名条目（数组从第 1623 行开始，首个条目在第 1624 行）；表中保留现有接受政策，没有新增 enum 限制。
 
 | 名称 | 接受输入；参数数量 | 返回/边界证据；迁移要求 |
 | --- | --- | --- |
@@ -70,7 +70,7 @@ java --class-path $evidenceClasspath packages/genui-java-sdk/docs/examples/Contr
 
 ## 已有模板行为必须保留
 
-[ADR 0006](../../../docs/adr/0006-openui-lang-lexical-template-scope.md)与 [2026-08-12 设计](../../../docs/superpowers/specs/2026-08-12-openui-lang-template-scope-design.md)明确允许 Each 引用独立模板及其传递依赖。Java 公开 validator 已有 `StaticTypeValidationTest.acceptsEachBinderAcrossReferencedTemplateStatements`：
+[ADR 0006](../../../docs/adr/0006-openui-lang-lexical-template-scope.md)随 commit `1e3ffc9317e3c45b8cc6920b33cc23c15675d774` 落地，明确允许 Each 引用独立模板及其传递依赖。Java 公开 validator 已有 `StaticTypeValidationTest.acceptsEachBinderAcrossReferencedTemplateStatements`：
 
 ```openui
 root = Tabs(@Each(data.groups, "group", groupTemplate))
