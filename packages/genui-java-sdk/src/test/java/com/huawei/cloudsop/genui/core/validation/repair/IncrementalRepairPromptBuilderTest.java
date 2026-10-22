@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
+import com.huawei.cloudsop.genui.core.contract.CapabilityGapSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.ToolSpec;
@@ -17,6 +18,7 @@ import com.huawei.cloudsop.genui.core.llm.protocol.ChatMessage;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
+import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
 import com.huawei.cloudsop.genui.core.validation.stream.RoundEndResult;
 
 import org.junit.jupiter.api.Test;
@@ -34,6 +36,10 @@ class IncrementalRepairPromptBuilderTest {
 
     private static final String SYSTEM_PROMPT = "ORIGINAL SYSTEM PROMPT: use openui-lang only.";
 
+    private static final CapabilityGapSpec GROUP_BY_GAP = new CapabilityGapSpec("group-by", "data", "分组展示",
+            List.of("GroupBy", "Distinct", "Unique", "CountBy", "Pivot", "Aggregate", "Partition", "ObjectFromEntries"),
+            List.of("按X分组", "每个X下列出", "按X汇总", "去重"), "用一张 Table 展示全部行；用 @Sort 按分组字段排序，并把该字段放在第一列");
+
     private static GenerationContract contract() {
         LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
         components.put("Stack", new ComponentPromptSpec("Stack(children: Component[])", "vertical layout"));
@@ -46,12 +52,18 @@ class IncrementalRepairPromptBuilderTest {
                 Map.of("type", "array"), null);
         return new GenerationContract("contract-7", "Stack", components, List.of(), List.of(tool),
                 List.of("root = Stack([header])\nheader = Header(\"Hi\")"), List.of("Never invent tools."),
-                List.of(each));
+                List.of(each), List.of(GROUP_BY_GAP));
     }
 
     private static ValidationIssue issue(String code, String source, String message, String statementId, String hint) {
         return new ValidationIssue(code, ValidationSeverity.ERROR, source, message, statementId, null, null, 4, 9, hint,
                 false);
+    }
+
+    private static ValidationIssue componentIssue(String code, String source, String message, String statementId,
+            String component, String hint) {
+        return new ValidationIssue(code, ValidationSeverity.ERROR, source, message, statementId, component, "", 4, 9,
+                hint, false);
     }
 
     private static RoundEndResult round(String raw, String definitions, List<ValidationIssue> issues) {
@@ -261,5 +273,89 @@ class IncrementalRepairPromptBuilderTest {
 
         assertTrue(text.contains("exceeds the history excerpt limit"), "an unrepresentable history round is omitted");
         assertFalse(text.contains("huge = TextContent"), "no partial single statement is pasted into the prompt");
+    }
+
+    @Test
+    void capabilityGapTier2RendersOverrideSectionAtTopAndMarksOriginalRequestForContextOnly() {
+        String dsl = "grouped = @GroupBy(data.items, \"model\")\n" + "byModel = @ObjectFromEntries(grouped)\n"
+                + "root = Stack([byModel])";
+        ValidationIssue groupByIssue = componentIssue("unknown-component", "contract",
+                "Unknown component \"GroupBy\" — not found in catalog or builtins", "grouped", "GroupBy",
+                RepairHints.unknownComponentHint("GroupBy", List.of(GROUP_BY_GAP)));
+        ValidationIssue fromEntriesIssue = componentIssue("unknown-component", "contract",
+                "Unknown component \"ObjectFromEntries\" — not found in catalog or builtins", "byModel",
+                "ObjectFromEntries", RepairHints.unknownComponentHint("ObjectFromEntries", List.of(GROUP_BY_GAP)));
+
+        List<ChatMessage> messages = IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "按型号分组展示板卡", contract(),
+                round(dsl, dsl, List.of(groupByIssue, fromEntriesIssue)));
+        String system = messages.get(0).content();
+        String user = messages.get(1).content();
+
+        int boundaryIdx = system.indexOf("## Capability boundary (overrides the original request)");
+        int fixedRulesIdx = system.indexOf("## Incremental repair rules (fixed)");
+        assertTrue(boundaryIdx > 0, "system prompt must contain Capability boundary section");
+        assertTrue(boundaryIdx < fixedRulesIdx,
+                "Capability boundary section must appear before Incremental repair rules");
+        assertEquals(1, occurrences(system,
+                "The original request asks for \"分组展示\", which is NOT supported as a dynamic operation in openui-lang."),
+                "the same capability gap must be rendered only once even when multiple aliases match");
+        assertTrue(system.contains(
+                "Instead: 用一张 Table 展示全部行；用 @Sort 按分组字段排序，并把该字段放在第一列. Also redefine every diagnosed statement id that called the unsupported function with a valid expression so no invalid definition remains in the program."));
+        assertTrue(system.contains("capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\", \"暂不支持分组展示，以下按原始数据展示\")"));
+
+        assertTrue(user.contains("## Original request (for context only)"),
+                "user message must mark Original request as for context only");
+        assertFalse(user.contains("## Original request\n"),
+                "plain Original request heading must be replaced when capability boundary is active");
+    }
+
+    @Test
+    void ordinaryUnknownComponentDoesNotRenderCapabilityBoundaryEvenIfHistoryHadGroupBy() {
+        ValidationIssue oldGroupBy = componentIssue("unknown-component", "contract",
+                "Unknown component \"GroupBy\" — not found in catalog or builtins", "grouped", "GroupBy",
+                RepairHints.unknownComponentHint("GroupBy", List.of(GROUP_BY_GAP)));
+        RoundEndResult earlier = round("grouped = @GroupBy(data.items, \"model\")",
+                "grouped = @GroupBy(data.items, \"model\")", List.of(oldGroupBy));
+
+        ValidationIssue currentChartCard = componentIssue("unknown-component", "contract",
+                "Unknown component \"ChartCard\" — not found in catalog or builtins", "card", "ChartCard",
+                RepairHints.unknownComponentHint("ChartCard", List.of(GROUP_BY_GAP)));
+        RoundEndResult current = round("card = ChartCard(\"T\")\nroot = Stack([card])",
+                "card = ChartCard(\"T\")\nroot = Stack([card])", List.of(currentChartCard));
+
+        List<ChatMessage> messages = IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "按型号分组展示板卡", contract(),
+                current, List.of(earlier));
+        String system = messages.get(0).content();
+        String user = messages.get(1).content();
+
+        assertFalse(system.contains("## Capability boundary (overrides the original request)"),
+                "must evaluate capability boundary strictly from current actionable issues, never from history");
+        assertTrue(user.contains("## Original request\n"),
+                "user message heading must remain ## Original request when no tier-2 issue is active");
+        assertFalse(user.contains("## Original request (for context only)"));
+    }
+
+    @Test
+    void multipleMatchedCapabilityGapsRenderNumberedSubHeadingsAndLanguageNote() {
+        CapabilityGapSpec topNGap = new CapabilityGapSpec("top-n", "data", "截取前 N 条", List.of("Slice", "Take"),
+                List.of("前N"), "不截取，展示全部数据");
+        GenerationContract multiGapContract = new GenerationContract("contract-7", "Stack", contract().components(),
+                List.of(), contract().tools(), contract().examples(), contract().additionalRules(),
+                contract().builtins(), List.of(GROUP_BY_GAP, topNGap));
+
+        String dsl = "grouped = @GroupBy(data.items, \"model\")\ntop = @Slice(grouped, 5)\nroot = Stack([top])";
+        ValidationIssue groupByIssue = componentIssue("unknown-component", "contract", "Unknown component \"GroupBy\"",
+                "grouped", "GroupBy", RepairHints.unknownComponentHint("GroupBy", List.of(GROUP_BY_GAP, topNGap)));
+        ValidationIssue sliceIssue = componentIssue("unknown-component", "contract", "Unknown component \"Slice\"",
+                "top", "Slice", RepairHints.unknownComponentHint("Slice", List.of(GROUP_BY_GAP, topNGap)));
+
+        List<ChatMessage> messages = IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "按型号分组并展示前5条",
+                multiGapContract, round(dsl, dsl, List.of(groupByIssue, sliceIssue)));
+        String system = messages.get(0).content();
+
+        assertTrue(system.contains("### 1. 分组展示 (group-by)"), "first matched gap gets numbered sub-heading");
+        assertTrue(system.contains("### 2. 截取前 N 条 (top-n)"), "second matched gap gets numbered sub-heading");
+        assertTrue(system.contains("write the notice in the same language as the user's request"),
+                "capability boundary section includes language consistency instruction");
     }
 }

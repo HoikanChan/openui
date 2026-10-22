@@ -6,6 +6,7 @@ package com.huawei.cloudsop.genui.core.validation.repair;
 
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
+import com.huawei.cloudsop.genui.core.contract.CapabilityGapSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentGroup;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentPropsSchema;
@@ -16,12 +17,15 @@ import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssueReducer;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
+import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiLexer;
 import com.huawei.cloudsop.genui.core.validation.parser.StatementSplitter;
+import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
 import com.huawei.cloudsop.genui.core.validation.semantic.StatementRelations;
 import com.huawei.cloudsop.genui.core.validation.stream.RoundEndResult;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -29,15 +33,15 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * 构建增量修复（#58）的确定性对话消息：模型不再重写整页，只输出需要覆盖或新增的 DSL 语句。
+ * 构建增量修复（#58 / #75）的确定性对话消息：模型不再重写整页，只输出需要覆盖或新增的 DSL 语句。
  *
  * <p>
  * 消息分工：
  *
  * <ul>
- * <li><b>system</b> —— 原生成 system prompt 原文（只出现一次）、固定增量规则、<b>当前完整契约</b>、调用方数据描述，以及 由 {@link RepairGuidance}
- * 按当前诊断选取的专项指导。
- * <li><b>user</b> —— 原始需求、当前有效 DSL、本轮原始输出、最新轮末诊断、诊断语句的 AST/作用域关联，以及必要的历史轮 原始输出与检查摘要。
+ * <li><b>system</b> —— 原生成 system prompt 原文（只出现一次）、（若命中能力越界则置于最前的 {@code ## Capability boundary}
+ * 小节）、固定增量规则、<b>当前完整契约</b>、调用方数据描述，以及 由 {@link RepairGuidance} 按当前诊断选取的专项指导。
+ * <li><b>user</b> —— 原始需求（越界时标为 {@code for context only}）、当前有效 DSL、本轮原始输出、最新轮末诊断、诊断语句的 AST/作用域关联，以及必要的历史轮 原始输出与检查摘要。
  * </ul>
  *
  * <p>
@@ -129,19 +133,21 @@ public final class IncrementalRepairPromptBuilder {
         Objects.requireNonNull(current, "current");
 
         List<ValidationIssue> latestIssues = latestActionableIssues(current);
+        List<CapabilityGapSpec> matchedGaps = matchedCapabilityGaps(contract, latestIssues);
         StringBuilder system = new StringBuilder();
         system.append(INCREMENTAL_REPAIR_MARKER).append('\n');
         appendOriginalSystemPrompt(system, originalSystemPrompt);
+        appendCapabilityBoundaryOverride(system, matchedGaps);
         appendFixedRules(system);
         appendContract(system, contract);
         appendDataContext(system, dataContext);
         appendSelectedGuidance(system, latestIssues);
 
         StringBuilder user = new StringBuilder();
-        appendOriginalRequest(user, originalUserMessage);
+        appendOriginalRequest(user, originalUserMessage, !matchedGaps.isEmpty());
         appendCurrentProgram(user, current);
         appendLatestDiagnostics(user, latestIssues);
-        appendRelatedStatements(user, current, latestIssues);
+        appendRelatedStatements(user, current, latestIssues, contract);
         appendHistory(user, history);
 
         return List.of(ChatMessage.system(system.toString()), ChatMessage.user(user.toString()));
@@ -160,6 +166,56 @@ public final class IncrementalRepairPromptBuilder {
         sb.append("The prompt above remains authoritative for the openui-lang language, component, builtin, and "
                 + "data contract. The incremental repair instructions below override only the response shape "
                 + "and patch scope.\n\n");
+    }
+
+    /**
+     * 当最新一轮 actionable issues 中存在命中 {@code capabilityGaps.aliases} 的越界诊断时，在修复指令最前面输出独立小节
+     * {@code ## Capability boundary (overrides the original request)}（每个命中的 gap 渲染一次）。
+     */
+    private static void appendCapabilityBoundaryOverride(StringBuilder sb, List<CapabilityGapSpec> matchedGaps) {
+        if (matchedGaps == null || matchedGaps.isEmpty()) {
+            return;
+        }
+        sb.append("## Capability boundary (overrides the original request)\n");
+        for (int i = 0; i < matchedGaps.size(); i++) {
+            CapabilityGapSpec gap = matchedGaps.get(i);
+            if (matchedGaps.size() > 1) {
+                sb.append("### ").append(i + 1).append(". ").append(gap.name()).append(" (").append(gap.id())
+                        .append(")\n");
+            }
+            sb.append("1. The original request asks for \"").append(gap.name()).append(
+                    "\", which is NOT supported as a dynamic operation in openui-lang. If the input data already contains pre-aggregated/grouped rows, display that existing data directly; otherwise do NOT try to implement or approximate \"")
+                    .append(gap.name()).append("\".\n");
+            sb.append("2. Instead: ").append(gap.fallback()).append(
+                    ". Also redefine every diagnosed statement id that called the unsupported function with a valid expression so no invalid definition remains in the program.\n");
+            sb.append(
+                    "3. Redefine `root` so its first child is (write the notice in the same language as the user's request):\n");
+            sb.append("   ").append(gap.noticeStatement()).append('\n');
+        }
+        sb.append('\n');
+    }
+
+    /**
+     * 仅根据当前契约 + 最新一轮 actionable issues 匹配能力缺口（按遇到顺序去重，绝不读取历史轮次）。
+     */
+    private static List<CapabilityGapSpec> matchedCapabilityGaps(GenerationContract contract,
+            List<ValidationIssue> actionableIssues) {
+        if (contract == null || contract.capabilityGaps() == null || contract.capabilityGaps().isEmpty()
+                || actionableIssues == null || actionableIssues.isEmpty()) {
+            return List.of();
+        }
+        Map<String, CapabilityGapSpec> matched = new LinkedHashMap<>();
+        for (ValidationIssue issue : actionableIssues) {
+            if (issue == null || issue.severity() != ValidationSeverity.ERROR
+                    || !"unknown-component".equals(issue.code())) {
+                continue;
+            }
+            CapabilityGapSpec gap = RepairHints.findCapabilityGapByAlias(issue.component(), contract.capabilityGaps());
+            if (gap != null) {
+                matched.putIfAbsent(gap.id(), gap);
+            }
+        }
+        return List.copyOf(matched.values());
     }
 
     private static void appendFixedRules(StringBuilder sb) {
@@ -301,8 +357,9 @@ public final class IncrementalRepairPromptBuilder {
 
     // ── user message ─────────────────────────────────────────────────────────
 
-    private static void appendOriginalRequest(StringBuilder sb, String originalUserMessage) {
-        sb.append("## Original request\n");
+    private static void appendOriginalRequest(StringBuilder sb, String originalUserMessage,
+            boolean capabilityBoundaryActive) {
+        sb.append(capabilityBoundaryActive ? "## Original request (for context only)\n" : "## Original request\n");
         if (isBlank(originalUserMessage)) {
             sb.append("(no original user message was supplied)\n\n");
             return;
@@ -346,7 +403,7 @@ public final class IncrementalRepairPromptBuilder {
     }
 
     private static void appendRelatedStatements(StringBuilder sb, RoundEndResult current,
-            List<ValidationIssue> latestIssues) {
+            List<ValidationIssue> latestIssues, GenerationContract contract) {
         Set<String> diagnosedIds = new LinkedHashSet<>();
         for (ValidationIssue issue : latestIssues) {
             if (!isBlank(issue.statementId())) {
@@ -359,8 +416,9 @@ public final class IncrementalRepairPromptBuilder {
             return;
         }
 
-        Map<String, List<String>> related = StatementRelations
-                .related(current.currentDefinitions() == null ? "" : current.currentDefinitions(), latestIssues);
+        Map<String, List<String>> related = StatementRelations.related(
+                current.currentDefinitions() == null ? "" : current.currentDefinitions(), latestIssues,
+                BuiltinCatalog.fromContract(contract));
         boolean rendered = false;
         for (String statementId : diagnosedIds) {
             List<String> relatedIds = related == null ? null : related.get(statementId);

@@ -8,8 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
+import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
 
 import org.junit.jupiter.api.Test;
 
@@ -25,6 +27,11 @@ class RepairGuidanceTest {
     private static ValidationIssue error(String code, String source) {
         return new ValidationIssue(code, ValidationSeverity.ERROR, source, "message", "stmt", null, null, -1, -1, null,
                 false);
+    }
+
+    private static ValidationIssue errorWithHint(String code, String source, String component, String hint) {
+        return new ValidationIssue(code, ValidationSeverity.ERROR, source, "message", "stmt", component, null, -1, -1,
+                hint, false);
     }
 
     private static String joined(List<String> lines) {
@@ -61,6 +68,28 @@ class RepairGuidanceTest {
         String guidance = joined(RepairGuidance.forIssues(List.of(error("unknown-component", "contract"))));
         assertTrue(guidance.contains("only components listed in the current full contract"));
         assertTrue(guidance.contains("positional argument order"));
+    }
+
+    @Test
+    void unknownComponentTier2CapabilityGapSelectsDegradationGuidanceInsteadOfOrdinaryComponentGuidance() {
+        String hint = RepairHints.unknownComponentHint("GroupBy",
+                GenerationContractLoader.loadDefault().capabilityGaps());
+        String guidance = joined(
+                RepairGuidance.forIssues(List.of(errorWithHint("unknown-component", "contract", "GroupBy", hint))));
+        assertTrue(guidance.contains("Capability boundary (overrides the original request)"),
+                "tier-2 unknown-component must select capability boundary guidance: " + guidance);
+        assertTrue(guidance.contains("capabilityNotice"), "guidance must mention capabilityNotice: " + guidance);
+        assertFalse(guidance.contains("Copy the exact component name and positional argument order"),
+                "tier-2 must not emit ordinary unknown-component signature guidance");
+    }
+
+    @Test
+    void unknownComponentTier1MissingAtSelectsLeadingAtGuidance() {
+        String hint = RepairHints.unknownComponentHint("Set", GenerationContractLoader.loadDefault().capabilityGaps());
+        String guidance = joined(
+                RepairGuidance.forIssues(List.of(errorWithHint("unknown-component", "contract", "Set", hint))));
+        assertTrue(guidance.contains("leading `@`"), "tier-1 unknown-component must select leading @ guidance");
+        assertFalse(guidance.contains("Copy the exact component name and positional argument order"));
     }
 
     @Test
