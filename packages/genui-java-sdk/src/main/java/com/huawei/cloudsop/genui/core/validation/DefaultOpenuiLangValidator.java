@@ -4,7 +4,9 @@
 
 package com.huawei.cloudsop.genui.core.validation;
 
+import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
+import com.huawei.cloudsop.genui.core.validation.parser.OpenuiPreprocessor;
 import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
@@ -56,7 +58,8 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
 
         // 1. Preprocess + parse (ParseMode mirrors ValidationMode 1:1).
         ParseMode parseMode = request.mode() == ValidationMode.STREAMING ? ParseMode.STREAMING : ParseMode.FINAL;
-        Program program = OpenuiParser.parse(request.dsl() != null ? request.dsl() : "", parseMode);
+        BuiltinCatalog builtins = BuiltinCatalog.fromContract(request.contract());
+        Program program = OpenuiParser.parse(request.dsl() != null ? request.dsl() : "", parseMode, builtins);
 
         // 2. Build catalog. A null contract yields an EMPTY catalog, so every component is reported
         // as unknown-component; callers validating real generations must pass the merged
@@ -65,7 +68,7 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
 
         // 3. Semantic analysis. When a concrete dataModel was supplied, "data" is runtime-resolved
         // (same rule as the generation pipeline's externalRefsFor).
-        ProgramAnalyzer analyzer = new ProgramAnalyzer(catalog);
+        ProgramAnalyzer analyzer = new ProgramAnalyzer(catalog, builtins);
         LinkedHashSet<String> externalRefs = new LinkedHashSet<>(request.externalRefs());
         if (request.dataModel() != null) {
             externalRefs.add("data");
@@ -75,12 +78,12 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
         // The normalized DSL is the preprocessed text (with whitespace trimmed / auto-close applied in
         // STREAMING). OpenuiParser internally calls OpenuiPreprocessor.process() but does not expose the
         // cleaned text directly. We re-derive it the same way: call preprocess() directly.
-        String normalizedDsl = com.huawei.cloudsop.genui.core.validation.parser.OpenuiPreprocessor
-                .process(request.dsl() != null ? request.dsl() : "", parseMode).text();
+        String normalizedDsl = OpenuiPreprocessor.process(request.dsl() != null ? request.dsl() : "", parseMode).text();
 
         // 4. Type validation against the concrete data model (only when supplied), then combine.
         List<ValidationIssue> issues = new ArrayList<>(analysis.issues());
-        issues.addAll(new ProgramTypeValidator().validate(program, catalog, request.dataModel(), request.mode()));
+        issues.addAll(
+                new ProgramTypeValidator(builtins).validate(program, catalog, request.dataModel(), request.mode()));
         boolean hasError = issues.stream().anyMatch(i -> i.severity() == ValidationSeverity.ERROR);
 
         ValidationMetadata metadata = new ValidationMetadata(analysis.statementCount(), analysis.entryId(),

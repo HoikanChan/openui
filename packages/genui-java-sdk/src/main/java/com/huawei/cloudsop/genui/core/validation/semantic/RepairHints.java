@@ -4,19 +4,21 @@
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
 
+import com.huawei.cloudsop.genui.core.contract.CapabilityGapSpec;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.Builtins;
 
+import java.util.List;
 import java.util.Set;
 
 /**
- * 面向修复的未解析引用提示路由（设计决策 11.2）。
+ * 面向修复的未解析引用与未知组件提示路由（设计决策 11.2 / #75）。
  *
  * <p>
  * 增强信息<em>只</em>放在 {@code hint} 字段中，保持问题的 {@code message} 稳定。
  *
  * <p>
- * 提示文案与 {@link #isRootCauseHint} 判定逻辑刻意放在同一个类中：{@code ReaskPromptBuilder} 使用该判定来豁免
+ * 提示文案与 {@link #isRootCauseHint} 判定逻辑刻意放在同一个类中：{@code ValidationIssueReducer} 使用该判定来豁免
  * 携带根因提示的问题不被级联抑制。两者放在一起意味着一处会破坏判定逻辑的文案改动会直接导致 {@code RepairHintsTest} 失败，而不是默默地抑制掉本应解释失败原因的提示。
  *
  * @since 2026
@@ -37,6 +39,9 @@ public final class RepairHints {
 
     /** JS 全局对象提示的根因标记；由 {@code RepairHintsTest} 固定断言。 */
     private static final String JS_GLOBAL_MARKER = "is a JavaScript global";
+
+    /** 能力边界越界提示的根因标记；由 {@code RepairHintsTest} 固定断言。 */
+    private static final String CAPABILITY_GAP_MARKER = "exceeds the openui-lang capability boundary";
 
     private RepairHints() {
     }
@@ -68,7 +73,93 @@ public final class RepairHints {
     }
 
     /**
-     * 当提示本身已经点明根因（缺失 '@' 或 JS 全局对象这两档）时返回 {@code true}。此类问题在重新请求提示词中 豁免于级联抑制：该语句可能同时携带一个语法错误，但这条提示 —— 而非 token 层面的症状 ——
+     * 将一个未知组件/算子名按默认 builtin 词表与生效契约的 {@code capabilityGaps} 做三档路由（#75）：
+     *
+     * <ol>
+     * <li>命中契约 builtin 或 Action step → 提示补前导 {@code @}；
+     * <li>命中 {@code capabilityGaps.aliases}（忽略前导 {@code @}）→ 能力边界 Root-cause Hint；
+     * <li>其余未知名称 → 提示使用契约已有组件改写。
+     * </ol>
+     *
+     * @param name
+     *            未知组件/调用名
+     * @param capabilityGaps
+     *            当前生效契约的能力缺口列表，可为 {@code null}
+     * @return 修复提示文案
+     */
+    public static String unknownComponentHint(String name, List<CapabilityGapSpec> capabilityGaps) {
+        return unknownComponentHint(name, BuiltinCatalog.getDefault(), capabilityGaps);
+    }
+
+    /**
+     * 将一个未知组件/算子名按指定 builtin 词表与生效契约的 {@code capabilityGaps} 做三档路由（#75）。
+     *
+     * @param name
+     *            未知组件/调用名
+     * @param builtins
+     *            当前 builtin 词表
+     * @param capabilityGaps
+     *            当前生效契约的能力缺口列表，可为 {@code null}
+     * @return 修复提示文案
+     */
+    public static String unknownComponentHint(String name, BuiltinCatalog builtins,
+            List<CapabilityGapSpec> capabilityGaps) {
+        String normalized = CapabilityGapSpec.normalizeAlias(name);
+        BuiltinCatalog effectiveBuiltins = builtins == null ? BuiltinCatalog.getDefault() : builtins;
+        if (effectiveBuiltins.isBuiltin(normalized) || Builtins.isActionName(normalized)) {
+            return DID_YOU_MEAN_PREFIX + normalized + "\"? openui-lang builtins must be called with a leading '@'";
+        }
+        CapabilityGapSpec gap = findCapabilityGapByAlias(normalized, capabilityGaps);
+        if (gap != null) {
+            return "\"" + normalized + "\" (" + gap.name() + ") " + CAPABILITY_GAP_MARKER
+                    + " — if the input data already contains pre-aggregated/grouped rows, display that existing data "
+                    + "directly; otherwise do not try to implement or approximate \"" + gap.name() + "\"; instead: "
+                    + gap.fallback() + ". Redefine this statement id with a valid expression and make `"
+                    + gap.noticeStatement()
+                    + "` (in the same language as the user's request) the first child of `root`";
+        }
+        return "\"" + normalized + "\" does not exist in the current contract — rewrite using components listed in "
+                + "the current contract";
+    }
+
+    /**
+     * 在当前生效契约的 {@code capabilityGaps} 中按别名查找命中的能力缺口（忽略前导 {@code @}）。
+     *
+     * @param name
+     *            调用名
+     * @param capabilityGaps
+     *            能力缺口列表
+     * @return 命中的 {@link CapabilityGapSpec}，未命中时返回 {@code null}
+     */
+    public static CapabilityGapSpec findCapabilityGapByAlias(String name, List<CapabilityGapSpec> capabilityGaps) {
+        String normalized = CapabilityGapSpec.normalizeAlias(name);
+        if (normalized.isEmpty() || capabilityGaps == null) {
+            return null;
+        }
+        for (CapabilityGapSpec gap : capabilityGaps) {
+            if (gap != null && gap.aliases().contains(normalized)) {
+                return gap;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 判断提示是否为“缺失前导 {@code @}”根因提示。
+     */
+    public static boolean isMissingAtHint(String hint) {
+        return hint != null && hint.startsWith(DID_YOU_MEAN_PREFIX);
+    }
+
+    /**
+     * 判断提示是否为“能力边界越界”根因提示。
+     */
+    public static boolean isCapabilityGapHint(String hint) {
+        return hint != null && hint.contains(CAPABILITY_GAP_MARKER);
+    }
+
+    /**
+     * 当提示本身已经点明根因（缺失 '@'、JS 全局对象或能力边界越界）时返回 {@code true}。此类问题在修复提示词中 豁免于级联抑制：该语句可能同时携带一个语法错误，但这条提示 —— 而非 token 层面的症状 ——
      * 才是可操作的 解释。
      *
      * @param hint
@@ -76,6 +167,7 @@ public final class RepairHints {
      * @return 提示本身即为根因时返回 {@code true}
      */
     public static boolean isRootCauseHint(String hint) {
-        return hint != null && (hint.startsWith(DID_YOU_MEAN_PREFIX) || hint.contains(JS_GLOBAL_MARKER));
+        return hint != null && (hint.startsWith(DID_YOU_MEAN_PREFIX) || hint.contains(JS_GLOBAL_MARKER)
+                || hint.contains(CAPABILITY_GAP_MARKER));
     }
 }

@@ -41,8 +41,16 @@ public final class ProgramTypeValidator {
     private final DataPathResolver pathResolver = new DataPathResolver();
     private final SchemaTypeCompiler schemaCompiler = new SchemaTypeCompiler();
     private final TypeAssignability assignability = new TypeAssignability();
-    private final BuiltinTypeRegistry builtinTypes = new BuiltinTypeRegistry(
-            BuiltinCatalog.getDefault().specsForTypeValidation());
+    private final BuiltinTypeRegistry builtinTypes;
+
+    public ProgramTypeValidator() {
+        this(BuiltinCatalog.getDefault());
+    }
+
+    public ProgramTypeValidator(BuiltinCatalog builtins) {
+        BuiltinCatalog effectiveBuiltins = builtins == null ? BuiltinCatalog.getDefault() : builtins;
+        this.builtinTypes = new BuiltinTypeRegistry(effectiveBuiltins.specsForTypeValidation());
+    }
 
     /**
      * Validate proven expression and component-prop types. Unsupported or unproven checks are skipped. Streaming

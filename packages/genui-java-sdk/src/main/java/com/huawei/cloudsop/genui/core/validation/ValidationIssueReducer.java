@@ -89,7 +89,8 @@ public final class ValidationIssueReducer {
                 || issue.statementId() == null || !syntaxBrokenStatements.contains(issue.statementId())) {
             return false;
         }
-        return !("unresolved-ref".equals(issue.code()) && RepairHints.isRootCauseHint(issue.hint()));
+        return !(("unresolved-ref".equals(issue.code()) || "unknown-component".equals(issue.code()))
+                && RepairHints.isRootCauseHint(issue.hint()));
     }
 
     private static boolean isGenericTableRowMismatch(ValidationIssue issue, Set<IssueLocation> specificLocations) {
