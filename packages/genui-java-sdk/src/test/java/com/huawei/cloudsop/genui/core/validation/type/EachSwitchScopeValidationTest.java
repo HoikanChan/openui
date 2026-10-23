@@ -56,6 +56,41 @@ class EachSwitchScopeValidationTest {
         assertEquals("/columns/missing_field", issue.path());
     }
 
+    @Test
+    void observedRowMissingFieldInEachBodyIsReported() {
+        // 快照里确定存在的行缺字段是真实反例(#77 §6.2/§12):即便类型上界保守地标 0..*,
+        // 也不得用"可能为空"压掉当前观察到的缺失。
+        String dsl = "root = Stack(@Each(data.rows, \"row\", TextContent(row.missing)))";
+        ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("id", "a"))));
+
+        ValidationIssue issue = issue(result, "type-field-missing");
+        assertTrue(issue.message().contains("\"missing\""), () -> "观察到的行缺字段必须报: " + result.issues());
+    }
+
+    @Test
+    void tableColumnMissingFromEachGeneratedObjectRows() {
+        // 输入观察到非空:输出行确定是 body 生成的形状 {label},列 missing 确定缺失,必须报。
+        // 可能为空的输入仍止于未证明,由 emptyInputDoesNotFabricateFieldErrorsFromNever 锚定。
+        String dsl = "root = Table([labelCol, missingCol], @Each(data.rows, \"row\", {label: row.id}))\n"
+                + "labelCol = Col(\"Label\", \"label\")\n" + "missingCol = Col(\"Missing\", \"missing\")";
+        ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("id", "a"))));
+
+        ValidationIssue issue = issue(result, "type-table-column-missing");
+        assertEquals("/columns/missing", issue.path());
+    }
+
+    @Test
+    void wholeStringArrayRejectedByScalarComposite() {
+        // 整体数组不满足标量复合要求:TextContent.text 接受 string|number,装字符串的数组仍是数组。
+        // AnyOf 单候选必须与其唯一 Accept 在同一整体值上判定一致(#77 §6.3 同分区)。
+        String dsl = "root = TextContent([\"x\"])";
+        ValidationResult result = validate(dsl, Map.of());
+
+        ValidationIssue issue = issue(result, "type-prop-mismatch");
+        assertEquals("TextContent", issue.component());
+        assertEquals("/text", issue.path());
+    }
+
     // ── 嵌套 Switch 不丢 binder ───────────────────────────────────────────
 
     @Test
@@ -73,24 +108,48 @@ class EachSwitchScopeValidationTest {
     }
 
     @Test
-    void nestedEachShadowsAndRestoresBinder() {
-        // 内层 Each 绑定同名 binder "row":body 里 row 指内层元素;退出内层后外层 row 恢复。
-        // 两调用各自合法:内层读内层字段 id,外层读外层字段 name——遮蔽或恢复任一出错都会误报。
-        String valid = "root = Stack([\n"
-                + "  TextContent(@First(@Each(data.outer, \"row\", @Each(row.inner, \"row\", row.id)))),\n"
-                + "  TextContent(@Each(data.outer, \"row\", row.name))\n" + "])";
+    void sameNameInnerBinderShadowsOuterInsideInnerBody() {
+        // 同名遮蔽:内层 "row" 遮蔽外层。若遮蔽失效,内层 body 的 row 解析成外层行(只有 name),
+        // 读 row.id 确定误报缺失;遮蔽正确时解析成内层行(只有 id),row.id 合法。
+        // 该误报对鉴别有效:它只在遮蔽失效时出现。(嵌套元素行不携带逐行观察证据,
+        // 内层行字段读取按元素存在未证明处理,不报确定缺失。)
+        String dsl = "root = Stack(@Each(data.outer, \"row\", @Each(row.inner, \"row\", TextContent(row.id))))";
         Map<String, Object> dataModel = Map.of("outer",
                 List.of(Map.of("name", "outer-1", "inner", List.of(Map.of("id", "inner-1")))));
-        assertEquals(ValidationStatus.VALID, validate(valid, dataModel).status(),
-                () -> "同名嵌套遮蔽与恢复都合法: " + validate(valid, dataModel).issues());
+        ValidationResult result = validate(dsl, dataModel);
 
-        // 对照:内层读只有外层才有的字段。漏遮蔽会解析成外层 row.name(合法);
-        // 正确遮蔽时读到的是内层行的未知字段——按 #82 口径,快照样本形状不构成确定缺失(type-field-missing),
-        // 只能到未证明。未证明的类型在下游组件参数位是否判死属既有 #82 口径,此处只锚定"不制造字段错误"。
-        String shadowed = "root = TextContent(@Each(data.outer, \"row\", @First(@Each(row.inner, \"row\", row.name))))";
-        ValidationResult shadowedResult = validate(shadowed, dataModel);
-        assertFalse(shadowedResult.issues().stream().anyMatch(i -> "type-field-missing".equals(i.code())),
-                () -> "正确遮蔽下内层 row.name 不得产生确定字段缺失错误: " + shadowedResult.issues());
+        assertFalse(result.issues().stream().anyMatch(i -> "type-field-missing".equals(i.code())),
+                () -> "遮蔽正确时内层 row.id 不得报缺失;报缺失即遮蔽失效: " + result.issues());
+    }
+
+    @Test
+    void outerBinderRestoredAfterNestedEachWithinSameOuterBody() {
+        // 恢复:同一外层 body 里,内层 Each 之后再读外层 row 的字段。
+        // 外层与内层行都有 name 字段(任何错误的行解析都合法),value 形状不含 name——
+        // 恢复失败(或同名残留、或内层形状泄漏)都会把 row.name 解析到 value 行,误报缺 name;
+        // 恢复正确时读到外层行的字面量 name,VALID。
+        String dsl = "root = Stack(@Each(data.outer, \"row\",\n"
+                + "    Stack([@Each(row.inner, \"row\", TextContent(row.name)), TextContent(row.name)])))";
+        Map<String, Object> dataModel = Map.of("outer", List.of(Map.of("name", "outer-1", "inner",
+                List.of(Map.of("name", "inner-1", "value", 1)))));
+        ValidationResult result = validate(dsl, dataModel);
+
+        assertEquals(ValidationStatus.VALID, result.status(),
+                () -> "退出内层后外层 row 必须恢复: " + result.issues());
+    }
+
+    @Test
+    void innerShadowedBinderReadsInnerRowFieldsOnly() {
+        // 负面对照:内层同名 body 读只有外层才有的字段 name。漏遮蔽会解析成外层 row.name(合法、不报);
+        // 正确遮蔽时读到的是内层行——内层源是外层行的 inner 字段(不携带逐行观察证据),
+        // 其行形状上界不含 name:报缺失只是未证明,不得升级为 type-field-missing(#82 口径)。
+        String dsl = "root = Stack(@Each(data.outer, \"row\", @Each(row.inner, \"row\", TextContent(row.name))))";
+        Map<String, Object> dataModel = Map.of("outer",
+                List.of(Map.of("name", "outer-1", "inner", List.of(Map.of("id", "inner-1")))));
+        ValidationResult result = validate(dsl, dataModel);
+
+        assertFalse(result.issues().stream().anyMatch(i -> "type-field-missing".equals(i.code())),
+                () -> "无逐行证据的内层行缺字段不得报确定缺失: " + result.issues());
     }
 
     // ── 空输入仍检查 body 独立错误 ─────────────────────────────────────────
@@ -152,6 +211,8 @@ class EachSwitchScopeValidationTest {
     @Test
     void templateUsedAtMultipleSitesChecksEachContextIndependently() {
         // 同一模板语句被两个不同行形状的 Each 使用:两处各自按其元素类型检查,不能互相串结论。
+        // switches 行有 hostname(该处通过),routers 行确定没有 hostname(该处必须独立暴露)——
+        // 若两处共用同一检查结论,router 处的缺失会被 switch 处的通过掩盖。
         String dsl = "root = Stack([\n" + "  @Each(data.switches, \"d\", deviceLine),\n"
                 + "  @Each(data.routers, \"d\", deviceLine)\n" + "])\n"
                 + "deviceLine = TextContent(d.hostname)";
@@ -159,22 +220,40 @@ class EachSwitchScopeValidationTest {
                 List.of(Map.of("name", "rt-1")));
         ValidationResult result = validate(dsl, dataModel);
 
-        // routers 样本元素没有 hostname:按 #82 口径样本形状不构成确定缺失(可能抽样不全),
-        // 两处使用位置各自检查、结论止于未证明,不得互相串结论也不得误杀。
-        assertFalse(result.issues().stream().anyMatch(i -> "type-field-missing".equals(i.code())),
-                () -> "快照样本缺字段不得升级为确定字段缺失错误: " + result.issues());
-        assertEquals(ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+        ValidationIssue issue = issue(result, "type-field-missing");
+        assertEquals("deviceLine", issue.statementId());
+        assertTrue(issue.message().contains("\"hostname\""),
+                () -> "router 使用位置必须独立报出 hostname 缺失: " + result.issues());
     }
 
     @Test
     void binderLayoutComesFromContractDeclaration() {
-        // binder 名形式、body 位置与输入来源全部由契约 params(binder 标记/位置)声明:语义与类型分析读同一布局。
-        // 以契约外形式(非字符串 binder)触发:两处引擎都不应把它当作用域绑定。
+        // binder 名形式(字符串字面量)、body 位置(最后一参)与输入来源(第一参)全部由契约 params
+        // 的 binder 标记声明;语义分析与类型分析读同一份编译布局(LazyBuiltinBinders/BuiltinSpec)。
+        // 非字符串 binder 不是作用域绑定:两处引擎都按契约形态报错,而不是把它当变量名引入作用域。
         String dsl = "root = Stack(@Each(data.rows, 42, TextContent(\"x\")))";
         ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("name", "a"))));
 
-        // 非字符串 binder 已有既有诊断;该断言锚定“binder 形态判定与契约声明一致”而非新增行为。
         issue(result, "builtin-argument-type-mismatch");
+    }
+
+    @Test
+    void conclusionsAreStableAcrossRepeatedValidationRuns() {
+        // 嵌套 + 多使用位置的结论可重复:同一请求独立验证两次结果一致。
+        // 类型分析会话按请求新建(无跨请求分析缓存开关),重复运行即缓存等价证据。
+        String dsl = "root = Stack([\n" + "  @Each(data.switches, \"d\", deviceLine),\n"
+                + "  @Each(data.routers, \"d\", deviceLine)\n" + "])\n"
+                + "deviceLine = TextContent(d.hostname)";
+        Map<String, Object> dataModel = Map.of("switches", List.of(Map.of("hostname", "sw-1")), "routers",
+                List.of(Map.of("name", "rt-1")));
+
+        ValidationResult first = validate(dsl, dataModel);
+        ValidationResult second = validate(dsl, dataModel);
+
+        assertEquals(first.status(), second.status());
+        assertEquals(first.issues().stream().map(ValidationIssue::code).toList(),
+                second.issues().stream().map(ValidationIssue::code).toList(),
+                () -> "重复验证结论必须一致: first=" + first.issues() + " second=" + second.issues());
     }
 
     private static ValidationResult validate(String dsl, Map<String, Object> dataModel) {

@@ -410,12 +410,11 @@ public final class AnalysisSession {
         Fact base = synth(member.obj(), statementId, env, resolving);
         Fact field = ops.readField(base, member.field());
         if (field.type() instanceof Type.Never && !base.hasUpstreamErrors()) {
-            if (base.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE) && !definiteAbsenceProven(base)) {
-                // 基值来自可能为空数组的元素:无元素时缺失无从谈起;有元素时,样本形状上界也不构成
-                // 确定缺失(#82:不以样本制造判定)——除非观察到逐行一致的字段缺失统计。
+            if (base.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)) {
+                // 基值来自元素存在未证明的绑定(可能为空且无逐行观察证据):缺失无从确证,止于未证明。
                 return Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE);
             }
-            // 确定缺失:对象关闭且未列出该字段(基值与空数组可能性无关,或有一致缺失统计支持)。
+            // 确定缺失:对象关闭且未列出该字段(基值与空数组可能性无关,或观察证据覆盖)。
             String errorId = nextErrorId();
             emit("type-field-missing",
                     "Field \"" + member.field() + "\" is absent from " + base.type().displayName() + ".", statementId,
@@ -844,6 +843,7 @@ public final class AnalysisSession {
         List<Fact> arguments = new ArrayList<>();
         List<BuiltinSpec.ParamSpec> params = spec.params();
         int binderCount = Math.max(0, call.args().size() - 1);
+        boolean lazyBuiltin = !spec.binderIndexes().isEmpty();
         for (int index = 0; index < call.args().size(); index++) {
             AstNode argument = call.args().get(index);
             boolean binderPosition = index < binderCount && index < params.size() && params.get(index).binder();
@@ -851,11 +851,17 @@ public final class AnalysisSession {
                 arguments.add(checkBinderArgument(spec, call, index, statementId, env, resolving));
                 continue;
             }
+            if (lazyBuiltin && index >= binderCount) {
+                // 带 binder 的 builtin(Each/Render):body/模板位只能合成一次,且必须用绑定后的词法环境
+                // (eachResult/renderResult 内);此处按外层环境预合成会把同名内层引用错绑到外层行,
+                // 并与绑定后的合成重复报错。占位 Fact 保持 arguments 下标与实参位对齐。
+                arguments.add(Fact.unknown(Fact.Loss.MISSING_CONTEXT));
+                continue;
+            }
             Fact actual = synth(argument, statementId, env, resolving);
             arguments.add(actual);
-            // 带 binder 的 builtin(Each/Render):body/模板位参数不按普通 params 检查,由使用位置另行检查;
+            // 带 binder 的 builtin:body/模板位参数不按普通 params 检查,由使用位置另行检查;
             // 普通 builtin 的每个实参都按 params 检查(variadic 不封顶)。
-            boolean lazyBuiltin = !spec.binderIndexes().isEmpty();
             if (index < params.size() && (!lazyBuiltin || index < binderCount)) {
                 checkBuiltinParam(spec, call, index, actual, statementId);
             }
@@ -994,21 +1000,15 @@ public final class AnalysisSession {
         Fact input = arguments.get(0);
         Fact element = ops.element(input);
         boolean emptyPossible = lengthMayBeZero(input);
-        // 元素存在未证明(可能空数组)时,binder 绑定值打上 no-element-evidence:body 内对其字段的
-        // 读取结论只能到"未证明",不得升级为确定缺失;元素本身为 Never 时退化为 Unknown。
+        // 元素存在未证明时才打 no-element-evidence:类型可能空且未观察到任何实际元素行。
+        // 观察到实际元素(逐元素 ObservedValue)时,该行的字段缺失是真实反例(#77 §6.2/§12),
+        // 不得用"可能为空"压掉;只有纯类型上界(无逐行证据)时,缺失判定止于未证明(#82)。
+        boolean elementExistenceUnproven = emptyPossible && element.evidence().stream()
+                .noneMatch(Fact.Evidence.ObservedValue.class::isInstance);
         Fact boundElement = element.type() instanceof Type.Never
                 ? Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE)
-                : emptyPossible ? element.withLoss(Fact.Loss.NO_ELEMENT_EVIDENCE) : element;
-        // 快照观察到非空输入数组:元素确定存在,补充元素存在证据,字段缺失仍可确定判定。
-        // 已有元素观察证据时不必重复标记(逐元素 ObservedValue 本身就是存在证据)。
-        if (emptyPossible && hasObservedNonEmptyArray(input) && boundElement.evidence().isEmpty()
-                && !(boundElement.type() instanceof Type.Unknown)) {
-            boundElement = new Fact(boundElement.type(),
-                    unionEvidence(boundElement.evidence(), new Fact.Evidence.ElementPresence()),
-                    boundElement.losses(), boundElement.upstreamErrors());
-        }
-        Fact binding = boundElement;
-        LexicalEnvironment bodyEnv = binderName(call.args().get(1)).map(name -> env.bind(name, binding))
+                : elementExistenceUnproven ? element.withLoss(Fact.Loss.NO_ELEMENT_EVIDENCE) : element;
+        LexicalEnvironment bodyEnv = binderName(call.args().get(1)).map(name -> env.bind(name, boundElement))
                 .orElse(env);
         Fact body = synth(call.args().get(2), statementId, bodyEnv, resolving);
         if (emptyPossible) {
@@ -1027,33 +1027,6 @@ public final class AnalysisSession {
             }
         }
         return false;
-    }
-
-    /** 快照证据中观察到至少一个非空数组。 */
-    private static boolean hasObservedNonEmptyArray(Fact fact) {
-        for (Fact.Evidence evidence : fact.evidence()) {
-            if (evidence instanceof Fact.Evidence.ObservedValue observed && observed.value() instanceof List<?> list
-                    && !list.isEmpty()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * 可能空数组绑定值上的"确定缺失"证据标准(#82 口径):样本类型上界只是可能性,只有观察到逐行
-     * 一致的字段缺失统计(FieldPresence:missing>0 且 present==0)才把缺失升级为确定。
-     */
-    private static boolean definiteAbsenceProven(Fact fact) {
-        return fact.evidence().stream().filter(Fact.Evidence.FieldPresence.class::isInstance)
-                .map(Fact.Evidence.FieldPresence.class::cast)
-                .anyMatch(presence -> presence.missing() > 0 && presence.present() == 0);
-    }
-
-    private static Set<Fact.Evidence> unionEvidence(Set<Fact.Evidence> evidence, Fact.Evidence extra) {
-        Set<Fact.Evidence> merged = new LinkedHashSet<>(evidence);
-        merged.add(extra);
-        return Set.copyOf(merged);
     }
 
     /** Render:产生延迟模板事实;使用位置(Table 列)另行检查 body。 */
