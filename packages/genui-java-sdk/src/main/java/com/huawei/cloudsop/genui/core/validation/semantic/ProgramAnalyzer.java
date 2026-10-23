@@ -470,13 +470,17 @@ public final class ProgramAnalyzer {
             }
             binders.add(binderName);
         }
+        // binder 只作用于 body(#77 §10.1):body 恒为最后一个实参,其余实参(Each 的 source)在外层作用域解析,
+        // source 里出现同名 binder 不得被压制。
+        int bodyIndex = LazyBuiltinBinders.bodyIndex(spec, comp);
+        for (int i = 0; i < comp.args().size(); i++) {
+            if (i != bodyIndex && !binderIndexes.contains(i)) {
+                walkExpr(comp.args().get(i), ctx);
+            }
+        }
         ctx.scopeFrames.push(binders);
         try {
-            for (int i = 0; i < comp.args().size(); i++) {
-                if (!binderIndexes.contains(i)) {
-                    walkExpr(comp.args().get(i), ctx);
-                }
-            }
+            walkExpr(comp.args().get(bodyIndex), ctx);
         } finally {
             ctx.scopeFrames.pop();
         }

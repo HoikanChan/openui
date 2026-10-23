@@ -322,7 +322,11 @@ public final class TypeOps {
                 results.add(Type.Unknown.INSTANCE);
             }
         }
-        // 存在证据被 Filter 删除:只保留长度为零也可能的安全上界。
+        // 存在证据被 Filter 删除:只保留长度为零也可能的安全上界,并打上"元素存在未证明"的丢失标记——
+        // 无任何损失不意味着观察到元素(#77 §6.2/§6.5/§7.5:Filter 可删掉快照里的保留行)。
+        // 保留的元素类型上界仍确定:谓词只选行不改行,逐元素判定(字段读取/元素级参数检查)在该上界上进行;
+        // 存在性由数组层(this loss + 空证据)判定,不打 UNKNOWN_INPUT(那会连元素级确定性一并吞掉)。
+        losses.add(Fact.Loss.NO_ELEMENT_EVIDENCE);
         return new Fact(Types.union(results), Set.of(), losses, sequence.upstreamErrors());
     }
 
@@ -361,14 +365,24 @@ public final class TypeOps {
         if (inputProvablyNonempty) {
             losses.remove(Fact.Loss.NO_ELEMENT_EVIDENCE);
         }
-        // body 证据是逐元素的:只把数组级观察值(元素本身是数组,如嵌套 Each)关联到输出数组;
-        // 标量/对象元素证据若按输出路径转发,会被按"整个被检值"消费的检查路径误当反例。
+        // 证据按层级组合:body 的逐元素观察值折叠为一个"单元素序列"观察值——输出数组在该层级
+        // 确定存在一次,其元素集合保守取所有观察到的 body 值(不逐行配对输入行)。层级由元素操作
+        // 逐层下钻维护,不按 Java 值种类丢弃。
         Set<Fact.Evidence> evidence = new LinkedHashSet<>();
+        List<Object> observedElements = new ArrayList<>();
         for (Fact.Evidence item : body.evidence()) {
-            if (!(item instanceof Fact.Evidence.ObservedValue observed)
-                    || observed.value() instanceof List<?>) {
+            if (item instanceof Fact.Evidence.ObservedValue observed) {
+                observedElements.add(SnapshotFacts.deepFreeze(observed.value()));
+            } else {
                 evidence.add(item);
             }
+        }
+        if (!observedElements.isEmpty()) {
+            String path = body.evidence().stream()
+                    .filter(e -> e instanceof Fact.Evidence.ObservedValue)
+                    .map(e -> ((Fact.Evidence.ObservedValue) e).path()).filter(p -> p != null).findFirst()
+                    .orElse(null);
+            evidence.add(new Fact.Evidence.ObservedValue(path, List.copyOf(observedElements)));
         }
         return new Fact(Types.union(results), evidence, losses, Set.of());
     }

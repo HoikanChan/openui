@@ -130,13 +130,16 @@ public final class StatementRelations {
                     binders.add(binder);
                 }
                 if (valid) {
+                    // binder 只作用于 body(#77 §10.1):body 恒为最后一个实参,其余实参在外层作用域收集依赖。
+                    int bodyIndex = LazyBuiltinBinders.bodyIndex(spec, comp);
+                    for (int i = 0; i < comp.args().size(); i++) {
+                        if (i != bodyIndex && !binderIndexes.contains(i)) {
+                            collectRefs(comp.args().get(i), knownIds, builtins, scopeFrames, refs);
+                        }
+                    }
                     scopeFrames.push(binders);
                     try {
-                        for (int i = 0; i < comp.args().size(); i++) {
-                            if (!binderIndexes.contains(i)) {
-                                collectRefs(comp.args().get(i), knownIds, builtins, scopeFrames, refs);
-                            }
-                        }
+                        collectRefs(comp.args().get(bodyIndex), knownIds, builtins, scopeFrames, refs);
                     } finally {
                         scopeFrames.pop();
                     }

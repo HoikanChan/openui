@@ -189,13 +189,38 @@ public final class Checks {
                 if (valueFact.type() instanceof Type.Never) {
                     continue;
                 }
-                CheckResult valueResult = checkAccept(valueFact, accept, observed.path());
+                CheckResult valueResult = checkObservedAccept(valueFact, accept, observed.path());
                 if (valueResult.verdict() == Verdict.MISMATCH) {
                     return new Counterexample("observed counterexample at " + observed.path());
                 }
             }
         }
         return null;
+    }
+
+    /**
+     * 对观察值重建事实的 Accept 判定,不再下钻证据:类型判定(包含/互斥/确定反例)在该值自身类型上完成。
+     * 重建事实按路径携带与父级同源的证据,若回到完整 checkAccept 会无限重访同一观察值(#83 评审发现的
+     * 终止性缺陷:`TextContent(@Sum(@Each([], "row", data.values)))` 栈溢出)。
+     */
+    private static CheckResult checkObservedAccept(Fact valueFact, Expectation.Accept accept, String checkedPath) {
+        Type target = accept.type();
+        if (target instanceof Type.Unknown) {
+            return CheckResult.match();
+        }
+        if (Relations.proveIncluded(valueFact.type(), target) == Relations.Outcome.PROVEN) {
+            return CheckResult.match();
+        }
+        if (Relations.proveDisjoint(valueFact.type(), target) == Relations.Outcome.PROVEN
+                && existenceProven(valueFact, checkedPath)) {
+            return CheckResult.mismatch("all possible values are disjoint from " + target.displayName());
+        }
+        if (definiteTypeCounterexample(valueFact.type(), target)) {
+            return CheckResult.mismatch("values of type " + valueFact.type().displayName()
+                    + " cannot satisfy " + target.displayName());
+        }
+        return CheckResult.unproven(Set.of(Reason.INSUFFICIENT_EVIDENCE), Set.of(),
+                "cannot prove inclusion into " + target.displayName());
     }
 
     /**

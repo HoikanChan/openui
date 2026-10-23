@@ -251,6 +251,7 @@ public final class RuleEvaluator {
             case SEQUENCE_PRESERVE ->
                 ops.preserve(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
             case SEQUENCE_SUBSET -> ops.subset(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+            case SEQUENCE_ELEMENT -> ops.element(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
             case RECORD_OVERLAY -> recordOverlay(apply.operands().get(0), bounds, argumentCount, callSite, ops);
         };
     }

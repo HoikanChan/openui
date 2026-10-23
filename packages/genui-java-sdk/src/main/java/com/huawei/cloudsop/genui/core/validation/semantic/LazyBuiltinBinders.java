@@ -45,9 +45,9 @@ public final class LazyBuiltinBinders {
         return spec.activeBinderIndexes(comp.args().size());
     }
 
-    /** body/模板实参下标:惰性 builtin 的 body 恒为最后一个实参。 */
-    public static int bodyIndex(AstNode.Comp comp) {
-        return comp.args().size() - 1;
+    /** body/模板实参下标:布局约定 body 恒为最后一个实参,委托编译产物 {@link BuiltinSpec#bodyIndex(int)}。 */
+    public static int bodyIndex(BuiltinSpec spec, AstNode.Comp comp) {
+        return spec.bodyIndex(comp.args().size());
     }
 
     /**

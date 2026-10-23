@@ -1697,14 +1697,16 @@
         "parameters": [
           {
             "name": "array",
-            "accept": {
-              "tag": "sequence",
-              "element": "number"
-            }
+            "accept": "array"
           }
         ],
         "result": {
-          "type": "number"
+          "op": "sequence.element",
+          "operands": [
+            {
+              "argument": 0
+            }
+          ]
         }
       }
     },

@@ -6,7 +6,7 @@
 
 ## 证据版本与复现
 
-核对基点：`bfc9c760f3b3feaa09a2ad8b23d5c357193b0574`。默认资源：`src/main/resources/openui/base-contract.json`，`contractVersion = @cloudsop/openui-react-ui-dsl@1.1.6`，SHA-256 `fcacf88ca74858ba653975aa05889bf839686972afe8b0cd82dc086d2e0c9fc2`，Git blob `f4f70c7c5747acfae078db0ad3b994eb6aebd134`。行号均指此版本。
+核对基点：`bfc9c760f3b3feaa09a2ad8b23d5c357193b0574`。默认资源：`src/main/resources/openui/base-contract.json`，`contractVersion = @cloudsop/openui-react-ui-dsl@1.1.6`，SHA-256 `fcacf88ca74858ba653975aa05889bf839686972afe8b0cd82dc086d2e0c9fc2`，Git blob `f4f70c7c5747acfae078db0ad3b994eb6aebd134`。行号均指此版本。#83 起资源新增 binder 布局字段（`input`/`nameSyntax`）且 Sum 类型规则改为 sequence.element，内容 SHA-256 随之变为 `0413629a9c5e2eadb9a5e63a9c9deed37bacd0b66d4e691265c6941730635bb0`（contractVersion 未变，仍为 1.1.6 词汇）。
 
 从仓库根目录运行：
 
@@ -20,6 +20,12 @@ java --class-path $evidenceClasspath packages/genui-java-sdk/docs/examples/Contr
 
 ```json
 {"contractVersion":"@cloudsop/openui-react-ui-dsl@1.1.6","builtins":29,"sha256":"fcacf88ca74858ba653975aa05889bf839686972afe8b0cd82dc086d2e0c9fc2","evidence":"contract-only; no runtime execution"}
+```
+
+#83 资源更新后重跑，末行实测输出（2026-10-23，退出码 0）：
+
+```json
+{"contractVersion":"@cloudsop/openui-react-ui-dsl@1.1.6","sha256":"0413629a9c5e2eadb9a5e63a9c9deed37bacd0b66d4e691265c6941730635bb0","builtins":29,"evidence":"contract-only; no runtime execution"}
 ```
 
 这是可执行的**契约证据检查**，不运行 DSL、不证明生产返回值。配套 [验收输入](examples/contract-migration-acceptance.json)将“确定结果”“只确定类型”“尚待定义”分开；后续实施将其接入公开 validator/确定性生成校验入口，不构造内部分析快照。
@@ -136,3 +142,9 @@ TS 后续工作集中跟踪于 [#91：权威契约导出与模板接口同步](h
 | 权威导出与类型规则路径 | 历史 commit/入口/manifest 限制、目标传递链与发布验收 |
 | 可复现输入输出或契约证据 | 脚本 29 项输出/摘要指纹、JSON 样例；明确非运行时测试 |
 | 必要规范决定与未决项 | [ADR 0005](adr/0005-contract-semantics-evidence.md)，本文件未决表 |
+
+## #83 验收映射：分析缓存（设计 13.2）
+
+设计 13.2 要求给出"缓存开/关结果一致"的对比验收。本实现**没有分析结果记忆化**：每次 `analyze()` 新建 `AnalysisSession`，类型合成、证据与反例检查都在单次会话内现算，跨调用不读写任何分析结果缓存。因此"缓存开关对比"对本实现不适用（N/A）——不存在可切换的缓存，也就无从产生开关两态的结果差。
+
+可重复性另行锚定，与缓存无关：同一输入独立运行两次结论必须一致，由 `EachSwitchScopeValidationTest.conclusionsAreRepeatableAcrossIndependentRuns`（以及内核既有重复性用例）固定。若未来引入分析缓存，需补 13.2 的开关对比验收后再启用。

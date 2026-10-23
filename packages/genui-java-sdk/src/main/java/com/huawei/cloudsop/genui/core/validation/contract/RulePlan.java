@@ -145,6 +145,8 @@ public sealed interface RulePlan {
         SEQUENCE_PRESERVE("sequence.preserve"),
         /** 保留元素上界与数量上界，下界降 0，删除元素存在证据（Filter → TypeOps.subset）。 */
         SEQUENCE_SUBSET("sequence.subset"),
+        /** 取数组元素事实，观察证据下钻一层（Sum/Join 等按元素聚合 → TypeOps.element）。 */
+        SEQUENCE_ELEMENT("sequence.element"),
         /** 有序对象覆盖（MergeObject → TypeOps.overlay）；后写覆盖前值，字段证据被覆盖时替换。 */
         RECORD_OVERLAY("record.overlay");
 

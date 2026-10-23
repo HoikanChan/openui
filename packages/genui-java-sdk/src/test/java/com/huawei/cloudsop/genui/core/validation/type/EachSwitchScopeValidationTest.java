@@ -2,6 +2,7 @@ package com.huawei.cloudsop.genui.core.validation.type;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
@@ -150,6 +151,78 @@ class EachSwitchScopeValidationTest {
         ValidationIssue issue = issue(result, "type-field-missing");
         assertTrue(issue.message().contains("\"name\""),
                 () -> "观察到的嵌套行缺字段必须报: " + result.issues());
+    }
+
+    @Test
+    void filteredInputDoesNotFabricateMissingField() {
+        // Filter 删除"某行必然保留"的证据(#77 §6.2/§6.5/§7.5):没有任何行被证明保留,
+        // binder 字段缺失不能升级为确定错误——即便快照行上界确实没有该字段。
+        String dsl = "root = Stack(@Each(@Filter(data.rows, \"enabled\", \"==\", true), \"row\", TextContent(row.missing)))";
+        ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("id", "a", "enabled", false))));
+
+        assertFalse(result.issues().stream().anyMatch(i -> "type-field-missing".equals(i.code())),
+                () -> "Filter 后不得从可能为空的绑定制造字段缺失错误: " + result.issues());
+    }
+
+    @Test
+    void nestedFilteredInputDoesNotFabricateMissingField() {
+        // 同上,经嵌套 Each:Filter 之后的内层行存在性同样未证明。
+        String dsl = "root = Stack(@Each(@Filter(data.rows, \"enabled\", \"==\", true), \"row\",\n"
+                + "    @Each(row.inner, \"child\", TextContent(child.missing))))";
+        Map<String, Object> dataModel = Map.of("rows",
+                List.of(Map.of("id", "a", "enabled", false, "inner", List.of(Map.of("id", "i")))));
+        ValidationResult result = validate(dsl, dataModel);
+
+        assertFalse(result.issues().stream().anyMatch(i -> "type-field-missing".equals(i.code())),
+                () -> "嵌套 Filter 输入不得制造字段缺失错误: " + result.issues());
+    }
+
+    @Test
+    void identityChainedEachPreservesMissingRowCounterexample() {
+        // 恒等 Each 不能吞掉反例:内层输出保留行级观察证据,外层绑定仍能看到缺 id 的行。
+        String dsl = "root = Stack(@Each(@Each(data.rows, row, row), x, TextContent(x.id)))";
+        Map<String, Object> dataModel = Map.of("rows", List.of(Map.of("id", "a"), Map.of("other", 1)));
+        ValidationResult result = validate(dsl, dataModel);
+
+        ValidationIssue issue = issue(result, "type-field-missing");
+        assertTrue(issue.message().contains("\"id\""), () -> "链式恒等 Each 必须保留缺失行反例: " + result.issues());
+    }
+
+    @Test
+    void nestedArrayMappingKeepsEvidenceAtCorrectLevel() {
+        // body 是嵌套数组(row.inner):内层行证据只能关联到内层数组这一层;
+        // 外层 Each 解包后逐内层行的缺失必须仍然可见(关联错层会把内层行当外层数组观察)。
+        String dsl = "root = Stack(@Each(@Each(data.rows, row, row.inner), children,\n"
+                + "    @Each(children, child, TextContent(child.id))))";
+        Map<String, Object> dataModel = Map.of("rows",
+                List.of(Map.of("inner", List.of(Map.of("id", "a"), Map.of("other", 1)))));
+        ValidationResult result = validate(dsl, dataModel);
+
+        ValidationIssue issue = issue(result, "type-field-missing");
+        assertTrue(issue.message().contains("\"id\""), () -> "嵌套数组映射必须保留下层缺失反例: " + result.issues());
+    }
+
+    @Test
+    void binderDoesNotScopeEachSourceArgument() {
+        // binder 只作用于 body(#77 §10.1):Each 的 source 在外层作用域解析,
+        // 与 binder 同名的无定义引用必须照常报 unresolved-ref,不得被 binder 压制。
+        String dsl = "root = Stack(@Each(row, row, TextContent(\"x\")))";
+        ValidationResult result = validate(dsl, Map.of());
+
+        issue(result, "unresolved-ref");
+    }
+
+    @Test
+    void emptyEachBodyRecoveredObservedListTerminatesNormally() {
+        // 继承终止性缺陷:空输入 Each 的 body 恢复出携带观察证据的数组事实,Sum 元素级检查
+        // 的观察反例路径曾在同一证据上无限递归(StackOverflowError)。现在必须正常返回。
+        // 空 Each 不产生任何 body 元素,故不得断言 body 数据造成的聚合级不匹配——body 独立错误
+        // 仍按各自规则检查(见 emptyInputStillChecksBodyLocalErrors),但空 Each 的输出与 body
+        // 取值无关,此处只锚定正常终止。
+        String dsl = "root = TextContent(@Sum(@Each([], \"row\", data.values)))";
+        ValidationResult result = validate(dsl, Map.of("values", List.of("bad")));
+
+        assertNotNull(result.status(), () -> String.valueOf(result.issues()));
     }
 
     @Test

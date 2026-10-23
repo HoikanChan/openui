@@ -160,7 +160,7 @@ public final class AnalysisSession {
                         extended = extended.bind(binder);
                     }
                 }
-                int bodyIndex = LazyBuiltinBinders.bodyIndex(comp);
+                int bodyIndex = LazyBuiltinBinders.bodyIndex(spec, comp);
                 for (int i = 0; i < comp.args().size(); i++) {
                     collectRefs(comp.args().get(i), out, i == bodyIndex ? extended : env, visiting);
                 }
@@ -410,6 +410,22 @@ public final class AnalysisSession {
         }
         Fact base = synth(member.obj(), statementId, env, resolving);
         Fact field = ops.readField(base, member.field());
+        if (field.type() instanceof Type.Never && !base.hasUpstreamErrors()) {
+            // 元素存在未证明时缺失无从确证,止于未证明。基值自身携带该标记(未经 Each 绑定的 Filter 元素等),
+            // 或证据层为空且类型上界已含"可能无任何行"的来源(经 Each 绑定的基值已剔除输入层面丢失,
+            // 用证据有无表达存在性;字段读取从无证据基值提取不出任何字段证据)。
+            boolean existenceUnproven = base.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)
+                    || (base.evidence().isEmpty() && field.evidence().isEmpty());
+            if (existenceUnproven) {
+                return Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE);
+            }
+            // 确定缺失:对象关闭且未列出该字段(基值与空数组可能性无关,或观察证据覆盖)。
+            String errorId = nextErrorId();
+            emit("type-field-missing",
+                    "Field \"" + member.field() + "\" is absent from " + base.type().displayName() + ".", statementId,
+                    null, null, "Use a field present on the object shape.");
+            return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamError(errorId);
+        }
         if (!base.hasUpstreamErrors() && !base.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)
                 && observedMissingRow(base, member.field())) {
             // 观察到的行确定缺该字段是具体反例(#77 §6.2):上界合并掩盖部分缺失(异构行)时,
@@ -419,18 +435,6 @@ public final class AnalysisSession {
                     "Field \"" + member.field() + "\" is absent from an observed row of "
                             + base.type().displayName() + ".",
                     statementId, null, null, "Use a field present on every observed row.");
-            return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamError(errorId);
-        }
-        if (field.type() instanceof Type.Never && !base.hasUpstreamErrors()) {
-            if (base.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)) {
-                // 基值来自元素存在未证明的绑定(可能为空且无任何观察来源):缺失无从确证,止于未证明。
-                return Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE);
-            }
-            // 确定缺失:对象关闭且未列出该字段(基值与空数组可能性无关,或观察证据覆盖)。
-            String errorId = nextErrorId();
-            emit("type-field-missing",
-                    "Field \"" + member.field() + "\" is absent from " + base.type().displayName() + ".", statementId,
-                    null, null, "Use a field present on the object shape.");
             return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamError(errorId);
         }
         return field;
@@ -867,7 +871,7 @@ public final class AnalysisSession {
         List<BuiltinSpec.ParamSpec> params = spec.params();
         boolean lazyBuiltin = !spec.binderIndexes().isEmpty();
         List<Integer> activeBinders = lazyBuiltin ? spec.activeBinderIndexes(call.args().size()) : List.of();
-        int bodyIndex = LazyBuiltinBinders.bodyIndex(call);
+        int bodyIndex = LazyBuiltinBinders.bodyIndex(spec, call);
         for (int index = 0; index < call.args().size(); index++) {
             AstNode argument = call.args().get(index);
             if (activeBinders.contains(index)) {
@@ -1023,32 +1027,56 @@ public final class AnalysisSession {
         Fact input = arguments.get(spec.inputIndex());
         Fact element = ops.element(input);
         boolean emptyPossible = lengthMayBeZero(input);
-        // 元素存在未证明才打 no-element-evidence:可能为空且没有任何证据支撑实际元素存在。
-        // 证据不限于逐元素 ObservedValue:来自观察值(嵌套字段读取)的元素类型同样锚定当前快照——
-        // 嵌套数组及其行就在快照里,其缺字段是真实反例(#77 §2.1/§6.2);只有纯上界(无任何观察来源,
-        // 如 Filter/外部未知)时缺失判定才止于未证明(#82、§7.5)。
-        boolean observedOrigin = !element.evidence().isEmpty() || element.losses().stream()
-                .noneMatch(loss -> loss == Fact.Loss.UNKNOWN_INPUT || loss == Fact.Loss.PRECISION_BUDGET);
-        boolean elementExistenceUnproven = emptyPossible && !observedOrigin;
+        // 元素存在已证明:直接观察到元素行,或字段读取的证据关联保留了快照中的嵌套行(#77 §6.5)。
+        // 无任何损失不等于观察到元素——Filter 删除保留行后元素类型仍在但存在性未证明(§6.2/§7.5),
+        // subset 会显式打上 NO_ELEMENT_EVIDENCE。
+        boolean elementExistenceProven = !element.evidence().isEmpty();
+        if (!elementExistenceProven && !input.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)) {
+            for (Fact.Evidence item : input.evidence()) {
+                if (item instanceof Fact.Evidence.ObservedValue observed
+                        && observed.value() instanceof List<?> values && !values.isEmpty()) {
+                    elementExistenceProven = true;
+                }
+            }
+        }
+        boolean elementExistenceUnproven = emptyPossible && !elementExistenceProven;
         Fact boundElement = element.type() instanceof Type.Never
                 ? Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE)
                 : elementExistenceUnproven ? element.withLoss(Fact.Loss.NO_ELEMENT_EVIDENCE) : element;
+        // 绑定给 body 的元素事实不携带输入层面的存在性丢失:逐元素判定只看元素上界与逐元素证据
+        // (Filter/Sort 保留的元素类型误用仍按类型报);存在性由数组层(SequenceOf/minLength/列检查)判定。
+        Fact checkElement = stripExistenceLosses(boundElement);
         LexicalEnvironment bodyEnv = env;
         List<Integer> binders = spec.activeBinderIndexes(call.args().size());
         for (int position = 0; position < binders.size(); position++) {
             String name = LazyBuiltinBinders.binderName(spec, call, binders.get(position));
             if (name != null) {
-                // 元素绑定到输入来源参数声明之后的第一个 binder(契约布局:Each 的 varName)。
-                Fact bound = position == 0 && binders.get(position) > spec.inputIndex() ? boundElement
-                        : Fact.unknown(Fact.Loss.MISSING_CONTEXT);
+                // 元素绑定到第一个 binder;binder 位恒在输入来源之后(加载期校验,#83)。
+                Fact bound = position == 0 ? checkElement : Fact.unknown(Fact.Loss.MISSING_CONTEXT);
                 bodyEnv = bodyEnv.bind(name, bound);
             }
         }
-        Fact body = synth(call.args().get(LazyBuiltinBinders.bodyIndex(call)), statementId, bodyEnv, resolving);
+        Fact body = synth(call.args().get(LazyBuiltinBinders.bodyIndex(spec, call)), statementId, bodyEnv, resolving);
         if (emptyPossible) {
             body = body.withLoss(Fact.Loss.NO_ELEMENT_EVIDENCE);
         }
         return ops.map(input, body);
+    }
+
+    /**
+     * 去掉输入层面的存在性/输入丢失标记,保留逐元素内容未知(PRECISION_BUDGET 截断仍可见)。
+     * 存在性未证明时证据一并清空:那些证据来自未证明存在的行(Filter 后不保证任何行保留),不可信。
+     */
+    private static Fact stripExistenceLosses(Fact fact) {
+        if (!fact.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)
+                && !fact.losses().contains(Fact.Loss.UNKNOWN_INPUT)) {
+            return fact;
+        }
+        Set<Fact.Loss> losses = new LinkedHashSet<>(fact.losses());
+        boolean existenceUnproven = losses.remove(Fact.Loss.NO_ELEMENT_EVIDENCE);
+        losses.remove(Fact.Loss.UNKNOWN_INPUT);
+        return new Fact(fact.type(), existenceUnproven ? Set.of() : fact.evidence(), losses,
+                fact.upstreamErrors());
     }
 
     private static boolean lengthMayBeZero(Fact sequence) {
@@ -1078,7 +1106,7 @@ public final class AnalysisSession {
                 declared = declared.bind(name, Fact.unknown(Fact.Loss.MISSING_CONTEXT));
             }
         }
-        synth(call.args().get(LazyBuiltinBinders.bodyIndex(call)), statementId, declared, resolving);
+        synth(call.args().get(LazyBuiltinBinders.bodyIndex(spec, call)), statementId, declared, resolving);
         return Fact.of(Type.Template.INSTANCE);
     }
 
@@ -1091,10 +1119,12 @@ public final class AnalysisSession {
             String name = LazyBuiltinBinders.binderName(spec, render, binderIndex);
             if (name != null) {
                 Fact provided = context.getOrDefault(name, Fact.unknown(Fact.Loss.MISSING_CONTEXT));
-                useEnv = useEnv.bind(name, provided);
+                // 使用位置提供的上下文事实不携带数组层面的存在性丢失:逐元素判定只看值上界,
+                // 存在性由数组层(列存在性/长度检查)另行判定——与 Each 绑定同一剔除口径。
+                useEnv = useEnv.bind(name, stripExistenceLosses(provided));
             }
         }
-        synth(render.args().get(LazyBuiltinBinders.bodyIndex(render)), statementId, useEnv, resolving);
+        synth(render.args().get(LazyBuiltinBinders.bodyIndex(spec, render)), statementId, useEnv, resolving);
     }
 
     /** Switch:cases 在当前环境推断,结果为 cases 值与 default 的联合;未传 default 并入 null(#79 矩阵)。 */
@@ -1307,8 +1337,10 @@ public final class AnalysisSession {
             emit("type-table-column-missing", "Table column field \"" + field + "\" " + existence.detail() + ".",
                     statementId, "Table", "/columns/" + field, "Use a field present in the Table rows.");
         }
-        // 元素无证据(空数组/无行)时不再检查 cell 模板——无行结构可用。
-        if (noRowEvidence || rowElement.type() instanceof Type.Never) {
+        // 元素 Never(空数组)时不再检查 cell 模板——无行结构可用。行存在性未证明(Filter 等)不妨碍
+        // 按行形状上界检查 cell 模板:列存在性已在上方按 noRowEvidence 口径处理;字段值类型上界确定可知,
+        // cell 参数级误用(如对 string 列取 Count)按类型报,存在性不影响逐元素类型判定(#83 口径)。
+        if (rowElement.type() instanceof Type.Never) {
             return;
         }
         Fact cellFact = ops.readField(rowElement, field);

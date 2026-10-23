@@ -101,14 +101,15 @@ public record BuiltinSpec(String name, String signature, String description, boo
     }
 
     /**
-     * 一次调用实际引入的 binder 下标：契约声明位 ∩ 除 body/模板外的实参前缀（body 恒为最后一个实参）。 Each 的
+     * 一次调用实际引入的 binder 下标：契约声明位 ∩ 除 body/模板外的实参前缀（body 恒为最后一个实参——
+     * binder 布局的显式约定：body 位置即调用形态末位实参，各 arity 形式由此派生，不再按函数名特判）。 Each 的
      * source 不参与绑定所以天然落在前缀内;Render 2 参调用只有 index 0、3 参调用 index 0/1。
      */
     public List<Integer> activeBinderIndexes(int argCount) {
         return binderIndexes().stream().filter(index -> index < argCount - 1).toList();
     }
 
-    /** body/模板实参的下标：惰性 builtin 的 body 恒为最后一个实参。 */
+    /** body/模板实参的下标：惰性 builtin 的 body 恒为最后一个实参（binder 布局约定，见上）。 */
     public int bodyIndex(int argCount) {
         return argCount - 1;
     }

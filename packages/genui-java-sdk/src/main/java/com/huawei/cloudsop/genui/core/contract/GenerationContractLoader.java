@@ -189,17 +189,34 @@ public final class GenerationContractLoader {
         if (typeRuleRaw != null) {
             typeRule = RuleCompiler.compile(name, Json.asObject(typeRuleRaw, "typeRule of builtin " + name));
         }
-        // binder 布局:元素绑定的输入来源实参下标(Each 的 array;Render 无)。声明值必须落在参数表内。
+        // binder 布局:元素绑定的输入来源实参下标(Each 的 array;Render 无)。声明值必须是整数、落在参数表内,
+        // 且不得指向 binder 位或 body(body 恒为最后一参)——指向它们时元素绑定拿不到真实的输入事实(#77 §4.1/§8.4)。
         int inputIndex = -1;
         Object inputRaw = entry.get("input");
         if (inputRaw != null) {
-            if (!(inputRaw instanceof Number number)) {
-                throw new GenerationSdkException("builtin '" + name + "': 'input' must be a parameter index");
+            if (!(inputRaw instanceof Number number) || number.doubleValue() != Math.rint(number.doubleValue())
+                    || number.doubleValue() < Integer.MIN_VALUE || number.doubleValue() > Integer.MAX_VALUE) {
+                throw new GenerationSdkException(
+                        "builtin '" + name + "': 'input' must be an integral parameter index, got " + inputRaw);
             }
-            inputIndex = number.intValue();
-            if (inputIndex < 0 || inputIndex >= params.size()) {
-                throw new GenerationSdkException("builtin '" + name + "': 'input' index " + inputIndex
+            long raw = number.longValue();
+            if (raw < 0 || raw >= params.size()) {
+                throw new GenerationSdkException("builtin '" + name + "': 'input' index " + raw
                         + " is out of range for " + params.size() + " parameter(s)");
+            }
+            inputIndex = (int) raw;
+            if (params.get(inputIndex).binder()) {
+                throw new GenerationSdkException(
+                        "builtin '" + name + "': 'input' must not point to binder parameter '" + name + "."
+                                + params.get(inputIndex).name() + "'");
+            }
+            if (inputIndex == params.size() - 1) {
+                throw new GenerationSdkException(
+                        "builtin '" + name + "': 'input' must not point to the deferred body parameter");
+            }
+            if (params.stream().noneMatch(BuiltinSpec.ParamSpec::binder)) {
+                throw new GenerationSdkException(
+                        "builtin '" + name + "': 'input' is only meaningful for a binder builtin");
             }
         }
         return new BuiltinSpec(name, string(entry.get("signature")), string(entry.get("description")),
