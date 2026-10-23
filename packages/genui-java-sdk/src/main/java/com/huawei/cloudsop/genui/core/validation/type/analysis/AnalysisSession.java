@@ -20,7 +20,9 @@ import com.huawei.cloudsop.genui.core.validation.type.DataPathResolver;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -60,6 +62,20 @@ public final class AnalysisSession {
     public record Output(List<ValidationIssue> issues, CoverageReport coverage) {
     }
 
+    /**
+     * Render 延迟模板产物(#77 第 10.3 节):body 位置、声明环境与声明语句保存在会话内,通用类型代数只保留 {@link Type.Template} 形状,不把 AST 与环境塞进类型。
+     */
+    private record DeferredTemplate(AstNode.Comp call, String statementId, LexicalEnvironment declarationEnv,
+            int bodyIndex) {
+    }
+
+    /**
+     * 模板使用位置的诊断身份:诊断归属实际使用处(语句与路径),模板声明语句另行保留可追溯位置 (#77 第 10.3/11.3 节)。同一模板的不同使用位置不得共用去重身份。
+     */
+    private record TemplateUseSite(String pathPrefix, String coverageUseSite, String statementId,
+            String declarationStatementId) {
+    }
+
     private final Input input;
     private final AnalysisBudget.Tracker budget;
     private final TypeOps ops;
@@ -69,6 +85,10 @@ public final class AnalysisSession {
     private final Map<String, AstNode> symbols = new LinkedHashMap<>();
     private final Map<String, SourceSpan> spans = new LinkedHashMap<>();
     private final Map<String, String> emitted = new LinkedHashMap<>();
+    private final Map<AstNode, DeferredTemplate> templates = new IdentityHashMap<>();
+    private final List<DeferredTemplate> templateOrder = new ArrayList<>();
+    private final Set<AstNode> contextCheckedTemplates = Collections.newSetFromMap(new IdentityHashMap<>());
+    private final Deque<TemplateUseSite> templateUseSites = new ArrayDeque<>();
     private int errorSequence;
 
     private AnalysisSession(Input input) {
@@ -110,6 +130,26 @@ public final class AnalysisSession {
                 break;
             }
             synth(expr, id, rootEnv, new LinkedHashSet<>());
+        }
+        checkTemplatesWithoutUseSite();
+    }
+
+    /**
+     * 未在任何使用位置提供上下文的模板:仍以声明环境检查 body 的独立表达式,依赖 v/row 的部分保持 missing-context 并计入覆盖(#77 第 10.3 节),不能整段跳过。
+     */
+    private void checkTemplatesWithoutUseSite() {
+        // 按下标遍历:body 内可能还有未分析的模板,追加到 templateOrder 的本轮继续处理,不能并发修改。
+        for (int index = 0; index < templateOrder.size(); index++) {
+            DeferredTemplate template = templateOrder.get(index);
+            if (contextCheckedTemplates.contains(template.call())) {
+                continue;
+            }
+            if (!budget.tryConsumeCheck()) {
+                coverage.markTraversalTruncated();
+                return;
+            }
+            synth(template.call().args().get(template.bodyIndex()), template.statementId(), template.declarationEnv(),
+                    new LinkedHashSet<>());
         }
     }
 
@@ -264,6 +304,22 @@ public final class AnalysisSession {
                 }
             }
             return false;
+        }
+
+        /**
+         * 把本环境(更内层、优先)的绑定叠加到 {@code base} 上,用于在使用位置保留声明环境并继承使用位置绑定 (ADR 0006):同名以本环境为准,退出后自然回到 {@code base} 的绑定。
+         */
+        LexicalEnvironment over(LexicalEnvironment base) {
+            List<LexicalEnvironment> chain = new ArrayList<>();
+            for (LexicalEnvironment env = this; env != null && env.name != null; env = env.parent) {
+                chain.add(env);
+            }
+            LexicalEnvironment result = base == null ? root() : base;
+            for (int index = chain.size() - 1; index >= 0; index--) {
+                LexicalEnvironment node = chain.get(index);
+                result = result.bind(node.name, node.value);
+            }
+            return result;
         }
     }
 
@@ -821,8 +877,12 @@ public final class AnalysisSession {
     private Checks.CheckResult checkObligation(String statementId, String useSite, String kind, String contractPath,
             Fact fact, Expectation expectation, String checkedPath, String component, String issuePath) {
         Checks.CheckResult result = Checks.check(fact, expectation, checkedPath);
+        // 模板使用位置的检查要求带使用位置身份(#77 第 11.3 节):同一模板用于多列时各列独立计数。
+        TemplateUseSite site = templateUseSites.peek();
         coverage.record(new CoverageReport.Entry(
-                new CoverageReport.Obligation(statementId, useSite, kind, contractPath, expectation.toString()),
+                new CoverageReport.Obligation(site == null ? statementId : site.statementId(),
+                        site == null ? useSite : site.coverageUseSite() + ":" + useSite, kind, contractPath,
+                        expectation.toString()),
                 result.verdict(), List.copyOf(result.reasons()), result.upstreamErrors()));
         return result;
     }
@@ -1082,14 +1142,17 @@ public final class AnalysisSession {
         return false;
     }
 
-    /** Render:产生延迟模板事实;使用位置(Table 列)另行检查 body。 */
+    /**
+     * Render:产生延迟模板产物;body 推迟到使用位置(或没有使用位置时按声明环境)检查,类型只保留 Template 形状。声明环境在这里捕获,Render 自身 binder 遮蔽捕获的同名绑定(#77 第 10.3
+     * 节、ADR 0006)。
+     */
     private Fact renderResult(AstNode.Comp call, List<Fact> arguments, String statementId, LexicalEnvironment env,
             Set<String> resolving) {
         BuiltinSpec spec = input.builtins().spec(call.name());
-        if (spec.bodyIndex(call.args().size()) < 0) {
+        int bodyIndex = spec.bodyIndex(call.args().size());
+        if (bodyIndex < 0) {
             return Fact.unknown(Fact.Loss.MISSING_CONTEXT);
         }
-        // 声明环境被捕获;使用位置未提供上下文时依赖 v/row 的部分记 missing-context。
         LexicalEnvironment declared = env;
         for (int binderIndex : spec.activeBinderIndexes(call.args().size())) {
             String name = LazyBuiltinBinders.binderName(spec, call, binderIndex);
@@ -1097,18 +1160,27 @@ public final class AnalysisSession {
                 declared = declared.bind(name, Fact.unknown(Fact.Loss.MISSING_CONTEXT));
             }
         }
-        synth(call.args().get(LazyBuiltinBinders.bodyIndex(spec, call)), statementId, declared, resolving);
+        DeferredTemplate template = new DeferredTemplate(call, statementId, declared, bodyIndex);
+        if (templates.putIfAbsent(call, template) == null) {
+            templateOrder.add(template);
+        }
         return Fact.of(Type.Template.INSTANCE);
     }
 
-    /** Render 在使用位置按提供的上下文检查 body。 */
+    /**
+     * Render 在使用位置按提供的上下文检查 body:以声明环境为底座叠加使用位置绑定(ADR 0006 的跨语句继承), Render 自身 binder
+     * 再覆盖同名捕获;诊断与覆盖身份按使用位置区分,前一使用位置不得遮蔽后一使用位置 (#77 第 10.3/11.3 节)。
+     */
     void checkTemplateAtUseSite(AstNode.Comp render, Map<String, Fact> context, String statementId,
-            LexicalEnvironment env, Set<String> resolving, String useSite) {
+            LexicalEnvironment useSiteEnv, Set<String> resolving, String useSite, String useSitePath) {
         BuiltinSpec spec = input.builtins().spec(render.name());
-        if (spec.bodyIndex(render.args().size()) < 0) {
+        int bodyIndex = spec.bodyIndex(render.args().size());
+        if (bodyIndex < 0) {
             return;
         }
-        LexicalEnvironment useEnv = env;
+        DeferredTemplate template = templates.get(render);
+        LexicalEnvironment base = template == null ? useSiteEnv : useSiteEnv.over(template.declarationEnv());
+        LexicalEnvironment useEnv = base;
         for (int binderIndex : spec.activeBinderIndexes(render.args().size())) {
             String name = LazyBuiltinBinders.binderName(spec, render, binderIndex);
             if (name != null) {
@@ -1118,7 +1190,14 @@ public final class AnalysisSession {
                 useEnv = useEnv.bind(name, stripExistenceLosses(provided));
             }
         }
-        synth(render.args().get(LazyBuiltinBinders.bodyIndex(spec, render)), statementId, useEnv, resolving);
+        contextCheckedTemplates.add(render);
+        templateUseSites.push(new TemplateUseSite(useSitePath, useSite, statementId,
+                template == null ? null : template.statementId()));
+        try {
+            synth(render.args().get(bodyIndex), statementId, useEnv, resolving);
+        } finally {
+            templateUseSites.pop();
+        }
     }
 
     /** Switch:cases 在当前环境推断,结果为 cases 值与 default 的联合;未传 default 并入 null(#79 矩阵)。 */
@@ -1317,12 +1396,18 @@ public final class AnalysisSession {
             if (!(resolvedField instanceof AstNode.Str field)) {
                 continue;
             }
-            checkTableColumn(call, field.v(), rowElement, rows, statementId, env, resolving, rowsPath, noRowEvidence);
+            // 列的诊断归属:命名 Col 语句用其 id,内联列退回 Table 语句;仅供 cell 使用位置定位。
+            String columnStatementId = column instanceof AstNode.Ref ref && symbols.containsKey(ref.n())
+                    ? ref.n()
+                    : statementId;
+            checkTableColumn(call, field.v(), rowElement, rows, statementId, env, resolving, rowsPath, noRowEvidence,
+                    columnStatementId);
         }
     }
 
     private void checkTableColumn(AstNode.Comp column, String field, Fact rowElement, Fact rows, String statementId,
-            LexicalEnvironment env, Set<String> resolving, String rowsPath, boolean noRowEvidence) {
+            LexicalEnvironment env, Set<String> resolving, String rowsPath, boolean noRowEvidence,
+            String columnStatementId) {
         Expectation requirement = new Expectation.RequireField(field, new Expectation.Accept(Type.Unknown.INSTANCE));
         Checks.CheckResult existence = Checks.check(rowElement, requirement, rowsPath);
         // 所有已知行形状都没有该列是静态用法错误;Filter 仅删除行存在证据,不新增字段。
@@ -1351,11 +1436,11 @@ public final class AnalysisSession {
             return;
         }
         Fact cellFact = ops.readField(rowElement, field);
-        validateCellTemplate(column, cellFact, rowElement, statementId, env, resolving);
+        validateCellTemplate(column, field, cellFact, rowElement, env, resolving, columnStatementId);
     }
 
-    private void validateCellTemplate(AstNode.Comp column, Fact cellFact, Fact rowFact, String statementId,
-            LexicalEnvironment env, Set<String> resolving) {
+    private void validateCellTemplate(AstNode.Comp column, String field, Fact cellFact, Fact rowFact,
+            LexicalEnvironment env, Set<String> resolving, String columnStatementId) {
         if (column.args().size() < 3 || !(column.args().get(2) instanceof AstNode.Obj options)) {
             return;
         }
@@ -1382,7 +1467,8 @@ public final class AnalysisSession {
         if (binders.size() > 1) {
             context.put(binders.get(1), rowFact);
         }
-        checkTemplateAtUseSite(render, context, statementId, env, resolving, "Table.cell");
+        checkTemplateAtUseSite(render, context, columnStatementId, env, resolving, "Table.cell[" + field + "]",
+                "/columns/" + field + "/cell");
     }
 
     private void validateChart(AstNode.Comp chart, String statementId, LexicalEnvironment env, Set<String> resolving) {
@@ -1557,13 +1643,24 @@ public final class AnalysisSession {
     }
 
     private void emit(String code, String message, String statementId, String component, String path, String hint) {
-        String key = code + "|" + statementId + "|" + component + "|" + path;
+        // 模板使用位置的诊断归属实际使用处:同一模板用于不同列时各自定位,去重身份也含使用位置,
+        // 前一列的结果不得吞掉后一列;模板声明语句保留在 hint 中可追溯(#77 第 10.3 节)。
+        TemplateUseSite site = templateUseSites.peek();
+        String effectiveStatementId = site == null ? statementId : site.statementId();
+        String effectivePath = site == null ? path : site.pathPrefix() + (path == null ? "" : path);
+        String effectiveHint = hint;
+        if (site != null && site.declarationStatementId() != null
+                && !site.declarationStatementId().equals(effectiveStatementId)) {
+            effectiveHint = (hint == null || hint.isBlank() ? "" : hint + " ") + "Template declared at "
+                    + site.declarationStatementId() + ".";
+        }
+        String key = code + "|" + effectiveStatementId + "|" + component + "|" + effectivePath;
         if (emitted.putIfAbsent(key, code) != null) {
             return;
         }
         nextErrorId();
-        SourceSpan span = spans.getOrDefault(statementId, SourceSpan.UNKNOWN);
-        issues.add(new ValidationIssue(code, ValidationSeverity.ERROR, "type", message, statementId, component, path,
-                span.line(), span.column(), hint, false));
+        SourceSpan span = spans.getOrDefault(effectiveStatementId, SourceSpan.UNKNOWN);
+        issues.add(new ValidationIssue(code, ValidationSeverity.ERROR, "type", message, effectiveStatementId, component,
+                effectivePath, span.line(), span.column(), effectiveHint, false));
     }
 }
