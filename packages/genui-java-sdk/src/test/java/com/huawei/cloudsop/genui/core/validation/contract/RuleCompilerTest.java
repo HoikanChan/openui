@@ -96,9 +96,10 @@ class RuleCompilerTest {
     void contractLoaderCompilesTypeRulesAlongsideVocabulary() {
         GenerationContract contract = GenerationContractLoader.loadDefault();
         long withRules = contract.builtins().stream().filter(b -> b.typeRule() != null).count();
-        // 迁移基数：#81 的 15 个普通 builtin；后续各票只增不减（本票加入 Flatten/First/Last 的 sequence 运算）。
+        // 迁移基数：#81 的 15 个普通 builtin；后续各票只增不减（#86 加入 Flatten/First/Last，#85 加入对象枚举）。
         assertTrue(withRules >= 15, "expected the migrated builtin rules to stay compiled, got " + withRules);
-        for (String name : List.of("Sort", "Filter", "Flatten", "First", "Last")) {
+        for (String name : List.of("Sort", "Filter", "Flatten", "First", "Last", "ObjectKeys", "ObjectValues",
+                "ObjectEntries")) {
             assertNotNull(contract.builtins().stream().filter(b -> name.equals(b.name())).findFirst().orElseThrow()
                     .typeRule(), name + " must carry a compiled structured rule");
         }

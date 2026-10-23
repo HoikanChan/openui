@@ -2021,7 +2021,13 @@
           "type": "Record<string, T>"
         }
       ],
-      "returnType": "{key: string, value: T}[]"
+      "returnType": "{key: string, value: T}[]",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {"min": 1, "max": 1},
+        "parameters": [{"name": "obj", "accept": "object"}],
+        "result": {"op": "record.entries", "operands": [{"argument": 0}]}
+      }
     },
     {
       "name": "ObjectKeys",
@@ -2034,7 +2040,13 @@
           "type": "Record<string, any>"
         }
       ],
-      "returnType": "string[]"
+      "returnType": "string[]",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {"min": 1, "max": 1},
+        "parameters": [{"name": "obj", "accept": "object"}],
+        "result": {"op": "record.keys", "operands": [{"argument": 0}]}
+      }
     },
     {
       "name": "ObjectValues",
@@ -2047,7 +2059,13 @@
           "type": "Record<string, any>"
         }
       ],
-      "returnType": "any[]"
+      "returnType": "any[]",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {"min": 1, "max": 1},
+        "parameters": [{"name": "obj", "accept": "object"}],
+        "result": {"op": "record.values", "operands": [{"argument": 0}]}
+      }
     },
     {
       "name": "Round",

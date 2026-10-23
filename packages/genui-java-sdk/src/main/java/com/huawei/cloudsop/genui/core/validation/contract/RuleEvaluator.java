@@ -104,10 +104,23 @@ public final class RuleEvaluator {
         if (expectation == null || actual.hasUpstreamErrors()) {
             return;
         }
+        // object 参数要求整个值是对象。内核 Accept 检查对“可能为空数组”的分支保留逐元素空集容错
+        // （空数组满足“所有元素属于 T”），但空数组本身仍是确定的非对象，不能因此放过 object 参数。
+        if (pattern instanceof TypePattern.AnyRecord && definitelyNotRecord(actual.type())) {
+            callSite.reportArgumentMismatch(index, displayPattern(pattern), actual);
+            return;
+        }
         Checks.CheckResult result = Checks.check(actual, expectation, null);
         if (result.verdict() == Checks.Verdict.MISMATCH) {
             callSite.reportArgumentMismatch(index, displayPattern(pattern), actual);
         }
+    }
+
+    /** 所有可能分支都确定不是对象（对象、Unknown、Never 之外的联合至少有一个分支可能是对象，不算确定）。 */
+    private static boolean definitelyNotRecord(Type type) {
+        List<Type> branches = flatten(type);
+        return !branches.isEmpty() && branches.stream().allMatch(branch -> !(branch instanceof Type.RecordType)
+                && !(branch instanceof Type.Unknown) && !(branch instanceof Type.Never));
     }
 
     /** TypePattern → 内核 Expectation；变量与 any 无静态入口要求（变量在求解时收集约束）。 */
@@ -256,6 +269,9 @@ public final class RuleEvaluator {
                 ops.flattenOne(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
             case SEQUENCE_SELECT -> ops.select(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
             case RECORD_OVERLAY -> recordOverlay(apply.operands().get(0), bounds, argumentCount, callSite, ops);
+            case RECORD_KEYS -> ops.keys(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+            case RECORD_VALUES -> ops.values(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+            case RECORD_ENTRIES -> ops.entries(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
         };
     }
 
