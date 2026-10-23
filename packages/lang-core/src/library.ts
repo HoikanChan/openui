@@ -1,4 +1,11 @@
 import { z } from "zod";
+import type { CapabilityGap } from "./contract/capability-gaps";
+import {
+  CapabilityGapSchema,
+  defaultCapabilityGaps,
+  validateCapabilityGaps,
+} from "./contract/capability-gaps";
+import { BUILTIN_NAMES } from "./parser/builtins";
 import type {
   ComponentPromptSpec,
   ComponentPropsSchema,
@@ -107,6 +114,7 @@ export interface PromptOptions {
 }
 
 export interface GenerationContract extends PromptSpec {
+  capabilityGaps?: CapabilityGap[];
   contractVersion: string;
   components: Record<string, ComponentPromptSpec>;
   componentGroups?: ComponentGroup[];
@@ -116,6 +124,7 @@ export interface GenerationContract extends PromptSpec {
 }
 
 export interface LibraryExtensionDefinition<C = unknown> {
+  capabilityGaps?: CapabilityGap[];
   components?: DefinedComponent<any, C>[];
   componentGroups?: ComponentGroup[];
   tools?: ToolDescriptor[];
@@ -530,6 +539,9 @@ function mergeGroups(
  */
 export function createLibrary<C = unknown>(input: LibraryDefinition<C>): Library<C> {
   const components = cloneComponents(input.components);
+  const capabilityGaps = z
+    .array(CapabilityGapSchema)
+    .parse(input.capabilityGaps ?? defaultCapabilityGaps());
   const componentGroups = cloneGroups(input.componentGroups);
   const tools = cloneTools(input.tools) ?? [];
   const examples = cloneStrings(input.examples) ?? [];
@@ -567,6 +579,11 @@ export function createLibrary<C = unknown>(input: LibraryDefinition<C>): Library
 
     toSpec(): GenerationContract {
       return {
+        capabilityGaps: validateCapabilityGaps(
+          capabilityGaps,
+          Object.keys(componentsRecord),
+          BUILTIN_NAMES,
+        ),
         contractVersion,
         root: input.root,
         components: generateComponentSpecs(componentsRecord),
@@ -602,6 +619,7 @@ export function createLibrary<C = unknown>(input: LibraryDefinition<C>): Library
 
       return createLibrary<C>({
         components: [...components, ...extensionComponents],
+        capabilityGaps: [...capabilityGaps, ...(extension.capabilityGaps ?? [])],
         componentGroups: mergeGroups(componentGroups, extension.componentGroups),
         root: input.root,
         contractVersion: extension.contractVersion ?? contractVersion,
