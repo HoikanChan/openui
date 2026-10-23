@@ -522,9 +522,15 @@ public final class Checks {
             // 元素存在性:数组下界大于零,或有元素存在证据,才允许“全部元素不兼容”判定。
             boolean elementExistence = sequence.minLength() > 0 || fact.evidence().stream()
                     .anyMatch(e -> e instanceof Fact.Evidence.ElementPresence);
+            Set<Fact.Loss> elementLosses = new LinkedHashSet<>(fact.losses());
+            if (elementExistence) {
+                // 存在性已由证据/下界确证时,输入侧"可能为空"的丢失标记不再适用于逐元素判定
+                // (#83 证据关联后元素类型可携带观察来源,该标记不能否决已观察到的存在)。
+                elementLosses.remove(Fact.Loss.NO_ELEMENT_EVIDENCE);
+            }
             Fact elementFact = new Fact(sequence.element(),
                     elementExistence ? Set.of(new Fact.Evidence.ElementPresence()) : Set.of(),
-                    fact.losses(), fact.upstreamErrors());
+                    elementLosses, fact.upstreamErrors());
             CheckResult elementResult = check(elementFact, sequenceOf.elementExpectation(), null);
             if (elementResult.verdict() == Verdict.MISMATCH && elementExistence) {
                 return CheckResult.mismatch("array elements cannot satisfy element requirement: "

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
@@ -111,8 +112,7 @@ class EachSwitchScopeValidationTest {
     void sameNameInnerBinderShadowsOuterInsideInnerBody() {
         // 同名遮蔽:内层 "row" 遮蔽外层。若遮蔽失效,内层 body 的 row 解析成外层行(只有 name),
         // 读 row.id 确定误报缺失;遮蔽正确时解析成内层行(只有 id),row.id 合法。
-        // 该误报对鉴别有效:它只在遮蔽失效时出现。(嵌套元素行不携带逐行观察证据,
-        // 内层行字段读取按元素存在未证明处理,不报确定缺失。)
+        // 该误报对鉴别有效:它只在遮蔽失效时出现。
         String dsl = "root = Stack(@Each(data.outer, \"row\", @Each(row.inner, \"row\", TextContent(row.id))))";
         Map<String, Object> dataModel = Map.of("outer",
                 List.of(Map.of("name", "outer-1", "inner", List.of(Map.of("id", "inner-1")))));
@@ -124,14 +124,14 @@ class EachSwitchScopeValidationTest {
 
     @Test
     void outerBinderRestoredAfterNestedEachWithinSameOuterBody() {
-        // 恢复:同一外层 body 里,内层 Each 之后再读外层 row 的字段。
-        // 外层与内层行都有 name 字段(任何错误的行解析都合法),value 形状不含 name——
-        // 恢复失败(或同名残留、或内层形状泄漏)都会把 row.name 解析到 value 行,误报缺 name;
-        // 恢复正确时读到外层行的字面量 name,VALID。
+        // 恢复:同一外层 body 里,内层 Each 之后再读外层 row 的字段,字段名内外层不相交。
+        // 内层读 row.id(仅内层行有):内层形状泄漏会把它解析成外层行,误报缺 id;
+        // 退出后读 row.name(仅外层行有):同名残留或内层形状泄漏都会误报缺 name。
+        // 两个引用各自解析到正确的行才 VALID。
         String dsl = "root = Stack(@Each(data.outer, \"row\",\n"
-                + "    Stack([@Each(row.inner, \"row\", TextContent(row.name)), TextContent(row.name)])))";
+                + "    Stack([@Each(row.inner, \"row\", TextContent(row.id)), TextContent(row.name)])))";
         Map<String, Object> dataModel = Map.of("outer", List.of(Map.of("name", "outer-1", "inner",
-                List.of(Map.of("name", "inner-1", "value", 1)))));
+                List.of(Map.of("id", "inner-1")))));
         ValidationResult result = validate(dsl, dataModel);
 
         assertEquals(ValidationStatus.VALID, result.status(),
@@ -139,17 +139,30 @@ class EachSwitchScopeValidationTest {
     }
 
     @Test
-    void innerShadowedBinderReadsInnerRowFieldsOnly() {
-        // 负面对照:内层同名 body 读只有外层才有的字段 name。漏遮蔽会解析成外层 row.name(合法、不报);
-        // 正确遮蔽时读到的是内层行——内层源是外层行的 inner 字段(不携带逐行观察证据),
-        // 其行形状上界不含 name:报缺失只是未证明,不得升级为 type-field-missing(#82 口径)。
+    void nestedObservedRowMissingFieldIsReported() {
+        // 快照里确定存在的嵌套内层行缺字段是真实反例(#77 §2.1/§6.2):字段读取的证据关联保留
+        // 嵌套数组的观察来源,不得用"可能为空"压掉;遮蔽下外层的 name 不能替内层行满足。
         String dsl = "root = Stack(@Each(data.outer, \"row\", @Each(row.inner, \"row\", TextContent(row.name))))";
         Map<String, Object> dataModel = Map.of("outer",
                 List.of(Map.of("name", "outer-1", "inner", List.of(Map.of("id", "inner-1")))));
         ValidationResult result = validate(dsl, dataModel);
 
-        assertFalse(result.issues().stream().anyMatch(i -> "type-field-missing".equals(i.code())),
-                () -> "无逐行证据的内层行缺字段不得报确定缺失: " + result.issues());
+        ValidationIssue issue = issue(result, "type-field-missing");
+        assertTrue(issue.message().contains("\"name\""),
+                () -> "观察到的嵌套行缺字段必须报: " + result.issues());
+    }
+
+    @Test
+    void heterogeneousObservedRowMissingFieldIsReported() {
+        // 异构行:有的行有 id、观察到的另一行没有 id——行级观察证据中的缺失行是具体反例,
+        // 不得被"有的行有该字段"的上界合并掩盖。
+        String dsl = "root = Stack(@Each(data.rows, \"row\", TextContent(row.id)))";
+        Map<String, Object> dataModel = Map.of("rows", List.of(Map.of("id", "a"), Map.of("other", 1)));
+        ValidationResult result = validate(dsl, dataModel);
+
+        ValidationIssue issue = issue(result, "type-field-missing");
+        assertTrue(issue.message().contains("\"id\""),
+                () -> "观察到的缺失行必须报: " + result.issues());
     }
 
     // ── 空输入仍检查 body 独立错误 ─────────────────────────────────────────
@@ -228,9 +241,52 @@ class EachSwitchScopeValidationTest {
 
     @Test
     void binderLayoutComesFromContractDeclaration() {
-        // binder 名形式(字符串字面量)、body 位置(最后一参)与输入来源(第一参)全部由契约 params
-        // 的 binder 标记声明;语义分析与类型分析读同一份编译布局(LazyBuiltinBinders/BuiltinSpec)。
-        // 非字符串 binder 不是作用域绑定:两处引擎都按契约形态报错,而不是把它当变量名引入作用域。
+        // binder 布局由契约声明并编译进 BuiltinSpec:params 的 binder 标记(位置)、nameSyntax(名形态:
+        // string-or-identifier)、条目 input(元素绑定的来源下标);body 恒为最后一参。
+        // 语义层(ProgramAnalyzer/StatementRelations)与类型层(AnalysisSession)共用同一份编译布局
+        // (LazyBuiltinBinders),不各自重述 Each/Render 的形态特判。
+        BuiltinSpec each = GenerationContractLoader.loadDefault().builtins().stream()
+                .filter(spec -> "Each".equals(spec.name())).findFirst().orElseThrow();
+        assertEquals(List.of(1), each.binderIndexes());
+        assertEquals("string-or-identifier", each.params().get(1).nameSyntax());
+        assertEquals(0, each.inputIndex());
+        assertEquals(List.of(1), each.activeBinderIndexes(3));
+        assertEquals(2, each.bodyIndex(3));
+        BuiltinSpec render = GenerationContractLoader.loadDefault().builtins().stream()
+                .filter(spec -> "Render".equals(spec.name())).findFirst().orElseThrow();
+        assertEquals(List.of(0, 1), render.binderIndexes());
+        assertEquals(List.of(0), render.activeBinderIndexes(2));
+        assertEquals(List.of(0, 1), render.activeBinderIndexes(3));
+        assertEquals(1, render.bodyIndex(2));
+    }
+
+    @Test
+    void bareIdentifierBinderBindsRowLikeStringLiteral() {
+        // 契约 nameSyntax string-or-identifier:裸标识符与字符串字面量同为合法 binder 形态,
+        // 语义层与类型层一致绑定——缺字段检查不得因形态不同被静默跳过。
+        String dsl = "root = Stack(@Each(data.rows, row, TextContent(row.missing)))";
+        ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("id", "a"))));
+
+        ValidationIssue issue = issue(result, "type-field-missing");
+        assertTrue(issue.message().contains("\"missing\""),
+                () -> "裸标识符 binder 必须同样绑定行: " + result.issues());
+    }
+
+    @Test
+    void renderWithBareIdentifierBinderChecksBodyAtUseSite() {
+        // Render 的 v/row 同样接受裸标识符;使用位置按声明名绑定列字段与行事实——
+        // cell 模板里的裸 binder 引用必须解析到绑定值而不是未绑引用。
+        String dsl = "root = Table([nameCol], data.rows)\n"
+                + "nameCol = Col(\"Name\", \"name\", {cell: @Render(v, row, TextContent(row.name))})";
+        ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("name", "a"))));
+
+        assertEquals(ValidationStatus.VALID, result.status(),
+                () -> "裸标识符 Render binder 必须在类型层绑定: " + result.issues());
+    }
+
+    @Test
+    void numericBinderIsRejectedUnderDeclaredNameSyntax() {
+        // 数字实参不在 nameSyntax 允许的形态内:类型层按契约形态报错,而不是把它当变量名引入作用域。
         String dsl = "root = Stack(@Each(data.rows, 42, TextContent(\"x\")))";
         ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("name", "a"))));
 
@@ -238,9 +294,10 @@ class EachSwitchScopeValidationTest {
     }
 
     @Test
-    void conclusionsAreStableAcrossRepeatedValidationRuns() {
+    void conclusionsAreRepeatableAcrossIndependentRuns() {
         // 嵌套 + 多使用位置的结论可重复:同一请求独立验证两次结果一致。
-        // 类型分析会话按请求新建(无跨请求分析缓存开关),重复运行即缓存等价证据。
+        // 架构事实:类型分析不做跨请求记忆化——AnalysisSession 每次 analyze 新建,无缓存开关;
+        // 本测试锚定的是可重复性,不是缓存开/关等价(该验收口径的记录见交付说明)。
         String dsl = "root = Stack([\n" + "  @Each(data.switches, \"d\", deviceLine),\n"
                 + "  @Each(data.routers, \"d\", deviceLine)\n" + "])\n"
                 + "deviceLine = TextContent(d.hostname)";
@@ -251,8 +308,7 @@ class EachSwitchScopeValidationTest {
         ValidationResult second = validate(dsl, dataModel);
 
         assertEquals(first.status(), second.status());
-        assertEquals(first.issues().stream().map(ValidationIssue::code).toList(),
-                second.issues().stream().map(ValidationIssue::code).toList(),
+        assertEquals(first.issues(), second.issues(),
                 () -> "重复验证结论必须一致: first=" + first.issues() + " second=" + second.issues());
     }
 

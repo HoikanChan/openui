@@ -31,6 +31,10 @@ public final class TypeOps {
     /**
      * 读取对象字段。字段存在但类型未知时保留字段、返回 Unknown;确定缺失与可能缺失分开:确定缺失(关闭对象 无此字段)返回 Never + 缺失标记;开放对象未列出字段按 extra 值类型;OPTIONAL
      * 字段存在性未知,值类型不并 null(缺失与 null 分开)。
+     *
+     * <p>
+     * 证据关联(#83 §6.5):字段值仍在当前快照里——从观察到的对象值逐行提取该字段的实际值作为结果的 ObservedValue
+     * 证据(丢失来源路径,值经冻结);观察到的对象行确定缺该字段则该行的读取结果是"不存在"——不产生值证据, 也不虚构缺失反例(关闭类型上界已承载确定缺失判定)。
      */
     public Fact readField(Fact object, String name) {
         if (object.hasUpstreamErrors()) {
@@ -64,6 +68,12 @@ public final class TypeOps {
                 definitelyMissing = false;
                 possiblyPresent = true;
                 results.add(record.extra().valueType());
+            }
+        }
+        for (Fact.Evidence item : object.evidence()) {
+            if (item instanceof Fact.Evidence.ObservedValue observed
+                    && observed.value() instanceof Map<?, ?> row && row.containsKey(name)) {
+                evidence.add(new Fact.Evidence.ObservedValue(null, SnapshotFacts.deepFreeze(row.get(name))));
             }
         }
         if (definitelyMissing) {
@@ -351,7 +361,16 @@ public final class TypeOps {
         if (inputProvablyNonempty) {
             losses.remove(Fact.Loss.NO_ELEMENT_EVIDENCE);
         }
-        return new Fact(Types.union(results), body.evidence(), losses, Set.of());
+        // body 证据是逐元素的:只把数组级观察值(元素本身是数组,如嵌套 Each)关联到输出数组;
+        // 标量/对象元素证据若按输出路径转发,会被按"整个被检值"消费的检查路径误当反例。
+        Set<Fact.Evidence> evidence = new LinkedHashSet<>();
+        for (Fact.Evidence item : body.evidence()) {
+            if (!(item instanceof Fact.Evidence.ObservedValue observed)
+                    || observed.value() instanceof List<?>) {
+                evidence.add(item);
+            }
+        }
+        return new Fact(Types.union(results), evidence, losses, Set.of());
     }
 
     /** First/Last 选择:元素类型上界;空数组结果值契约未定义(#79 未决),不为空数组补 null 证据。 */

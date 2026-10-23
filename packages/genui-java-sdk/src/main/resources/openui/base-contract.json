@@ -2377,6 +2377,7 @@
       "signature": "Each(array, varName, template)",
       "description": "Evaluate template for each element. varName is the loop variable - use it ONLY inside the template expression (inline). Do NOT create a separate statement for the template.",
       "templateBuiltin": true,
+      "input": 0,
       "params": [
         {
           "name": "array",
@@ -2385,7 +2386,8 @@
         {
           "name": "varName",
           "type": "string",
-          "binder": true
+          "binder": true,
+          "nameSyntax": "string-or-identifier"
         },
         {
           "name": "template",
@@ -2402,13 +2404,15 @@
         {
           "name": "v",
           "type": "string",
-          "binder": true
+          "binder": true,
+          "nameSyntax": "string-or-identifier"
         },
         {
           "name": "row",
           "type": "string",
           "optional": true,
-          "binder": true
+          "binder": true,
+          "nameSyntax": "string-or-identifier"
         },
         {
           "name": "template",

@@ -12,6 +12,7 @@ import com.huawei.cloudsop.genui.core.validation.parser.SourceSpan;
 import com.huawei.cloudsop.genui.core.validation.parser.Statement;
 import com.huawei.cloudsop.genui.core.validation.semantic.ComponentDef;
 import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
+import com.huawei.cloudsop.genui.core.validation.semantic.LazyBuiltinBinders;
 import com.huawei.cloudsop.genui.core.validation.semantic.ParamDef;
 import com.huawei.cloudsop.genui.core.validation.type.DataPath;
 import com.huawei.cloudsop.genui.core.validation.type.DataPathResolution;
@@ -153,13 +154,13 @@ public final class AnalysisSession {
             BuiltinSpec spec = input.builtins().spec(comp.name());
             if (spec != null && !spec.binderIndexes().isEmpty()) {
                 LexicalEnvironment extended = env;
-                for (int binderIndex : spec.binderIndexes()) {
-                    if (binderIndex < comp.args().size()
-                            && comp.args().get(binderIndex) instanceof AstNode.Str binder) {
-                        extended = extended.bind(binder.v());
+                for (int binderIndex : spec.activeBinderIndexes(comp.args().size())) {
+                    String binder = LazyBuiltinBinders.binderName(spec, comp, binderIndex);
+                    if (binder != null) {
+                        extended = extended.bind(binder);
                     }
                 }
-                int bodyIndex = comp.args().size() - 1;
+                int bodyIndex = LazyBuiltinBinders.bodyIndex(comp);
                 for (int i = 0; i < comp.args().size(); i++) {
                     collectRefs(comp.args().get(i), out, i == bodyIndex ? extended : env, visiting);
                 }
@@ -409,9 +410,20 @@ public final class AnalysisSession {
         }
         Fact base = synth(member.obj(), statementId, env, resolving);
         Fact field = ops.readField(base, member.field());
+        if (!base.hasUpstreamErrors() && !base.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)
+                && observedMissingRow(base, member.field())) {
+            // 观察到的行确定缺该字段是具体反例(#77 §6.2):上界合并掩盖部分缺失(异构行)时,
+            // 当前快照里该行确实存在且没有该字段;与纯类型级确定缺失同一诊断。
+            String errorId = nextErrorId();
+            emit("type-field-missing",
+                    "Field \"" + member.field() + "\" is absent from an observed row of "
+                            + base.type().displayName() + ".",
+                    statementId, null, null, "Use a field present on every observed row.");
+            return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamError(errorId);
+        }
         if (field.type() instanceof Type.Never && !base.hasUpstreamErrors()) {
             if (base.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)) {
-                // 基值来自元素存在未证明的绑定(可能为空且无逐行观察证据):缺失无从确证,止于未证明。
+                // 基值来自元素存在未证明的绑定(可能为空且无任何观察来源):缺失无从确证,止于未证明。
                 return Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE);
             }
             // 确定缺失:对象关闭且未列出该字段(基值与空数组可能性无关,或观察证据覆盖)。
@@ -422,6 +434,17 @@ public final class AnalysisSession {
             return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamError(errorId);
         }
         return field;
+    }
+
+    /** 基值的行级观察证据中存在确定缺该字段的行(读取侧只关联存在的字段值,缺失由本判定补全)。 */
+    private static boolean observedMissingRow(Fact base, String field) {
+        for (Fact.Evidence item : base.evidence()) {
+            if (item instanceof Fact.Evidence.ObservedValue observed && observed.value() instanceof Map<?, ?> row
+                    && !row.containsKey(field)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Fact synthIndex(AstNode.Index index, String statementId, LexicalEnvironment env, Set<String> resolving) {
@@ -838,20 +861,20 @@ public final class AnalysisSession {
                     + " argument(s), but received " + call.args().size() + ".", statementId, null, "/args",
                     "Use the documented @" + call.name() + " signature.");
         }
-        // 逐实参推断并检查(variadic 每个实参受检查)。binder 位置按调用形态对齐:binder 只可能是前
-        // args.size()-1 个参数中的声明位(Render 2 参调用只有 index 0 是 binder,3 参调用 index 0/1 都是)。
+        // 逐实参推断并检查(variadic 每个实参受检查)。binder/ body 位置来自契约编译布局
+        // (LazyBuiltinBinders):binder 为声明位 ∩ body 前前缀;body 恒为最后一个实参。
         List<Fact> arguments = new ArrayList<>();
         List<BuiltinSpec.ParamSpec> params = spec.params();
-        int binderCount = Math.max(0, call.args().size() - 1);
         boolean lazyBuiltin = !spec.binderIndexes().isEmpty();
+        List<Integer> activeBinders = lazyBuiltin ? spec.activeBinderIndexes(call.args().size()) : List.of();
+        int bodyIndex = LazyBuiltinBinders.bodyIndex(call);
         for (int index = 0; index < call.args().size(); index++) {
             AstNode argument = call.args().get(index);
-            boolean binderPosition = index < binderCount && index < params.size() && params.get(index).binder();
-            if (binderPosition) {
+            if (activeBinders.contains(index)) {
                 arguments.add(checkBinderArgument(spec, call, index, statementId, env, resolving));
                 continue;
             }
-            if (lazyBuiltin && index >= binderCount) {
+            if (lazyBuiltin && index == bodyIndex) {
                 // 带 binder 的 builtin(Each/Render):body/模板位只能合成一次,且必须用绑定后的词法环境
                 // (eachResult/renderResult 内);此处按外层环境预合成会把同名内层引用错绑到外层行,
                 // 并与绑定后的合成重复报错。占位 Fact 保持 arguments 下标与实参位对齐。
@@ -862,7 +885,7 @@ public final class AnalysisSession {
             arguments.add(actual);
             // 带 binder 的 builtin:body/模板位参数不按普通 params 检查,由使用位置另行检查;
             // 普通 builtin 的每个实参都按 params 检查(variadic 不封顶)。
-            if (index < params.size() && (!lazyBuiltin || index < binderCount)) {
+            if (index < params.size() && (!lazyBuiltin || index != bodyIndex)) {
                 checkBuiltinParam(spec, call, index, actual, statementId);
             }
         }
@@ -921,17 +944,15 @@ public final class AnalysisSession {
     }
 
     /**
-     * binder 参数(#80):必须是字符串字面量;裸标识符是表达式引用,语义层若已报 unresolved-ref,此处不再重复 报 binder 形态错(同一根源不制造两条诊断);其它非字符串表达式报 binder 形态错。
+     * binder 参数(#83):合法形态由契约 nameSyntax 声明(字符串字面量,以及 string-or-identifier 下的裸标识符)——
+     * 合法形态不产出类型事实(binder 不是表达式值,绑定发生在 eachResult/renderResult);
+     * 非法形态按普通表达式推断并报 binder 形态错。
      */
     private Fact checkBinderArgument(BuiltinSpec spec, AstNode.Comp call, int index, String statementId,
             LexicalEnvironment env, Set<String> resolving) {
         AstNode argument = call.args().get(index);
-        if (argument instanceof AstNode.Str) {
+        if (LazyBuiltinBinders.binderName(spec, call, index) != null) {
             return Fact.of(Types.scalar(Type.ScalarKind.STRING));
-        }
-        if (argument instanceof AstNode.Ref) {
-            // 裸标识符按表达式处理;其引用合法性归既有语义检查。
-            return synth(argument, statementId, env, resolving);
         }
         Fact actual = synth(argument, statementId, env, resolving);
         if (!actual.hasUpstreamErrors()) {
@@ -994,23 +1015,36 @@ public final class AnalysisSession {
     /** Each:元素绑定 binder 检查 body,数量保留;空输入仍检查 body 中独立错误,元素依赖记 no-element-evidence。 */
     private Fact eachResult(AstNode.Comp call, List<Fact> arguments, String statementId, LexicalEnvironment env,
             Set<String> resolving) {
-        if (call.args().size() < 3 || arguments.isEmpty()) {
+        BuiltinSpec spec = input.builtins().spec(call.name());
+        if (call.args().size() < spec.minArity() || arguments.isEmpty() || spec.inputIndex() < 0
+                || spec.inputIndex() >= arguments.size()) {
             return Fact.unknown(Fact.Loss.MISSING_CONTEXT);
         }
-        Fact input = arguments.get(0);
+        Fact input = arguments.get(spec.inputIndex());
         Fact element = ops.element(input);
         boolean emptyPossible = lengthMayBeZero(input);
-        // 元素存在未证明时才打 no-element-evidence:类型可能空且未观察到任何实际元素行。
-        // 观察到实际元素(逐元素 ObservedValue)时,该行的字段缺失是真实反例(#77 §6.2/§12),
-        // 不得用"可能为空"压掉;只有纯类型上界(无逐行证据)时,缺失判定止于未证明(#82)。
-        boolean elementExistenceUnproven = emptyPossible && element.evidence().stream()
-                .noneMatch(Fact.Evidence.ObservedValue.class::isInstance);
+        // 元素存在未证明才打 no-element-evidence:可能为空且没有任何证据支撑实际元素存在。
+        // 证据不限于逐元素 ObservedValue:来自观察值(嵌套字段读取)的元素类型同样锚定当前快照——
+        // 嵌套数组及其行就在快照里,其缺字段是真实反例(#77 §2.1/§6.2);只有纯上界(无任何观察来源,
+        // 如 Filter/外部未知)时缺失判定才止于未证明(#82、§7.5)。
+        boolean observedOrigin = !element.evidence().isEmpty() || element.losses().stream()
+                .noneMatch(loss -> loss == Fact.Loss.UNKNOWN_INPUT || loss == Fact.Loss.PRECISION_BUDGET);
+        boolean elementExistenceUnproven = emptyPossible && !observedOrigin;
         Fact boundElement = element.type() instanceof Type.Never
                 ? Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE)
                 : elementExistenceUnproven ? element.withLoss(Fact.Loss.NO_ELEMENT_EVIDENCE) : element;
-        LexicalEnvironment bodyEnv = binderName(call.args().get(1)).map(name -> env.bind(name, boundElement))
-                .orElse(env);
-        Fact body = synth(call.args().get(2), statementId, bodyEnv, resolving);
+        LexicalEnvironment bodyEnv = env;
+        List<Integer> binders = spec.activeBinderIndexes(call.args().size());
+        for (int position = 0; position < binders.size(); position++) {
+            String name = LazyBuiltinBinders.binderName(spec, call, binders.get(position));
+            if (name != null) {
+                // 元素绑定到输入来源参数声明之后的第一个 binder(契约布局:Each 的 varName)。
+                Fact bound = position == 0 && binders.get(position) > spec.inputIndex() ? boundElement
+                        : Fact.unknown(Fact.Loss.MISSING_CONTEXT);
+                bodyEnv = bodyEnv.bind(name, bound);
+            }
+        }
+        Fact body = synth(call.args().get(LazyBuiltinBinders.bodyIndex(call)), statementId, bodyEnv, resolving);
         if (emptyPossible) {
             body = body.withLoss(Fact.Loss.NO_ELEMENT_EVIDENCE);
         }
@@ -1036,38 +1070,31 @@ public final class AnalysisSession {
             return Fact.unknown(Fact.Loss.MISSING_CONTEXT);
         }
         // 声明环境被捕获;使用位置未提供上下文时依赖 v/row 的部分记 missing-context。
+        BuiltinSpec spec = input.builtins().spec(call.name());
         LexicalEnvironment declared = env;
-        for (int index = 0; index < call.args().size() - 1; index++) {
-            Optional<String> name = binderName(call.args().get(index));
-            if (name.isPresent()) {
-                declared = declared.bind(name.get(), Fact.unknown(Fact.Loss.MISSING_CONTEXT));
+        for (int binderIndex : spec.activeBinderIndexes(call.args().size())) {
+            String name = LazyBuiltinBinders.binderName(spec, call, binderIndex);
+            if (name != null) {
+                declared = declared.bind(name, Fact.unknown(Fact.Loss.MISSING_CONTEXT));
             }
         }
-        synth(call.args().get(call.args().size() - 1), statementId, declared, resolving);
+        synth(call.args().get(LazyBuiltinBinders.bodyIndex(call)), statementId, declared, resolving);
         return Fact.of(Type.Template.INSTANCE);
     }
 
     /** Render 在使用位置按提供的上下文检查 body。 */
     void checkTemplateAtUseSite(AstNode.Comp render, Map<String, Fact> context, String statementId,
             LexicalEnvironment env, Set<String> resolving, String useSite) {
+        BuiltinSpec spec = input.builtins().spec(render.name());
         LexicalEnvironment useEnv = env;
-        for (int index = 0; index < render.args().size() - 1; index++) {
-            int binderIndex = index;
-            Optional<String> name = binderName(render.args().get(binderIndex));
-            if (name.isPresent()) {
-                Fact provided = context.getOrDefault(name.get(), Fact.unknown(Fact.Loss.MISSING_CONTEXT));
-                useEnv = useEnv.bind(name.get(), provided);
+        for (int binderIndex : spec.activeBinderIndexes(render.args().size())) {
+            String name = LazyBuiltinBinders.binderName(spec, render, binderIndex);
+            if (name != null) {
+                Fact provided = context.getOrDefault(name, Fact.unknown(Fact.Loss.MISSING_CONTEXT));
+                useEnv = useEnv.bind(name, provided);
             }
         }
-        synth(render.args().get(render.args().size() - 1), statementId, useEnv, resolving);
-    }
-
-    /** binder 参数取绑定名:仅字符串字面量(裸标识符不作 binder)。 */
-    private static Optional<String> binderName(AstNode node) {
-        if (node instanceof AstNode.Str string) {
-            return Optional.of(string.v());
-        }
-        return Optional.empty();
+        synth(render.args().get(LazyBuiltinBinders.bodyIndex(render)), statementId, useEnv, resolving);
     }
 
     /** Switch:cases 在当前环境推断,结果为 cases 值与 default 的联合;未传 default 并入 null(#79 矩阵)。 */
@@ -1301,10 +1328,14 @@ public final class AnalysisSession {
             return;
         }
         // 每个使用位置分别检查:v 绑定列字段事实,row 绑定行事实。
+        BuiltinSpec spec = input.builtins().spec(render.name());
         Map<String, Fact> context = new LinkedHashMap<>();
         List<String> binders = new ArrayList<>();
-        for (int index = 0; index < render.args().size() - 1; index++) {
-            binderName(render.args().get(index)).ifPresent(binders::add);
+        for (int binderIndex : spec.activeBinderIndexes(render.args().size())) {
+            String name = LazyBuiltinBinders.binderName(spec, render, binderIndex);
+            if (name != null) {
+                binders.add(name);
+            }
         }
         if (!binders.isEmpty()) {
             context.put(binders.get(0), cellFact);

@@ -4,6 +4,7 @@
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
 
+import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
@@ -460,9 +461,10 @@ public final class ProgramAnalyzer {
         if (binderIndexes.isEmpty()) {
             return false;
         }
+        BuiltinSpec spec = builtins.spec(comp.name());
         Set<String> binders = new LinkedHashSet<>();
         for (int index : binderIndexes) {
-            String binderName = LazyBuiltinBinders.binderName(comp.args().get(index));
+            String binderName = LazyBuiltinBinders.binderName(spec, comp, index);
             if (binderName == null) {
                 return false;
             }

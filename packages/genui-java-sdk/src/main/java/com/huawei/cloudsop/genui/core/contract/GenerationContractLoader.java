@@ -189,8 +189,21 @@ public final class GenerationContractLoader {
         if (typeRuleRaw != null) {
             typeRule = RuleCompiler.compile(name, Json.asObject(typeRuleRaw, "typeRule of builtin " + name));
         }
+        // binder 布局:元素绑定的输入来源实参下标(Each 的 array;Render 无)。声明值必须落在参数表内。
+        int inputIndex = -1;
+        Object inputRaw = entry.get("input");
+        if (inputRaw != null) {
+            if (!(inputRaw instanceof Number number)) {
+                throw new GenerationSdkException("builtin '" + name + "': 'input' must be a parameter index");
+            }
+            inputIndex = number.intValue();
+            if (inputIndex < 0 || inputIndex >= params.size()) {
+                throw new GenerationSdkException("builtin '" + name + "': 'input' index " + inputIndex
+                        + " is out of range for " + params.size() + " parameter(s)");
+            }
+        }
         return new BuiltinSpec(name, string(entry.get("signature")), string(entry.get("description")),
-                Boolean.TRUE.equals(entry.get("templateBuiltin")), params, returnType, typeRule);
+                Boolean.TRUE.equals(entry.get("templateBuiltin")), params, returnType, typeRule, inputIndex);
     }
 
     private static List<BuiltinSpec.ParamSpec> builtinParams(Object value, String builtinName) {
@@ -208,9 +221,25 @@ public final class GenerationContractLoader {
             }
             result.add(new BuiltinSpec.ParamSpec(name, type, TypeExprParser.parse(type, builtinName + "." + name),
                     Boolean.TRUE.equals(param.get("optional")), Boolean.TRUE.equals(param.get("variadic")),
-                    Boolean.TRUE.equals(param.get("binder"))));
+                    Boolean.TRUE.equals(param.get("binder")), nameSyntax(param, builtinName, name)));
         }
         return result;
+    }
+
+    /** binder 名语法:仅 binder 参数可声明;声明值经枚举校验(未知值加载期失败);缺省按双形态(与既有行为一致)。 */
+    private static String nameSyntax(Map<String, Object> param, String builtinName, String paramName) {
+        Object raw = param.get("nameSyntax");
+        boolean binder = Boolean.TRUE.equals(param.get("binder"));
+        if (raw == null) {
+            return binder ? "string-or-identifier" : null;
+        }
+        if (!binder) {
+            throw new GenerationSdkException("builtin '" + builtinName + "': non-binder parameter '" + paramName
+                    + "' must not declare nameSyntax");
+        }
+        String value = string(raw);
+        BuiltinSpec.NameSyntax.fromContract(value);
+        return value;
     }
 
     /** returnType 里的 {@code T} 必须能在某个参数类型中解出绑定；param(n) 引用必须在参数表范围内。 */

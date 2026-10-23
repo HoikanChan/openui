@@ -4,6 +4,7 @@
 
 package com.huawei.cloudsop.genui.core.contract;
 
+import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr;
 import com.huawei.cloudsop.genui.core.validation.contract.RulePlan.TypeRule;
 
@@ -30,12 +31,18 @@ import java.util.Optional;
  * @since 2026
  */
 public record BuiltinSpec(String name, String signature, String description, boolean templateBuiltin,
-        List<ParamSpec> params, TypeExpr returnType, TypeRule typeRule) {
+        List<ParamSpec> params, TypeExpr returnType, TypeRule typeRule, int inputIndex) {
 
-    /** 兼容构造：无结构化类型规则的条目。 */
+    /** 兼容构造：无结构化类型规则、无输入来源声明的条目。 */
     public BuiltinSpec(String name, String signature, String description, boolean templateBuiltin,
             List<ParamSpec> params, TypeExpr returnType) {
-        this(name, signature, description, templateBuiltin, params, returnType, null);
+        this(name, signature, description, templateBuiltin, params, returnType, null, -1);
+    }
+
+    /** 兼容构造：带结构化类型规则、无输入来源声明的条目。 */
+    public BuiltinSpec(String name, String signature, String description, boolean templateBuiltin,
+            List<ParamSpec> params, TypeExpr returnType, TypeRule typeRule) {
+        this(name, signature, description, templateBuiltin, params, returnType, typeRule, -1);
     }
 
     /**
@@ -52,10 +59,19 @@ public record BuiltinSpec(String name, String signature, String description, boo
      * @param variadic
      *            不定长（必须在末位）
      * @param binder
-     *            binder 参数——须为字符串字面量，绑定名引入后续参数的作用域
+     *            binder 参数——绑定名引入后续参数的作用域
+     * @param nameSyntax
+     *            binder 名允许的语法形态（仅 binder 参数有意义；契约枚举值见 {@link NameSyntax#fromContract}； 非
+     *            binder 参数为 {@code null}）
      */
     public record ParamSpec(String name, String type, TypeExpr typeExpr, boolean optional, boolean variadic,
-            boolean binder) {
+            boolean binder, String nameSyntax) {
+
+        /** 兼容构造：无 nameSyntax 声明的条目。 */
+        public ParamSpec(String name, String type, TypeExpr typeExpr, boolean optional, boolean variadic,
+                boolean binder) {
+            this(name, type, typeExpr, optional, variadic, binder, null);
+        }
 
         /** 最小 arity 贡献；variadic 参数可出现零次。 */
         int minArity() {
@@ -82,5 +98,48 @@ public record BuiltinSpec(String name, String signature, String description, boo
             }
         }
         return List.copyOf(indexes);
+    }
+
+    /**
+     * 一次调用实际引入的 binder 下标：契约声明位 ∩ 除 body/模板外的实参前缀（body 恒为最后一个实参）。 Each 的
+     * source 不参与绑定所以天然落在前缀内;Render 2 参调用只有 index 0、3 参调用 index 0/1。
+     */
+    public List<Integer> activeBinderIndexes(int argCount) {
+        return binderIndexes().stream().filter(index -> index < argCount - 1).toList();
+    }
+
+    /** body/模板实参的下标：惰性 builtin 的 body 恒为最后一个实参。 */
+    public int bodyIndex(int argCount) {
+        return argCount - 1;
+    }
+
+    /** 元素绑定关系的输入来源实参下标;未声明(如 Render)时为 -1。 */
+    public int inputIndex() {
+        return inputIndex;
+    }
+
+    /** binder 名语法枚举的契约值（base-contract.json 的 params[].nameSyntax）。 */
+    public enum NameSyntax {
+        /** 字符串字面量或裸标识符。 */
+        STRING_OR_IDENTIFIER,
+        /** 仅字符串字面量。 */
+        STRING;
+
+        /** 解析契约声明值;未知值即加载失败,避免词表漂移。 */
+        public static NameSyntax fromContract(String value) {
+            return switch (value) {
+                case "string-or-identifier" -> STRING_OR_IDENTIFIER;
+                case "string" -> STRING;
+                default -> throw new GenerationSdkException("unknown binder nameSyntax in contract: " + value);
+            };
+        }
+
+        /** 契约原文值(与 base-contract.json 一致)。 */
+        public String contractValue() {
+            return switch (this) {
+                case STRING_OR_IDENTIFIER -> "string-or-identifier";
+                case STRING -> "string";
+            };
+        }
     }
 }

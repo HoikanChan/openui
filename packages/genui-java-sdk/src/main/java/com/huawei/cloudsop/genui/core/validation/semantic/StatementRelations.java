@@ -4,6 +4,7 @@
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
 
+import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
@@ -117,10 +118,11 @@ public final class StatementRelations {
         if (node instanceof AstNode.Comp comp) {
             List<Integer> binderIndexes = LazyBuiltinBinders.binderIndexes(comp, builtins);
             if (!binderIndexes.isEmpty()) {
+                BuiltinSpec spec = builtins.spec(comp.name());
                 Set<String> binders = new LinkedHashSet<>();
                 boolean valid = true;
                 for (int index : binderIndexes) {
-                    String binder = LazyBuiltinBinders.binderName(comp.args().get(index));
+                    String binder = LazyBuiltinBinders.binderName(spec, comp, index);
                     if (binder == null) {
                         valid = false;
                         break;

@@ -11,21 +11,22 @@ import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import java.util.List;
 
 /**
- * 惰性 builtin（{@code @Each}/{@code @Render}）binder 参数的共享解析规则。
+ * 惰性 builtin（{@code @Each}/{@code @Render}）binder 布局的共享解析规则（#83）。
  *
  * <p>
- * {@link ProgramAnalyzer} 与 {@link StatementRelations} 都需要判断哪些实参是 binder、binder 名是什么；规则必须保持单一来源，避免两处漂移。
+ * 布局全部来自契约编译产物 {@link BuiltinSpec}：binder 位（params 的 {@code binder} 标记）、名语法（{@code nameSyntax}）、
+ * body 位置（恒为最后一个实参）、元素绑定的输入来源（条目的 {@code input} 下标）。语义层（{@link ProgramAnalyzer}、
+ * {@link StatementRelations}）与类型层（AnalysisSession）共用本类，不各自重述布局。
  *
  * @since 2026
  */
-final class LazyBuiltinBinders {
+public final class LazyBuiltinBinders {
 
     private LazyBuiltinBinders() {
     }
 
     /**
-     * binder 参数位置——从契约 params 的 {@code binder} 标记派生（Each 为 1；Render 为除模板外的全部前缀参数）。 仅对实参充足的调用返回非空（Each 需 3 参、Render 需 2
-     * 参）。
+     * 一次调用实际引入的 binder 下标——契约声明位 ∩ 除 body 外的实参前缀（body 恒为最后一个实参）。 仅对实参数达到契约下限的调用返回非空。
      *
      * @param comp
      *            被检查的调用
@@ -33,35 +34,46 @@ final class LazyBuiltinBinders {
      *            当前 builtin 词表
      * @return binder 实参下标；调用不引入 binder 作用域时为空列表
      */
-    static List<Integer> binderIndexes(AstNode.Comp comp, BuiltinCatalog builtins) {
+    public static List<Integer> binderIndexes(AstNode.Comp comp, BuiltinCatalog builtins) {
         if (!builtins.isLazyBuiltin(comp.name())) {
             return List.of();
         }
         BuiltinSpec spec = builtins.spec(comp.name());
-        if (spec == null) {
+        if (spec == null || comp.args().size() < spec.minArity()) {
             return List.of();
         }
-        int argc = comp.args().size();
-        int minBindArgs = "Each".equals(comp.name()) ? 3 : 2;
-        if (argc < minBindArgs) {
-            return List.of();
-        }
-        return spec.binderIndexes().stream().filter(index -> index < argc - 1 || "Each".equals(comp.name())).toList();
+        return spec.activeBinderIndexes(comp.args().size());
+    }
+
+    /** body/模板实参下标:惰性 builtin 的 body 恒为最后一个实参。 */
+    public static int bodyIndex(AstNode.Comp comp) {
+        return comp.args().size() - 1;
     }
 
     /**
-     * binder 可以是裸标识符（{@link AstNode.Ref}）或字符串字面量（{@link AstNode.Str}）；其他形状无效。
+     * 按契约 nameSyntax 取 binder 名:{@code string-or-identifier} 允许字符串字面量与裸标识符, {@code string} 仅字符串字面量;其他形状或越界下标返回 {@code null}。
      *
-     * @param arg
-     *            binder 实参
-     * @return binder 名；不是合法 binder 时为 {@code null}
+     * @param spec
+     *            编译后的 builtin 声明
+     * @param comp
+     *            被检查的调用
+     * @param index
+     *            binder 实参下标
+     * @return binder 名;该实参不是契约允许的 binder 形态时为 {@code null}
      */
-    static String binderName(AstNode arg) {
-        if (arg instanceof AstNode.Ref ref) {
-            return ref.n();
+    public static String binderName(BuiltinSpec spec, AstNode.Comp comp, int index) {
+        if (index < 0 || index >= comp.args().size() || index >= spec.params().size()
+                || !spec.params().get(index).binder()) {
+            return null;
         }
+        AstNode arg = comp.args().get(index);
         if (arg instanceof AstNode.Str str) {
             return str.v();
+        }
+        String syntax = spec.params().get(index).nameSyntax();
+        if (arg instanceof AstNode.Ref ref
+                && BuiltinSpec.NameSyntax.STRING_OR_IDENTIFIER == BuiltinSpec.NameSyntax.fromContract(syntax)) {
+            return ref.n();
         }
         return null;
     }
