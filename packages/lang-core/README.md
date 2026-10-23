@@ -136,3 +136,39 @@ Full documentation, guides, and the language specification are available at **[o
 ## License
 
 [MIT](https://github.com/thesysdev/openui/blob/main/LICENSE)
+
+### Capability gaps and contract export
+
+`GenerationContract.capabilityGaps` describes known unsupported capabilities.
+Each entry has `id`, `kind` (`"data" | "component"`), `name`, `aliases`,
+`phrases`, and `fallback`. `CapabilityGapSchema` is the public runtime schema.
+`createLibrary({ components, capabilityGaps }).toSpec()` exports these entries;
+`extend({ capabilityGaps })` appends entries. Omission uses the built-in
+`group-by`, `top-n`, and `join` gaps; an explicit `[]` disables defaults.
+Duplicate IDs, aliases shared by different gaps, blank metadata/phrases, and
+aliases matching component or builtin names fail export. Conflict checks strip
+surrounding whitespace and one leading `@`, matching the Java loader; exported
+values retain their original spelling.
+
+To export a complete JSON contract, call `exportGenerationContract(source)`.
+This preserves every other source field, including structured builtin type
+rules, and validates gaps against the component and builtin names actually in
+that source. Builtin entries must include their authoritative `name`; this
+exporter does not derive executable rules or names from display signatures.
+
+```bash
+pnpm --dir packages/lang-core run generate:base-contract
+pnpm --dir packages/lang-core run generate:base-contract --input source.json --output contract.json
+```
+
+The default command validates and regenerates the shared canonical artifact at
+`packages/genui-java-sdk/src/main/resources/openui/base-contract.json`.
+Validation completes before the output is replaced. Source/output paths supplied
+on the command line are relative to the command's working directory.
+
+This branch removed the former `react-ui-dsl` package and its component export
+script. The surviving TypeScript exporter owns capability-gap schema/defaults
+and preserves the current canonical contract; it does not reconstruct the removed
+frontend component library or replace structured builtin rules with the older
+runtime documentation manifest. No second contract snapshot is maintained.
+Broader frontend structured-rule export work is tracked by issue #91.

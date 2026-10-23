@@ -1,3 +1,6 @@
+export { CapabilityGapSchema } from "./contract/capability-gaps";
+export type { CapabilityGap } from "./contract/capability-gaps";
+export { exportGenerationContract } from "./contract/export";
 // ── Library (framework-generic) ──
 export { createLibrary, defineComponent } from "./library";
 export type {
