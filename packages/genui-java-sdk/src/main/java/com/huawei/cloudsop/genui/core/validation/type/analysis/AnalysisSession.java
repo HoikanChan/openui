@@ -510,16 +510,32 @@ public final class AnalysisSession {
         }
         Fact base = synth(index.obj(), statementId, env, resolving);
         Fact indexFact = synth(index.index(), statementId, env, resolving);
+        if (index.index() instanceof AstNode.Num number && number.v() == Math.rint(number.v())) {
+            // 字面量下标:精确长度区间可判定越界,越界不伪装成正常元素。
+            return ops.elementAt(base, (long) number.v());
+        }
         if (indexFact.type() instanceof Type.Scalar scalar && scalar.kind() == Type.ScalarKind.NUMBER) {
             return ops.element(base);
         }
         if (indexFact.type() instanceof Type.StringLiterals literals && literals.values().size() == 1) {
             return ops.readField(base, literals.values().iterator().next());
         }
-        if (indexFact.type() instanceof Type.Scalar stringScalar && stringScalar.kind() == Type.ScalarKind.STRING) {
-            return ops.readField(base, "?");
+        if (isStringIndex(indexFact.type())) {
+            // 动态字符串键:全部字段值类型的并集;键是否存在未知,不能按确定缺失返回 Never。
+            return ops.readDynamicField(base);
         }
         return ops.element(base);
+    }
+
+    /** 下标表达式是否为字符串键(字面值集合或 string 标量,含其联合)。 */
+    private static boolean isStringIndex(Type type) {
+        return switch (type) {
+            case Type.Scalar scalar -> scalar.kind() == Type.ScalarKind.STRING;
+            case Type.StringLiterals ignored -> true;
+            case Type.Union union -> !union.alternatives().isEmpty()
+                    && union.alternatives().stream().allMatch(AnalysisSession::isStringIndex);
+            default -> false;
+        };
     }
 
     private Fact resolveDataPath(DataPath path, String statementId) {
@@ -539,17 +555,29 @@ public final class AnalysisSession {
     private Fact factFromObserved(String path, DataPathResolution.Resolved resolved) {
         Type type = new TypeTranslator().translate(resolved.type());
         Set<Fact.Evidence> evidence = new LinkedHashSet<>();
+        Set<Fact.Loss> losses = new LinkedHashSet<>();
         DataPathResolution.Evidence oldEvidence = resolved.evidence();
         if (oldEvidence != null && oldEvidence.total() > 0) {
             evidence.add(new Fact.Evidence.FieldPresence(path, oldEvidence.present(), oldEvidence.missing(),
                     oldEvidence.nulls(), oldEvidence.total()));
+            if (oldEvidence.plucked()) {
+                // 数组字段投影直接观察到非 null 成员 —— 投影结果至少含一个元素(直接快照观察,§6.5)。
+                if (oldEvidence.present() > 0) {
+                    evidence.add(new Fact.Evidence.ElementPresence());
+                }
+                if (oldEvidence.missing() > 0) {
+                    // 缺失行的运行时处理(保留 null/跳过/失败)契约未定义(#79 未决)。存在性证据保留在
+                    // FieldPresence 里,但精确投影结果不可证明:不能丢弃缺失分支后宣称完整通过。
+                    losses.add(Fact.Loss.UNKNOWN_INPUT);
+                }
+            }
         }
         // 快照值证据:观察到的实际值(数组元素反例等真实证据);嵌套集合冻结隔离。
         Object snapshotValue = snapshotAtPath(path);
         if (snapshotValue != null) {
             evidence.add(new Fact.Evidence.ObservedValue(path, SnapshotFacts.deepFreeze(snapshotValue)));
         }
-        return new Fact(type, evidence, Set.of(), Set.of());
+        return new Fact(type, evidence, losses, Set.of());
     }
 
     /** 从 Render Data Model 按数据路径取快照值(数组 pluck 路径返回数组本身)。 */
@@ -987,16 +1015,14 @@ public final class AnalysisSession {
         return switch (call.name()) {
             case "Each" -> eachResult(call, arguments, statementId, env, resolving);
             case "Render" -> renderResult(call, arguments, statementId, env, resolving);
-            case "Flatten" ->
-                arguments.isEmpty() ? Fact.unknown(Fact.Loss.MISSING_CONTEXT) : ops.flattenOne(arguments.getFirst());
+            // Flatten / First / Last 已由契约 typeRule 的 sequence.* 运算承载(与词表同源、按运算种类分派),
+            // 不再保留按函数名的 Java 分支。
             case "ObjectKeys" ->
                 arguments.isEmpty() ? Fact.unknown(Fact.Loss.MISSING_CONTEXT) : ops.keys(arguments.getFirst());
             case "ObjectValues" ->
                 arguments.isEmpty() ? Fact.unknown(Fact.Loss.MISSING_CONTEXT) : ops.values(arguments.getFirst());
             case "ObjectEntries" ->
                 arguments.isEmpty() ? Fact.unknown(Fact.Loss.MISSING_CONTEXT) : ops.entries(arguments.getFirst());
-            case "First", "Last" ->
-                arguments.isEmpty() ? Fact.unknown(Fact.Loss.MISSING_CONTEXT) : ops.select(arguments.getFirst());
             case "Switch" -> switchResult(call, arguments, statementId, env, resolving);
             default -> genericResult(spec, call, arguments);
         };
@@ -1475,8 +1501,11 @@ public final class AnalysisSession {
         if (chart.args().size() < 2) {
             return;
         }
-        Fact labels = synth(chart.args().get(0), statementId, env, resolving);
-        long[] labelRange = lengthRangeOf(chart.args().get(0), labels, env, resolving);
+        AstNode labelsNode = chart.args().get(0);
+        Fact labels = synth(labelsNode, statementId, env, resolving);
+        // 元素要求与长度关系是独立要求(#77 §11.1):元素检查先登记,不受长度是否可证影响。
+        checkChartElement(chart, "labels", labelsNode, labels, chartLabelsExpectation(), "/labels", statementId);
+        long[] labelRange = lengthRangeOf(labelsNode, labels, env, resolving);
         int seriesIndex = 0;
         for (AstNode seriesNode : arrayElements(chart.args().get(1))) {
             AstNode resolvedSeries = resolveNode(seriesNode, new LinkedHashSet<>());
@@ -1485,18 +1514,12 @@ public final class AnalysisSession {
                 seriesIndex++;
                 continue;
             }
-            Fact values = synth(series.args().get(1), statementId, env, resolving);
-            long[] valueRange = lengthRangeOf(series.args().get(1), values, env, resolving);
-            // 长度关系独立检查:区间互斥才可证明不等;精确长度相同才证明相等。
-            if (labelRange != null && valueRange != null
-                    && (labelRange[0] > valueRange[1] || valueRange[0] > labelRange[1])) {
-                emit("type-chart-length-mismatch",
-                        chart.name() + " labels length [" + labelRange[0] + ".." + labelRange[1]
-                                + "] cannot match series " + seriesIndex + " values length [" + valueRange[0] + ".."
-                                + valueRange[1] + "].",
-                        statementId, chart.name(), "/series/" + seriesIndex,
-                        "Provide one series value for every chart label.");
-            }
+            AstNode valuesNode = series.args().get(1);
+            Fact values = synth(valuesNode, statementId, env, resolving);
+            checkChartElement(chart, "series[" + seriesIndex + "].values", valuesNode, values,
+                    chartSeriesValuesExpectation(), "/series/" + seriesIndex + "/values", statementId);
+            long[] valueRange = lengthRangeOf(valuesNode, values, env, resolving);
+            checkChartLengthRelation(chart, labelsNode, labelRange, valuesNode, valueRange, seriesIndex, statementId);
             if ("LineChart".equals(chart.name()) && valueRange != null && valueRange[1] < 2
                     && !values.hasUpstreamErrors()) {
                 emit("type-chart-insufficient-data",
@@ -1508,6 +1531,95 @@ public final class AnalysisSession {
             validateDuplicateSeriesValues(chart, series, seriesIndex, statementId);
             seriesIndex++;
         }
+    }
+
+    /**
+     * Chart 元素要求(标签为 string 或 number 数组;series values 为 number 数组),与长度关系分开登记与检查。
+     * 长度不可证明时元素检查照常进行;只有已证明的元素类型冲突才产生诊断。
+     */
+    private void checkChartElement(AstNode.Comp chart, String requirement, AstNode node, Fact fact,
+            Expectation expectation, String usagePath, String statementId) {
+        String checkedPath = dataPathOf(node).map(DataPath::source).orElse(null);
+        Checks.CheckResult result = checkObligation(statementId, chart.name() + "." + requirement, "chartElement",
+                "/components/" + chart.name() + "/properties/" + requirement, fact, expectation, checkedPath,
+                chart.name(), usagePath);
+        if (result.verdict() == Checks.Verdict.MISMATCH) {
+            emit("type-prop-mismatch",
+                    chart.name() + "." + requirement + " expects " + displayExpectation(expectation)
+                            + ", but received " + fact.type().displayName() + ".",
+                    statementId, chart.name(), usagePath,
+                    "Provide values compatible with " + displayExpectation(expectation) + ".");
+        }
+    }
+
+    private static Expectation chartLabelsExpectation() {
+        Type stringElements = Types.sequence(Types.scalar(Type.ScalarKind.STRING), 0, Type.Sequence.UNBOUNDED);
+        Type numberElements = Types.sequence(Types.scalar(Type.ScalarKind.NUMBER), 0, Type.Sequence.UNBOUNDED);
+        return new Expectation.AnyOf(
+                List.of(new Expectation.Accept(stringElements), new Expectation.Accept(numberElements)));
+    }
+
+    private static Expectation chartSeriesValuesExpectation() {
+        return new Expectation.SequenceOf(new Expectation.Accept(Types.scalar(Type.ScalarKind.NUMBER)));
+    }
+
+    /**
+     * 长度关系独立检查(#77 §11.1):区间互斥可证明长度不等;精确长度相同,或两侧来自同一个已证明保长度的
+     * 来源,才证明相等。区间相同但非精确不足以证明相等——记为未证明,不报错也不宣称通过。
+     */
+    private void checkChartLengthRelation(AstNode.Comp chart, AstNode labelsNode, long[] labelRange,
+            AstNode valuesNode, long[] valueRange, int seriesIndex, String statementId) {
+        Checks.CheckResult result;
+        if (labelRange == null || valueRange == null) {
+            result = Checks.CheckResult.unproven(Set.of(Checks.Reason.INSUFFICIENT_EVIDENCE), Set.of(),
+                    "chart length cannot be proven");
+        } else if (labelRange[0] > valueRange[1] || valueRange[0] > labelRange[1]) {
+            result = Checks.CheckResult.mismatch("labels length [" + labelRange[0] + ".." + labelRange[1]
+                    + "] cannot match series values length [" + valueRange[0] + ".." + valueRange[1] + "]");
+        } else if (provenSameLength(labelsNode, labelRange, valuesNode, valueRange)) {
+            result = Checks.CheckResult.match();
+        } else {
+            result = Checks.CheckResult.unproven(Set.of(Checks.Reason.INSUFFICIENT_EVIDENCE), Set.of(),
+                    "overlapping length ranges do not prove equal length");
+        }
+        String useSite = chart.name() + ".series[" + seriesIndex + "].length";
+        coverage.record(new CoverageReport.Entry(
+                new CoverageReport.Obligation(statementId, useSite, "chartLengthRelation",
+                        "/components/" + chart.name() + "/series",
+                        "labels[" + (labelRange == null ? "?" : labelRange[0] + ".." + labelRange[1]) + "] vs values["
+                                + (valueRange == null ? "?" : valueRange[0] + ".." + valueRange[1]) + "]"),
+                result.verdict(), List.copyOf(result.reasons()), result.upstreamErrors()));
+        if (result.verdict() == Checks.Verdict.MISMATCH) {
+            emit("type-chart-length-mismatch",
+                    chart.name() + " labels length [" + labelRange[0] + ".." + labelRange[1] + "] cannot match series "
+                            + seriesIndex + " values length [" + valueRange[0] + ".." + valueRange[1] + "].",
+                    statementId, chart.name(), "/series/" + seriesIndex,
+                    "Provide one series value for every chart label.");
+        }
+    }
+
+    /** 精确长度相同,或两侧来自同一个已证明保长度的来源(Each/Sort 保留输入数量),才证明长度相等。 */
+    static boolean provenSameLength(AstNode labelsNode, long[] labelRange, AstNode valuesNode,
+            long[] valueRange) {
+        if (labelRange[0] == labelRange[1] && valueRange[0] == valueRange[1]) {
+            return labelRange[0] == valueRange[0];
+        }
+        String labelsSource = lengthPreservingSource(labelsNode);
+        String valuesSource = lengthPreservingSource(valuesNode);
+        return labelsSource != null && labelsSource.equals(valuesSource);
+    }
+
+    /** 去掉 Each/Sort 这类已证明保长度的运算后,同一符号引用或数据路径即同一数量来源。 */
+    private static String lengthPreservingSource(AstNode node) {
+        if (node instanceof AstNode.Comp comp && !comp.args().isEmpty()
+                && ("Each".equals(comp.name()) || "Sort".equals(comp.name()))) {
+            return lengthPreservingSource(comp.args().get(0));
+        }
+        if (node instanceof AstNode.Ref ref) {
+            return "ref:" + ref.n();
+        }
+        String path = dataPathSource(node);
+        return path == null ? null : "path:" + path;
     }
 
     /**

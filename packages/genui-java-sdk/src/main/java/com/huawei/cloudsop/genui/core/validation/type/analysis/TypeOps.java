@@ -387,9 +387,90 @@ public final class TypeOps {
         return new Fact(Types.union(results), evidence, losses, Set.of());
     }
 
-    /** First/Last 选择:元素类型上界;空数组结果值契约未定义(#79 未决),不为空数组补 null 证据。 */
+    /**
+     * First/Last 选择:可证明非空时保留元素上界;否则返回 Unknown + {@link Fact.Loss#NO_ELEMENT_EVIDENCE}。
+     *
+     * <p>
+     * 空输入的实际返回值契约未定(#79 未决矩阵):不能把空数组的元素 {@code Never} 当成真实返回值(那会
+     * 让下游把"没有值"误当"任意要求都满足"),也不能补 null/undefined。可能为空的分支同样必须覆盖该未知
+     * 结果——单个分支非空不足以证明运行时拿到的是元素。直接观察到非空数组时按快照证据判定。
+     */
     public Fact select(Fact sequence) {
+        if (sequence.hasUpstreamErrors() || sequence.type() instanceof Type.Unknown) {
+            return element(sequence);
+        }
+        boolean emptyPossible = false;
+        for (Type branch : flatten(sequence.type())) {
+            if (branch instanceof Type.Sequence seq) {
+                if (seq.minLength() == 0) {
+                    emptyPossible = true;
+                }
+            } else {
+                // 非数组分支(含 Unknown)没有元素上界可保留。
+                emptyPossible = true;
+            }
+        }
+        if (!emptyPossible) {
+            return element(sequence);
+        }
+        boolean observedNonEmpty = sequence.evidence().stream()
+                .anyMatch(item -> item instanceof Fact.Evidence.ElementPresence
+                        || item instanceof Fact.Evidence.ObservedValue observed
+                                && observed.value() instanceof List<?> values && !values.isEmpty());
+        if (observedNonEmpty) {
+            return element(sequence);
+        }
+        return Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE).withLosses(sequence.losses())
+                .withUpstreamErrors(sequence.upstreamErrors());
+    }
+
+    /**
+     * 字面量下标读取:精确长度区间排除该下标时,越界结果不是正常元素——返回 Unknown 并记元素存在性未
+     * 证明,不把元素类型伪装成越界读取的结果。其余情况沿用 {@link #element(Fact)} 的安全上界。
+     */
+    public Fact elementAt(Fact sequence, long index) {
+        if (!sequence.hasUpstreamErrors() && !(sequence.type() instanceof Type.Unknown)) {
+            List<Type> branches = flatten(sequence.type());
+            boolean outOfRangeEverywhere = !branches.isEmpty() && branches.stream().allMatch(branch ->
+                    branch instanceof Type.Sequence seq && seq.maxLength() != Type.Sequence.UNBOUNDED
+                            && index >= seq.maxLength());
+            if (outOfRangeEverywhere) {
+                return Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE).withLosses(sequence.losses())
+                        .withUpstreamErrors(sequence.upstreamErrors());
+            }
+        }
         return element(sequence);
+    }
+
+    /**
+     * 动态键读取(非字符串字面量下标):所有已知字段值类型与开放尾部的并集。键是否存在未知,因此不能像确定
+     * 缺失那样返回 Never;关闭空对象没有任何可取的值,才收敛为 Never。
+     */
+    public Fact readDynamicField(Fact object) {
+        if (object.hasUpstreamErrors()) {
+            return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamErrors(object.upstreamErrors());
+        }
+        if (object.type() instanceof Type.Unknown) {
+            return Fact.unknown(Fact.Loss.UNKNOWN_INPUT).withLosses(object.losses());
+        }
+        List<Type> results = new ArrayList<>();
+        Set<Fact.Loss> losses = new LinkedHashSet<>(object.losses());
+        for (Type branch : flatten(object.type())) {
+            if (!(branch instanceof Type.RecordType record)) {
+                losses.add(Fact.Loss.UNKNOWN_INPUT);
+                results.add(Type.Unknown.INSTANCE);
+                continue;
+            }
+            List<Type> fieldTypes = new ArrayList<>();
+            for (Type.Field field : record.fields().values()) {
+                fieldTypes.add(field.type());
+            }
+            if (!record.extra().isClosed()) {
+                fieldTypes.add(record.extra().valueType());
+            }
+            results.add(Types.union(fieldTypes));
+        }
+        return new Fact(unionWithinBudget(results, object), Set.of(), losses, object.upstreamErrors());
     }
 
     /**
