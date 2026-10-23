@@ -460,10 +460,15 @@ export function createStreamParser(
       ternaryDepth = 0,
       inStr: false | '"' | "'" = false,
       esc = false;
+    let inComment = false;
     let stmtStart = completedEnd;
 
     for (let i = completedEnd; i < buf.length; i++) {
       const c = buf[i];
+      if (inComment) {
+        if (c !== "\n") continue;
+        inComment = false;
+      }
       if (esc) {
         esc = false;
         continue;
@@ -478,6 +483,10 @@ export function createStreamParser(
       }
       if (c === '"' || c === "'") {
         inStr = c;
+        continue;
+      }
+      if (c === "#" || (c === "/" && buf[i + 1] === "/")) {
+        inComment = true;
         continue;
       }
 

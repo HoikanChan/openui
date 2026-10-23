@@ -32,7 +32,6 @@ import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiPreprocessor;
-import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
 import com.huawei.cloudsop.genui.core.validation.repair.IncrementalRepairPromptBuilder;
 import com.huawei.cloudsop.genui.core.validation.repair.RepairCoordinator;
 import com.huawei.cloudsop.genui.core.validation.repair.RepairPolicy;
@@ -566,11 +565,8 @@ public final class GenUiGenerator {
             // The frontend consumes one appended DSL stream, while each model request has its own
             // parser buffer. Complete the previous request's tail using the same existing auto-close
             // rule as round-end validation, then separate it from the next request with a newline.
-            String raw = previousOutput;
-            String cleaned = OpenuiPreprocessor.preprocess(raw);
-            String closed = OpenuiPreprocessor.process(raw, ParseMode.STREAMING).text();
-            String boundary = closed.substring(cleaned.length()) + "\n";
-            if (!raw.endsWith("\n") || !closed.equals(cleaned)) {
+            String boundary = OpenuiPreprocessor.streamRoundBoundary(previousOutput);
+            if (!boundary.isEmpty()) {
                 sink.accept(RenderStreamEnvelope.dsl(0, boundary));
             }
             try (InputStream stream = transport.postStream(body)) {

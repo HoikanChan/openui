@@ -474,6 +474,27 @@ class GenUiGeneratorIncrementalRepairTest {
         }
     }
 
+    @Test
+    void rawCommentsAndStringWhitespaceCannotSwallowTheNextRepair() throws Exception {
+        List<String> rawOutputs = List.of("root = Bogus( // (", "root = Bogus( # (", "root = Bogus(\"abc\\   ");
+        List<String> boundaries = List.of("\n)\n", "\n)\n", "\")\n");
+        List<Map<String, Object>> evidence = new ArrayList<>();
+        for (int i = 0; i < rawOutputs.size(); i++) {
+            String raw = rawOutputs.get(i);
+            String patch = "root = TextContent(\"repair helper visible\")";
+            ScriptedTransport transport = ScriptedTransport.streams(frame(raw) + SseFrames.done(),
+                    frame(patch) + SseFrames.done());
+            List<RenderStreamEnvelope> events = new ArrayList<>();
+            GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                    .generateStream(req(), events::add);
+            assertEquals(ValidationStatus.VALID, result.validationStatus());
+            assertEquals(List.of(raw, boundaries.get(i), patch), dslContents(events), raw);
+            evidence.add(Map.of("chunks", dslContents(events), "dsl", result.dsl(), "roundDefinitions",
+                    result.rounds().stream().map(round -> round.currentDefinitions()).toList()));
+        }
+        Files.writeString(Path.of("target", "incremental-boundary-regressions.json"), Json.stringify(evidence));
+    }
+
     // ── fake transports ─────────────────────────────────────────────────────
 
     static final class ScriptedTransport implements InMemoryLlmTransport {

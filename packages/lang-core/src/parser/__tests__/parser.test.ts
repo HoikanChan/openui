@@ -245,6 +245,19 @@ describe("unresolved references (streaming)", () => {
 });
 
 describe("incremental repair consumption", () => {
+  it.each(["// (", "# ("])(
+    "ignores comment brackets between independent repair rounds: %s",
+    (comment) => {
+      const parser = createStreamParser(schema);
+      parser.push(`root = Unknown( ${comment}`);
+      parser.push("\n)\n");
+      const result = parser.push('root = Title("fixed")');
+      expect(result.meta.incomplete).toBe(false);
+      expect(result.meta.errors).toHaveLength(0);
+      expect(result.root?.props.text).toBe("fixed");
+    },
+  );
+
   it("applies a complete repair without a trailing newline and resolves new helpers", () => {
     const parser = createStreamParser(schema);
     parser.push('root = Stack([content])\ncontent = Unknown("broken")\n');
