@@ -22,7 +22,7 @@ import java.util.OptionalInt;
  *
  * <p>
  * 加载期失败（{@link RuleCompilationException}）：未知 op/tag、非法实参索引、对非可选参数使用 {@code argumentOr}、非末位 {@code rest} 参数、非法
- * arity、result 引用未被任何参数模式绑定的类型变量。 规则文法是封闭集——编译器不认识的一律拒绝，不静默降级。
+ * arity。未绑定的结果变量不在加载期拒绝：这类规则编译通过，调用时该结果返回 {@code Unknown} 并记 {@code UNBOUND_TYPE_VARIABLE}。 规则文法是封闭集——编译器不认识的一律拒绝，不静默降级。
  *
  * @since 2026
  */

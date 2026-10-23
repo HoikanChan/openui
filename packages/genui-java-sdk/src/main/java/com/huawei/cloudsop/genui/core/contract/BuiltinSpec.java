@@ -21,7 +21,7 @@ import java.util.Optional;
  * re-deriving them.
  *
  * <p>
- * 校验侧结构字段：{@link #name()}（查找键）、{@link #params()}（含 optional/variadic/binder 修饰；其 {@link ParamSpec#typeExpr()} 仍用于模板构造的非 binder 参数检查）、{@link #returnType()}（纯展示，不参与类型推断或加载期校验）。{@code signature}
+ * 校验侧结构字段：{@link #name()}（查找键）、{@link #params()}（含 optional/variadic/binder 修饰；其 {@link ParamSpec#typeExpr()} 仍用于模板构造的非 binder 参数检查）、{@link #returnType()}（纯展示字段；加载期只解析语法并校验类型变量绑定与 {@code param(n)} 下标，不参与结果推断，也不与 {@code typeRule} 交叉核对）。{@code signature}
  * 降级为纯展示字段，只喂提示词，不承载任何校验规则。加载器不比较 {@link #params()} 推导的 arity 与 {@code typeRule.arity}，两者一致靠人工核对与测试。
  *
  * <p>
