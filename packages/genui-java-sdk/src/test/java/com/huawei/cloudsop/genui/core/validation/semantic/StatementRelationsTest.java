@@ -54,4 +54,24 @@ class StatementRelationsTest {
         assertFalse(ids.contains("title"), "binder name must be scoped, not resolved to a same-name statement: " + ids);
         assertTrue(ids.contains("root"), "downstream user is still related: " + ids);
     }
+    @Test
+    void extractedTemplatesInheritBindingsAcrossTransitiveDefinitions() {
+        String dsl = "root = Stack([items])\nitems = @Each(data.rows, row, body)\n"
+                + "body = @Render(value, cell)\ncell = TextContent(row.name + value)\n"
+                + "row = TextContent(\"unrelated row\")\nvalue = TextContent(\"unrelated value\")";
+        List<String> ids = StatementRelations.related(dsl, List.of(issueOn("items"))).get("items");
+        assertTrue(ids.containsAll(List.of("body", "cell", "root")), ids.toString());
+        assertFalse(ids.contains("row"), "Each binder follows extracted templates: " + ids);
+        assertFalse(ids.contains("value"), "Render call-time binder shadows global definition: " + ids);
+    }
+
+    @Test
+    void extractedTemplateUsedAlsoOutsideScopeKeepsItsGlobalDependency() {
+        String dsl = "root = Stack([items, body])\nitems = @Each(data.rows, row, body)\n"
+                + "body = TextContent(row)\nrow = \"global\"";
+        assertTrue(StatementRelations.related(dsl, List.of(issueOn("body"))).get("body").contains("row"));
+        assertFalse(StatementRelations.related(dsl, List.of(issueOn("items"))).get("items").contains("row"),
+                "another use of body must not leak its global dependencies into the scoped use");
+    }
+
 }

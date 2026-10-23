@@ -8,6 +8,7 @@ import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
+import com.huawei.cloudsop.genui.core.validation.parser.Builtins;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
 import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
@@ -66,8 +67,8 @@ public final class StatementRelations {
             return Map.of();
         }
 
-        Map<String, Set<String>> dependencies = directDependencies(current, effectiveBuiltins);
-        Map<String, Set<String>> dependents = reverse(dependencies);
+        Map<ScopedStatement, Set<ScopedStatement>> dependencies = directDependencies(current, effectiveBuiltins);
+        Map<ScopedStatement, Set<ScopedStatement>> dependents = reverse(dependencies);
 
         LinkedHashMap<String, List<String>> result = new LinkedHashMap<>();
         for (ValidationIssue issue : issues) {
@@ -88,30 +89,57 @@ public final class StatementRelations {
         return Collections.unmodifiableMap(result);
     }
 
-    private static Map<String, Set<String>> directDependencies(Map<String, Statement> statements,
+    /** A named template can have different dependencies at different lexical use sites. */
+    private record ScopedStatement(String id, Set<String> bindings) {
+        private ScopedStatement {
+            bindings = Set.copyOf(bindings);
+        }
+    }
+
+    private static Map<ScopedStatement, Set<ScopedStatement>> directDependencies(Map<String, Statement> statements,
             BuiltinCatalog builtins) {
-        Set<String> knownIds = statements.keySet();
-        LinkedHashMap<String, Set<String>> dependencies = new LinkedHashMap<>();
-        for (Map.Entry<String, Statement> entry : statements.entrySet()) {
-            LinkedHashSet<String> refs = new LinkedHashSet<>();
-            AstNode expr = expressionOf(entry.getValue());
-            if (expr != null) {
-                collectRefs(expr, knownIds, builtins, new ArrayDeque<>(), refs);
-                refs.remove(entry.getKey());
+        LinkedHashMap<ScopedStatement, Set<ScopedStatement>> dependencies = new LinkedHashMap<>();
+        // Resolve from the page first. Extracted templates inherit use-site bindings, not an artificial empty scope.
+        String entry = statements.containsKey("root") ? "root"
+                : statements.entrySet().stream()
+                        .filter(e -> e.getValue() instanceof Statement.Value value
+                                && value.expr() instanceof AstNode.Comp comp && !builtins.isBuiltin(comp.name())
+                                && !Builtins.isReservedCall(comp.name()))
+                        .map(Map.Entry::getKey).findFirst().orElse(statements.keySet().iterator().next());
+        visit(new ScopedStatement(entry, Set.of()), statements, builtins, dependencies);
+        for (String id : statements.keySet()) {
+            if (dependencies.keySet().stream().noneMatch(key -> key.id().equals(id))) {
+                visit(new ScopedStatement(id, Set.of()), statements, builtins, dependencies);
             }
-            dependencies.put(entry.getKey(), refs);
         }
         return dependencies;
     }
 
+    private static void visit(ScopedStatement statement, Map<String, Statement> statements, BuiltinCatalog builtins,
+            Map<ScopedStatement, Set<ScopedStatement>> dependencies) {
+        if (dependencies.containsKey(statement)) {
+            return;
+        }
+        LinkedHashSet<ScopedStatement> refs = new LinkedHashSet<>();
+        dependencies.put(statement, refs);
+        Deque<Set<String>> scopeFrames = new ArrayDeque<>();
+        scopeFrames.push(statement.bindings());
+        collectRefs(expressionOf(statements.get(statement.id())), statements.keySet(), builtins, scopeFrames, refs);
+        for (ScopedStatement ref : refs) {
+            visit(ref, statements, builtins, dependencies);
+        }
+    }
+
     private static void collectRefs(AstNode node, Set<String> knownIds, BuiltinCatalog builtins,
-            Deque<Set<String>> scopeFrames, Set<String> refs) {
+            Deque<Set<String>> scopeFrames, Set<ScopedStatement> refs) {
         if (node == null) {
             return;
         }
         if (node instanceof AstNode.Ref ref) {
             if (!inScope(ref.n(), scopeFrames) && knownIds.contains(ref.n())) {
-                refs.add(ref.n());
+                LinkedHashSet<String> bindings = new LinkedHashSet<>();
+                scopeFrames.forEach(bindings::addAll);
+                refs.add(new ScopedStatement(ref.n(), bindings));
             }
             return;
         }
@@ -210,24 +238,30 @@ public final class StatementRelations {
         };
     }
 
-    private static Set<String> reachable(String start, Map<String, Set<String>> edges) {
-        LinkedHashSet<String> visited = new LinkedHashSet<>();
-        Deque<String> queue = new ArrayDeque<>(edges.getOrDefault(start, Set.of()));
+    private static Set<String> reachable(String start, Map<ScopedStatement, Set<ScopedStatement>> edges) {
+        LinkedHashSet<ScopedStatement> visited = new LinkedHashSet<>();
+        Deque<ScopedStatement> queue = new ArrayDeque<>();
+        edges.keySet().stream().filter(key -> key.id().equals(start)).forEach(key -> queue.addAll(edges.get(key)));
+        LinkedHashSet<String> ids = new LinkedHashSet<>();
         while (!queue.isEmpty()) {
-            String next = queue.removeFirst();
-            if (Objects.equals(next, start) || !visited.add(next)) {
+            ScopedStatement next = queue.removeFirst();
+            if (!visited.add(next)) {
                 continue;
+            }
+            if (!Objects.equals(next.id(), start)) {
+                ids.add(next.id());
             }
             queue.addAll(edges.getOrDefault(next, Set.of()));
         }
-        return visited;
+        return ids;
     }
 
-    private static Map<String, Set<String>> reverse(Map<String, Set<String>> dependencies) {
-        LinkedHashMap<String, Set<String>> reversed = new LinkedHashMap<>();
+    private static Map<ScopedStatement, Set<ScopedStatement>> reverse(
+            Map<ScopedStatement, Set<ScopedStatement>> dependencies) {
+        LinkedHashMap<ScopedStatement, Set<ScopedStatement>> reversed = new LinkedHashMap<>();
         dependencies.keySet().forEach(id -> reversed.put(id, new LinkedHashSet<>()));
-        for (Map.Entry<String, Set<String>> entry : dependencies.entrySet()) {
-            for (String target : entry.getValue()) {
+        for (Map.Entry<ScopedStatement, Set<ScopedStatement>> entry : dependencies.entrySet()) {
+            for (ScopedStatement target : entry.getValue()) {
                 reversed.computeIfAbsent(target, ignored -> new LinkedHashSet<>()).add(entry.getKey());
             }
         }

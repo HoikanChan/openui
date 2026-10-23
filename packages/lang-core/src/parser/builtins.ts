@@ -82,9 +82,7 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return prototype === Object.prototype || prototype === null;
 }
 
-function objectMapEntries(
-  value: unknown,
-): Array<{
+function objectMapEntries(value: unknown): Array<{
   key: string;
   value: unknown;
 }> {
@@ -162,10 +160,7 @@ function formatDateBuiltin(
 
       const [unit, size] = steps.find(([, threshold]) => absMs >= threshold) ?? ["second", 1000];
       const relativeValue = Math.round(diffMs / size);
-      return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(
-        relativeValue,
-        unit,
-      );
+      return new Intl.RelativeTimeFormat(locale, { numeric: "auto" }).format(relativeValue, unit);
     }
 
     const optionsByStyle: Record<string, Intl.DateTimeFormatOptions> = {
@@ -390,6 +385,13 @@ export const BUILTINS: Record<string, BuiltinDef> = {
       });
     },
   },
+  Flatten: {
+    name: "Flatten",
+    signature: "Flatten(array[][]) -> array",
+    description: "Flatten a nested array one level. Returns [] for null and non-array input.",
+    fn: (_runtime, array) => (Array.isArray(array) ? array.flat(1) : []),
+  },
+
   ObjectEntries: {
     name: "ObjectEntries",
     signature: "ObjectEntries(obj) -> {key: string, value: any}[]",
@@ -451,7 +453,7 @@ export const BUILTINS: Record<string, BuiltinDef> = {
   },
   FormatDate: {
     name: "FormatDate",
-    signature: 'FormatDate(value, style?, locale?) -> string | string[]',
+    signature: "FormatDate(value, style?, locale?) -> string | string[]",
     description:
       'Format a date-like value for display. Styles: "date", "dateTime", "time", or "relative". Accepts an array and maps over each element. Returns "" for nullish input and String(value) for invalid dates.',
     fn: (runtime, value, style, locale) => {
@@ -463,7 +465,7 @@ export const BUILTINS: Record<string, BuiltinDef> = {
   },
   FormatBytes: {
     name: "FormatBytes",
-    signature: 'FormatBytes(value) -> string',
+    signature: "FormatBytes(value) -> string",
     description:
       'Format a byte count into a compact SI string (KB, MB, GB). Returns "" for nullish input.',
     fn: (runtime, value, locale) => formatBytesBuiltin(value, locale, runtime),
@@ -473,8 +475,7 @@ export const BUILTINS: Record<string, BuiltinDef> = {
     signature: "FormatNumber(value, decimals?, locale?) -> string",
     description:
       "Format a scalar number as a locale-aware display string. Uses the renderer locale by default and returns raw input for invalid values.",
-    fn: (runtime, value, decimals, locale) =>
-      formatNumberish(value, runtime, decimals, locale),
+    fn: (runtime, value, decimals, locale) => formatNumberish(value, runtime, decimals, locale),
   },
   FormatPercent: {
     name: "FormatPercent",
@@ -486,7 +487,7 @@ export const BUILTINS: Record<string, BuiltinDef> = {
   },
   FormatDuration: {
     name: "FormatDuration",
-    signature: 'FormatDuration(value, unit?, locale?) -> string',
+    signature: "FormatDuration(value, unit?, locale?) -> string",
     description:
       'Format an elapsed duration into a compact display string. Input defaults to seconds and also supports explicit "ms" input.',
     fn: (runtime, value, unit, locale) => formatDurationBuiltin(value, unit, locale, runtime),
