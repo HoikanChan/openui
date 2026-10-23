@@ -100,7 +100,8 @@ public final class StatementRelations {
             BuiltinCatalog builtins) {
         LinkedHashMap<ScopedStatement, Set<ScopedStatement>> dependencies = new LinkedHashMap<>();
         // Resolve from the page first. Extracted templates inherit use-site bindings, not an artificial empty scope.
-        String entry = statements.containsKey("root") ? "root"
+        String entry = statements.containsKey("root")
+                ? "root"
                 : statements.entrySet().stream()
                         .filter(e -> e.getValue() instanceof Statement.Value value
                                 && value.expr() instanceof AstNode.Comp comp && !builtins.isBuiltin(comp.name())
