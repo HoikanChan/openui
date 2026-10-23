@@ -1324,10 +1324,23 @@ public final class AnalysisSession {
     private void checkTableColumn(AstNode.Comp column, String field, Fact rowElement, Fact rows, String statementId,
             LexicalEnvironment env, Set<String> resolving, String rowsPath, boolean noRowEvidence) {
         Expectation requirement = new Expectation.RequireField(field, new Expectation.Accept(Type.Unknown.INSTANCE));
-        Checks.CheckResult existence = checkObligation(statementId, "Table.columns[" + field + "]", "requireField",
-                "/components/Table/columns/" + field, rowElement, requirement, rowsPath, "Table", "/columns/" + field);
-        // 无行证据时的 MISMATCH 是“可能缺”而非“确定缺”(#77 用户故事 8):记 UNPROVEN,不报阻塞错误。
-        if (existence.verdict() == Checks.Verdict.MISMATCH && !noRowEvidence) {
+        Checks.CheckResult existence = Checks.check(rowElement, requirement, rowsPath);
+        // 所有已知行形状都没有该列是静态用法错误;Filter 仅删除行存在证据,不新增字段。
+        boolean absentFromShape = isObjectShape(rowElement.type())
+                && TypeOps.flatten(rows.type()).stream().noneMatch(branch -> branch instanceof Type.Sequence sequence
+                        && sequence.maxLength() == 0)
+                && TypeOps.flatten(rowElement.type()).stream().allMatch(branch -> {
+                    Type.RecordType record = (Type.RecordType) branch;
+                    return record.extra().isClosed() && !record.fields().containsKey(field);
+                });
+        if (existence.verdict() == Checks.Verdict.MISMATCH && noRowEvidence && !absentFromShape) {
+            existence = new Checks.CheckResult(Checks.Verdict.UNPROVEN,
+                    Set.of(Checks.Reason.NO_ELEMENT_EVIDENCE), Set.of(), "no retained row counterexample");
+        }
+        coverage.record(new CoverageReport.Entry(new CoverageReport.Obligation(statementId,
+                "Table.columns[" + field + "]", "requireField", "/components/Table/columns/" + field,
+                requirement.toString()), existence.verdict(), List.copyOf(existence.reasons()), existence.upstreamErrors()));
+        if (existence.verdict() == Checks.Verdict.MISMATCH) {
             emit("type-table-column-missing", "Table column field \"" + field + "\" " + existence.detail() + ".",
                     statementId, "Table", "/columns/" + field, "Use a field present in the Table rows.");
         }

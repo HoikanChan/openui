@@ -1982,7 +1982,13 @@
           "variadic": true
         }
       ],
-      "returnType": "object"
+      "returnType": "object",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {"min": 2, "max": "unbounded"},
+        "parameters": [{"name": "objects", "rest": true, "accept": "object"}],
+        "result": {"op": "record.overlay", "operands": [{"argumentsFrom": 0}]}
+      }
     },
     {
       "name": "Join",

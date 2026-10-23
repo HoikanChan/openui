@@ -114,6 +114,7 @@ public final class TypeOps {
         }
         List<Type> results = new ArrayList<>();
         Set<Fact.Loss> losses = new LinkedHashSet<>();
+        operands.forEach(operand -> losses.addAll(operand.losses()));
         for (List<Type> combination : combinations) {
             results.add(overlayCombination(combination, losses));
             if (!budget.tryConsumeTypeNodes(1)) {
@@ -142,6 +143,9 @@ public final class TypeOps {
                 String name = entry.getKey();
                 Type.Field next = entry.getValue();
                 Type.Field previous = fields.get(name);
+                if (previous == null && !extra.isClosed()) {
+                    previous = Type.Field.optional(extra.valueType());
+                }
                 if (previous == null) {
                     fields.put(name, next);
                     continue;
@@ -165,7 +169,7 @@ public final class TypeOps {
                     widened.put(entry.getKey(), new Type.Field(merged, field.presence()));
                 }
                 fields = widened;
-                extra = Type.Extra.open(extraType);
+                extra = Type.Extra.open(extra.isClosed() ? extraType : Types.union(extra.valueType(), extraType));
             }
         }
         return Types.record(fields, extra);
