@@ -39,6 +39,12 @@ public class ContractSemanticsEvidence {
         for (String name : List.of("Sum", "Avg", "Min", "Max")) {
             require(entry(entries, name).get("returnType").equals("number"), name);
         }
+        var sumRule = Json.asObject(entry(entries, "Sum").get("typeRule"), "Sum rule");
+        var sumParameter = Json.asObject(Json.asList(sumRule.get("parameters"), "parameters").getFirst(), "parameter");
+        require(Json.asObject(sumParameter.get("accept"), "Sum input").equals(
+                Map.of("tag", "sequence", "element", "number")), "Sum executable numeric-array input");
+        require(Json.asObject(sumRule.get("result"), "Sum result").equals(Map.of("type", "number")),
+                "Sum executable number result");
         require(entry(entries, "FormatNumber").get("returnType").equals("string"), "FormatNumber declaration");
         require(entry(entries, "FormatNumber").get("description").toString().contains("returns raw input"), "raw input");
         require(entry(entries, "Each").get("description").toString().contains("Do NOT create a separate statement"),

@@ -71,8 +71,8 @@ public final class TypeOps {
             }
         }
         for (Fact.Evidence item : object.evidence()) {
-            if (item instanceof Fact.Evidence.ObservedValue observed
-                    && observed.value() instanceof Map<?, ?> row && row.containsKey(name)) {
+            if (item instanceof Fact.Evidence.ObservedValue observed && observed.value() instanceof Map<?, ?> row
+                    && row.containsKey(name)) {
                 evidence.add(new Fact.Evidence.ObservedValue(null, SnapshotFacts.deepFreeze(row.get(name))));
             }
         }
@@ -365,23 +365,18 @@ public final class TypeOps {
         if (inputProvablyNonempty) {
             losses.remove(Fact.Loss.NO_ELEMENT_EVIDENCE);
         }
-        // 证据按层级组合:body 的逐元素观察值折叠为一个"单元素序列"观察值——输出数组在该层级
-        // 确定存在一次,其元素集合保守取所有观察到的 body 值(不逐行配对输入行)。层级由元素操作
-        // 逐层下钻维护,不按 Java 值种类丢弃。
+        // 仅在输入元素存在已证明时传播 body 的观察值,并包回输出数组这一层。
+        // body 自身的长度/字段证据不描述输出数组,不得直接复制到输出层。
         Set<Fact.Evidence> evidence = new LinkedHashSet<>();
         List<Object> observedElements = new ArrayList<>();
         for (Fact.Evidence item : body.evidence()) {
             if (item instanceof Fact.Evidence.ObservedValue observed) {
                 observedElements.add(SnapshotFacts.deepFreeze(observed.value()));
-            } else {
-                evidence.add(item);
             }
         }
-        if (!observedElements.isEmpty()) {
-            String path = body.evidence().stream()
-                    .filter(e -> e instanceof Fact.Evidence.ObservedValue)
-                    .map(e -> ((Fact.Evidence.ObservedValue) e).path()).filter(p -> p != null).findFirst()
-                    .orElse(null);
+        if (inputProvablyNonempty && !observedElements.isEmpty()) {
+            String path = body.evidence().stream().filter(e -> e instanceof Fact.Evidence.ObservedValue)
+                    .map(e -> ((Fact.Evidence.ObservedValue) e).path()).filter(p -> p != null).findFirst().orElse(null);
             evidence.add(new Fact.Evidence.ObservedValue(path, List.copyOf(observedElements)));
         }
         return new Fact(Types.union(results), evidence, losses, Set.of());

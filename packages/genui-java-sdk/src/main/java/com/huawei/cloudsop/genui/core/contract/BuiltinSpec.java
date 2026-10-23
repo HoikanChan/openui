@@ -31,7 +31,23 @@ import java.util.Optional;
  * @since 2026
  */
 public record BuiltinSpec(String name, String signature, String description, boolean templateBuiltin,
-        List<ParamSpec> params, TypeExpr returnType, TypeRule typeRule, int inputIndex) {
+        List<ParamSpec> params, TypeExpr returnType, TypeRule typeRule, int inputIndex, List<CallForm> callForms) {
+
+    public BuiltinSpec {
+        callForms = List.copyOf(callForms);
+    }
+
+    public BuiltinSpec(String name, String signature, String description, boolean templateBuiltin,
+            List<ParamSpec> params, TypeExpr returnType, TypeRule typeRule, int inputIndex) {
+        this(name, signature, description, templateBuiltin, params, returnType, typeRule, inputIndex, List.of());
+    }
+
+    /** Compiled exact-arity layout; indexes refer to actual call arguments. */
+    public record CallForm(int arity, int body, List<Integer> binders) {
+        public CallForm {
+            binders = List.copyOf(binders);
+        }
+    }
 
     /** 兼容构造：无结构化类型规则、无输入来源声明的条目。 */
     public BuiltinSpec(String name, String signature, String description, boolean templateBuiltin,
@@ -61,8 +77,7 @@ public record BuiltinSpec(String name, String signature, String description, boo
      * @param binder
      *            binder 参数——绑定名引入后续参数的作用域
      * @param nameSyntax
-     *            binder 名允许的语法形态（仅 binder 参数有意义；契约枚举值见 {@link NameSyntax#fromContract}； 非
-     *            binder 参数为 {@code null}）
+     *            binder 名允许的语法形态（仅 binder 参数有意义；契约枚举值见 {@link NameSyntax#fromContract}； 非 binder 参数为 {@code null}）
      */
     public record ParamSpec(String name, String type, TypeExpr typeExpr, boolean optional, boolean variadic,
             boolean binder, String nameSyntax) {
@@ -100,18 +115,14 @@ public record BuiltinSpec(String name, String signature, String description, boo
         return List.copyOf(indexes);
     }
 
-    /**
-     * 一次调用实际引入的 binder 下标：契约声明位 ∩ 除 body/模板外的实参前缀（body 恒为最后一个实参——
-     * binder 布局的显式约定：body 位置即调用形态末位实参，各 arity 形式由此派生，不再按函数名特判）。 Each 的
-     * source 不参与绑定所以天然落在前缀内;Render 2 参调用只有 index 0、3 参调用 index 0/1。
-     */
+    /** 一次调用的 binder 和 body 位置只取自加载期编译的契约调用形式。 */
     public List<Integer> activeBinderIndexes(int argCount) {
-        return binderIndexes().stream().filter(index -> index < argCount - 1).toList();
+        return callForms.stream().filter(form -> form.arity() == argCount).findFirst().map(CallForm::binders)
+                .orElse(List.of());
     }
 
-    /** body/模板实参的下标：惰性 builtin 的 body 恒为最后一个实参（binder 布局约定，见上）。 */
     public int bodyIndex(int argCount) {
-        return argCount - 1;
+        return callForms.stream().filter(form -> form.arity() == argCount).findFirst().map(CallForm::body).orElse(-1);
     }
 
     /** 元素绑定关系的输入来源实参下标;未声明(如 Render)时为 -1。 */

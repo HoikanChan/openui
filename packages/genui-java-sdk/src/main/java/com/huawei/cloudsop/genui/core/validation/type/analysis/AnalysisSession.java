@@ -411,11 +411,8 @@ public final class AnalysisSession {
         Fact base = synth(member.obj(), statementId, env, resolving);
         Fact field = ops.readField(base, member.field());
         if (field.type() instanceof Type.Never && !base.hasUpstreamErrors()) {
-            // 元素存在未证明时缺失无从确证,止于未证明。基值自身携带该标记(未经 Each 绑定的 Filter 元素等),
-            // 或证据层为空且类型上界已含"可能无任何行"的来源(经 Each 绑定的基值已剔除输入层面丢失,
-            // 用证据有无表达存在性;字段读取从无证据基值提取不出任何字段证据)。
-            boolean existenceUnproven = base.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)
-                    || (base.evidence().isEmpty() && field.evidence().isEmpty());
+            // 不确定存在的 binder 元素保留专用标记;本地对象即使没有观察值,关闭形状仍能证明缺字段。
+            boolean existenceUnproven = base.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE);
             if (existenceUnproven) {
                 return Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE);
             }
@@ -431,10 +428,9 @@ public final class AnalysisSession {
             // 观察到的行确定缺该字段是具体反例(#77 §6.2):上界合并掩盖部分缺失(异构行)时,
             // 当前快照里该行确实存在且没有该字段;与纯类型级确定缺失同一诊断。
             String errorId = nextErrorId();
-            emit("type-field-missing",
-                    "Field \"" + member.field() + "\" is absent from an observed row of "
-                            + base.type().displayName() + ".",
-                    statementId, null, null, "Use a field present on every observed row.");
+            emit("type-field-missing", "Field \"" + member.field() + "\" is absent from an observed row of "
+                    + base.type().displayName() + ".", statementId, null, null,
+                    "Use a field present on every observed row.");
             return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamError(errorId);
         }
         return field;
@@ -865,8 +861,7 @@ public final class AnalysisSession {
                     + " argument(s), but received " + call.args().size() + ".", statementId, null, "/args",
                     "Use the documented @" + call.name() + " signature.");
         }
-        // 逐实参推断并检查(variadic 每个实参受检查)。binder/ body 位置来自契约编译布局
-        // (LazyBuiltinBinders):binder 为声明位 ∩ body 前前缀;body 恒为最后一个实参。
+        // 逐实参推断并检查;各调用形式的 binder/body 位置来自同一契约编译布局。
         List<Fact> arguments = new ArrayList<>();
         List<BuiltinSpec.ParamSpec> params = spec.params();
         boolean lazyBuiltin = !spec.binderIndexes().isEmpty();
@@ -948,9 +943,8 @@ public final class AnalysisSession {
     }
 
     /**
-     * binder 参数(#83):合法形态由契约 nameSyntax 声明(字符串字面量,以及 string-or-identifier 下的裸标识符)——
-     * 合法形态不产出类型事实(binder 不是表达式值,绑定发生在 eachResult/renderResult);
-     * 非法形态按普通表达式推断并报 binder 形态错。
+     * binder 参数(#83):合法形态由契约 nameSyntax 声明(字符串字面量,以及 string-or-identifier 下的裸标识符)—— 合法形态不产出类型事实(binder 不是表达式值,绑定发生在
+     * eachResult/renderResult); 非法形态按普通表达式推断并报 binder 形态错。
      */
     private Fact checkBinderArgument(BuiltinSpec spec, AstNode.Comp call, int index, String statementId,
             LexicalEnvironment env, Set<String> resolving) {
@@ -1020,7 +1014,7 @@ public final class AnalysisSession {
     private Fact eachResult(AstNode.Comp call, List<Fact> arguments, String statementId, LexicalEnvironment env,
             Set<String> resolving) {
         BuiltinSpec spec = input.builtins().spec(call.name());
-        if (call.args().size() < spec.minArity() || arguments.isEmpty() || spec.inputIndex() < 0
+        if (spec.bodyIndex(call.args().size()) < 0 || arguments.isEmpty() || spec.inputIndex() < 0
                 || spec.inputIndex() >= arguments.size()) {
             return Fact.unknown(Fact.Loss.MISSING_CONTEXT);
         }
@@ -1033,8 +1027,8 @@ public final class AnalysisSession {
         boolean elementExistenceProven = !element.evidence().isEmpty();
         if (!elementExistenceProven && !input.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)) {
             for (Fact.Evidence item : input.evidence()) {
-                if (item instanceof Fact.Evidence.ObservedValue observed
-                        && observed.value() instanceof List<?> values && !values.isEmpty()) {
+                if (item instanceof Fact.Evidence.ObservedValue observed && observed.value() instanceof List<?> values
+                        && !values.isEmpty()) {
                     elementExistenceProven = true;
                 }
             }
@@ -1043,8 +1037,7 @@ public final class AnalysisSession {
         Fact boundElement = element.type() instanceof Type.Never
                 ? Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE)
                 : elementExistenceUnproven ? element.withLoss(Fact.Loss.NO_ELEMENT_EVIDENCE) : element;
-        // 绑定给 body 的元素事实不携带输入层面的存在性丢失:逐元素判定只看元素上界与逐元素证据
-        // (Filter/Sort 保留的元素类型误用仍按类型报);存在性由数组层(SequenceOf/minLength/列检查)判定。
+        // 保留元素存在性标记以约束缺字段诊断;标量类型误用仍可按安全上界检查。
         Fact checkElement = stripExistenceLosses(boundElement);
         LexicalEnvironment bodyEnv = env;
         List<Integer> binders = spec.activeBinderIndexes(call.args().size());
@@ -1064,8 +1057,7 @@ public final class AnalysisSession {
     }
 
     /**
-     * 去掉输入层面的存在性/输入丢失标记,保留逐元素内容未知(PRECISION_BUDGET 截断仍可见)。
-     * 存在性未证明时证据一并清空:那些证据来自未证明存在的行(Filter 后不保证任何行保留),不可信。
+     * 去掉输入层面的未知标记,保留元素存在性标记与逐元素精度损失。 存在性未证明时证据一并清空:那些证据来自未证明存在的行(Filter 后不保证任何行保留),不可信。
      */
     private static Fact stripExistenceLosses(Fact fact) {
         if (!fact.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)
@@ -1073,10 +1065,9 @@ public final class AnalysisSession {
             return fact;
         }
         Set<Fact.Loss> losses = new LinkedHashSet<>(fact.losses());
-        boolean existenceUnproven = losses.remove(Fact.Loss.NO_ELEMENT_EVIDENCE);
+        boolean existenceUnproven = losses.contains(Fact.Loss.NO_ELEMENT_EVIDENCE);
         losses.remove(Fact.Loss.UNKNOWN_INPUT);
-        return new Fact(fact.type(), existenceUnproven ? Set.of() : fact.evidence(), losses,
-                fact.upstreamErrors());
+        return new Fact(fact.type(), existenceUnproven ? Set.of() : fact.evidence(), losses, fact.upstreamErrors());
     }
 
     private static boolean lengthMayBeZero(Fact sequence) {
@@ -1094,11 +1085,11 @@ public final class AnalysisSession {
     /** Render:产生延迟模板事实;使用位置(Table 列)另行检查 body。 */
     private Fact renderResult(AstNode.Comp call, List<Fact> arguments, String statementId, LexicalEnvironment env,
             Set<String> resolving) {
-        if (call.args().size() < 2) {
+        BuiltinSpec spec = input.builtins().spec(call.name());
+        if (spec.bodyIndex(call.args().size()) < 0) {
             return Fact.unknown(Fact.Loss.MISSING_CONTEXT);
         }
         // 声明环境被捕获;使用位置未提供上下文时依赖 v/row 的部分记 missing-context。
-        BuiltinSpec spec = input.builtins().spec(call.name());
         LexicalEnvironment declared = env;
         for (int binderIndex : spec.activeBinderIndexes(call.args().size())) {
             String name = LazyBuiltinBinders.binderName(spec, call, binderIndex);
@@ -1114,6 +1105,9 @@ public final class AnalysisSession {
     void checkTemplateAtUseSite(AstNode.Comp render, Map<String, Fact> context, String statementId,
             LexicalEnvironment env, Set<String> resolving, String useSite) {
         BuiltinSpec spec = input.builtins().spec(render.name());
+        if (spec.bodyIndex(render.args().size()) < 0) {
+            return;
+        }
         LexicalEnvironment useEnv = env;
         for (int binderIndex : spec.activeBinderIndexes(render.args().size())) {
             String name = LazyBuiltinBinders.binderName(spec, render, binderIndex);

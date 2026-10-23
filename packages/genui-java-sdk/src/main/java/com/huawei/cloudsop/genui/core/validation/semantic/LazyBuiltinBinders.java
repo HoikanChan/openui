@@ -14,8 +14,8 @@ import java.util.List;
  * 惰性 builtin（{@code @Each}/{@code @Render}）binder 布局的共享解析规则（#83）。
  *
  * <p>
- * 布局全部来自契约编译产物 {@link BuiltinSpec}：binder 位（params 的 {@code binder} 标记）、名语法（{@code nameSyntax}）、
- * body 位置（恒为最后一个实参）、元素绑定的输入来源（条目的 {@code input} 下标）。语义层（{@link ProgramAnalyzer}、
+ * 布局全部来自契约编译产物 {@link BuiltinSpec}：binder 位（params 的 {@code binder} 标记）、名语法（{@code nameSyntax}）、 body
+ * 位置（{@code callForms[].body}）、元素绑定的输入来源（条目的 {@code input} 下标）。语义层（{@link ProgramAnalyzer}、
  * {@link StatementRelations}）与类型层（AnalysisSession）共用本类，不各自重述布局。
  *
  * @since 2026
@@ -26,7 +26,7 @@ public final class LazyBuiltinBinders {
     }
 
     /**
-     * 一次调用实际引入的 binder 下标——契约声明位 ∩ 除 body 外的实参前缀（body 恒为最后一个实参）。 仅对实参数达到契约下限的调用返回非空。
+     * 一次调用实际引入的 binder 下标,来自匹配实参数量的契约调用形式。
      *
      * @param comp
      *            被检查的调用
@@ -45,13 +45,14 @@ public final class LazyBuiltinBinders {
         return spec.activeBinderIndexes(comp.args().size());
     }
 
-    /** body/模板实参下标:布局约定 body 恒为最后一个实参,委托编译产物 {@link BuiltinSpec#bodyIndex(int)}。 */
+    /** body/模板实参下标:委托契约编译产物 {@link BuiltinSpec#bodyIndex(int)}。 */
     public static int bodyIndex(BuiltinSpec spec, AstNode.Comp comp) {
         return spec.bodyIndex(comp.args().size());
     }
 
     /**
-     * 按契约 nameSyntax 取 binder 名:{@code string-or-identifier} 允许字符串字面量与裸标识符, {@code string} 仅字符串字面量;其他形状或越界下标返回 {@code null}。
+     * 按契约 nameSyntax 取 binder 名:{@code string-or-identifier} 允许字符串字面量与裸标识符, {@code string} 仅字符串字面量;其他形状或越界下标返回
+     * {@code null}。
      *
      * @param spec
      *            编译后的 builtin 声明

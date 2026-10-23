@@ -117,7 +117,7 @@ public final class ValidationSnapshot {
                     .toList();
             // 结构化类型规则与 binder 布局随词表一并进入快照（#81/#83）：同一次契约解析，不在快照层剥离。
             builtins.add(new BuiltinSpec(spec.name(), spec.signature(), spec.description(), spec.templateBuiltin(),
-                    params, copyType(spec.returnType()), spec.typeRule(), spec.inputIndex()));
+                    params, copyType(spec.returnType()), spec.typeRule(), spec.inputIndex(), spec.callForms()));
         }
         return List.copyOf(builtins);
     }

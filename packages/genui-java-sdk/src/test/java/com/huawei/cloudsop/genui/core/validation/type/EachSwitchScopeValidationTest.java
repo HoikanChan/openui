@@ -2,7 +2,6 @@ package com.huawei.cloudsop.genui.core.validation.type;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
@@ -13,11 +12,6 @@ import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
-import com.huawei.cloudsop.genui.core.validation.type.analysis.Checks;
-import com.huawei.cloudsop.genui.core.validation.type.analysis.Expectation;
-import com.huawei.cloudsop.genui.core.validation.type.analysis.Fact;
-import com.huawei.cloudsop.genui.core.validation.type.analysis.Type;
-import com.huawei.cloudsop.genui.core.validation.type.analysis.Types;
 
 import org.junit.jupiter.api.Test;
 
@@ -25,10 +19,18 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * #83:Each/Switch 作用域语义——Each 把输入元素类型带入模板并把模板结果按数组传下游;嵌套 Switch 不丢 binder;
- * 嵌套同名 binder 遮蔽与退出恢复;空输入不制造字段错误;binder 布局共用契约声明。
+ * #83:Each/Switch 作用域语义——Each 把输入元素类型带入模板并把模板结果按数组传下游;嵌套 Switch 不丢 binder; 嵌套同名 binder 遮蔽与退出恢复;空输入不制造字段错误;binder
+ * 布局共用契约声明。
  */
 class EachSwitchScopeValidationTest {
+
+    @Test
+    void sumRequiresNumericElementsAndReturnsNumber() {
+        issue(validate("root = TextContent(@Sum([\"bad\"]))", Map.of()), "builtin-argument-type-mismatch");
+        issue(validate("root = Table([col], @Sum([[{id: \"a\"}]]))\ncol = Col(\"ID\", \"id\")", Map.of()),
+                "builtin-argument-type-mismatch");
+        assertEquals(ValidationStatus.VALID, validate("root = TextContent(@Sum([1, 2]))", Map.of()).status());
+    }
 
     // ── Each:模板结果类型带往数组并传到下游消费者 ─────────────────────────
 
@@ -49,8 +51,8 @@ class EachSwitchScopeValidationTest {
         // 本用例直接以对象字面量为行(不经 Each),绕开 #79 边界:Map.of 快照的 FieldPresence 证据
         // 与 mypy 封闭对象语义在该处联合导致"确定缺失"误读;Each 路径的同名能力由
         // emptyInputDoesNotFabricateFieldErrorsFromNever 覆盖(空输入不制造字段错误)。
-        String dsl = "root = Table([labelCol, badCol], data.rows)\n"
-                + "labelCol = Col(\"Label\", \"label\")\n" + "badCol = Col(\"Bad\", \"missing_field\")";
+        String dsl = "root = Table([labelCol, badCol], data.rows)\n" + "labelCol = Col(\"Label\", \"label\")\n"
+                + "badCol = Col(\"Bad\", \"missing_field\")";
         ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("label", "dev-1"))));
 
         ValidationIssue issue = issue(result, "type-table-column-missing");
@@ -99,8 +101,7 @@ class EachSwitchScopeValidationTest {
     void nestedSwitchInsideEachKeepsBinderScope() {
         // Switch cases 值再次是 Switch 并引用外层 binder;两层都在当前环境推断,binder 不得丢失。
         String dsl = "root = Descriptions([\n" + "  DescField(\"label\", @Each(data.items, \"item\",\n"
-                + "    @Switch(item.kind, {\n"
-                + "      \"a\": item.name,\n"
+                + "    @Switch(item.kind, {\n" + "      \"a\": item.name,\n"
                 + "      \"b\": @Switch(item.sub, {\"x\": item.code, \"y\": item.name})\n" + "    })))\n" + "])";
         Map<String, Object> dataModel = Map.of("items",
                 List.of(Map.of("name", "n1", "kind", "a", "sub", "x", "code", "c1")));
@@ -131,12 +132,11 @@ class EachSwitchScopeValidationTest {
         // 两个引用各自解析到正确的行才 VALID。
         String dsl = "root = Stack(@Each(data.outer, \"row\",\n"
                 + "    Stack([@Each(row.inner, \"row\", TextContent(row.id)), TextContent(row.name)])))";
-        Map<String, Object> dataModel = Map.of("outer", List.of(Map.of("name", "outer-1", "inner",
-                List.of(Map.of("id", "inner-1")))));
+        Map<String, Object> dataModel = Map.of("outer",
+                List.of(Map.of("name", "outer-1", "inner", List.of(Map.of("id", "inner-1")))));
         ValidationResult result = validate(dsl, dataModel);
 
-        assertEquals(ValidationStatus.VALID, result.status(),
-                () -> "退出内层后外层 row 必须恢复: " + result.issues());
+        assertEquals(ValidationStatus.VALID, result.status(), () -> "退出内层后外层 row 必须恢复: " + result.issues());
     }
 
     @Test
@@ -149,8 +149,7 @@ class EachSwitchScopeValidationTest {
         ValidationResult result = validate(dsl, dataModel);
 
         ValidationIssue issue = issue(result, "type-field-missing");
-        assertTrue(issue.message().contains("\"name\""),
-                () -> "观察到的嵌套行缺字段必须报: " + result.issues());
+        assertTrue(issue.message().contains("\"name\""), () -> "观察到的嵌套行缺字段必须报: " + result.issues());
     }
 
     @Test
@@ -222,7 +221,23 @@ class EachSwitchScopeValidationTest {
         String dsl = "root = TextContent(@Sum(@Each([], \"row\", data.values)))";
         ValidationResult result = validate(dsl, Map.of("values", List.of("bad")));
 
-        assertNotNull(result.status(), () -> String.valueOf(result.issues()));
+        assertEquals(ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+    }
+
+    @Test
+    void emptyAndUnprovedEachDoNotObserveIndependentBodyValues() {
+        for (String source : List.of("[]", "@Filter(data.rows, \"enabled\", \"==\", true)")) {
+            for (String body : List.of("data.value", "data.values")) {
+                ValidationResult result = validate("root = TextContent(@Avg(@Each(" + source + ", row, " + body + ")))",
+                        Map.of("value", "bad", "values", List.of("bad"), "rows", List.of(Map.of("enabled", false))));
+                assertEquals(ValidationStatus.VALID, result.status(),
+                        () -> "No output element was proved to exist: " + result.issues());
+                ValidationResult chained = validate(
+                        "root = Stack(@Each(@Each(" + source + ", row, data.obj), x, TextContent(x.missing)))",
+                        Map.of("obj", Map.of("id", "a"), "rows", List.of(Map.of("enabled", false))));
+                assertEquals(ValidationStatus.VALID, chained.status(), () -> String.valueOf(chained.issues()));
+            }
+        }
     }
 
     @Test
@@ -234,11 +249,19 @@ class EachSwitchScopeValidationTest {
         ValidationResult result = validate(dsl, dataModel);
 
         ValidationIssue issue = issue(result, "type-field-missing");
-        assertTrue(issue.message().contains("\"id\""),
-                () -> "观察到的缺失行必须报: " + result.issues());
+        assertTrue(issue.message().contains("\"id\""), () -> "观察到的缺失行必须报: " + result.issues());
     }
 
     // ── 空输入仍检查 body 独立错误 ─────────────────────────────────────────
+
+    @Test
+    void locallyConstructedObjectsProveMissingFieldsIndependentlyOfObservations() {
+        for (String dsl : List.of("root = TextContent(({id: \"a\"}).missing)",
+                "root = Stack(@Each([{id: \"a\"}], row, TextContent(row.missing)))",
+                "root = Stack(@Each([], row, TextContent(({id: \"a\"}).missing)))")) {
+            issue(validate(dsl, Map.of()), "type-field-missing");
+        }
+    }
 
     @Test
     void emptyInputStillChecksBodyLocalErrors() {
@@ -286,8 +309,7 @@ class EachSwitchScopeValidationTest {
         // case 值是引用外层 Each binder 的表达式:Switch 在当前环境分析 cases,不新建空环境。
         String dsl = "root = Stack(@Each(data.devices, \"dev\",\n"
                 + "  TextContent(@Switch(dev.status, {\"up\": dev.name}, \"unknown\"))))";
-        ValidationResult result = validate(dsl,
-                Map.of("devices", List.of(Map.of("status", "up", "name", "d1"))));
+        ValidationResult result = validate(dsl, Map.of("devices", List.of(Map.of("status", "up", "name", "d1"))));
 
         assertEquals(ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
     }
@@ -300,22 +322,19 @@ class EachSwitchScopeValidationTest {
         // switches 行有 hostname(该处通过),routers 行确定没有 hostname(该处必须独立暴露)——
         // 若两处共用同一检查结论,router 处的缺失会被 switch 处的通过掩盖。
         String dsl = "root = Stack([\n" + "  @Each(data.switches, \"d\", deviceLine),\n"
-                + "  @Each(data.routers, \"d\", deviceLine)\n" + "])\n"
-                + "deviceLine = TextContent(d.hostname)";
+                + "  @Each(data.routers, \"d\", deviceLine)\n" + "])\n" + "deviceLine = TextContent(d.hostname)";
         Map<String, Object> dataModel = Map.of("switches", List.of(Map.of("hostname", "sw-1")), "routers",
                 List.of(Map.of("name", "rt-1")));
         ValidationResult result = validate(dsl, dataModel);
 
         ValidationIssue issue = issue(result, "type-field-missing");
         assertEquals("deviceLine", issue.statementId());
-        assertTrue(issue.message().contains("\"hostname\""),
-                () -> "router 使用位置必须独立报出 hostname 缺失: " + result.issues());
+        assertTrue(issue.message().contains("\"hostname\""), () -> "router 使用位置必须独立报出 hostname 缺失: " + result.issues());
     }
 
     @Test
     void binderLayoutComesFromContractDeclaration() {
-        // binder 布局由契约声明并编译进 BuiltinSpec:params 的 binder 标记(位置)、nameSyntax(名形态:
-        // string-or-identifier)、条目 input(元素绑定的来源下标);body 恒为最后一参。
+        // binder 布局由契约声明并编译进 BuiltinSpec:params 的 binder/nameSyntax、input 与 callForms。
         // 语义层(ProgramAnalyzer/StatementRelations)与类型层(AnalysisSession)共用同一份编译布局
         // (LazyBuiltinBinders),不各自重述 Each/Render 的形态特判。
         BuiltinSpec each = GenerationContractLoader.loadDefault().builtins().stream()
@@ -341,8 +360,7 @@ class EachSwitchScopeValidationTest {
         ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("id", "a"))));
 
         ValidationIssue issue = issue(result, "type-field-missing");
-        assertTrue(issue.message().contains("\"missing\""),
-                () -> "裸标识符 binder 必须同样绑定行: " + result.issues());
+        assertTrue(issue.message().contains("\"missing\""), () -> "裸标识符 binder 必须同样绑定行: " + result.issues());
     }
 
     @Test
@@ -353,8 +371,7 @@ class EachSwitchScopeValidationTest {
                 + "nameCol = Col(\"Name\", \"name\", {cell: @Render(v, row, TextContent(row.name))})";
         ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("name", "a"))));
 
-        assertEquals(ValidationStatus.VALID, result.status(),
-                () -> "裸标识符 Render binder 必须在类型层绑定: " + result.issues());
+        assertEquals(ValidationStatus.VALID, result.status(), () -> "裸标识符 Render binder 必须在类型层绑定: " + result.issues());
     }
 
     @Test
@@ -372,8 +389,7 @@ class EachSwitchScopeValidationTest {
         // 架构事实:类型分析不做跨请求记忆化——AnalysisSession 每次 analyze 新建,无缓存开关;
         // 本测试锚定的是可重复性,不是缓存开/关等价(该验收口径的记录见交付说明)。
         String dsl = "root = Stack([\n" + "  @Each(data.switches, \"d\", deviceLine),\n"
-                + "  @Each(data.routers, \"d\", deviceLine)\n" + "])\n"
-                + "deviceLine = TextContent(d.hostname)";
+                + "  @Each(data.routers, \"d\", deviceLine)\n" + "])\n" + "deviceLine = TextContent(d.hostname)";
         Map<String, Object> dataModel = Map.of("switches", List.of(Map.of("hostname", "sw-1")), "routers",
                 List.of(Map.of("name", "rt-1")));
 

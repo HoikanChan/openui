@@ -43,7 +43,15 @@ public final class GenerationContractLoader {
     }
 
     public static GenerationContract fromJson(String json) {
-        return fromMap(Json.asObject(Json.parse(json), "GenerationContract"));
+        // Contract indexes must retain their exact decimal value until load-time validation.
+        try {
+            return fromMap(Json.asObject(com.alibaba.fastjson2.JSON.parse(json,
+                    com.alibaba.fastjson2.JSONReader.Feature.UseBigDecimalForDoubles,
+                    com.alibaba.fastjson2.JSONReader.Feature.UseBigDecimalForFloats,
+                    com.alibaba.fastjson2.JSONReader.Feature.DisableSingleQuote), "GenerationContract"));
+        } catch (com.alibaba.fastjson2.JSONException error) {
+            throw new GenerationSdkException("Invalid JSON: " + error.getMessage(), error);
+        }
     }
 
     static GenerationContract fromMap(Map<String, Object> map) {
@@ -189,30 +197,19 @@ public final class GenerationContractLoader {
         if (typeRuleRaw != null) {
             typeRule = RuleCompiler.compile(name, Json.asObject(typeRuleRaw, "typeRule of builtin " + name));
         }
-        // binder 布局:元素绑定的输入来源实参下标(Each 的 array;Render 无)。声明值必须是整数、落在参数表内,
-        // 且不得指向 binder 位或 body(body 恒为最后一参)——指向它们时元素绑定拿不到真实的输入事实(#77 §4.1/§8.4)。
+        // 元素输入来源必须是精确整数且落在参数表内;与 binder/body 的冲突按调用形式校验。
         int inputIndex = -1;
         Object inputRaw = entry.get("input");
         if (inputRaw != null) {
-            if (!(inputRaw instanceof Number number) || number.doubleValue() != Math.rint(number.doubleValue())
-                    || number.doubleValue() < Integer.MIN_VALUE || number.doubleValue() > Integer.MAX_VALUE) {
-                throw new GenerationSdkException(
-                        "builtin '" + name + "': 'input' must be an integral parameter index, got " + inputRaw);
-            }
-            long raw = number.longValue();
+            int raw = exactIndex(inputRaw, name, "input");
             if (raw < 0 || raw >= params.size()) {
                 throw new GenerationSdkException("builtin '" + name + "': 'input' index " + raw
                         + " is out of range for " + params.size() + " parameter(s)");
             }
             inputIndex = (int) raw;
             if (params.get(inputIndex).binder()) {
-                throw new GenerationSdkException(
-                        "builtin '" + name + "': 'input' must not point to binder parameter '" + name + "."
-                                + params.get(inputIndex).name() + "'");
-            }
-            if (inputIndex == params.size() - 1) {
-                throw new GenerationSdkException(
-                        "builtin '" + name + "': 'input' must not point to the deferred body parameter");
+                throw new GenerationSdkException("builtin '" + name + "': 'input' must not point to binder parameter '"
+                        + name + "." + params.get(inputIndex).name() + "'");
             }
             if (params.stream().noneMatch(BuiltinSpec.ParamSpec::binder)) {
                 throw new GenerationSdkException(
@@ -220,7 +217,68 @@ public final class GenerationContractLoader {
             }
         }
         return new BuiltinSpec(name, string(entry.get("signature")), string(entry.get("description")),
-                Boolean.TRUE.equals(entry.get("templateBuiltin")), params, returnType, typeRule, inputIndex);
+                Boolean.TRUE.equals(entry.get("templateBuiltin")), params, returnType, typeRule, inputIndex,
+                callForms(entry.get("callForms"), params, inputIndex, name));
+    }
+
+    private static List<BuiltinSpec.CallForm> callForms(Object raw, List<BuiltinSpec.ParamSpec> params, int input,
+            String name) {
+        boolean hasBinders = params.stream().anyMatch(BuiltinSpec.ParamSpec::binder);
+        if (!hasBinders && raw == null) {
+            return List.of();
+        }
+        if (!hasBinders || raw == null) {
+            throw new GenerationSdkException("builtin '" + name + "': binder callForms must be declared");
+        }
+        List<BuiltinSpec.CallForm> forms = new ArrayList<>();
+        Set<Integer> arities = new LinkedHashSet<>();
+        int min = (int) params.stream().filter(p -> !p.optional() && !p.variadic()).count();
+        for (Object item : Json.asList(raw, "callForms")) {
+            Map<String, Object> form = Json.asObject(item, "callForm");
+            int arity = exactIndex(form.get("arity"), name, "arity");
+            int body = exactIndex(form.get("body"), name, "body");
+            if (arity < min || arity > params.size() || !arities.add(arity) || body < 0 || body >= arity) {
+                throw new GenerationSdkException("builtin '" + name + "': invalid or ambiguous callForms body/arity");
+            }
+            List<Integer> binders = new ArrayList<>();
+            for (Object binder : Json.asList(form.get("binders"), "callForm.binders")) {
+                int index = exactIndex(binder, name, "binder");
+                if (index < 0 || index >= arity || index == body || !params.get(index).binder()
+                        || binders.contains(index)) {
+                    throw new GenerationSdkException("builtin '" + name + "': invalid callForms binder index");
+                }
+                binders.add(index);
+            }
+            for (int index = 0; index < params.size(); index++) {
+                BuiltinSpec.ParamSpec param = params.get(index);
+                if (param.binder() && !param.optional() && !binders.contains(index)) {
+                    throw new GenerationSdkException("builtin '" + name + "': callForms omits required binder");
+                }
+            }
+            if (binders.isEmpty() || input >= arity || input == body) {
+                throw new GenerationSdkException(
+                        "builtin '" + name + "': input must not point to body or absent argument");
+            }
+            forms.add(new BuiltinSpec.CallForm(arity, body, binders));
+        }
+        for (int arity = min; arity <= params.size(); arity++) {
+            if (!arities.contains(arity)) {
+                throw new GenerationSdkException("builtin '" + name + "': callForms missing arity " + arity);
+            }
+        }
+        return List.copyOf(forms);
+    }
+
+    private static int exactIndex(Object value, String name, String field) {
+        try {
+            if (value instanceof Number) {
+                return new java.math.BigDecimal(value.toString()).intValueExact();
+            }
+        } catch (ArithmeticException | NumberFormatException ignored) {
+            // Reject fractions and overflow without a floating-point conversion.
+        }
+        throw new GenerationSdkException(
+                "builtin '" + name + "': '" + field + "' must be an integral parameter index, got " + value);
     }
 
     private static List<BuiltinSpec.ParamSpec> builtinParams(Object value, String builtinName) {
