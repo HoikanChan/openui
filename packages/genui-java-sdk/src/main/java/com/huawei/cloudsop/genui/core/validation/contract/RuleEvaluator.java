@@ -252,6 +252,9 @@ public final class RuleEvaluator {
                 ops.preserve(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
             case SEQUENCE_SUBSET -> ops.subset(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
             case SEQUENCE_ELEMENT -> ops.element(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+            case SEQUENCE_FLATTEN_ONE ->
+                ops.flattenOne(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+            case SEQUENCE_SELECT -> ops.select(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
             case RECORD_OVERLAY -> recordOverlay(apply.operands().get(0), bounds, argumentCount, callSite, ops);
         };
     }

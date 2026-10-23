@@ -147,6 +147,10 @@ public sealed interface RulePlan {
         SEQUENCE_SUBSET("sequence.subset"),
         /** 取数组元素事实，观察证据下钻一层（Sum/Join 等按元素聚合 → TypeOps.element）。 */
         SEQUENCE_ELEMENT("sequence.element"),
+        /** 去掉一层数组层级（Flatten → TypeOps.flattenOne）；元素与数量按已确认规则组合。 */
+        SEQUENCE_FLATTEN_ONE("sequence.flattenOne"),
+        /** First/Last 选择（→ TypeOps.select）；空输入结果未定，返回 Unknown + 未证明原因。 */
+        SEQUENCE_SELECT("sequence.select"),
         /** 有序对象覆盖（MergeObject → TypeOps.overlay）；后写覆盖前值，字段证据被覆盖时替换。 */
         RECORD_OVERLAY("record.overlay");
 

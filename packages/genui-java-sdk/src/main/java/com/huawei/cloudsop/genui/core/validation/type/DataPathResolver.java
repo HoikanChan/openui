@@ -27,7 +27,7 @@ public final class DataPathResolver {
         List<Object> values = new ArrayList<>();
         values.add(dataModel == null ? Map.of() : dataModel);
         int pluckDepth = 0;
-        Evidence evidence = new Evidence(1, 0, 0, 1);
+        Evidence evidence = new Evidence(1, 0, 0, 1, false);
 
         for (Segment segment : path.segments()) {
             Step step = resolveStep(values, segment, path.source());
@@ -112,7 +112,9 @@ public final class DataPathResolver {
                     }
                     Object member = map.get(key.name());
                     if (member == null) {
+                        // 显式 null 不是缺失:保留为投影结果的可能值,由类型层与缺失分支分别表达。
                         nulls++;
+                        next.add(null);
                     } else {
                         present++;
                         next.add(member);
@@ -130,6 +132,7 @@ public final class DataPathResolver {
                 Object member = map.get(key.name());
                 if (member == null) {
                     nulls++;
+                    next.add(null);
                 } else {
                     present++;
                     next.add(member);
@@ -144,6 +147,7 @@ public final class DataPathResolver {
                 Object member = list.get(index.value());
                 if (member == null) {
                     nulls++;
+                    next.add(null);
                 } else {
                     present++;
                     next.add(member);
@@ -158,17 +162,10 @@ public final class DataPathResolver {
         }
 
         if (next.isEmpty()) {
-            if (nulls > 0 && missing == 0) {
-                next.add(null);
-            } else if (nulls > 0) {
-                return Step.failure(
-                        new DataPathResolution.Unprovable(path, "No non-null value proves the requested member type."));
-            } else {
-                return Step
-                        .failure(new DataPathResolution.Missing(path, "Use a path present in the Render Data Model."));
-            }
+            // null 值已作为投影结果保留(next 非空),走到这里说明该步完全没有可取值。
+            return Step.failure(new DataPathResolution.Missing(path, "Use a path present in the Render Data Model."));
         }
-        return new Step(next, new Evidence(present, missing, nulls, total), plucked, null);
+        return new Step(next, new Evidence(present, missing, nulls, total, plucked), plucked, null);
     }
 
     private static ValueType inferValues(List<Object> values) {
@@ -219,7 +216,7 @@ public final class DataPathResolver {
 
     private record Step(List<Object> values, Evidence evidence, boolean plucked, DataPathResolution failure) {
         static Step failure(DataPathResolution failure) {
-            return new Step(List.of(), new Evidence(0, 0, 0, 0), false, failure);
+            return new Step(List.of(), new Evidence(0, 0, 0, 0, false), false, failure);
         }
     }
 }
