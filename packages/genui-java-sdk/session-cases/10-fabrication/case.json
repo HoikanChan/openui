@@ -1,0 +1,18 @@
+{
+  "id": "session-fabrication",
+  "originalIntent": "展示真实温度和告警数。data 没有给出的字段请说明缺失，不得估计或编造。",
+  "dataModel": {
+    "device": {
+      "name": "A",
+      "temperature": 23
+    }
+  },
+  "source": {
+    "kind": "agent-authored-proposal",
+    "humanConfirmed": false
+  },
+  "expectation": {
+    "state": "pending-human-confirmation",
+    "expected": "A 温度23，明确告警数缺失；不能写告警0或任何猜测。"
+  }
+}

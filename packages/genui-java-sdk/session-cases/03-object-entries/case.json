@@ -1,0 +1,18 @@
+{
+  "id": "session-object-entries",
+  "originalIntent": "展示设备分类及数量。输入 counts 是分类到数量的对象。",
+  "dataModel": {
+    "counts": {
+      "routers": 3,
+      "switches": 2
+    }
+  },
+  "source": {
+    "kind": "agent-authored-proposal",
+    "humanConfirmed": false
+  },
+  "expectation": {
+    "state": "pending-human-confirmation",
+    "expected": "routers3 和 switches2，不遗漏、不把对象当数组。"
+  }
+}

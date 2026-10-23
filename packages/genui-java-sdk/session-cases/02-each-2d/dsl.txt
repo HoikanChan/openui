@@ -1,0 +1,1 @@
+rows = @Each(data.rows, [$item]); root = Stack([Table(rows,[Col("名称","name"),Col("值","value")])]);
