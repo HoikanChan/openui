@@ -22,7 +22,7 @@ import java.util.OptionalInt;
  *
  * <p>
  * 加载期失败（{@link RuleCompilationException}）：未知 op/tag、非法实参索引、对非可选参数使用 {@code argumentOr}、非末位 {@code rest} 参数、非法
- * arity、result 引用未被任何参数模式绑定的类型变量。 规则文法是封闭集——编译器不认识的一律拒绝，不静默降级。
+ * arity。未绑定的结果变量不在加载期拒绝：这类规则编译通过，调用时该结果返回 {@code Unknown} 并记 {@code UNBOUND_TYPE_VARIABLE}。 规则文法是封闭集——编译器不认识的一律拒绝，不静默降级。
  *
  * @since 2026
  */
@@ -59,7 +59,6 @@ public final class RuleCompiler {
             throw new RuleCompilationException(where + ": missing 'result' rule");
         }
         Rule result = rule(raw.get("result"), parameters, where + ".result");
-        requireResultVariablesBound(result, parameters, builtinName, where);
         return new TypeRule(arity, parameters, result);
     }
 
@@ -248,14 +247,4 @@ public final class RuleCompiler {
         return index;
     }
 
-    /** result 引用的类型变量必须能由调用形式内的某个实参绑定（单次调用内求解，无外部来源）。 */
-    private static void requireResultVariablesBound(Rule result, List<TypeRule.ParamLayout> parameters,
-            String builtinName, String where) {
-        // 本票的规则语言里 variable 只在 result 树中出现，绑定源是"按参数下标收集的实参类型"。
-        // 变量名没有单独声明区；引用空变量名或空 result 已在 rule() 拒绝。这里保留扩展点：
-        // 未来若引入 bind-from 限定符，在此校验其参数下标落在调用形式内。
-        if (result == null) {
-            throw new RuleCompilationException(where + ": builtin '" + builtinName + "' has no result rule");
-        }
-    }
 }

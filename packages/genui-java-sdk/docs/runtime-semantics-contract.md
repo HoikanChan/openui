@@ -34,7 +34,7 @@ java --class-path $evidenceClasspath packages/genui-java-sdk/docs/examples/Contr
 
 Each 只在源元素存在已证明时把 body 观察值包回输出数组。存在性证明要求实际观察到非空数组，或输入的**每个**可能分支长度下界都 ≥1；联合里单个非空分支不构成证明（#77 §6.5）。空源或 Filter 后未证明保留任何行的源不能产生这些观察值；body 内独立错误仍检查。本地关闭对象的缺字段由结构证明，不要求快照观察值。
 
-这是可执行的**契约证据检查**，不运行 DSL、不证明生产返回值。配套 [验收输入](examples/contract-migration-acceptance.json)将“确定结果”“只确定类型”“尚待定义”分开；后续实施将其接入公开 validator/确定性生成校验入口，不构造内部分析快照。
+这是可执行的**契约证据检查**，不运行 DSL、不证明生产返回值。配套 [验收输入](examples/contract-migration-acceptance.json)将“确定结果”“只确定类型”“尚待定义”分开；#90 起这些规则已接入公开 validator 与确定性生成校验入口，测试不构造内部分析快照。
 
 ## 阅读矩阵的约定
 
@@ -154,3 +154,22 @@ TS 后续工作集中跟踪于 [#91：权威契约导出与模板接口同步](h
 设计 13.2 要求给出"缓存开/关结果一致"的对比验收。本实现**没有分析结果记忆化**：每次 `analyze()` 新建 `AnalysisSession`，类型合成、证据与反例检查都在单次会话内现算，跨调用不读写任何分析结果缓存。因此"缓存开关对比"对本实现不适用（N/A）——不存在可切换的缓存，也就无从产生开关两态的结果差。
 
 可重复性另行锚定，与缓存无关：同一输入独立运行两次结论必须一致，由 `EachSwitchScopeValidationTest.conclusionsAreRepeatableAcrossIndependentRuns`（以及内核既有重复性用例）固定。若未来引入分析缓存，需补 13.2 的开关对比验收后再启用。
+
+## #90 终态：单引擎与单一规则源
+
+#79 建立的语义矩阵现在由一条生产路径执行，不再有迁移期并行实现：
+
+| 项 | 终态 | 证据 |
+| --- | --- | --- |
+| 类型分析路径 | `TypeAnalysis.analyze` → `type/analysis` 内核（Type/Fact/TypeOps/Checks/CoverageReport）+ `contract.RuleEvaluator` | `DefaultOpenuiLangValidator` FINAL 分支；`StaticTypeValidationTest` |
+| builtin 词表 | 契约 `builtins` 派生；`Builtins.java` 只保留 Query/Mutation/Action 等语句关键字 | `BuiltinCatalog.fromContract`；`Builtins` 搜索无函数名单表 |
+| 求值规则 | `typeRule`（`RuleCompiler` 加载期封闭文法 + `RuleEvaluator` 运行期） | `RuleCompilerTest`、`ContractBuiltinRulesTest` |
+| 已删除 | `ValueType`/`ValueTypes`/旧 `DataPath*`、`TypeTranslator`、`returnType`+`params` 泛型求值（`genericResult`/`collectLowerBounds`/`instantiate`） | 全局搜索无引用；`DataPathResolverTest` 改用新 `Type` |
+| 参数检查覆盖 | 每次规则模式检查登记 MATCH/MISMATCH/UNPROVEN；只有 MISMATCH 且无上游错误上报 | `typeChecks.*` 元数据；`StaticTypeValidationTest` |
+| 修复触发 | 只有 `ValidationStatus.INVALID`（确定 ERROR）进入增量修复；仅 UNPROVEN 的 VALID 结果不触发 | `GenUiGeneratorTypeTriggerTest`（sync + streaming） |
+| 语料行为 | `repair-cases/` 校验结论不变（25 例 code 集合逐例一致）；Case Contract 1.1.5 已补齐 `typeRule`，与 `base-contract.json` 同规则 | validation-only bench 对比；`RepairCorpus*RulesTest` |
+| 集成行为 | 同名覆盖/遮蔽、入口不可达语句不报当前错误、取消隔离、校验不改调用方 dataModel | `StaticTypeValidationTest`、`EachSwitchScopeValidationTest`、`TypeEngineIntegrationBehaviourTest`、`CancellationIsolationTest` |
+
+Each/Render/Switch 仍是语言模板构造：binder 布局（`callForms`/`binders`/`body`/`input`/`nameSyntax`）从契约读取，模板作用域与分支语义留在 Java 侧。它们不构成第二份 builtin 类型词表，也不产生第二条类型分析路径。
+
+未包含在 #90：有界分析预算与截断策略（#89 已拆分跟踪为 #94）；AST 关联与展示集成由 #59 保持既有归属。

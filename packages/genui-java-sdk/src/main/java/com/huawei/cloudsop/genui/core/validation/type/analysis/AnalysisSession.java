@@ -5,6 +5,7 @@ import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
 import com.huawei.cloudsop.genui.core.validation.contract.RuleEvaluator;
+import com.huawei.cloudsop.genui.core.validation.contract.RulePlan;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
@@ -14,9 +15,6 @@ import com.huawei.cloudsop.genui.core.validation.semantic.ComponentDef;
 import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
 import com.huawei.cloudsop.genui.core.validation.semantic.LazyBuiltinBinders;
 import com.huawei.cloudsop.genui.core.validation.semantic.ParamDef;
-import com.huawei.cloudsop.genui.core.validation.type.DataPath;
-import com.huawei.cloudsop.genui.core.validation.type.DataPathResolution;
-import com.huawei.cloudsop.genui.core.validation.type.DataPathResolver;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -551,21 +549,21 @@ public final class AnalysisSession {
         return emitPathIssue(resolution, statementId);
     }
 
-    /** 把旧解析器的值类型翻译为新类型事实(观察证据按路径关联,含确定反例所需的快照值)。 */
+    /** 快照观察结果直接构建事实(观察证据按路径关联,含确定反例所需的快照值)。 */
     private Fact factFromObserved(String path, DataPathResolution.Resolved resolved) {
-        Type type = new TypeTranslator().translate(resolved.type());
+        Type type = resolved.type();
         Set<Fact.Evidence> evidence = new LinkedHashSet<>();
         Set<Fact.Loss> losses = new LinkedHashSet<>();
-        DataPathResolution.Evidence oldEvidence = resolved.evidence();
-        if (oldEvidence != null && oldEvidence.total() > 0) {
-            evidence.add(new Fact.Evidence.FieldPresence(path, oldEvidence.present(), oldEvidence.missing(),
-                    oldEvidence.nulls(), oldEvidence.total()));
-            if (oldEvidence.plucked()) {
+        DataPathResolution.Evidence observed = resolved.evidence();
+        if (observed != null && observed.total() > 0) {
+            evidence.add(new Fact.Evidence.FieldPresence(path, observed.present(), observed.missing(),
+                    observed.nulls(), observed.total()));
+            if (observed.plucked()) {
                 // 数组字段投影直接观察到非 null 成员 —— 投影结果至少含一个元素(直接快照观察,§6.5)。
-                if (oldEvidence.present() > 0) {
+                if (observed.present() > 0) {
                     evidence.add(new Fact.Evidence.ElementPresence());
                 }
-                if (oldEvidence.missing() > 0) {
+                if (observed.missing() > 0) {
                     // 缺失行的运行时处理(保留 null/跳过/失败)契约未定义(#79 未决)。存在性证据保留在
                     // FieldPresence 里,但精确投影结果不可证明:不能丢弃缺失分支后宣称完整通过。
                     losses.add(Fact.Loss.UNKNOWN_INPUT);
@@ -939,15 +937,20 @@ public final class AnalysisSession {
 
     private Fact synthBuiltin(BuiltinSpec spec, AstNode.Comp call, String statementId, LexicalEnvironment env,
             Set<String> resolving) {
-        int minimum = spec.minArity();
-        Integer maximum = spec.maxArity().orElse(null);
-        if (call.args().size() < minimum || (maximum != null && call.args().size() > maximum)) {
-            String expected = maximum == null
-                    ? "at least " + minimum
-                    : minimum == maximum ? String.valueOf(minimum) : minimum + "-" + maximum;
-            emit("builtin-argument-count-mismatch", "@" + call.name() + " expects " + expected
-                    + " argument(s), but received " + call.args().size() + ".", statementId, null, "/args",
-                    "Use the documented @" + call.name() + " signature.");
+        // 契约声明了结构化类型规则时,调用形式与参数模式由 typeRule 独占;params 只服务未迁移的
+        // 模板类(Each/Render/Switch)——两处规则同时执行会让同一实参被检查两次。
+        boolean hasRule = spec.typeRule() != null;
+        if (!hasRule) {
+            int minimum = spec.minArity();
+            Integer maximum = spec.maxArity().orElse(null);
+            if (call.args().size() < minimum || (maximum != null && call.args().size() > maximum)) {
+                String expected = maximum == null
+                        ? "at least " + minimum
+                        : minimum == maximum ? String.valueOf(minimum) : minimum + "-" + maximum;
+                emit("builtin-argument-count-mismatch", "@" + call.name() + " expects " + expected
+                        + " argument(s), but received " + call.args().size() + ".", statementId, null, "/args",
+                        "Use the documented @" + call.name() + " signature.");
+            }
         }
         // 逐实参推断并检查;各调用形式的 binder/body 位置来自同一契约编译布局。
         List<Fact> arguments = new ArrayList<>();
@@ -971,16 +974,14 @@ public final class AnalysisSession {
             Fact actual = synth(argument, statementId, env, resolving);
             arguments.add(actual);
             // 带 binder 的 builtin:body/模板位参数不按普通 params 检查,由使用位置另行检查;
-            // 普通 builtin 的每个实参都按 params 检查(variadic 不封顶)。
-            if (index < params.size() && (!lazyBuiltin || index != bodyIndex)) {
+            // 未声明结构化规则的 builtin 每个实参按 params 检查(variadic 不封顶)。
+            if (!hasRule && index < params.size() && (!lazyBuiltin || index != bodyIndex)) {
                 checkBuiltinParam(spec, call, index, actual, statementId);
             }
         }
-        // 契约声明了结构化类型规则的普通 builtin 走规则求值:调用形式、参数模式与结果运算全部来自同一次
-        // 契约解析,按运算种类分派到 TypeOps,不按函数名分派(#81;词表与类型规则同源)。模板类(Each/Render
-        // 的 binder 词法环境)与未迁移 builtin 保留既有路径——其名称识别来自契约 binder 标记与契约条目,
-        // 不是第二份词表。
-        if (spec.typeRule() != null) {
+        // 结构化类型规则是普通 builtin 的唯一规则源:调用形式、参数模式与结果运算全部来自同一次契约
+        // 解析,按运算种类分派到 TypeOps,不按函数名分派(#81/#90;词表与类型规则同源)。
+        if (hasRule) {
             return RuleEvaluator.evaluate(spec.typeRule(), call.args().size(), new RuleEvaluator.CallSite() {
                 @Override
                 public Fact argument(int index) {
@@ -1002,6 +1003,18 @@ public final class AnalysisSession {
                 }
 
                 @Override
+                public void recordArgumentCheck(int index, RulePlan.TypePattern pattern, Fact actual,
+                        Checks.CheckResult result) {
+                    // 结构化规则的参数结论与组件/模板检查共用覆盖口径:MATCH/UNPROVEN 都登记,
+                    // 未证明不会被隐藏;同一规则模式只按实参位置计一条要求。
+                    coverage.record(new CoverageReport.Entry(
+                            new CoverageReport.Obligation(statementId, "@" + call.name() + "/args/" + index, "param",
+                                    "/builtins/" + call.name() + "/typeRule/parameters/" + index,
+                                    RuleEvaluator.displayPattern(pattern)),
+                            result.verdict(), List.copyOf(result.reasons()), result.upstreamErrors()));
+                }
+
+                @Override
                 public void reportArityViolation(int min, OptionalInt max, int actual) {
                     String expected = max.isEmpty()
                             ? "at least " + min
@@ -1015,10 +1028,12 @@ public final class AnalysisSession {
         return switch (call.name()) {
             case "Each" -> eachResult(call, arguments, statementId, env, resolving);
             case "Render" -> renderResult(call, arguments, statementId, env, resolving);
-            // Flatten / First / Last 由契约 typeRule 的 sequence.* 运算承载,ObjectKeys / ObjectValues /
-            // ObjectEntries 由 record.* 运算承载(与词表同源、按运算种类分派);不再保留按函数名的 Java 分支。
+            // 模板类语言构造由 Java 承载语义(绑定作用域超出规则表达力),不是第二份函数词表:
+            // 三个名字都必须先在契约词表中命中才会走到这里。
             case "Switch" -> switchResult(call, arguments, statementId, env, resolving);
-            default -> genericResult(spec, call, arguments);
+            // 契约没有声明结构化规则、也不是模板构造的 builtin:结果记为未证明并进入覆盖统计,
+            // 不按 returnType 兜底推断(returnType 不再是求值规则)。
+            default -> Fact.unknown(Fact.Loss.UNSUPPORTED_RULE);
         };
     }
 
@@ -1042,7 +1057,7 @@ public final class AnalysisSession {
         return actual;
     }
 
-    /** 非 binder 参数的类型检查(契约 params 的 TypeExpr 编译为检查要求)。 */
+    /** 未迁移模板构造的非 binder 参数检查(契约 params 的 TypeExpr 编译为检查要求)。 */
     private void checkBuiltinParam(BuiltinSpec spec, AstNode.Comp call, int index, Fact actual, String statementId) {
         BuiltinSpec.ParamSpec param = spec.params().get(index);
         Expectation expectation = builtinParamExpectation(param.typeExpr());
@@ -1246,137 +1261,6 @@ public final class AnalysisSession {
             results.add(Types.scalar(Type.ScalarKind.NULL));
         }
         return new Fact(Types.union(results), Set.of(), losses, upstream);
-    }
-
-    /** 固定/条件返回类型的代入(returnType 中的 T 由实参元素下界合并解出;未知输入参与约束,不虚假精确)。 */
-    private Fact genericResult(BuiltinSpec spec, AstNode.Comp call, List<Fact> arguments) {
-        if (spec.returnType() == null) {
-            return Fact.unknown(Fact.Loss.UNSUPPORTED_RULE);
-        }
-        Map<String, Type> lowerBounds = new LinkedHashMap<>();
-        List<BuiltinSpec.ParamSpec> params = spec.params();
-        for (int index = 0; index < params.size() && index < arguments.size(); index++) {
-            collectLowerBounds(params.get(index).typeExpr(), arguments.get(index).type(), lowerBounds);
-        }
-        Type result = instantiate(spec.returnType(), lowerBounds, arguments);
-        if (result == null) {
-            return Fact.unknown(Fact.Loss.UNBOUND_TYPE_VARIABLE);
-        }
-        Set<Fact.Loss> losses = new LinkedHashSet<>();
-        Set<String> upstream = new LinkedHashSet<>();
-        for (Fact argument : arguments) {
-            losses.addAll(argument.losses());
-            upstream.addAll(argument.upstreamErrors());
-        }
-        return new Fact(result, Set.of(), losses, upstream);
-    }
-
-    /** 收集 T 的下界:数组匹配取元素,Record 匹配取值并集,裸 T 取整体;未知输入并入 Unknown 下界。 */
-    private static void collectLowerBounds(TypeExpr expected, Type actual, Map<String, Type> lowerBounds) {
-        if (expected instanceof TypeExpr.ArrayOf array && array.element() instanceof TypeExpr.TypeVar) {
-            List<Type> elements = new ArrayList<>();
-            for (Type branch : TypeOps.flatten(actual)) {
-                if (branch instanceof Type.Sequence seq) {
-                    elements.add(seq.element());
-                } else if (branch instanceof Type.Unknown) {
-                    elements.add(Type.Unknown.INSTANCE);
-                }
-            }
-            if (!elements.isEmpty()) {
-                mergeBound(lowerBounds, Types.union(elements));
-            }
-            return;
-        }
-        if (expected instanceof TypeExpr.RecordOf record && record.value() instanceof TypeExpr.TypeVar) {
-            List<Type> values = new ArrayList<>();
-            for (Type branch : TypeOps.flatten(actual)) {
-                if (branch instanceof Type.RecordType recordType) {
-                    recordType.fields().values().forEach(field -> values.add(field.type()));
-                    if (!recordType.extra().isClosed()) {
-                        values.add(recordType.extra().valueType());
-                    }
-                } else if (branch instanceof Type.Unknown) {
-                    values.add(Type.Unknown.INSTANCE);
-                }
-            }
-            if (!values.isEmpty()) {
-                mergeBound(lowerBounds, Types.union(values));
-            }
-            return;
-        }
-        if (expected instanceof TypeExpr.TypeVar) {
-            mergeBound(lowerBounds, actual);
-        }
-    }
-
-    private static void mergeBound(Map<String, Type> lowerBounds, Type bound) {
-        lowerBounds.merge("T", bound, Types::union);
-    }
-
-    /** 代入 returnType;T 未绑定时返回 null(UNBOUND_TYPE_VARIABLE 由调用方记录)。 */
-    private static Type instantiate(TypeExpr expr, Map<String, Type> lowerBounds, List<Fact> arguments) {
-        if (expr instanceof TypeExpr.Base base) {
-            return switch (base.name()) {
-                case "number" -> Types.scalar(Type.ScalarKind.NUMBER);
-                case "string" -> Types.scalar(Type.ScalarKind.STRING);
-                case "boolean" -> Types.scalar(Type.ScalarKind.BOOLEAN);
-                case "null" -> Types.scalar(Type.ScalarKind.NULL);
-                case "any" -> Type.Unknown.INSTANCE;
-                case "object" -> openRecordType();
-                case "array" -> Types.unknownSequence();
-                default -> null;
-            };
-        }
-        if (expr instanceof TypeExpr.ArrayOf array) {
-            Type element = instantiate(array.element(), lowerBounds, arguments);
-            return element == null ? null : Types.sequence(element, 0, Type.Sequence.UNBOUNDED);
-        }
-        if (expr instanceof TypeExpr.RecordOf record) {
-            return instantiate(record.value(), lowerBounds, arguments);
-        }
-        if (expr instanceof TypeExpr.ObjectLiteral literal) {
-            Map<String, Type.Field> fields = new LinkedHashMap<>();
-            for (TypeExpr.ObjectLiteral.Field field : literal.fields()) {
-                Type fieldType = instantiate(field.type(), lowerBounds, arguments);
-                if (fieldType == null) {
-                    return null;
-                }
-                fields.put(field.name(), Type.Field.required(fieldType));
-            }
-            return Types.record(fields, Type.Extra.closed());
-        }
-        if (expr instanceof TypeExpr.UnionOf union) {
-            List<Type> alternatives = new ArrayList<>();
-            for (TypeExpr alternative : union.alternatives()) {
-                Type resolved = instantiate(alternative, lowerBounds, arguments);
-                if (resolved != null) {
-                    alternatives.add(resolved);
-                }
-            }
-            return alternatives.isEmpty() ? null : Types.union(alternatives);
-        }
-        if (expr instanceof TypeExpr.TypeVar) {
-            return lowerBounds.get("T");
-        }
-        if (expr instanceof TypeExpr.ParamRef ref) {
-            return ref.index() < arguments.size()
-                    ? arguments.get(ref.index()).type()
-                    : Types.scalar(Type.ScalarKind.NULL);
-        }
-        if (expr instanceof TypeExpr.Conditional conditional) {
-            boolean isArray = conditional.paramIndex() < arguments.size()
-                    && isSequenceLike(arguments.get(conditional.paramIndex()).type());
-            return instantiate(isArray ? conditional.whenArray() : conditional.otherwise(), lowerBounds, arguments);
-        }
-        return null;
-    }
-
-    private static boolean isSequenceLike(Type type) {
-        if (type instanceof Type.Sequence) {
-            return true;
-        }
-        return type instanceof Type.Union union && !union.alternatives().isEmpty()
-                && union.alternatives().stream().allMatch(AnalysisSession::isSequenceLike);
     }
 
     // ───────────────────────────────────────────────────────────────────────

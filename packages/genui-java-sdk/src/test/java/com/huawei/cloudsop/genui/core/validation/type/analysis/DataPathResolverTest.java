@@ -1,4 +1,4 @@
-package com.huawei.cloudsop.genui.core.validation.type;
+package com.huawei.cloudsop.genui.core.validation.type.analysis;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 class DataPathResolverTest {
 
@@ -20,7 +21,7 @@ class DataPathResolverTest {
         DataPathResolution.Resolved resolved = assertInstanceOf(DataPathResolution.Resolved.class,
                 resolver.resolve(Map.of("device", Map.of("name", "leaf-1")), DataPath.parse("data.device.name")));
 
-        assertEquals("string", resolved.type().displayName());
+        assertEquals(Types.stringLiterals(Set.of("leaf-1")), resolved.type());
     }
 
     @Test
@@ -30,7 +31,8 @@ class DataPathResolverTest {
         DataPathResolution.Resolved resolved = assertInstanceOf(DataPathResolution.Resolved.class,
                 resolver.resolve(data, DataPath.parse("data.users.name")));
 
-        assertEquals("string[]", resolved.type().displayName());
+        assertEquals(Types.sequence(Types.stringLiterals(Set.of("Ada", "Lin")), 0, Type.Sequence.UNBOUNDED),
+                resolved.type());
         assertEquals(2, resolved.evidence().present());
         assertEquals(2, resolved.evidence().total());
     }
@@ -46,8 +48,10 @@ class DataPathResolverTest {
                 resolver.resolve(data, DataPath.parse("data.users.name")));
 
         // 显式 null 不是缺失：投影结果的元素类型保留 null 分支，缺失分支单独记为证据。
-        ValueType.ArrayType array = assertInstanceOf(ValueType.ArrayType.class, resolved.type());
-        assertEquals("null | string", array.elementType().displayName());
+        Type.Sequence array = assertInstanceOf(Type.Sequence.class, resolved.type());
+        Type.Union element = assertInstanceOf(Type.Union.class, array.element());
+        assertTrue(element.alternatives().contains(Types.scalar(Type.ScalarKind.NULL)));
+        assertTrue(element.alternatives().contains(Types.stringLiterals(Set.of("Ada"))));
         assertEquals(1, resolved.evidence().present());
         assertEquals(1, resolved.evidence().missing());
         assertEquals(1, resolved.evidence().nulls());
@@ -64,8 +68,8 @@ class DataPathResolverTest {
                 resolver.resolve(data, DataPath.parse("data.groups.items")));
 
         // 每个 group 的 items 是 object[]；投影后是 items[][]，不隐式展平。
-        ValueType.ArrayType outer = assertInstanceOf(ValueType.ArrayType.class, resolved.type());
-        assertInstanceOf(ValueType.ArrayType.class, outer.elementType());
+        Type.Sequence outer = assertInstanceOf(Type.Sequence.class, resolved.type());
+        assertInstanceOf(Type.Sequence.class, outer.element());
         assertEquals(2, resolved.evidence().present());
         assertTrue(resolved.evidence().plucked());
     }
@@ -96,7 +100,7 @@ class DataPathResolverTest {
 
         DataPathResolution.Resolved resolved = assertInstanceOf(DataPathResolution.Resolved.class,
                 resolver.resolve(data, DataPath.parse("data.users[0].name")));
-        assertEquals("string", resolved.type().displayName());
+        assertEquals(Types.stringLiterals(Set.of("Ada")), resolved.type());
 
         assertInstanceOf(DataPathResolution.Missing.class,
                 resolver.resolve(data, DataPath.parse("data.users[2].name")));
@@ -108,5 +112,13 @@ class DataPathResolverTest {
                 resolver.resolve(Map.of("users", List.of(Map.of("name", "Ada"))), DataPath.parse("data.users.length")));
 
         assertTrue(failure.hint().contains("@Count"));
+    }
+
+    @Test
+    void invalidTraversalNameDoesNotLeakSnapshotLiterals() {
+        DataPathResolution.InvalidTraversal failure = assertInstanceOf(DataPathResolution.InvalidTraversal.class,
+                resolver.resolve(Map.of("device", "leaf-1"), DataPath.parse("data.device.name")));
+
+        assertEquals("string", failure.actualType());
     }
 }
