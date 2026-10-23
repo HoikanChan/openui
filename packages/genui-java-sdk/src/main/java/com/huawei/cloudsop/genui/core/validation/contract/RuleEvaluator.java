@@ -256,6 +256,8 @@ public final class RuleEvaluator {
                 ops.flattenOne(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
             case SEQUENCE_SELECT -> ops.select(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
             case RECORD_OVERLAY -> recordOverlay(apply.operands().get(0), bounds, argumentCount, callSite, ops);
+            case SHAPE_MAP_SCALAR_OR_ARRAY ->
+                ops.mapScalarOrArray(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
         };
     }
 
