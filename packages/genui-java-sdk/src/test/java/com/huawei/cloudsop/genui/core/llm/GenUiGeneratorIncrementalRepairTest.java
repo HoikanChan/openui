@@ -285,9 +285,9 @@ class GenUiGeneratorIncrementalRepairTest {
         ManualTime time = new ManualTime();
         ScriptedTransport transport = ScriptedTransport.streams(frame("root = Bogus(\"x\")\n") + SseFrames.done(),
                 frame("root = StillBogus()\n") + SseFrames.done(),
-                // No [DONE] on the last script: the clock advances when this stream reaches EOF, so the round
-                // completes and the loop then observes the exhausted budget (rather than timing out mid-round).
-                frame("root = AlsoBogus()\n"));
+                // The final marker has no trailing blank line: EOF advances the clock before its handling,
+                // so the round completes and the loop then observes the exhausted budget.
+                frame("root = AlsoBogus()\n") + "data: [DONE]");
         transport.advanceAfterStream(time, 3, 20);
         ArrayList<RenderStreamEnvelope> envelopes = new ArrayList<>();
         AtomicInteger handoffs = new AtomicInteger();
