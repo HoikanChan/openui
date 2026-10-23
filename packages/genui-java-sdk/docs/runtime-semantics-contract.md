@@ -105,7 +105,7 @@ nameCol = Col("Device Name", "name")
 
 ## 权威导出与结构规则传递
 
-当前验证和提示词的权威输入是生效契约，默认由 `GenerationContractLoader.loadDefault()` 读取 classpath `openui/base-contract.json`。Case Contract 优先级及 Base Supplement/Extension 合并仍按既有 SDK 定义；不能因缺规则偷偷回退另一份默认词表。
+当前验证和提示词的权威输入是生效契约，默认由 `GenerationContractLoader.loadDefault()` 读取 classpath `openui/base-contract.json`。仓库修复语料也直接读取同一默认资源，不保存 Case Contract 副本。外部案例包可显式覆盖（案例级 > 包级 > SDK 默认）；显式契约无效时终止，不因缺规则偷偷回退另一份默认词表。Base Supplement/Extension 的合并语义不变。
 
 历史前端导出入口可以精确定位：`258997028bd79cb49a3207c692cb5f16d9ad379c:packages/react-ui-dsl/scripts/generate-base-contract.mts`，运行入口为该包 `generate:base-contract`。它调用 `dslLibrary.toSpec()`，再将 `getBuiltinsManifest()` 放到顶层 builtins，同时写前端 generated JSON 和 SDK resource。`react-lang@0.2.0` 从 workspace `lang-core` 重新导出 manifest；lockfile 是 workspace link，没有独立 registry 锁定版本。该历史 manifest 仅有 signature/description/templateBuiltin，不能承载默认资源现有的 name/params/returnType，更不能承载 #77 新规则。该脚本随前端移除，当前工作树不能运行它。
 
@@ -167,7 +167,7 @@ TS 后续工作集中跟踪于 [#91：权威契约导出与模板接口同步](h
 | 已删除 | `ValueType`/`ValueTypes`/旧 `DataPath*`、`TypeTranslator`、`returnType`+`params` 泛型求值（`genericResult`/`collectLowerBounds`/`instantiate`） | 全局搜索无引用；`DataPathResolverTest` 改用新 `Type` |
 | 参数检查覆盖 | 每次规则模式检查登记 MATCH/MISMATCH/UNPROVEN；只有 MISMATCH 且无上游错误上报 | `typeChecks.*` 元数据；`StaticTypeValidationTest` |
 | 修复触发 | 只有 `ValidationStatus.INVALID`（确定 ERROR）进入增量修复；仅 UNPROVEN 的 VALID 结果不触发 | `GenUiGeneratorTypeTriggerTest`（sync + streaming） |
-| 语料行为 | `repair-cases/` 校验结论不变（25 例 code 集合逐例一致）；Case Contract 1.1.5 已补齐 `typeRule`，与 `base-contract.json` 同规则 | validation-only bench 对比；`RepairCorpus*RulesTest` |
+| 语料行为 | `repair-cases/` 校验结论不变（25 例 code 集合逐例一致）；仓库语料统一读取 `base-contract.json`，不维护 Case Contract 副本 | validation-only bench 对比；`RepairCorpus*RulesTest` |
 | 集成行为 | 同名覆盖/遮蔽、入口不可达语句不报当前错误、取消隔离、校验不改调用方 dataModel | `StaticTypeValidationTest`、`EachSwitchScopeValidationTest`、`TypeEngineIntegrationBehaviourTest`、`CancellationIsolationTest` |
 
 Each/Render/Switch 仍是语言模板构造：binder 布局（`callForms`/`binders`/`body`/`input`/`nameSyntax`）从契约读取，模板作用域与分支语义留在 Java 侧。它们不构成第二份 builtin 类型词表，也不产生第二条类型分析路径。

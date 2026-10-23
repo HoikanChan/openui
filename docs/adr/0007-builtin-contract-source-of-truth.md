@@ -12,6 +12,12 @@ GenUI Java SDK 的 builtin 函数输入输出规则曾双轨并行：base-contra
 
 每条 builtin 条目：`name`（查找键）、`signature`（纯展示，只喂提示词）、`description`、`templateBuiltin`（提示词分节标记，校验不消费）、`params`（`{name, type, optional?, variadic?, binder?}`）、`returnType`（展示字段，加载期仅解析语法并校验类型变量绑定与 `param(n)` 下标）、`typeRule`（唯一求值规则，版本 1）。有 `typeRule` 时 arity 以 `typeRule.arity` 为准；模板构造（Each/Render/Switch）没有 `typeRule`，arity 仍从 `params`/`callForms` 派生。加载器只编译规则，不比较 `typeRule.arity` 与 `params` 推导结果。
 
+## 默认契约只维护一份
+
+生产、修复语料和日常测试共用 SDK resource `packages/genui-java-sdk/src/main/resources/openui/base-contract.json`。删除 `repair-cases/contract.json` 和未被引用的 eval-cli `sample-base-contract.json`，不再通过复制契约并测试两份相等来保持同步。
+
+外部案例包仍可显式指定自定义契约；测试特殊语义时使用最小测试契约或在默认契约上声明差异。历史评测用 Git commit、契约版本和 SHA-256 固定依据，通过 Git 恢复历史版本，不另维护默认契约副本。
+
 ## typeRule 结构规则（终态）
 
 `typeRule` 是封闭文法：`typeRulesVersion`、`arity`、`parameters[{name, rest, accept}]`、`result`。`accept` 与 `result` 只能使用有限模式（`unknown`/`any`/scalar/`object`/`array`/`sequence`/`recordOf`/`variable`）和有限运算（`SEQUENCE_PRESERVE`/`SUBSET`/`ELEMENT`/`FLATTEN_ONE`/`SELECT`、`RECORD_OVERLAY`/`KEYS`/`VALUES`/`ENTRIES`、`SHAPE_MAP_SCALAR_OR_ARRAY`）。`RuleCompiler` 在加载期拒绝未知 op/tag、越界实参、非法 arity、非末位 `rest`；未知规则加载失败，不静默回退成 `any`。**未绑定的结果变量不在加载期拒绝**：这类规则编译通过，调用时该结果返回 `Unknown` 并记 `UNBOUND_TYPE_VARIABLE`（见下节）。

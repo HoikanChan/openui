@@ -6,10 +6,8 @@ package com.huawei.cloudsop.genui.core.validation.type;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
@@ -20,8 +18,6 @@ import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 
 import org.junit.jupiter.api.Test;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -123,34 +119,6 @@ class FormatBuiltinValidationTest {
         assertFalse(hasCode(result, "type-table-column-missing"), () -> String.valueOf(result.issues()));
     }
 
-    // ---- 维护中的语料契约 ----
-
-    @Test
-    void corpusContractCarriesTheSameFormattingRules() throws Exception {
-        Path fixture = repoRoot().resolve("packages/genui-java-sdk/repair-cases/contract.json");
-        assertTrue(Files.isRegularFile(fixture), "corpus contract not found at " + fixture);
-        GenerationContract corpus = GenerationContractLoader.fromJson(Files.readString(fixture));
-
-        // 29 条全量在列:语料契约不得静默退化到 SDK 默认契约。
-        assertEquals(29, corpus.builtins().size());
-        for (String name : List.of("FormatDate", "FormatBytes", "FormatNumber", "FormatPercent", "FormatDuration")) {
-            assertNotNull(builtin(corpus, name).typeRule(), name + " must carry a compiled structured rule");
-        }
-
-        // 与默认契约的格式化规则保持一致(名称、返回值声明与可执行规则同源)。
-        GenerationContract defaults = GenerationContractLoader.loadDefault();
-        for (String name : List.of("FormatDate", "FormatBytes", "FormatNumber", "FormatPercent", "FormatDuration")) {
-            assertEquals(builtin(defaults, name).returnType(), builtin(corpus, name).returnType(), name);
-            assertEquals(builtin(defaults, name).typeRule(), builtin(corpus, name).typeRule(), name);
-        }
-
-        ValidationResult result = validateWithContract("root = TextContent(@FormatNumber(data.value))",
-                Map.of("value", 3), corpus);
-        assertEquals(ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
-        assertTrue(unprovenReasons(result).contains("UNKNOWN_INPUT="),
-                () -> "corpus contract must apply its own rule instead of the default: " + result.metadata().extra());
-    }
-
     // ---- helpers ----
 
     private static ValidationResult validate(String dsl, Map<String, Object> dataModel) {
@@ -163,28 +131,11 @@ class FormatBuiltinValidationTest {
                 .dataModel(dataModel).mode(ValidationMode.FINAL).build());
     }
 
-    private static BuiltinSpec builtin(GenerationContract contract, String name) {
-        return contract.builtins().stream().filter(spec -> name.equals(spec.name())).findFirst()
-                .orElseThrow(() -> new AssertionError("builtin missing: " + name));
-    }
-
     private static Map<String, Object> row(String key, Object value, String secondKey, Object secondValue) {
         Map<String, Object> row = new LinkedHashMap<>();
         row.put(key, value);
         row.put(secondKey, secondValue);
         return row;
-    }
-
-    private static Path repoRoot() {
-        Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-        while (current != null) {
-            if (Files.exists(current.resolve(".git"))) {
-                return current;
-            }
-            current = current.getParent();
-        }
-        throw new IllegalStateException("cannot locate repository root (no .git ancestor of "
-                + System.getProperty("user.dir") + ")");
     }
 
     private static boolean hasCode(ValidationResult result, String code) {

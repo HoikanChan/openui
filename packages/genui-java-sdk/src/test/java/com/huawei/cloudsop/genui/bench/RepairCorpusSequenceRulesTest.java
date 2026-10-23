@@ -25,15 +25,11 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 语料契约（{@code repair-cases/contract.json}）的 sequence 规则回归。
+ * 真实修复语料使用 SDK 默认契约的 sequence 规则回归。
  *
  * <p>
- * #86 删除了 {@code synthBuiltin} 里 Flatten/First/Last 的按名分支，shape 只能由契约 {@code typeRule} 提供。语料契约若不同步补上
- * {@code sequence.flattenOne} / {@code sequence.select}，{@code @Flatten} 会落到 generic 路径返回未证明形状的 Sequence， Table 把每一列都判成
- * “可能缺失”，在被跟踪语料里制造假阳性（case-04_GEN-00119 / case-05_GEN-00122 的 {@code /columns/metricValue}，该字段在每个数据行里都存在）。
- *
- * <p>
- * 本测试锁定修复后的诊断：假阳性消失，同时这些案例真实的缺失列仍照常报出。语料目录按仓库根定位（{@code .git} 祖先）， 因此不依赖 mvn 的启动 CWD。
+ * Flatten/First/Last 的结构传播来自默认契约的 typeRule，检查真实缺失列仍被发现，存在的 metricValue 列不被误报。
+ * 语料目录按仓库根定位，因此不依赖 mvn 的启动目录。
  *
  * @since 2026
  */
@@ -82,7 +78,7 @@ class RepairCorpusSequenceRulesTest {
     }
 
     @Test
-    void corpusContractSequencesKeepFlattenCasesFreeOfFalseColumnErrors() throws Exception {
+    void defaultContractSequencesKeepFlattenCasesFreeOfFalseColumnErrors() throws Exception {
         Path corpus = repoRoot().resolve("packages/genui-java-sdk/repair-cases");
         assertTrue(Files.isDirectory(corpus), "corpus directory not found at " + corpus);
 

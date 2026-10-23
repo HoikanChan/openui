@@ -145,10 +145,8 @@ class MergeObjectTableValidationTest {
             root = Path.of("repair-cases");
         }
         Path folder = root.resolve(directory);
-        Path contract = Files.exists(folder.resolve("contract.json")) ? folder.resolve("contract.json")
-                : root.resolve("contract.json");
         Map<String, Object> metadata = Json.asObject(Json.parse(Files.readString(folder.resolve("case.json"))), "case");
-        return new Corpus(GenerationContractLoader.fromJson(Files.readString(contract)),
+        return new Corpus(GenerationContractLoader.loadDefault(),
                 Files.readString(folder.resolve("dsl.txt")), Json.asObject(metadata.get("dataModel"), "dataModel"));
     }
 

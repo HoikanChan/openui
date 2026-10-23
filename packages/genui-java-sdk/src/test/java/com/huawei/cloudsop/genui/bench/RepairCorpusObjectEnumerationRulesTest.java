@@ -24,25 +24,17 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 语料契约（{@code repair-cases/contract.json}）的 object 枚举规则回归。
- *
- * <p>
- * #85 删除了 {@code synthBuiltin} 里 ObjectKeys/ObjectValues/ObjectEntries 的按名分支，shape 只能由契约
- * {@code typeRule} 提供。语料契约若不同步补上 {@code record.keys/values/entries}，这三个内置函数会落到 generic 路径， 返回声明的宽类型：{@code @ObjectEntries}
- * 的逐字段证据消失（{@code e.port} 不再被判缺失），{@code @ObjectValues} 的元素类型退化为 unknown。 本测试锁定语料契约上的枚举证据，并锁定其余案例的诊断不因本次同步而改变。
- *
- * <p>
- * 语料目录按仓库根定位（{@code .git} 祖先），因此不依赖 mvn 的启动 CWD；{@code -Dgenui.repairCorpus=<dir>} 可指向外部副本， 用于复现修复前（旧契约）的红灯。
+ * 真实修复语料使用 SDK 默认契约的 object 枚举回归，检查字段证据及逐案例诊断。
  *
  * @since 2026
  */
 class RepairCorpusObjectEnumerationRulesTest {
 
-    /** 语料目录覆盖开关：仅供红灯复现，指向仓库外的旧契约副本。 */
+    /** 外部案例包目录覆盖开关；未显式指定自定义契约时仍使用 SDK 默认契约。 */
     private static final String CORPUS_OVERRIDE = "genui.repairCorpus";
 
     /**
-     * 语料契约下全部被跟踪案例的诊断基线（{@code 目录|状态|[code@path, ...]}）。
+     * SDK 默认契约下全部被跟踪案例的诊断基线（{@code 目录|状态|[code@path, ...]}）。
      *
      * <p>
      * case-21 是本次同步的有意差异：它把 {@code @Each(...)} 数组传给 {@code @ObjectEntries}，与该案例 issues.json 记录的
@@ -116,7 +108,7 @@ class RepairCorpusObjectEnumerationRulesTest {
     }
 
     @Test
-    void corpusContractObjectEnumerationKeepsFieldEvidence() throws Exception {
+    void defaultContractObjectEnumerationKeepsFieldEvidence() throws Exception {
         RepairCase benchCase = loadCorpus().get(0);
         String entries = "root = Stack(@Each(@ObjectEntries({port: 1}), e, TextContent(e.port)))";
         ValidationResult entriesResult = validate(entries, benchCase);
@@ -150,7 +142,7 @@ class RepairCorpusObjectEnumerationRulesTest {
             String actual = benchCase.dirName() + " | " + result.status() + " | " + codeAtPath(result);
             CORPUS_BASELINE.stream().filter(line -> line.startsWith(benchCase.dirName() + " |")).findFirst()
                     .ifPresent(expected -> assertEquals(expected, actual,
-                            benchCase.dirName() + " diagnostics changed under the corpus contract"));
+                            benchCase.dirName() + " diagnostics changed under the SDK default contract"));
         }
         for (String expected : CORPUS_BASELINE) {
             String dirName = expected.substring(0, expected.indexOf('|')).trim();

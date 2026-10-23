@@ -1,3 +1,5 @@
+> 契约来源已由 [ADR 0007](../../adr/0007-builtin-contract-source-of-truth.md) 更新：仓库语料共用 SDK 默认契约，本文的独立语料契约方案为历史设计。
+
 # repair-bench 实现设计（切片 1：bench CLI + 案例包 loader）
 
 - 日期：2026-10-14（同日经维护者 grilling 修订后重写；复审追加修订：转换工具移出切片 1，见 §2.4）
