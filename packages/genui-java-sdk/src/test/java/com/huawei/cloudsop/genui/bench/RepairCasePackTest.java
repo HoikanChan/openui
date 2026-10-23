@@ -6,11 +6,13 @@ package com.huawei.cloudsop.genui.bench;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.bench.RepairCasePack.PackLoadException;
 import com.huawei.cloudsop.genui.bench.RepairCasePack.RepairCase;
+import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -22,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * {@link RepairCasePack} 加载：契约解析链两级优先 + 无契约整批终止；dataModel null 语义；id 重复 / dsl.txt 缺失或空 / case.json 非法 / issues.json 非法
+ * {@link RepairCasePack} 加载：共用 SDK 默认契约、显式自定义契约优先、无效契约整批终止；dataModel null 语义；id 重复 / dsl.txt 缺失或空 / case.json 非法 / issues.json 非法
  * / 零案例目录 → 整批终止且报错列出全部问题案例；issues.json 透传。
  *
  * @since 2026
@@ -82,10 +84,20 @@ class RepairCasePackTest {
     }
 
     @Test
-    void missingContractEverywhereAbortsWholeBatch() throws Exception {
+    void casesWithoutOverridesShareSdkDefaultContract() throws Exception {
+        writeCase("case-a", "{\"id\":\"a\"}", "root = Stack([])");
+        writeCase("case-b", "{\"id\":\"b\"}", "root = Stack([])");
+        List<RepairCase> cases = RepairCasePack.load(tempDir, null);
+        assertEquals(GenerationContractLoader.loadDefault(), cases.get(0).contract());
+        assertSame(cases.get(0).contract(), cases.get(1).contract());
+    }
+
+    @Test
+    void invalidExplicitContractDoesNotFallBackToDefault() throws Exception {
+        Files.writeString(tempDir.resolve("contract.json"), "not-json", StandardCharsets.UTF_8);
         writeCase("case-a", "{\"id\":\"a\"}", "root = Stack([])");
         PackLoadException error = assertThrows(PackLoadException.class, () -> RepairCasePack.load(tempDir, null));
-        assertTrue(error.getMessage().contains("no contract"), error.getMessage());
+        assertTrue(error.getMessage().contains("corpus contract.json invalid"), error.getMessage());
     }
 
     @Test

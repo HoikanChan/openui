@@ -4,6 +4,7 @@
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
 
+import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
@@ -460,21 +461,26 @@ public final class ProgramAnalyzer {
         if (binderIndexes.isEmpty()) {
             return false;
         }
+        BuiltinSpec spec = builtins.spec(comp.name());
         Set<String> binders = new LinkedHashSet<>();
         for (int index : binderIndexes) {
-            String binderName = LazyBuiltinBinders.binderName(comp.args().get(index));
+            String binderName = LazyBuiltinBinders.binderName(spec, comp, index);
             if (binderName == null) {
                 return false;
             }
             binders.add(binderName);
         }
+        // binder 只作用于 body(#77 §10.1):body 恒为最后一个实参,其余实参(Each 的 source)在外层作用域解析,
+        // source 里出现同名 binder 不得被压制。
+        int bodyIndex = LazyBuiltinBinders.bodyIndex(spec, comp);
+        for (int i = 0; i < comp.args().size(); i++) {
+            if (i != bodyIndex && !binderIndexes.contains(i)) {
+                walkExpr(comp.args().get(i), ctx);
+            }
+        }
         ctx.scopeFrames.push(binders);
         try {
-            for (int i = 0; i < comp.args().size(); i++) {
-                if (!binderIndexes.contains(i)) {
-                    walkExpr(comp.args().get(i), ctx);
-                }
-            }
+            walkExpr(comp.args().get(bodyIndex), ctx);
         } finally {
             ctx.scopeFrames.pop();
         }

@@ -74,10 +74,8 @@ classpath 必含：`fastjson2`、`com.huawei.bsp.commonlib.resetclient`（编译
 
 ```
 repair-cases/
-  contract.json          # 语料级共享契约
   case-0001/
     case.json            # 必需:id / originalIntent? / dataModel?
-    contract.json        # 可选:案例级契约,优先于语料级
     dsl.txt              # 必需:失败 DSL 原文,不包 fence
     issues.json          # 可选:内部拦截报错 [{"code": "..."}],仅透传不参与判定
 ```
@@ -86,9 +84,13 @@ repair-cases/
 
 - `id`：必填非空,全语料唯一（以它为准,目录名只管排序）
 - `originalIntent`：缺省传 null,修复提示词跳过 Original request 段
-- `dataModel`：**缺失/显式 null → null（类型校验关闭）;`{}` → 空 map（具体空模型）**。两者语义不同,别混
+- `dataModel`：**缺失/显式 null → null（数据依赖部分未知,静态检查继续）;`{}` → 空 map（具体空模型）**。两者语义不同,别混
 
-契约格式 = `GenerationContractLoader.fromJson` 的输入,即组件是 `description` + `propsSchema` 包装（**不是**拦截语料那种裸 schema——当初就是这里踩的坑,loader 直接解析失败）。
+仓库内语料与生产统一调用 `GenerationContractLoader.loadDefault()`，读取唯一的 `src/main/resources/openui/base-contract.json`，不再保存完整契约副本。
+
+外部案例包可显式提供包级或案例级 `contract.json`，优先级为案例级 > 包级 > SDK 默认契约。显式文件无效时整批终止，不回退。自定义契约格式为 `GenerationContractLoader.fromJson` 的输入（组件使用 `description` + `propsSchema` 包装）。
+
+历史评测结果应记录运行时 Git commit、契约版本及原始契约文件的 SHA-256。复现时检出对应 commit；不得把旧版契约下的结果直接当作当前默认契约的基线。
 
 ## 输出解读
 

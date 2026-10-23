@@ -1,14 +1,13 @@
-package com.huawei.cloudsop.genui.core.validation.type;
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
 
-import com.huawei.cloudsop.genui.core.validation.type.DataPath.Index;
-import com.huawei.cloudsop.genui.core.validation.type.DataPath.Key;
-import com.huawei.cloudsop.genui.core.validation.type.DataPath.Segment;
-import com.huawei.cloudsop.genui.core.validation.type.DataPathResolution.Evidence;
-import com.huawei.cloudsop.genui.core.validation.type.ValueType.ArrayType;
-import com.huawei.cloudsop.genui.core.validation.type.ValueType.ObjectType;
-import com.huawei.cloudsop.genui.core.validation.type.ValueType.Primitive;
-import com.huawei.cloudsop.genui.core.validation.type.ValueType.PrimitiveKind;
-import com.huawei.cloudsop.genui.core.validation.type.ValueType.UnionType;
+package com.huawei.cloudsop.genui.core.validation.type.analysis;
+
+import com.huawei.cloudsop.genui.core.validation.type.analysis.DataPath.Index;
+import com.huawei.cloudsop.genui.core.validation.type.analysis.DataPath.Key;
+import com.huawei.cloudsop.genui.core.validation.type.analysis.DataPath.Segment;
+import com.huawei.cloudsop.genui.core.validation.type.analysis.DataPathResolution.Evidence;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -18,7 +17,14 @@ import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Set;
 
-/** Complete, on-demand resolver for generated paths over one Render Data Model snapshot. */
+/**
+ * 单次快照内、按需遍历一条生成路径的观察器。
+ *
+ * <p>
+ * 只读 Render Data Model:逐段记录字段存在性,最后把观察到的值提升为类型内核的 {@link Type}。这是类型阶段 访问数据的唯一生产路径——没有并行的值类型代数或翻译层。
+ *
+ * @since 2026
+ */
 public final class DataPathResolver {
 
     private static final int MAX_STRING_DOMAIN_SIZE = 32;
@@ -27,7 +33,7 @@ public final class DataPathResolver {
         List<Object> values = new ArrayList<>();
         values.add(dataModel == null ? Map.of() : dataModel);
         int pluckDepth = 0;
-        Evidence evidence = new Evidence(1, 0, 0, 1);
+        Evidence evidence = new Evidence(1, 0, 0, 1, false);
 
         for (Segment segment : path.segments()) {
             Step step = resolveStep(values, segment, path.source());
@@ -39,9 +45,9 @@ public final class DataPathResolver {
             pluckDepth += step.plucked() ? 1 : 0;
         }
 
-        ValueType type = inferValues(values);
+        Type type = inferValues(values);
         for (int i = 0; i < pluckDepth; i++) {
-            type = new ArrayType(type);
+            type = Types.sequence(type, 0, Type.Sequence.UNBOUNDED);
         }
         return new DataPathResolution.Resolved(path.source(), type, evidence);
     }
@@ -103,7 +109,7 @@ public final class DataPathResolver {
                 for (Object item : list) {
                     total++;
                     if (!(item instanceof Map<?, ?> map)) {
-                        return Step.failure(new DataPathResolution.InvalidTraversal(path, typeName(item),
+                        return Step.failure(new DataPathResolution.InvalidTraversal(path, coarseTypeName(item),
                                 "Member access requires an object array."));
                     }
                     if (!map.containsKey(key.name())) {
@@ -112,7 +118,9 @@ public final class DataPathResolver {
                     }
                     Object member = map.get(key.name());
                     if (member == null) {
+                        // 显式 null 不是缺失:保留为投影结果的可能值,由类型层与缺失分支分别表达。
                         nulls++;
+                        next.add(null);
                     } else {
                         present++;
                         next.add(member);
@@ -130,6 +138,7 @@ public final class DataPathResolver {
                 Object member = map.get(key.name());
                 if (member == null) {
                     nulls++;
+                    next.add(null);
                 } else {
                     present++;
                     next.add(member);
@@ -144,6 +153,7 @@ public final class DataPathResolver {
                 Object member = list.get(index.value());
                 if (member == null) {
                     nulls++;
+                    next.add(null);
                 } else {
                     present++;
                     next.add(member);
@@ -153,73 +163,85 @@ public final class DataPathResolver {
             if (segment instanceof Key key && value instanceof List<?>) {
                 throw new IllegalStateException("Array key must be handled by pluck: " + key.name());
             }
-            return Step.failure(new DataPathResolution.InvalidTraversal(path, typeName(value),
+            return Step.failure(new DataPathResolution.InvalidTraversal(path, coarseTypeName(value),
                     "Member access requires an object or array."));
         }
 
         if (next.isEmpty()) {
-            if (nulls > 0 && missing == 0) {
-                next.add(null);
-            } else if (nulls > 0) {
-                return Step.failure(
-                        new DataPathResolution.Unprovable(path, "No non-null value proves the requested member type."));
-            } else {
-                return Step
-                        .failure(new DataPathResolution.Missing(path, "Use a path present in the Render Data Model."));
-            }
+            // null 值已作为投影结果保留(next 非空),走到这里说明该步完全没有可取值。
+            return Step.failure(new DataPathResolution.Missing(path, "Use a path present in the Render Data Model."));
         }
-        return new Step(next, new Evidence(present, missing, nulls, total), plucked, null);
+        return new Step(next, new Evidence(present, missing, nulls, total, plucked), plucked, null);
     }
 
-    private static ValueType inferValues(List<Object> values) {
+    /** 把投影后的观察值提升为类型上界;全部为字符串时保留有界字面值域。 */
+    private static Type inferValues(List<Object> values) {
         if (values.stream().allMatch(String.class::isInstance)) {
             Set<String> domain = new LinkedHashSet<>();
             values.forEach(value -> domain.add((String) value));
             if (domain.size() <= MAX_STRING_DOMAIN_SIZE) {
-                return new ValueType.StringDomainType(domain);
+                return Types.stringLiterals(domain);
             }
-            return new Primitive(PrimitiveKind.STRING);
+            return Types.scalar(Type.ScalarKind.STRING);
         }
-        List<ValueType> types = values.stream().map(DataPathResolver::inferValue).distinct().toList();
-        return types.size() == 1 ? types.getFirst() : new UnionType(types);
+        return Types.union(values.stream().map(DataPathResolver::inferValue).toList());
     }
 
-    private static ValueType inferValue(Object value) {
+    private static Type inferValue(Object value) {
         if (value == null) {
-            return new Primitive(PrimitiveKind.NULL);
+            return Types.scalar(Type.ScalarKind.NULL);
         }
         if (value instanceof String || value instanceof Character) {
-            return new ValueType.StringDomainType(Set.of(String.valueOf(value)));
+            return Types.stringLiterals(Set.of(String.valueOf(value)));
         }
         if (value instanceof Number) {
-            return new Primitive(PrimitiveKind.NUMBER);
+            return Types.scalar(Type.ScalarKind.NUMBER);
         }
         if (value instanceof Boolean) {
-            return new Primitive(PrimitiveKind.BOOLEAN);
+            return Types.scalar(Type.ScalarKind.BOOLEAN);
         }
         if (value instanceof List<?> list) {
             if (list.isEmpty()) {
-                return new ValueType.EmptyArrayType();
+                return Types.emptySequence();
             }
-            return new ArrayType(inferValues(new ArrayList<>(list)));
+            return Types.sequence(inferValues(new ArrayList<>(list)), 0, Type.Sequence.UNBOUNDED);
         }
         if (value instanceof Map<?, ?> map) {
-            Map<String, ValueType> fields = new LinkedHashMap<>();
+            Map<String, Type.Field> fields = new LinkedHashMap<>();
             for (Map.Entry<?, ?> entry : map.entrySet()) {
-                fields.put(String.valueOf(entry.getKey()), inferValue(entry.getValue()));
+                fields.put(String.valueOf(entry.getKey()), Type.Field.required(inferValue(entry.getValue())));
             }
-            return new ObjectType(fields);
+            return Types.record(fields, Type.Extra.closed());
         }
-        return new Primitive(PrimitiveKind.STRING);
+        return Types.scalar(Type.ScalarKind.STRING);
     }
 
-    private static String typeName(Object value) {
-        return inferValue(value).displayName();
+    /** 遍历失败消息使用的粗粒度类型名(不带字面值,避免把快照内容写进诊断)。 */
+    private static String coarseTypeName(Object value) {
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof String || value instanceof Character) {
+            return "string";
+        }
+        if (value instanceof Number) {
+            return "number";
+        }
+        if (value instanceof Boolean) {
+            return "boolean";
+        }
+        if (value instanceof List<?>) {
+            return "array";
+        }
+        if (value instanceof Map<?, ?>) {
+            return "object";
+        }
+        return "unknown";
     }
 
     private record Step(List<Object> values, Evidence evidence, boolean plucked, DataPathResolution failure) {
         static Step failure(DataPathResolution failure) {
-            return new Step(List.of(), new Evidence(0, 0, 0, 0), false, failure);
+            return new Step(List.of(), new Evidence(0, 0, 0, 0, false), false, failure);
         }
     }
 }

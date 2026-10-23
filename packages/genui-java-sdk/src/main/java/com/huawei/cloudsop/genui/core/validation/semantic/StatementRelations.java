@@ -4,6 +4,7 @@
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
 
+import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
@@ -117,10 +118,11 @@ public final class StatementRelations {
         if (node instanceof AstNode.Comp comp) {
             List<Integer> binderIndexes = LazyBuiltinBinders.binderIndexes(comp, builtins);
             if (!binderIndexes.isEmpty()) {
+                BuiltinSpec spec = builtins.spec(comp.name());
                 Set<String> binders = new LinkedHashSet<>();
                 boolean valid = true;
                 for (int index : binderIndexes) {
-                    String binder = LazyBuiltinBinders.binderName(comp.args().get(index));
+                    String binder = LazyBuiltinBinders.binderName(spec, comp, index);
                     if (binder == null) {
                         valid = false;
                         break;
@@ -128,13 +130,16 @@ public final class StatementRelations {
                     binders.add(binder);
                 }
                 if (valid) {
+                    // binder 只作用于 body(#77 §10.1):body 恒为最后一个实参,其余实参在外层作用域收集依赖。
+                    int bodyIndex = LazyBuiltinBinders.bodyIndex(spec, comp);
+                    for (int i = 0; i < comp.args().size(); i++) {
+                        if (i != bodyIndex && !binderIndexes.contains(i)) {
+                            collectRefs(comp.args().get(i), knownIds, builtins, scopeFrames, refs);
+                        }
+                    }
                     scopeFrames.push(binders);
                     try {
-                        for (int i = 0; i < comp.args().size(); i++) {
-                            if (!binderIndexes.contains(i)) {
-                                collectRefs(comp.args().get(i), knownIds, builtins, scopeFrames, refs);
-                            }
-                        }
+                        collectRefs(comp.args().get(bodyIndex), knownIds, builtins, scopeFrames, refs);
                     } finally {
                         scopeFrames.pop();
                     }

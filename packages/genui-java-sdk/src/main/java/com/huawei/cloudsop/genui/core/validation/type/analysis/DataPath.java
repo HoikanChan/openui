@@ -1,9 +1,13 @@
-package com.huawei.cloudsop.genui.core.validation.type;
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
+package com.huawei.cloudsop.genui.core.validation.type.analysis;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/** A concrete {@code data...} path containing only literal keys and indexes. */
+/** 具体 {@code data...} 路径:只含字面量键与下标,由类型阶段的快照观察器解析。 */
 public record DataPath(List<Segment> segments, String source) {
 
     public DataPath {

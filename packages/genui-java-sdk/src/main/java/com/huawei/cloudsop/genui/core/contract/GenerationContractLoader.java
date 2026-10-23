@@ -8,6 +8,8 @@ import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExprParser;
+import com.huawei.cloudsop.genui.core.validation.contract.RuleCompiler;
+import com.huawei.cloudsop.genui.core.validation.contract.RulePlan.TypeRule;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,7 +43,15 @@ public final class GenerationContractLoader {
     }
 
     public static GenerationContract fromJson(String json) {
-        return fromMap(Json.asObject(Json.parse(json), "GenerationContract"));
+        // Contract indexes must retain their exact decimal value until load-time validation.
+        try {
+            return fromMap(Json.asObject(com.alibaba.fastjson2.JSON.parse(json,
+                    com.alibaba.fastjson2.JSONReader.Feature.UseBigDecimalForDoubles,
+                    com.alibaba.fastjson2.JSONReader.Feature.UseBigDecimalForFloats,
+                    com.alibaba.fastjson2.JSONReader.Feature.DisableSingleQuote), "GenerationContract"));
+        } catch (com.alibaba.fastjson2.JSONException error) {
+            throw new GenerationSdkException("Invalid JSON: " + error.getMessage(), error);
+        }
     }
 
     static GenerationContract fromMap(Map<String, Object> map) {
@@ -181,8 +191,111 @@ public final class GenerationContractLoader {
             returnType = TypeExprParser.parse(string(returnTypeRaw), name + ".returnType");
         }
         requireBoundTypeVars(params, returnType, name);
+        // 结构化类型规则与词表同一次解析：未知 op/非法引用在此加载期失败（RuleCompilationException）。
+        TypeRule typeRule = null;
+        Object typeRuleRaw = entry.get("typeRule");
+        if (typeRuleRaw != null) {
+            typeRule = RuleCompiler.compile(name, Json.asObject(typeRuleRaw, "typeRule of builtin " + name));
+        }
+        // 元素输入来源必须显式声明: binder builtin 缺省 input 视为漏声明并在加载期失败;
+        // 显式 null 才表示"没有元素来源"(如 Render)。否则缺字段会静默退化成 MISSING_CONTEXT,
+        // 把本该确定报出的元素级错误降级为"未证明"。
+        boolean hasBinders = params.stream().anyMatch(BuiltinSpec.ParamSpec::binder);
+        boolean inputDeclared = entry.containsKey("input");
+        Object inputRaw = entry.get("input");
+        if (hasBinders && !inputDeclared) {
+            throw new GenerationSdkException("builtin '" + name
+                    + "': binder builtin must declare 'input' (use null only when it has no element source)");
+        }
+        int inputIndex = -1;
+        if (inputRaw != null) {
+            int raw = exactIndex(inputRaw, name, "input");
+            if (raw < 0 || raw >= params.size()) {
+                throw new GenerationSdkException("builtin '" + name + "': 'input' index " + raw
+                        + " is out of range for " + params.size() + " parameter(s)");
+            }
+            inputIndex = (int) raw;
+            if (params.get(inputIndex).binder()) {
+                throw new GenerationSdkException("builtin '" + name + "': 'input' must not point to binder parameter '"
+                        + name + "." + params.get(inputIndex).name() + "'");
+            }
+            if (params.stream().noneMatch(BuiltinSpec.ParamSpec::binder)) {
+                throw new GenerationSdkException(
+                        "builtin '" + name + "': 'input' is only meaningful for a binder builtin");
+            }
+        } else if (hasBinders) {
+            // 显式 null 只允许用于确实没有元素来源的 binder builtin(Render);声明了元素数组参数
+            // (含具体元素类型的数组)却拒绝声明来源,等于用 null 绕过元素级检查,加载期直接拒绝。
+            for (BuiltinSpec.ParamSpec param : params) {
+                if (param.typeExpr() instanceof TypeExpr.ArrayOf) {
+                    throw new GenerationSdkException("builtin '" + name + "': parameter '" + param.name()
+                            + "' declares an element array, so 'input' must name its source index (not null)");
+                }
+            }
+        }
         return new BuiltinSpec(name, string(entry.get("signature")), string(entry.get("description")),
-                Boolean.TRUE.equals(entry.get("templateBuiltin")), params, returnType);
+                Boolean.TRUE.equals(entry.get("templateBuiltin")), params, returnType, typeRule, inputIndex,
+                callForms(entry.get("callForms"), params, inputIndex, name));
+    }
+
+    private static List<BuiltinSpec.CallForm> callForms(Object raw, List<BuiltinSpec.ParamSpec> params, int input,
+            String name) {
+        boolean hasBinders = params.stream().anyMatch(BuiltinSpec.ParamSpec::binder);
+        if (!hasBinders && raw == null) {
+            return List.of();
+        }
+        if (!hasBinders || raw == null) {
+            throw new GenerationSdkException("builtin '" + name + "': binder callForms must be declared");
+        }
+        List<BuiltinSpec.CallForm> forms = new ArrayList<>();
+        Set<Integer> arities = new LinkedHashSet<>();
+        int min = (int) params.stream().filter(p -> !p.optional() && !p.variadic()).count();
+        for (Object item : Json.asList(raw, "callForms")) {
+            Map<String, Object> form = Json.asObject(item, "callForm");
+            int arity = exactIndex(form.get("arity"), name, "arity");
+            int body = exactIndex(form.get("body"), name, "body");
+            if (arity < min || arity > params.size() || !arities.add(arity) || body < 0 || body >= arity) {
+                throw new GenerationSdkException("builtin '" + name + "': invalid or ambiguous callForms body/arity");
+            }
+            List<Integer> binders = new ArrayList<>();
+            for (Object binder : Json.asList(form.get("binders"), "callForm.binders")) {
+                int index = exactIndex(binder, name, "binder");
+                if (index < 0 || index >= arity || index == body || !params.get(index).binder()
+                        || binders.contains(index)) {
+                    throw new GenerationSdkException("builtin '" + name + "': invalid callForms binder index");
+                }
+                binders.add(index);
+            }
+            for (int index = 0; index < params.size(); index++) {
+                BuiltinSpec.ParamSpec param = params.get(index);
+                if (param.binder() && !param.optional() && !binders.contains(index)) {
+                    throw new GenerationSdkException("builtin '" + name + "': callForms omits required binder");
+                }
+            }
+            if (binders.isEmpty() || input >= arity || input == body) {
+                throw new GenerationSdkException(
+                        "builtin '" + name + "': input must not point to body or absent argument");
+            }
+            forms.add(new BuiltinSpec.CallForm(arity, body, binders));
+        }
+        for (int arity = min; arity <= params.size(); arity++) {
+            if (!arities.contains(arity)) {
+                throw new GenerationSdkException("builtin '" + name + "': callForms missing arity " + arity);
+            }
+        }
+        return List.copyOf(forms);
+    }
+
+    private static int exactIndex(Object value, String name, String field) {
+        try {
+            if (value instanceof Number) {
+                return new java.math.BigDecimal(value.toString()).intValueExact();
+            }
+        } catch (ArithmeticException | NumberFormatException ignored) {
+            // Reject fractions and overflow without a floating-point conversion.
+        }
+        throw new GenerationSdkException(
+                "builtin '" + name + "': '" + field + "' must be an integral parameter index, got " + value);
     }
 
     private static List<BuiltinSpec.ParamSpec> builtinParams(Object value, String builtinName) {
@@ -200,9 +313,25 @@ public final class GenerationContractLoader {
             }
             result.add(new BuiltinSpec.ParamSpec(name, type, TypeExprParser.parse(type, builtinName + "." + name),
                     Boolean.TRUE.equals(param.get("optional")), Boolean.TRUE.equals(param.get("variadic")),
-                    Boolean.TRUE.equals(param.get("binder"))));
+                    Boolean.TRUE.equals(param.get("binder")), nameSyntax(param, builtinName, name)));
         }
         return result;
+    }
+
+    /** binder 名语法:仅 binder 参数可声明;声明值经枚举校验(未知值加载期失败);缺省按双形态(与既有行为一致)。 */
+    private static String nameSyntax(Map<String, Object> param, String builtinName, String paramName) {
+        Object raw = param.get("nameSyntax");
+        boolean binder = Boolean.TRUE.equals(param.get("binder"));
+        if (raw == null) {
+            return binder ? "string-or-identifier" : null;
+        }
+        if (!binder) {
+            throw new GenerationSdkException("builtin '" + builtinName + "': non-binder parameter '" + paramName
+                    + "' must not declare nameSyntax");
+        }
+        String value = string(raw);
+        BuiltinSpec.NameSyntax.fromContract(value);
+        return value;
     }
 
     /** returnType 里的 {@code T} 必须能在某个参数类型中解出绑定；param(n) 引用必须在参数表范围内。 */
