@@ -2,7 +2,7 @@
 
 `RepairBenchCli --repair` keeps its historical initial-DSL replay arm and report format. Its case rows now explicitly say `historical-initial-replay`; `success` / repaired rates are **validation** results, never human intent accuracy.
 
-`SessionBenchCli` runs `GenUiGenerator.generateStream` with the production 20 second session budget. `scripts/session-bench.mjs` connects those actual envelopes to the existing React `Renderer`, library, and this checkout's lang-core in Chromium. It measures visible text after painting, captures `.preview-shell` content and the final page, reads the **Renderer's actual onParseResult callback**, and compares its root with the backend effective DSL parsed using the same consumer schema. It does not execute DSL in Java, regenerate in TypeScript, or substitute the first received fragment for visible rendering. The separate streaming driver is necessary because the existing final-string screenshot report cannot observe request-to-paint or realtime patches.
+`SessionBenchCli` runs `GenUiGenerator.generateStream` with the production 20 second session budget. `scripts/session-bench.mjs` connects those actual envelopes to the existing React `Renderer`, library, and this checkout's lang-core in Chromium. It measures visible text after painting, captures `.preview-shell` content and the final page, reads the **Renderer's actual onParseResult callback and its captured response revision**, and compares its root with the backend effective DSL parsed using the same consumer schema. Missing or stale final callbacks produce unavailable consistency with an explicit reason; no frontend shadow parse can certify a match. It does not execute DSL in Java, regenerate in TypeScript, or substitute the first received fragment for visible rendering. The separate streaming driver is necessary because the existing final-string screenshot report cannot observe request-to-paint or realtime patches.
 
 The repository does not contain a React renderer installation. Supply an existing complete source checkout and a package directory with Vite/Playwright/React dependencies; the driver fails clearly when missing. These paths are configuration, not machine-specific source changes.
 
@@ -45,7 +45,7 @@ Allowed categories are `correct-full`, `explicit-alternative-or-markdown`, `stil
 
 ```sh
 node packages/genui-java-sdk/scripts/session-quality.mjs /absolute/evidence/live /absolute/assessments.json
-node --test packages/genui-java-sdk/scripts/session-quality.test.mjs
+node --test packages/genui-java-sdk/scripts/session-quality.test.mjs packages/genui-java-sdk/scripts/session-observation.test.mjs
 mvn -q -f packages/genui-java-sdk/pom.xml -Dtest=SessionBenchRunnerTest test
 ```
 

@@ -59,24 +59,24 @@ import {dslLibrary as baseLibrary} from ${JSON.stringify(required[1])};
 ${callout ? 'import {TextCallout} from '+JSON.stringify(callout)+';' : ''}
 const dslLibrary=${callout ? 'baseLibrary.extend({components:[TextCallout]})' : 'baseLibrary'};
 import {createParser,createStreamingParser} from '@openuidev/lang-core';
+import {compareRendererObservation} from ${JSON.stringify(join(sdk,'scripts/session-observation.mjs'))};
 const el=document.querySelector('.preview-shell');const root=createRoot(el);
-let actualParse=null;let response='', data={}, streaming=true, firstPaintEpochMs=null, firstPaintText=null, transitions=[], parser;
+let actualObservation=null;let response='', data={}, streaming=true, firstPaintEpochMs=null, firstPaintText=null, transitions=[], parser;
 const full=createParser(dslLibrary.toJSONSchema(),'Stack',{externalRefs:['data']});
 const settle=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-const render=()=>{root.render(<Renderer library={dslLibrary} response={response} dataModel={data} isStreaming={streaming} onParseResult={r=>actualParse=r}/>);requestAnimationFrame(()=>requestAnimationFrame(()=>{
+const render=()=>{const renderedResponse=response;root.render(<Renderer library={dslLibrary} response={response} dataModel={data} isStreaming={streaming} onParseResult={r=>actualObservation={response:renderedResponse,parseResult:r}}/>);requestAnimationFrame(()=>requestAnimationFrame(()=>{
  const visible=[...el.querySelectorAll('*')].some(n=>n.getBoundingClientRect().width>0 && n.getBoundingClientRect().height>0 && getComputedStyle(n).visibility!=='hidden' && n.textContent.trim());
  if(firstPaintEpochMs===null && visible && el.innerText.trim()){firstPaintEpochMs=Date.now();firstPaintText=el.innerText;}}));};
-window.begin=async(input)=>{response='';data=input;streaming=true;firstPaintEpochMs=null;firstPaintText=null;transitions=[];parser=createStreamingParser(dslLibrary.toJSONSchema(),'Stack',{externalRefs:['data']});render();await settle();};
+window.begin=async(input)=>{actualObservation=null;response='';data=input;streaming=true;firstPaintEpochMs=null;firstPaintText=null;transitions=[];parser=createStreamingParser(dslLibrary.toJSONSchema(),'Stack',{externalRefs:['data']});render();await settle();};
 window.consume=async(e)=>{if(e.type==='dataModel')data=e.content;
  if(e.type==='replace'){response='';parser=createStreamingParser(dslLibrary.toJSONSchema(),'Stack',{externalRefs:['data']});}
  if(e.type==='dsl'){response+=e.content;parser.push(e.content);}
  if(e.type==='done')streaming=false;
  render();
  if(e.type==='replace'||e.type==='done')transitions.push({type:e.type,epochMs:Date.now(),text:el.innerText});};
-window.finish=async(result)=>{streaming=false;render();await settle();const front=actualParse||full.parse(response);const back=full.parse(result.outputDsl);
+window.finish=async(result)=>{streaming=false;render();await settle();const back=full.parse(result.outputDsl);const comparison=compareRendererObservation(actualObservation,response,back);
  return {firstPaintEpochMs,firstPaintText,finalText:el.innerText,renderedHtml:el.innerHTML,response,transitions,
- frontendBackendConsistent:JSON.stringify(front.root)===JSON.stringify(back.root),frontendErrors:front.meta.errors,
- backendDefinitionErrors:back.meta.errors,frontendRoot:front.root,backendRoot:back.root,
+ ...comparison,
  rows:[...el.querySelectorAll('tbody tr')].map(n=>n.innerText)};};
 window.consumerReady=true;
 `);
