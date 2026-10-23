@@ -11,11 +11,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.contract.CapabilityGapSpec;
+import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
+import com.huawei.cloudsop.genui.core.prompt.PromptAssembler;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -231,6 +235,47 @@ class BaseContractFixtureTest {
                   ]
                 }
                 """));
+    }
+
+    @Test
+    void exportedFormattingContractRoundTripsIntoPromptSignatures() throws Exception {
+        String exported;
+        try (InputStream stream = getClass().getResourceAsStream("/openui/base-contract.json")) {
+            assertTrue(stream != null, "exported base-contract.json resource missing");
+            exported = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+        }
+
+        // 端到端:导出的契约文本重新加载后,加载结果与原契约一致(不是读取另一份默认词表)。
+        GenerationContract reloaded = GenerationContractLoader.fromJson(exported);
+        GenerationContract defaults = GenerationContractLoader.loadDefault();
+        for (String name : FORMATTING_BUILTINS) {
+            BuiltinSpec fromExport = find(reloaded, name);
+            BuiltinSpec fromDefault = find(defaults, name);
+            assertEquals(fromDefault.signature(), fromExport.signature(), name + " signature");
+            assertEquals(fromDefault.returnType(), fromExport.returnType(), name + " returnType");
+            assertTrue(fromExport.typeRule() != null, name + " must carry a compiled structured rule");
+            assertEquals(fromDefault.typeRule(), fromExport.typeRule(), name + " typeRule");
+        }
+
+        // 提示词中的 builtin 文本直接来自同一份加载结果:signature 与描述逐字一致。
+        String prompt = PromptAssembler.assemble(
+                new PromptAssembler.PromptInput(null, reloaded.root(), reloaded.components(),
+                        reloaded.componentGroups(), new DataModelSpec("Demo data", Map.of("value", 1)),
+                        reloaded.tools(), reloaded.examples(), reloaded.additionalRules(), null, null, null, null),
+                reloaded.builtins(), reloaded.capabilityGaps());
+        for (String name : FORMATTING_BUILTINS) {
+            BuiltinSpec spec = find(reloaded, name);
+            assertTrue(prompt.contains("@" + spec.signature() + " — " + spec.description()),
+                    name + " prompt signature drifted from the loaded contract");
+        }
+    }
+
+    private static final List<String> FORMATTING_BUILTINS = List.of("FormatDate", "FormatBytes", "FormatNumber",
+            "FormatPercent", "FormatDuration");
+
+    private static BuiltinSpec find(GenerationContract contract, String name) {
+        return contract.builtins().stream().filter(spec -> name.equals(spec.name())).findFirst()
+                .orElseThrow(() -> new AssertionError("builtin missing: " + name));
     }
 
     private static String builtinJson(String name, String firstParamTail, String returnType) {

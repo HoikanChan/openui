@@ -154,7 +154,9 @@ public sealed interface RulePlan {
         /** 有序对象覆盖（MergeObject → TypeOps.overlay）；后写覆盖前值，字段证据被覆盖时替换。 */
         RECORD_OVERLAY("record.overlay"),
         /** 对象键、值与关联键值行的枚举。 */
-        RECORD_KEYS("record.keys"), RECORD_VALUES("record.values"), RECORD_ENTRIES("record.entries");
+        RECORD_KEYS("record.keys"), RECORD_VALUES("record.values"), RECORD_ENTRIES("record.entries"),
+        /** 标量转换与数组映射（FormatDate → TypeOps.mapScalarOrArray）；数组分支得到 string[]，其余得到 string。 */
+        SHAPE_MAP_SCALAR_OR_ARRAY("shape.mapScalarOrArray");
 
         private final String wireName;
 

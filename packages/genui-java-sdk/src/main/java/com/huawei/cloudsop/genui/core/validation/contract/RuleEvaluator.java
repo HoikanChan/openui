@@ -272,6 +272,8 @@ public final class RuleEvaluator {
             case RECORD_KEYS -> ops.keys(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
             case RECORD_VALUES -> ops.values(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
             case RECORD_ENTRIES -> ops.entries(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+            case SHAPE_MAP_SCALAR_OR_ARRAY ->
+                ops.mapScalarOrArray(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
         };
     }
 

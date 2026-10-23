@@ -2264,7 +2264,36 @@
           "optional": true
         }
       ],
-      "returnType": "string[] when param(0) is array, else string"
+      "returnType": "string[] when param(0) is array, else string",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 3
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "accept": "any"
+          },
+          {
+            "name": "style",
+            "accept": "string"
+          },
+          {
+            "name": "locale",
+            "accept": "string"
+          }
+        ],
+        "result": {
+          "op": "shape.mapScalarOrArray",
+          "operands": [
+            {
+              "argument": 0
+            }
+          ]
+        }
+      }
     },
     {
       "name": "FormatBytes",
@@ -2277,7 +2306,23 @@
           "type": "any"
         }
       ],
-      "returnType": "string"
+      "returnType": "string",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "accept": "any"
+          }
+        ],
+        "result": {
+          "type": "any"
+        }
+      }
     },
     {
       "name": "FormatNumber",
@@ -2300,7 +2345,31 @@
           "optional": true
         }
       ],
-      "returnType": "string"
+      "returnType": "string",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 3
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "accept": "any"
+          },
+          {
+            "name": "decimals",
+            "accept": "number"
+          },
+          {
+            "name": "locale",
+            "accept": "string"
+          }
+        ],
+        "result": {
+          "type": "any"
+        }
+      }
     },
     {
       "name": "FormatPercent",
@@ -2323,7 +2392,31 @@
           "optional": true
         }
       ],
-      "returnType": "string"
+      "returnType": "string",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 3
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "accept": "any"
+          },
+          {
+            "name": "decimals",
+            "accept": "number"
+          },
+          {
+            "name": "locale",
+            "accept": "string"
+          }
+        ],
+        "result": {
+          "type": "any"
+        }
+      }
     },
     {
       "name": "FormatDuration",
@@ -2346,7 +2439,31 @@
           "optional": true
         }
       ],
-      "returnType": "string"
+      "returnType": "string",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 3
+        },
+        "parameters": [
+          {
+            "name": "value",
+            "accept": "any"
+          },
+          {
+            "name": "unit",
+            "accept": "string"
+          },
+          {
+            "name": "locale",
+            "accept": "string"
+          }
+        ],
+        "result": {
+          "type": "any"
+        }
+      }
     },
     {
       "name": "MergeObject",

@@ -388,6 +388,40 @@ public final class TypeOps {
     }
 
     /**
+     * 标量转换与数组映射(FormatDate 形态):数组分支的元素逐个格式化并保留数量区间,得到 {@code string[]};
+     * 非数组分支格式化为单个 {@code string}。
+     *
+     * <p>
+     * 联合输入逐分支映射(#77 §10.4:不根据谓词推断实际选中的分支)——数组分支得到 {@code string[]},其余分支得到
+     * {@code string},混合联合因此同时保留两种返回形状,不把整个结果压成其中一种。格式化后的文本不是快照原值,
+     * 所以不传播观测值证据;数量区间随数组分支保留。
+     */
+    public Fact mapScalarOrArray(Fact input) {
+        if (input.hasUpstreamErrors()) {
+            return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamErrors(input.upstreamErrors());
+        }
+        if (input.type() instanceof Type.Unknown) {
+            return Fact.unknown(Fact.Loss.UNKNOWN_INPUT).withLosses(input.losses());
+        }
+        List<Type> results = new ArrayList<>();
+        Set<Fact.Loss> losses = new LinkedHashSet<>(input.losses());
+        for (Type branch : flatten(input.type())) {
+            if (branch instanceof Type.Sequence seq) {
+                results.add(Types.sequence(Types.scalar(Type.ScalarKind.STRING), seq.minLength(), seq.maxLength()));
+            } else if (branch instanceof Type.Never) {
+                results.add(Type.Never.INSTANCE);
+            } else if (branch instanceof Type.Unknown) {
+                losses.add(Fact.Loss.UNKNOWN_INPUT);
+                results.add(Type.Unknown.INSTANCE);
+            } else {
+                // 标量/对象/null:运行时格式化成单个字符串。
+                results.add(Types.scalar(Type.ScalarKind.STRING));
+            }
+        }
+        return new Fact(unionWithinBudget(results, input), Set.of(), losses, input.upstreamErrors());
+    }
+
+    /**
      * First/Last 选择:可证明非空时保留元素上界;否则返回 Unknown + {@link Fact.Loss#NO_ELEMENT_EVIDENCE}。
      *
      * <p>
