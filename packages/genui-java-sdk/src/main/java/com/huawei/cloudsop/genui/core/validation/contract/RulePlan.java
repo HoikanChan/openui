@@ -152,7 +152,9 @@ public sealed interface RulePlan {
         /** First/Last 选择（→ TypeOps.select）；空输入结果未定，返回 Unknown + 未证明原因。 */
         SEQUENCE_SELECT("sequence.select"),
         /** 有序对象覆盖（MergeObject → TypeOps.overlay）；后写覆盖前值，字段证据被覆盖时替换。 */
-        RECORD_OVERLAY("record.overlay");
+        RECORD_OVERLAY("record.overlay"),
+        /** 对象键、值与关联键值行的枚举。 */
+        RECORD_KEYS("record.keys"), RECORD_VALUES("record.values"), RECORD_ENTRIES("record.entries");
 
         private final String wireName;
 

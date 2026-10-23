@@ -205,6 +205,15 @@ public final class RuleCompiler {
                     operands.add(new Operand.RuleOperand(rule(operandRaw, parameters, where + ".operands[" + i + "]")));
                 }
             }
+            switch (op) {
+                case RECORD_KEYS, RECORD_VALUES, RECORD_ENTRIES -> {
+                    if (operands.size() != 1 || !(operands.getFirst() instanceof Operand.RuleOperand)) {
+                        throw new RuleCompilationException(where + ": " + text + " requires exactly one value operand");
+                    }
+                }
+                default -> {
+                }
+            }
             Map<String, String> options = new LinkedHashMap<>();
             Object optionsRaw = map.get("options");
             if (optionsRaw != null) {

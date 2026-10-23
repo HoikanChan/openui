@@ -1015,14 +1015,8 @@ public final class AnalysisSession {
         return switch (call.name()) {
             case "Each" -> eachResult(call, arguments, statementId, env, resolving);
             case "Render" -> renderResult(call, arguments, statementId, env, resolving);
-            // Flatten / First / Last 已由契约 typeRule 的 sequence.* 运算承载(与词表同源、按运算种类分派),
-            // 不再保留按函数名的 Java 分支。
-            case "ObjectKeys" ->
-                arguments.isEmpty() ? Fact.unknown(Fact.Loss.MISSING_CONTEXT) : ops.keys(arguments.getFirst());
-            case "ObjectValues" ->
-                arguments.isEmpty() ? Fact.unknown(Fact.Loss.MISSING_CONTEXT) : ops.values(arguments.getFirst());
-            case "ObjectEntries" ->
-                arguments.isEmpty() ? Fact.unknown(Fact.Loss.MISSING_CONTEXT) : ops.entries(arguments.getFirst());
+            // Flatten / First / Last 由契约 typeRule 的 sequence.* 运算承载,ObjectKeys / ObjectValues /
+            // ObjectEntries 由 record.* 运算承载(与词表同源、按运算种类分派);不再保留按函数名的 Java 分支。
             case "Switch" -> switchResult(call, arguments, statementId, env, resolving);
             default -> genericResult(spec, call, arguments);
         };
