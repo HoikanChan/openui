@@ -9,7 +9,7 @@ The set of builtin function names that validation accepts, carried by the contra
 _Avoid_: builtin whitelist, function registry
 
 **Type Rule**:
-The versioned, closed-grammar `typeRule` object on a builtin contract entry: arity, per-parameter accept patterns, and a result rule over a finite set of type operations. It is the only source of builtin result/argument typing — `RuleCompiler` rejects unknown syntax at load time and `RuleEvaluator` executes it against the type-analysis kernel; `params`/`returnType` are display data and cross-checked, never evaluated.
+The versioned, closed-grammar `typeRule` object on a builtin contract entry: arity, per-parameter accept patterns, and a result rule over a finite set of type operations. It is the only source of builtin result/argument typing — `RuleCompiler` rejects unknown syntax at load time and `RuleEvaluator` executes it against the type-analysis kernel. When present, its `arity` is authoritative; there is no automatic load-time cross-check against `params` (the default entries were verified by hand and by tests). `returnType` is display-only, and `params` survives as binder/variadic layout plus the `TypeExpr` used for template-constructor argument checks — neither infers results. A non-template builtin with no `typeRule` is unsupported: its result is UNPROVEN with `UNSUPPORTED_RULE`, and `params`/`returnType` alone no longer infer anything.
 _Avoid_: returnType inference, builtin type registry
 
 **Case Contract**:

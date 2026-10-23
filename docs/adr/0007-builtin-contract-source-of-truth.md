@@ -6,15 +6,19 @@ status: accepted
 
 GenUI Java SDK 的 builtin 函数输入输出规则曾双轨并行：base-contract.json 的 builtins 数组只有 signature 自由文本（仅喂提示词），校验链走 Java 硬编码——Builtins.java 的 20+2 函数名词表 + BuiltinTypeRegistry 的 22 组 arity/类型规则。两边已经漂移（契约缺 FormatNumber/FormatPercent，代码侧自认 known-stale）。本决定把全部结构化规则搬进契约，校验链从契约派生，函数的"是什么、怎么用"只剩一个可信来源。
 
-**终态（#90，2026-10-23）**：本决定经历两段实现。第一段把 `params`/`returnType` 从契约读入，但仍用 Java 的类型串解析器和泛型组合子求值；第二段（#77/#80/#81/#85/#86/#88 到 #90）用版本化结构规则 `typeRule` 取代了该求值器。现在生产类型分析只有一条路径：`TypeAnalysis` 内核 + `contract.RuleEvaluator`，`typeRule` 是唯一求值规则。旧的 `ValueType`/`ValueTypes` 类型代数、`TypeTranslator` 桥接、`returnType`+`params` 求值代码（含 `genericResult`/`collectLowerBounds`/`instantiate`）已删除；`returnType` 与 `params` 仅作为提示词展示与 `typeRule` 加载期的交叉校验数据保留，不再参与类型推断。下文保留第一段的历史说明，并在“求值器语义约定”一节改写为终态。
+**终态（#90，2026-10-23）**：本决定经历两段实现。第一段把 `params`/`returnType` 从契约读入，但仍用 Java 的类型串解析器和泛型组合子求值；第二段（#77/#80/#81/#85/#86/#88 到 #90）用版本化结构规则 `typeRule` 取代了该求值器。现在生产类型分析只有一条路径：`TypeAnalysis` 内核 + `contract.RuleEvaluator`，`typeRule` 是唯一求值规则。旧的 `ValueType`/`ValueTypes` 类型代数、`TypeTranslator` 桥接、`returnType`+`params` 求值代码（含 `genericResult`/`collectLowerBounds` 及旧求值器上的 `instantiate`）已删除；现存同名方法 `RuleEvaluator.instantiate` 是契约规则代入，不是旧路径。`returnType` 仅作为提示词展示数据保留；`params` 保留 binder/variadic 布局，以及模板构造（Each/Render/Switch）非 binder 参数检查所用的 `TypeExpr`——两者都不再参与 builtin 结果推断。加载期**没有** `params` 与 `typeRule.arity` 的自动交叉核对，默认 29 条的一致性靠人工核对与测试验证。下文保留第一段的历史说明，并在“求值器语义约定”一节改写为终态。
 
 ## 契约 builtins 结构
 
-每条 builtin 条目：`name`（查找键）、`signature`（纯展示，只喂提示词）、`description`、`templateBuiltin`（提示词分节标记，校验不消费）、`params`（`{name, type, optional?, variadic?, binder?}`）、`returnType`（纯展示/交叉校验）、`typeRule`（唯一求值规则，版本 1）。arity 以 `typeRule.arity` 为准；它与 `params` 推导结果在加载期交叉核对，不一致即启动失败。
+每条 builtin 条目：`name`（查找键）、`signature`（纯展示，只喂提示词）、`description`、`templateBuiltin`（提示词分节标记，校验不消费）、`params`（`{name, type, optional?, variadic?, binder?}`）、`returnType`（纯展示）、`typeRule`（唯一求值规则，版本 1）。有 `typeRule` 时 arity 以 `typeRule.arity` 为准；模板构造（Each/Render/Switch）没有 `typeRule`，arity 仍从 `params`/`callForms` 派生。加载器只编译规则，不比较 `typeRule.arity` 与 `params` 推导结果。
 
 ## typeRule 结构规则（终态）
 
-`typeRule` 是封闭文法：`typeRulesVersion`、`arity`、`parameters[{name, rest, accept}]`、`result`。`accept` 与 `result` 只能使用有限模式（`unknown`/`any`/scalar/`object`/`array`/`sequence`/`recordOf`/`variable`）和有限运算（`SEQUENCE_PRESERVE`/`SUBSET`/`ELEMENT`/`FLATTEN_ONE`/`SELECT`、`RECORD_OVERLAY`/`KEYS`/`VALUES`/`ENTRIES`、`SHAPE_MAP_SCALAR_OR_ARRAY`）。`RuleCompiler` 在加载期拒绝未知 op/tag、越界实参、非法 arity、非末位 `rest`、未绑定的结果变量；未知规则加载失败，不静默回退成 `any`。
+`typeRule` 是封闭文法：`typeRulesVersion`、`arity`、`parameters[{name, rest, accept}]`、`result`。`accept` 与 `result` 只能使用有限模式（`unknown`/`any`/scalar/`object`/`array`/`sequence`/`recordOf`/`variable`）和有限运算（`SEQUENCE_PRESERVE`/`SUBSET`/`ELEMENT`/`FLATTEN_ONE`/`SELECT`、`RECORD_OVERLAY`/`KEYS`/`VALUES`/`ENTRIES`、`SHAPE_MAP_SCALAR_OR_ARRAY`）。`RuleCompiler` 在加载期拒绝未知 op/tag、越界实参、非法 arity、非末位 `rest`；未知规则加载失败，不静默回退成 `any`。**未绑定的结果变量不在加载期拒绝**：这类规则编译通过，调用时该结果返回 `Unknown` 并记 `UNBOUND_TYPE_VARIABLE`（见下节）。
+
+### 无 `typeRule` 的遗留 custom 契约
+
+非模板 builtin 若只有 `params`/`returnType` 而没有 `typeRule`，结果记为 `UNPROVEN`，原因为 `UNSUPPORTED_RULE`——不再按 `returnType` 推断，也不再据此报类型 mismatch。这类条目当前是**不受支持**的：迁移旧契约时必须补 `typeRule` 才能获得等价的参数与结果检查。`params`/`returnType` 单独不再推出任何结果类型。
 
 ## 泛型求解（终态）
 

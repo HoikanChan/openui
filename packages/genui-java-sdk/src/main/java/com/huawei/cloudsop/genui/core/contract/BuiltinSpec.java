@@ -21,12 +21,15 @@ import java.util.Optional;
  * re-deriving them.
  *
  * <p>
- * 校验侧结构字段：{@link #name()}（查找键）、{@link #params()}（含 optional/variadic/binder 修饰）、{@link #returnType()}（展示与加载期交叉校验数据，不再参与类型推断）。{@code signature}
- * 降级为纯展示字段，只喂提示词，不承载任何校验规则。
+ * 校验侧结构字段：{@link #name()}（查找键）、{@link #params()}（含 optional/variadic/binder 修饰；其 {@link ParamSpec#typeExpr()} 仍用于模板构造的非 binder 参数检查）、{@link #returnType()}（纯展示，不参与类型推断或加载期校验）。{@code signature}
+ * 降级为纯展示字段，只喂提示词，不承载任何校验规则。加载器不比较 {@link #params()} 推导的 arity 与 {@code typeRule.arity}，两者一致靠人工核对与测试。
  *
  * <p>
- * {@link #typeRule()} 是契约驱动的结构化类型规则（#77 第 8 节），也是 builtin 参数与结果的唯一求值规则：调用形式、参数模式与结果运算 在加载期编译为封闭语法树，词表与类型规则来自同一次契约解析。{@code null}
- * 只表示该 builtin 是语言模板构造（Each/Render/Switch），其 binder 布局仍从 {@link #callForms()}/{@link #params()} 读取，模板作用域与分支语义由 Java 侧实现——不存在第二份 builtin 类型词表。
+ * {@link #typeRule()} 是契约驱动的结构化类型规则（#77 第 8 节），也是非模板 builtin 参数与结果的唯一求值规则：调用形式、参数模式与结果运算 在加载期编译为封闭语法树，词表与类型规则来自同一次契约解析。{@code null}
+ * 只表示该 builtin 是语言模板构造（Each/Render/Switch），其 binder 布局仍从 {@link #callForms()}/{@link #params()} 读取，模板作用域、分支语义与非 binder 参数检查由 Java 侧实现——不存在第二份 builtin 类型词表。
+ *
+ * <p>
+ * 非模板 builtin 缺少 {@code typeRule}（例如只声明 params/returnType 的遗留 custom 契约）是未证明状态：结果记为 UNPROVEN / {@code UNSUPPORTED_RULE}，不会按 {@code returnType} 推断。
  *
  * @since 2026
  */
