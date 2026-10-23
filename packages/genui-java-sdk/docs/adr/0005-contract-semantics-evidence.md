@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for #79 evidence and acceptance scope (2026-10-22). Concrete rules marked unresolved remain undecided; this record does not accept an implementation of #77.
+Accepted for #79 evidence and acceptance scope (2026-10-22); the migration target in item 4 was completed by #90 (2026-10-23). Concrete rules marked unresolved remain undecided; this record does not accept an implementation of #77.
 
 ## Context
 
@@ -15,7 +15,7 @@ Accepted for #79 evidence and acceptance scope (2026-10-22). Concrete rules mark
 1. 生效契约是本次语义与验收依据。记录结构化输入政策、文字容错和返回保证时分别注明，不以运行时容错自动放宽生成政策。遇到内部矛盾，明确记录受影响的精确规则，不从 TS、Java 当前实现或其他语言猜值。
 2. 保留 ADR 0006 的独立 Each 模板、传递依赖与 binder 环境。默认契约 inline-only 描述应由后续权威导出修正；本次不通过改生成资源伪装已完成同步。
 3. #77 的目标为有限结构类型和事实证据组成的一个深 Module。测试通过公开 validator 和确定性的生成校验 Interface；不暴露内部快照构造器给测试。局部类型运算性质测试只采用已确认的参考语义。
-4. #77 契约迁移将以版本化结构规则取代 ADR 0003 D3 的 signature 解析和按 builtin 名称处理 binder 的方案。名称、调用形式、binder 布局和结果规则来自同一生效契约；Java 按有限运算种类执行。此条是迁移目标，不宣称旧路径已删除。当前 ADR 0007 的 params/returnType 仍是实现事实，迁移完成后才替换。
+4. #77 契约迁移以版本化结构规则取代 ADR 0003 D3 的 signature 解析和按 builtin 名称处理 binder 的方案。名称、调用形式、binder 布局和结果规则来自同一生效契约；Java 按有限运算种类执行。**#90 已完成该迁移**：生产类型分析只有一条路径（`type/analysis` 内核 + `contract.RuleEvaluator`），`typeRule` 是唯一求值规则；ADR 0007 描述的 `returnType`/`params` 求值器、`ValueType`/`ValueTypes` 类型代数与 `TypeTranslator` 桥接已删除，Java 侧不再持有 builtin 类型词表。Each/Render/Switch 仍是语言模板构造，其 binder 布局从契约读取，语义留在 Java 侧——这不是第二套词汇表。ADR 0007 已同步更新为终态。
 5. 新引擎不沿用 ADR 0007 的“联合有未知则全无类型”和“空对象值集合按 null”作为目标语义。未知字段保留、空对象产生空 Keys/Values/Entries、空数组与未知数组分开；未证明不冒充通过或错误。First/Last 空结果等未定义值另列，不由此条补出。
 6. 权威导出必须保留新结构规则及版本，落入同一份前端/SDK 契约；历史只有展示 manifest 的脚本不能直接作为新结构的发布验收。未知规则加载失败，不忽略、不回退成 any。具体 schema 和实现由后续契约任务交付。
 

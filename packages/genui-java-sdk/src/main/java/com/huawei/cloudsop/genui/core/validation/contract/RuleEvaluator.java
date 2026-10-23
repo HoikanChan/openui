@@ -58,6 +58,12 @@ public final class RuleEvaluator {
 
         /** 实参数量不满足调用形式。 */
         void reportArityViolation(int minimum, OptionalInt maximum, int actual);
+
+        /**
+         * 登记一条参数模式的检查结论(含 MATCH/UNPROVEN),供覆盖统计使用;默认忽略,便于轻量调用方。
+         */
+        default void recordArgumentCheck(int index, TypePattern pattern, Fact actual, Checks.CheckResult result) {
+        }
     }
 
     /**
@@ -98,20 +104,27 @@ public final class RuleEvaluator {
         return null;
     }
 
-    /** 模式检查：编译为内核 Expectation，经 {@link Checks#check} 判定；只有 MISMATCH 上报。 */
+    /** 模式检查：编译为内核 Expectation，经 {@link Checks#check} 判定；结论全部登记，只有 MISMATCH 上报。 */
     private static void checkPattern(TypePattern pattern, Fact actual, int index, CallSite callSite) {
         Expectation expectation = toExpectation(pattern);
-        if (expectation == null || actual.hasUpstreamErrors()) {
+        if (expectation == null) {
             return;
         }
         // object 参数要求整个值是对象。内核 Accept 检查对“可能为空数组”的分支保留逐元素空集容错
         // （空数组满足“所有元素属于 T”），但空数组本身仍是确定的非对象，不能因此放过 object 参数。
         if (pattern instanceof TypePattern.AnyRecord && definitelyNotRecord(actual.type())) {
-            callSite.reportArgumentMismatch(index, displayPattern(pattern), actual);
+            Checks.CheckResult mismatch = new Checks.CheckResult(Checks.Verdict.MISMATCH, Set.of(), Set.of(),
+                    "value is not an object");
+            callSite.recordArgumentCheck(index, pattern, actual, mismatch);
+            if (!actual.hasUpstreamErrors()) {
+                callSite.reportArgumentMismatch(index, displayPattern(pattern), actual);
+            }
             return;
         }
         Checks.CheckResult result = Checks.check(actual, expectation, null);
-        if (result.verdict() == Checks.Verdict.MISMATCH) {
+        callSite.recordArgumentCheck(index, pattern, actual, result);
+        // 上游已报错时结论只用于覆盖统计,不重复上报。
+        if (result.verdict() == Checks.Verdict.MISMATCH && !actual.hasUpstreamErrors()) {
             callSite.reportArgumentMismatch(index, displayPattern(pattern), actual);
         }
     }
@@ -323,7 +336,8 @@ public final class RuleEvaluator {
         return TypeOps.flatten(type);
     }
 
-    private static String displayPattern(TypePattern pattern) {
+    /** 模式文本,用于诊断与覆盖登记(由规则求值器统一渲染,调用方不重复实现)。 */
+    public static String displayPattern(TypePattern pattern) {
         if (pattern instanceof TypePattern.Scalar scalar) {
             return scalar.kind().displayName();
         }

@@ -8,6 +8,10 @@ Java 21 SDK that assembles GenUI system prompts and drives an LLM to generate op
 The set of builtin function names that validation accepts, carried by the contract's builtins section and derived per validation request — never a hardcoded name list in code. Language keywords (Query/Mutation/Action) are not vocabulary.
 _Avoid_: builtin whitelist, function registry
 
+**Type Rule**:
+The versioned, closed-grammar `typeRule` object on a builtin contract entry: arity, per-parameter accept patterns, and a result rule over a finite set of type operations. It is the only source of builtin result/argument typing — `RuleCompiler` rejects unknown syntax at load time and `RuleEvaluator` executes it against the type-analysis kernel; `params`/`returnType` are display data and cross-checked, never evaluated.
+_Avoid_: returnType inference, builtin type registry
+
 **Case Contract**:
 The contract bundled with a repair-bench case, representing the contract in force when the original generation ran; it overrides the SDK default for that case's reproduction and repair, and silent fallback to the default is forbidden because it would disguise vocabulary drift as not-reproduced.
 _Avoid_: historical contract, legacy contract

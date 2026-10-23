@@ -330,9 +330,9 @@ class GenUiGeneratorIncrementalRepairTest {
     static final class ScriptedTransport implements InMemoryLlmTransport {
         private final Deque<String> posts = new ArrayDeque<>();
         private final Deque<String> streams = new ArrayDeque<>();
-        private final List<String> bodies = new ArrayList<>();
+        final List<String> bodies = new ArrayList<>();
         private int postCount;
-        private int streamCount;
+        int streamCount;
         private ManualTime time;
         private int advanceOnStream = -1;
         private long advanceToNanos = -1;

@@ -357,7 +357,11 @@ class StaticTypeValidationTest {
 
         assertEquals(ValidationStatus.VALID, sampled.status());
         assertEquals(ValidationStatus.VALID, complete.status());
-        assertEquals("0", sampled.metadata().extra().get("typeChecks.unproven"));
+        // 采样截断下,ObjectValues 的 object 参数要求仍是“已包含但分析未完整”,按未证明登记并只归因于
+        // 预算损失;截断本身另由 analysisComplete/traversalTruncated 呈现,不伪装成通过。
+        assertEquals("1", sampled.metadata().extra().get("typeChecks.unproven"));
+        assertTrue(sampled.metadata().extra().get("typeChecks.unprovenReasons").contains("PRECISION_BUDGET"),
+                () -> sampled.metadata().extra().toString());
         assertEquals("false", sampled.metadata().extra().get("typeChecks.analysisComplete"));
         assertEquals("true", sampled.metadata().extra().get("typeChecks.traversalTruncated"));
         assertEquals("PRECISION_BUDGET", sampled.metadata().extra().get("typeChecks.precisionLosses"));

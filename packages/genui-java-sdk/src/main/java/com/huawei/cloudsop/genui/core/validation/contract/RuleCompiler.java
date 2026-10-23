@@ -59,7 +59,6 @@ public final class RuleCompiler {
             throw new RuleCompilationException(where + ": missing 'result' rule");
         }
         Rule result = rule(raw.get("result"), parameters, where + ".result");
-        requireResultVariablesBound(result, parameters, builtinName, where);
         return new TypeRule(arity, parameters, result);
     }
 
@@ -248,14 +247,4 @@ public final class RuleCompiler {
         return index;
     }
 
-    /** result 引用的类型变量必须能由调用形式内的某个实参绑定（单次调用内求解，无外部来源）。 */
-    private static void requireResultVariablesBound(Rule result, List<TypeRule.ParamLayout> parameters,
-            String builtinName, String where) {
-        // 本票的规则语言里 variable 只在 result 树中出现，绑定源是"按参数下标收集的实参类型"。
-        // 变量名没有单独声明区；引用空变量名或空 result 已在 rule() 拒绝。这里保留扩展点：
-        // 未来若引入 bind-from 限定符，在此校验其参数下标落在调用形式内。
-        if (result == null) {
-            throw new RuleCompilationException(where + ": builtin '" + builtinName + "' has no result rule");
-        }
-    }
 }

@@ -1,6 +1,17 @@
-package com.huawei.cloudsop.genui.core.validation.type;
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
 
-/** Result of resolving one generated DSL path against the concrete Render Data Model. */
+package com.huawei.cloudsop.genui.core.validation.type.analysis;
+
+/**
+ * 一条生成路径在一次 Render Data Model 快照上的解析结果。
+ *
+ * <p>
+ * 解析结果直接携带类型内核的 {@link Type},不再经过第二套值类型代数;字段存在性计数保留为观察证据。
+ *
+ * @since 2026
+ */
 public sealed interface DataPathResolution permits DataPathResolution.Resolved, DataPathResolution.Missing,
         DataPathResolution.InvalidTraversal, DataPathResolution.Unprovable {
 
@@ -23,7 +34,7 @@ public sealed interface DataPathResolution permits DataPathResolution.Resolved, 
     record Evidence(int present, int missing, int nulls, int total, boolean plucked) {
     }
 
-    record Resolved(String path, ValueType type, Evidence evidence) implements DataPathResolution {
+    record Resolved(String path, Type type, Evidence evidence) implements DataPathResolution {
     }
 
     record Missing(String path, String hint) implements DataPathResolution {
