@@ -145,7 +145,10 @@ Each entry has `id`, `kind` (`"data" | "component"`), `name`, `aliases`,
 `createLibrary({ components, capabilityGaps }).toSpec()` exports these entries;
 `extend({ capabilityGaps })` appends entries. Omission uses the built-in
 `group-by`, `top-n`, and `join` gaps; an explicit `[]` disables defaults.
-Duplicate IDs and aliases matching component or builtin names fail export.
+Duplicate IDs, aliases shared by different gaps, blank metadata/phrases, and
+aliases matching component or builtin names fail export. Conflict checks strip
+surrounding whitespace and one leading `@`, matching the Java loader; exported
+values retain their original spelling.
 
 To export a complete JSON contract, call `exportGenerationContract(source)`.
 This preserves every other source field, including structured builtin type

@@ -114,3 +114,30 @@ it("returns independent gap arrays for repeated library and contract exports", a
     exportGenerationContract({ contractVersion: "v1", components: {} }).capabilityGaps[0].aliases,
   ).not.toContain("Custom");
 });
+
+it.each([
+  [
+    "normalized component alias",
+    { components: { Table: {} }, capabilityGaps: [{ ...componentGap, aliases: [" @Table "] }] },
+    /Table.*conflicts/,
+  ],
+  [
+    "normalized builtin alias",
+    { builtins: [{ name: "Join" }], capabilityGaps: [{ ...componentGap, aliases: [" @Join "] }] },
+    /Join.*conflicts/,
+  ],
+  [
+    "cross-gap alias",
+    { capabilityGaps: [componentGap, { ...componentGap, id: "second", aliases: [" @GeoMap "] }] },
+    /GeoMap.*map/,
+  ],
+  ["blank id", { capabilityGaps: [{ ...componentGap, id: " \t " }] }, /id/],
+  ["blank name", { capabilityGaps: [{ ...componentGap, name: " \n " }] }, /name/],
+  ["blank fallback", { capabilityGaps: [{ ...componentGap, fallback: " " }] }, /fallback/],
+  ["blank alias", { capabilityGaps: [{ ...componentGap, aliases: [" @ "] }] }, /alias/],
+  ["blank phrase", { capabilityGaps: [{ ...componentGap, phrases: [" \t "] }] }, /phrase/],
+])("rejects SDK-incompatible %s", (_name, overrides, message) => {
+  expect(() =>
+    exportGenerationContract({ contractVersion: "v1", components: {}, ...overrides }),
+  ).toThrow(message);
+});

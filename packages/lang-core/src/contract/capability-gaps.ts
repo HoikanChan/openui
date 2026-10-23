@@ -1,13 +1,29 @@
 import { z } from "zod";
 
+// Match Java String.strip()/isBlank(), including separator whitespace supported
+// by Character.isWhitespace but excluding nonbreaking spaces Java preserves.
+const JAVA_WHITESPACE =
+  "\\u0009-\\u000d\\u001c-\\u0020\\u1680\\u2000-\\u2006\\u2008-\\u200a\\u2028\\u2029\\u205f\\u3000";
+const stripPattern = new RegExp(`^[${JAVA_WHITESPACE}]+|[${JAVA_WHITESPACE}]+$`, "g");
+function strip(value: string): string {
+  return value.replace(stripPattern, "");
+}
+function normalizeAlias(value: string): string {
+  const stripped = strip(value);
+  return stripped.startsWith("@") ? stripped.slice(1) : stripped;
+}
+const nonblankString = z.string().refine((value) => strip(value).length > 0, "Must not be blank");
+
 /** Known unsupported capabilities, consumed by contract exporters and SDKs. */
 export const CapabilityGapSchema = z.object({
-  id: z.string().min(1),
+  id: nonblankString,
   kind: z.enum(["data", "component"]),
-  name: z.string().min(1),
-  aliases: z.array(z.string().min(1)),
-  phrases: z.array(z.string()),
-  fallback: z.string().min(1),
+  name: nonblankString,
+  aliases: z.array(
+    z.string().refine((value) => normalizeAlias(value).length > 0, "Must not be a blank alias"),
+  ),
+  phrases: z.array(nonblankString),
+  fallback: nonblankString,
 });
 
 export type CapabilityGap = z.infer<typeof CapabilityGapSchema>;
@@ -63,15 +79,24 @@ export function validateCapabilityGaps(
   const parsed = z.array(CapabilityGapSchema).parse(gaps);
   const names = new Set([...componentNames, ...builtinNames]);
   const ids = new Set<string>();
+  const aliases = new Map<string, string>();
   for (const gap of parsed) {
     if (ids.has(gap.id)) throw new Error(`Duplicate capability gap id: ${gap.id}`);
     ids.add(gap.id);
-    for (const alias of gap.aliases) {
+    for (const rawAlias of gap.aliases) {
+      const alias = normalizeAlias(rawAlias);
       if (names.has(alias)) {
         throw new Error(
           `Capability gap "${gap.id}" alias "${alias}" conflicts with an exported component or builtin`,
         );
       }
+      const previousGap = aliases.get(alias);
+      if (previousGap !== undefined && previousGap !== gap.id) {
+        throw new Error(
+          `Capability gap "${gap.id}" alias "${alias}" conflicts with capability gap "${previousGap}"`,
+        );
+      }
+      aliases.set(alias, gap.id);
     }
   }
   return parsed;

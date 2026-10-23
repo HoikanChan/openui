@@ -35,8 +35,26 @@ it("runs the public CLI and writes the complete validated contract", () => {
   expect(exported).toEqual(source);
 });
 
-it("fails before replacing an artifact on a name conflict", () => {
-  const { input, output } = fixture({ contractVersion: "v1", components: { GroupBy: {} } });
+it.each([
+  ["GroupBy", { GroupBy: {} }, []],
+  [" @Table ", { Table: {} }, []],
+  [" @Join ", {}, [{ name: "Join" }]],
+])("fails before replacing an artifact on alias conflict %s", (alias, components, builtins) => {
+  const { input, output } = fixture({
+    contractVersion: "v1",
+    components,
+    builtins,
+    capabilityGaps: [
+      {
+        id: "custom",
+        kind: "component",
+        name: "Gap",
+        aliases: [alias],
+        phrases: [],
+        fallback: "Show Table",
+      },
+    ],
+  });
   writeFileSync(output, "previous artifact");
   const result = spawnSync(
     process.execPath,
@@ -44,7 +62,7 @@ it("fails before replacing an artifact on a name conflict", () => {
     { encoding: "utf8" },
   );
   expect(result.status).not.toBe(0);
-  expect(result.stderr).toMatch(/GroupBy.*conflicts/);
+  expect(result.stderr).toMatch(/alias.*conflicts/);
   expect(readFileSync(output, "utf8")).toBe("previous artifact");
 });
 
