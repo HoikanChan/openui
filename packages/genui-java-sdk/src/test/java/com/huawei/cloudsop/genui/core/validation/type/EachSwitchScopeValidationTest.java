@@ -466,6 +466,25 @@ class EachSwitchScopeValidationTest {
                 () -> "重复验证结论必须一致: first=" + first.issues() + " second=" + second.issues());
     }
 
+    @Test
+    void extractedEachAndRenderTemplatesShadowSameNamedStatements() {
+        String dsl = "root = Stack(@Each(data.groups, row, groupTable))\n" + "groupTable = Table([nameCol], row.rows)\n"
+                + "nameCol = Col(\"Name\", \"name\", {cell: @Render(value, row, cell)})\n"
+                + "cell = TextContent(row.name + value)\n" + "row = 42\nvalue = 99";
+        ValidationResult result = validate(dsl,
+                Map.of("groups", List.of(Map.of("rows", List.of(Map.of("name", "Alice"))))));
+        assertEquals(ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+    }
+
+    @Test
+    void unknownEachTemplateTypeDoesNotProveTableShapeMismatch() {
+        String dsl = "rows = @Each(data.groups, row, row.missing)\n" + "root = Table([Col(\"Name\", \"name\")], rows)";
+        ValidationResult result = validate(dsl, Map.of("groups", List.of(Map.of("present", 1))));
+        issue(result, "type-field-missing");
+        assertFalse(result.issues().stream().anyMatch(candidate -> candidate.code().contains("row-shape")),
+                () -> "unknown template result cannot prove a downstream shape mismatch: " + result.issues());
+    }
+
     private static ValidationResult validate(String dsl, Map<String, Object> dataModel) {
         return DefaultOpenuiLangValidator.INSTANCE
                 .validate(ValidationRequest.builder().dsl(dsl).contract(GenerationContractLoader.loadDefault())

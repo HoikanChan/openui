@@ -115,6 +115,90 @@ class GenUiGeneratorIncrementalRepairTest {
         assertTrue(result.dsl().contains("TextContent(row.name)"), "new helper definition is retained");
     }
 
+    @Test
+    void streamRepairsEachArrayShapeUpstreamAndPreservesOtherContent() throws IOException {
+        String initial = "root = Stack([keep, table])\nkeep = TextContent(\"unchanged heading\")\n"
+                + "rows = @Each(data.groups, group, group.rows)\n" + "table = Table([Col(\"Name\", \"name\")], rows)\n";
+        String patch = "rows = @Flatten(@Each(data.groups, group, group.rows))\n";
+        ScriptedTransport transport = ScriptedTransport.streams(frame(initial) + SseFrames.done(),
+                frame(patch) + SseFrames.done());
+        Map<String, Object> data = Map.of("groups", List.of(Map.of("rows", List.of(Map.of("name", "Alice"))),
+                Map.of("rows", List.of(Map.of("name", "Bob")))));
+        String originalData = Json.stringify(data);
+        ArrayList<RenderStreamEnvelope> events = new ArrayList<>();
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generateStream(UiGenerationRequest.builder().userInput("Show all names and keep the heading")
+                        .response(data).build(), events::add);
+        assertEquals(ValidationStatus.VALID, result.validationStatus(), String.valueOf(result.validationResult()));
+        assertEquals(2, result.rounds().size());
+        assertTrue(result.rounds().get(0).validationResult().issues().stream()
+                .anyMatch(issue -> "table".equals(issue.statementId()) && issue.code().contains("row-shape")));
+        assertTrue(transport.bodies.get(1).contains("@Each returns one result per input"),
+                "shape guidance must identify upstream flattening");
+        assertTrue(transport.bodies.get(1).contains("`table`: upstream/downstream related statements: `rows`, `root`"),
+                "repair context includes upstream and users");
+        assertEquals(List.of(initial, patch), dslContents(events), "upstream override is forwarded live");
+        assertTrue(result.dsl().contains("keep = TextContent(\"unchanged heading\")"));
+        assertTrue(result.dsl().contains("table = Table([Col(\"Name\", \"name\")], rows)"));
+        assertEquals(originalData, Json.stringify(data), "Render Data Model is unchanged");
+        Files.createDirectories(Path.of("target"));
+        Files.writeString(Path.of("target/upstream-consumer-evidence.json"),
+                Json.stringify(Map.of("chunks", dslContents(events), "roundDefinitions",
+                        result.rounds().stream().map(round -> round.currentDefinitions()).toList(), "dsl", result.dsl(),
+                        "dataModel", data)));
+    }
+
+    @Test
+    void repairsObjectEntriesArgumentThroughPublicGeneration() throws IOException {
+        String initial = "root = Stack([keep, table])\nkeep = TextContent(\"unchanged heading\")\n"
+                + "entries = @ObjectEntries(data.rows)\n"
+                + "table = Table([Col(\"Key\", \"key\"), Col(\"Value\", \"value\")], entries)\n";
+        String patch = "entries = @ObjectEntries(data.counts)\n";
+        ScriptedTransport transport = ScriptedTransport.streams(frame(initial) + SseFrames.done(),
+                frame(patch) + SseFrames.done());
+        Map<String, Object> data = Map.of("rows", List.of(Map.of("name", "Alice")), "counts",
+                Map.of("switches", 2, "routers", 3));
+        String original = Json.stringify(data);
+        ArrayList<RenderStreamEnvelope> events = new ArrayList<>();
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generateStream(
+                        UiGenerationRequest.builder().userInput("Show counts by device kind").response(data).build(),
+                        events::add);
+        assertEquals(ValidationStatus.VALID, result.validationStatus(), String.valueOf(result.validationResult()));
+        assertEquals(2, result.rounds().size());
+        assertTrue(result.rounds().get(0).validationResult().issues().stream()
+                .anyMatch(issue -> "entries".equals(issue.statementId())
+                        && "builtin-argument-type-mismatch".equals(issue.code())));
+        assertTrue(
+                transport.bodies.get(1).contains("`entries`: upstream/downstream related statements: `table`, `root`"));
+        assertEquals(original, Json.stringify(data));
+        assertTrue(result.dsl().contains("keep = TextContent(\"unchanged heading\")"));
+        Files.writeString(Path.of("target/object-entries-consumer-evidence.json"),
+                Json.stringify(Map.of("chunks", dslContents(events), "roundDefinitions",
+                        result.rounds().stream().map(round -> round.currentDefinitions()).toList(), "dsl", result.dsl(),
+                        "dataModel", data)));
+    }
+
+    @Test
+    void upstreamPatchRechecksOtherConsumersBeforeFinishing() {
+        String initial = "root = Stack([keep, primary, secondary])\nkeep = TextContent(\"unchanged\")\n"
+                + "rows = data.rows\nprimary = Table([Col(\"Label\", \"label\")], rows)\n"
+                + "secondary = Table([Col(\"Name\", \"name\")], rows)";
+        String upstreamPatch = "rows = @Each(data.rows, row, {label: row.name})";
+        String consumerPatch = "secondary = Table([Col(\"Name\", \"label\")], rows)";
+        ScriptedTransport transport = ScriptedTransport.sync(syncResponse(initial), syncResponse(upstreamPatch),
+                syncResponse(consumerPatch));
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generate(UiGenerationRequest.builder().userInput("Show rows in two views")
+                        .response(Map.of("rows", List.of(Map.of("name", "Alice")))).build());
+        assertEquals(ValidationStatus.VALID, result.validationStatus(), String.valueOf(result.validationResult()));
+        assertEquals(3, result.rounds().size(), "valid patch cannot bypass full-program recheck");
+        assertTrue(result.rounds().get(1).validationResult().issues().stream().anyMatch(
+                issue -> "secondary".equals(issue.statementId()) && "type-table-column-missing".equals(issue.code())));
+        assertTrue(transport.bodies.get(2).contains("secondary"));
+        assertTrue(result.dsl().contains("keep = TextContent(\"unchanged\")"));
+    }
+
     // ── #75: 能力边界越界（如 @GroupBy）通过增量覆盖补丁收敛为 capabilityNotice + Table ──
 
     @Test

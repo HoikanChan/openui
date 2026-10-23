@@ -119,6 +119,13 @@ public final class RepairGuidance {
             return;
         }
 
+        if ("type-table-row-shape-mismatch".equals(code)) {
+            selected.add("@Each returns one result per input; an array-valued template therefore produces an array "
+                    + "of arrays. Trace the AST-related upstream definitions and fix the data shape to flat object "
+                    + "rows (using @Flatten when declared in the current contract). Preserve Table columns that "
+                    + "already match those rows; do not replace data processing with hand-written result values.");
+        }
+
         if (code.startsWith("type-")) {
             selected.add("Match the declared prop, operator, chart, and table types. If a value's type cannot be "
                     + "proven from the available data, do not assert a definite mismatch; render real data and "
@@ -128,7 +135,8 @@ public final class RepairGuidance {
             return;
         }
 
-        selected.add("Fix only the diagnosed statement and preserve every other definition exactly. Keep all "
-                + "references resolvable and do not invent names, data, or functions.");
+        selected.add("Fix the diagnosed expression or its related upstream/downstream definitions as needed, and "
+                + "preserve unrelated correct definitions. Keep all references resolvable and do not invent names, "
+                + "data, or functions.");
     }
 }
