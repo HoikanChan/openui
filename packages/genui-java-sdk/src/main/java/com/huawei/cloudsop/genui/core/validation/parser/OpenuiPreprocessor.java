@@ -71,6 +71,28 @@ public final class OpenuiPreprocessor {
     }
 
     /**
+     * Close a model round at its exact raw lexical state before another request is appended. Unlike validation
+     * preprocessing, this preserves whitespace inside an unfinished string. A trailing line comment must end before any
+     * generated closing delimiters are written.
+     *
+     * @param raw
+     *            model output already forwarded to the frontend
+     * @return only the closing suffix and statement separator, or an empty string
+     */
+    public static String streamRoundBoundary(String raw) {
+        String input = raw == null ? "" : raw;
+        String cleaned = stripComments(input);
+        String closed = autoClose(cleaned).text();
+        String suffix = closed.substring(cleaned.length());
+        boolean trailingComment = input.substring(input.lastIndexOf('\n') + 1).length() > cleaned
+                .substring(cleaned.lastIndexOf('\n') + 1).length();
+        if (suffix.isEmpty() && input.endsWith("\n")) {
+            return "";
+        }
+        return (trailingComment ? "\n" : "") + suffix + "\n";
+    }
+
+    /**
      * 去除出现在字符串字面量（{@code "} 与 {@code '} 两种定界符）之外的 {@code //} 与 {@code #} 行注释。 对应 {@code parser.ts} 中的
      * {@code stripComments}。
      */
