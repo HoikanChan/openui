@@ -2403,6 +2403,7 @@
       "signature": "Render(\"v\", expr) / Render(\"v\", \"row\", expr)",
       "description": "Create a deferred render template for prop values. Binder names are string literals and are only in scope inside the template body.",
       "templateBuiltin": true,
+      "input": null,
       "callForms": [
         {"arity": 2, "body": 1, "binders": [0]},
         {"arity": 3, "body": 2, "binders": [0, 1]}

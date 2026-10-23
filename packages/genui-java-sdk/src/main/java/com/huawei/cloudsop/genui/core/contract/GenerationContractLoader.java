@@ -197,9 +197,17 @@ public final class GenerationContractLoader {
         if (typeRuleRaw != null) {
             typeRule = RuleCompiler.compile(name, Json.asObject(typeRuleRaw, "typeRule of builtin " + name));
         }
-        // 元素输入来源必须是精确整数且落在参数表内;与 binder/body 的冲突按调用形式校验。
-        int inputIndex = -1;
+        // 元素输入来源必须显式声明: binder builtin 缺省 input 视为漏声明并在加载期失败;
+        // 显式 null 才表示"没有元素来源"(如 Render)。否则缺字段会静默退化成 MISSING_CONTEXT,
+        // 把本该确定报出的元素级错误降级为"未证明"。
+        boolean hasBinders = params.stream().anyMatch(BuiltinSpec.ParamSpec::binder);
+        boolean inputDeclared = entry.containsKey("input");
         Object inputRaw = entry.get("input");
+        if (hasBinders && !inputDeclared) {
+            throw new GenerationSdkException("builtin '" + name
+                    + "': binder builtin must declare 'input' (use null only when it has no element source)");
+        }
+        int inputIndex = -1;
         if (inputRaw != null) {
             int raw = exactIndex(inputRaw, name, "input");
             if (raw < 0 || raw >= params.size()) {
@@ -214,6 +222,15 @@ public final class GenerationContractLoader {
             if (params.stream().noneMatch(BuiltinSpec.ParamSpec::binder)) {
                 throw new GenerationSdkException(
                         "builtin '" + name + "': 'input' is only meaningful for a binder builtin");
+            }
+        } else if (hasBinders) {
+            // 显式 null 只允许用于确实没有元素来源的 binder builtin(Render);声明了元素数组参数
+            // (T[])却拒绝声明来源,等于用 null 绕过元素级检查,加载期直接拒绝。
+            for (BuiltinSpec.ParamSpec param : params) {
+                if (param.typeExpr() instanceof TypeExpr.ArrayOf array && containsTypeVar(array.element())) {
+                    throw new GenerationSdkException("builtin '" + name + "': parameter '" + param.name()
+                            + "' declares an element array, so 'input' must name its source index (not null)");
+                }
             }
         }
         return new BuiltinSpec(name, string(entry.get("signature")), string(entry.get("description")),

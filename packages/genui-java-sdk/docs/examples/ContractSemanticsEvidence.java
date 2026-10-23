@@ -49,6 +49,14 @@ public class ContractSemanticsEvidence {
         require(entry(entries, "FormatNumber").get("description").toString().contains("returns raw input"), "raw input");
         require(entry(entries, "Each").get("description").toString().contains("Do NOT create a separate statement"),
                 "Each stale guidance remains visible");
+        require(((Number) entry(entries, "Each").get("input")).intValue() == 0, "Each element source index");
+        require(entry(entries, "Render").containsKey("input") && entry(entries, "Render").get("input") == null,
+                "Render explicitly declares no element source");
+        require(contract.builtins().stream().filter(b -> b.name().equals("Each")).findFirst().orElseThrow()
+                .callForms().equals(List.of(new com.huawei.cloudsop.genui.core.contract.BuiltinSpec.CallForm(3, 2,
+                        List.of(1)))), "Each compiled call form");
+        require(contract.builtins().stream().filter(b -> b.name().equals("Render")).findFirst().orElseThrow()
+                .inputIndex() == -1, "Render has no element source");
         var acceptance = Json.asObject(Json.parse(Files.readString(sdk.resolve("docs/examples/contract-migration-acceptance.json"))), "acceptance");
         require(acceptance.get("contractVersion").equals(contract.contractVersion()), "acceptance version");
         var cases = Json.asList(acceptance.get("cases"), "cases");

@@ -164,6 +164,27 @@ class ValidationSnapshotTest {
                 validate("root = CardHeader(data.row.missing)", data, null, ValidationMode.FINAL).status());
     }
 
+    @Test
+    void snapshotRetainsCompiledBinderCallFormsAndInputSource() {
+        // #83:快照复制 BuiltinSpec 时必须连同编译后的 callForms/inputIndex 一起复制,
+        // 否则快照内的语义/类型分析与请求契约不一致。
+        ValidationSnapshot snapshot = ValidationSnapshot
+                .build(ValidationRequest.builder().dsl("root = Stack(@Each(data.rows, row, TextContent(row.id)))")
+                        .contract(GenerationContractLoader.loadDefault())
+                        .dataModel(Map.of("rows", List.of(Map.of("id", "a")))).mode(ValidationMode.FINAL).build());
+
+        BuiltinSpec each = snapshot.builtins().spec("Each");
+        assertEquals(0, each.inputIndex());
+        assertEquals(2, each.bodyIndex(3));
+        assertEquals(List.of(1), each.activeBinderIndexes(3));
+        assertEquals(List.of(new BuiltinSpec.CallForm(3, 2, List.of(1))), each.callForms());
+
+        BuiltinSpec render = snapshot.builtins().spec("Render");
+        assertEquals(-1, render.inputIndex());
+        assertEquals(List.of(new BuiltinSpec.CallForm(2, 1, List.of(0)), new BuiltinSpec.CallForm(3, 2, List.of(0, 1))),
+                render.callForms());
+    }
+
     private GenerationContract contract(Map<String, Object> title) {
         return new GenerationContract("test", "Header",
                 Map.of("Header", new ComponentPromptSpec("header",

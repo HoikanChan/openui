@@ -283,6 +283,71 @@ class EachSwitchScopeValidationTest {
                 () -> "空输入不得从 Never 元素制造字段缺失错误: " + result.issues());
     }
 
+    // ── 联合分支不能证明元素存在(#77 §6.5)────────────────────────────────
+
+    @Test
+    void switchUnionWithEmptyBranchDoesNotProveEachOutputRows() {
+        // 联合里只有一个分支非空,不能证明运行时拿到的是非空分支。可能为空的联合作为 Each 源时,
+        // 输出行形状仍属"未证明":不得据此报 Table 列缺失。
+        String dsl = "root = Table([c], @Each(@Switch(data.kind, {\"a\": [data.row], \"b\": []}, []), row, "
+                + "{x: row.id}))\nc = Col(\"X\", \"missing\")";
+        ValidationResult result = validate(dsl, Map.of("kind", "b", "row", Map.of("id", "a")));
+
+        assertEquals(ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+    }
+
+    @Test
+    void chainedSwitchUnionWithEmptyBranchKeepsOutputUnproven() {
+        // 同样的含空分支联合经链式 Each 传递后仍不得被当成观察到输出行。
+        String dsl = "root = Table([c], @Each(@Each(@Switch(data.kind, {\"a\": [data.row], \"b\": []}, []), "
+                + "row, row), x, {y: x.id}))\nc = Col(\"Y\", \"missing\")";
+        ValidationResult result = validate(dsl, Map.of("kind", "b", "row", Map.of("id", "a")));
+
+        assertEquals(ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+    }
+
+    @Test
+    void allNonEmptySwitchBranchesStillProveEachOutputRows() {
+        // 所有可能分支都确定非空时,联合可证明输出行存在:真反例(列缺失)必须仍然报出。
+        String dsl = "root = Table([c], @Each(@Switch(data.kind, {\"a\": [data.rowA], \"b\": [data.rowB]}, "
+                + "[data.rowA]), row, {x: row.id}))\nc = Col(\"X\", \"missing\")";
+        ValidationResult result = validate(dsl,
+                Map.of("kind", "a", "rowA", Map.of("id", "a"), "rowB", Map.of("id", "b")));
+
+        ValidationIssue issue = issue(result, "type-table-column-missing");
+        assertEquals("/columns/missing", issue.path());
+    }
+
+    @Test
+    void observedNonEmptySourceStillProvesEachOutputRows() {
+        // 实际观察到的非空数组是存在性证据:真反例必须仍然报出。
+        String dsl = "root = Table([c], @Each(data.rows, row, {x: row.id}))\nc = Col(\"X\", \"missing\")";
+        ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("id", "a"))));
+
+        issue(result, "type-table-column-missing");
+    }
+
+    @Test
+    void avgOverSwitchUnionKeepsTypeJustifiedCounterexample() {
+        // 空分支 + 非空 string 分支:@Avg 的类型级不匹配由非空分支自身元素类型独立证明,
+        // 属真反例,必须保留;修复只禁止把可能为空的联合当成"已观察到输出元素"。
+        String dsl = "root = TextContent(@Avg(@Each(@Switch(data.kind, {\"a\": [data.bad], \"b\": []}, []), "
+                + "row, data.bad)))";
+        ValidationResult result = validate(dsl, Map.of("kind", "b", "bad", "bad"));
+
+        issue(result, "builtin-argument-type-mismatch");
+    }
+
+    @Test
+    void avgOverAllEmptySwitchUnionDoesNotFabricateElements() {
+        // 所有分支都为空:输出确定为空,不得为 @Avg 伪造任何元素。
+        String dsl = "root = TextContent(@Avg(@Each(@Switch(data.kind, {\"a\": [], \"b\": []}, []), "
+                + "row, data.bad)))";
+        ValidationResult result = validate(dsl, Map.of("kind", "a", "bad", "bad"));
+
+        assertEquals(ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+    }
+
     // ── Switch 在当前环境分析 cases 并按 default 规则合并 ─────────────────
 
     @Test

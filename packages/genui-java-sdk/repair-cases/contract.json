@@ -2020,6 +2020,10 @@
       "signature": "Each(array, varName, template)",
       "description": "Evaluate template for each element. varName is the loop variable - use it ONLY inside the template expression (inline). Do NOT create a separate statement for the template.",
       "templateBuiltin": true,
+      "input": 0,
+      "callForms": [
+        {"arity": 3, "body": 2, "binders": [1]}
+      ],
       "params": [
         {
           "name": "array",
@@ -2041,6 +2045,11 @@
       "signature": "Render(\"v\", expr) / Render(\"v\", \"row\", expr)",
       "description": "Create a deferred render template for prop values. Binder names are string literals and are only in scope inside the template body.",
       "templateBuiltin": true,
+      "input": null,
+      "callForms": [
+        {"arity": 2, "body": 1, "binders": [0]},
+        {"arity": 3, "body": 2, "binders": [0, 1]}
+      ],
       "params": [
         {
           "name": "v",

@@ -351,16 +351,17 @@ public final class TypeOps {
                 results.add(Type.Unknown.INSTANCE);
             }
         }
-        // 输入确定非空(长度下界 ≥1,或观察到实际数组值)时,输出元素确定来自 body:
+        // 输入确定非空(每个可能的数组分支长度下界都 ≥1,或观察到实际非空数组值)时,输出元素确定来自 body:
         // 摘掉 NO_ELEMENT_EVIDENCE,生成形状(如 Each 产生的对象行)可支撑确定性的列存在性判定。
-        // 输入可能为空(0..* 且无实际值证据)时保持该 loss:拿到手的未必是 body 形状,仍止于未证明。
+        // #77 §6.5:单个联合分支非空不能证明元素存在——另一个分支可能为空,运行时拿到的未必是 body 形状。
+        // 因此只有全部分支都非空(或实际观察)才摘除该 loss。
         boolean inputProvablyNonempty = sequence.evidence().stream()
                 .anyMatch(e -> e instanceof Fact.Evidence.ObservedValue observed
                         && observed.value() instanceof List<?> values && !values.isEmpty());
-        for (Type branch : flatten(sequence.type())) {
-            if (branch instanceof Type.Sequence seq && seq.minLength() >= 1) {
-                inputProvablyNonempty = true;
-            }
+        if (!inputProvablyNonempty) {
+            List<Type> branches = flatten(sequence.type());
+            inputProvablyNonempty = !branches.isEmpty() && branches.stream()
+                    .allMatch(branch -> branch instanceof Type.Sequence seq && seq.minLength() >= 1);
         }
         if (inputProvablyNonempty) {
             losses.remove(Fact.Loss.NO_ELEMENT_EVIDENCE);

@@ -6,7 +6,7 @@
 
 ## 证据版本与复现
 
-核对基点：`bfc9c760f3b3feaa09a2ad8b23d5c357193b0574`。默认资源：`src/main/resources/openui/base-contract.json`，`contractVersion = @cloudsop/openui-react-ui-dsl@1.1.6`，SHA-256 `fcacf88ca74858ba653975aa05889bf839686972afe8b0cd82dc086d2e0c9fc2`，Git blob `f4f70c7c5747acfae078db0ad3b994eb6aebd134`。行号均指此版本。#83 资源新增 binder 布局字段（`input`/`nameSyntax`/`callForms`）；Sum 的可执行规则保持 number[] 输入与 number 输出。当前 SHA-256 为 `7a921c4345f88304c6bfb7def9af58dd00f52f3476967675a86f0b47a3358576`（contractVersion 未变，仍为 1.1.6 词汇）。
+核对基点：`bfc9c760f3b3feaa09a2ad8b23d5c357193b0574`。默认资源：`src/main/resources/openui/base-contract.json`，`contractVersion = @cloudsop/openui-react-ui-dsl@1.1.6`，SHA-256 `fcacf88ca74858ba653975aa05889bf839686972afe8b0cd82dc086d2e0c9fc2`，Git blob `f4f70c7c5747acfae078db0ad3b994eb6aebd134`。行号均指此版本。#83 资源新增 binder 布局字段（`input`/`nameSyntax`/`callForms`）；Sum 的可执行规则保持 number[] 输入与 number 输出。当前 SHA-256 为 `4b78c6d26d542d32347ea3a0f6ca214ec066f86ab75df822c30ff59aa8d42d97`（contractVersion 未变，仍为 1.1.6 词汇）。
 
 从仓库根目录运行：
 
@@ -25,12 +25,14 @@ java --class-path $evidenceClasspath packages/genui-java-sdk/docs/examples/Contr
 #83 资源更新后重跑，末行实测输出（2026-10-23，退出码 0）：
 
 ```json
-{"contractVersion":"@cloudsop/openui-react-ui-dsl@1.1.6","sha256":"7a921c4345f88304c6bfb7def9af58dd00f52f3476967675a86f0b47a3358576","builtins":29,"evidence":"contract-only; no runtime execution"}
+{"contractVersion":"@cloudsop/openui-react-ui-dsl@1.1.6","sha256":"4b78c6d26d542d32347ea3a0f6ca214ec066f86ab75df822c30ff59aa8d42d97","builtins":29,"evidence":"contract-only; no runtime execution"}
 ```
 
 `callForms` 按准确实参数量声明 `arity`、body 实参下标 `body` 与 binder 实参下标 `binders`。Each 声明 `{arity:3, body:2, binders:[1]}`；Render 分别声明两参和三参形式。加载器拒绝重复数量、缺失形式、越界或与 binder/input 冲突的位置；语义、依赖和类型分析共用编译结果，不再按最后一个实参猜 body。
 
-Each 只在源元素存在已证明时把 body 观察值包回输出数组。空源或 Filter 后未证明保留任何行的源不能产生这些观察值；body 内独立错误仍检查。本地关闭对象的缺字段由结构证明，不要求快照观察值。
+`input` 对 binder builtin 是必填键：整数指向元素来源实参；显式 `null` 表示"没有元素来源"（Render）。省略键视为漏声明并在加载期失败，避免 Each 的元素级检查静默退化成 `MISSING_CONTEXT`。声明了 `T[]` 元素数组参数的 binder builtin（Each）不得用 `null` 拒绝命名来源，同样在加载期拒绝。
+
+Each 只在源元素存在已证明时把 body 观察值包回输出数组。存在性证明要求实际观察到非空数组，或输入的**每个**可能分支长度下界都 ≥1；联合里单个非空分支不构成证明（#77 §6.5）。空源或 Filter 后未证明保留任何行的源不能产生这些观察值；body 内独立错误仍检查。本地关闭对象的缺字段由结构证明，不要求快照观察值。
 
 这是可执行的**契约证据检查**，不运行 DSL、不证明生产返回值。配套 [验收输入](examples/contract-migration-acceptance.json)将“确定结果”“只确定类型”“尚待定义”分开；后续实施将其接入公开 validator/确定性生成校验入口，不构造内部分析快照。
 

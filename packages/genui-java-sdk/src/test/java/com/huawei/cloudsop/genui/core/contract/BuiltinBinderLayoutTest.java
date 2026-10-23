@@ -1,7 +1,9 @@
 package com.huawei.cloudsop.genui.core.contract;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.core.Json;
@@ -92,27 +94,84 @@ class BuiltinBinderLayoutTest {
         }
     }
 
+    @Test
+    void binderBuiltinWithoutInputDeclarationIsRejectedAtLoadTime() {
+        // #83: binder builtin 省略 input 等于漏声明。旧行为会静默加载并让 Each 的元素级检查退化成
+        // MISSING_CONTEXT;现在必须在加载期失败,不能把契约笔误变成"未证明"。
+        for (String name : List.of("Each", "Render")) {
+            Map<String, Object> raw = mutateBuiltin(name, builtin -> builtin.remove("input"));
+            GenerationSdkException error = assertThrows(GenerationSdkException.class,
+                    () -> GenerationContractLoader.fromJson(Json.stringify(raw)));
+            assertTrue(error.getMessage().contains("input"), () -> name + " 应指明缺少 input: " + error.getMessage());
+        }
+    }
+
+    @Test
+    void explicitNullInputOnElementArrayBinderIsRejectedAtLoadTime() {
+        // 显式 null 表示"没有元素来源",只能用于 Render 这类无数组参数的 binder builtin;
+        // Each 声明了 T[] 参数,用 null 拒绝命名来源会绕过元素检查,加载期必须拒绝。
+        GenerationSdkException error = assertThrows(GenerationSdkException.class, () -> loadWithEachInput(null));
+        assertTrue(error.getMessage().contains("element array"), error::getMessage);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void renderDeclaresExplicitNullInputAsNoElementSource() {
+        // 默认契约用 "input": null 显式声明 Render 没有元素来源;键存在且值为 null,不是省略。
+        Map<String, Object> render = builtinEntry(rawDefaultContract(), "Render");
+        assertTrue(render.containsKey("input"), "Render 必须显式声明 input 键");
+        assertNull(render.get("input"), "Render 的 input 必须为 null");
+
+        BuiltinSpec spec = GenerationContractLoader.loadDefault().builtins().stream()
+                .filter(candidate -> "Render".equals(candidate.name())).findFirst().orElseThrow();
+        assertEquals(-1, spec.inputIndex());
+        assertEquals(1, spec.bodyIndex(2));
+        assertEquals(2, spec.bodyIndex(3));
+    }
+
     /** 复制默认契约 JSON,仅替换 Each 的 input 声明,走公开 fromJson 加载。 */
     private static GenerationContract loadWithEachInput(Object input) {
         String json = Json.stringify(mutateEachInput(input));
         return GenerationContractLoader.fromJson(json);
     }
 
-    @SuppressWarnings("unchecked")
     private static Map<String, Object> mutateEachInput(Object input) {
+        return mutateBuiltin("Each", builtin -> builtin.put("input", input));
+    }
+
+    /** 复制默认契约 JSON,按 builtin 名修改条目后返回原始 map。 */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> mutateBuiltin(String name,
+            java.util.function.Consumer<Map<String, Object>> mutation) {
+        Map<String, Object> raw = rawDefaultContract();
+        for (Object entry : (List<Object>) raw.get("builtins")) {
+            Map<String, Object> builtin = (Map<String, Object>) entry;
+            if (name.equals(builtin.get("name"))) {
+                mutation.accept(builtin);
+            }
+        }
+        return raw;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> builtinEntry(Map<String, Object> raw, String name) {
+        for (Object entry : (List<Object>) raw.get("builtins")) {
+            Map<String, Object> builtin = (Map<String, Object>) entry;
+            if (name.equals(builtin.get("name"))) {
+                return builtin;
+            }
+        }
+        throw new IllegalStateException("builtin not found: " + name);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> rawDefaultContract() {
         String original;
         try (var stream = BuiltinBinderLayoutTest.class.getResourceAsStream("/openui/base-contract.json")) {
             original = new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
         } catch (java.io.IOException e) {
             throw new IllegalStateException(e);
         }
-        Map<String, Object> raw = (Map<String, Object>) Json.parse(original);
-        for (Object entry : (List<Object>) raw.get("builtins")) {
-            Map<String, Object> builtin = (Map<String, Object>) entry;
-            if ("Each".equals(builtin.get("name"))) {
-                builtin.put("input", input);
-            }
-        }
-        return raw;
+        return (Map<String, Object>) Json.parse(original);
     }
 }
