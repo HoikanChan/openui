@@ -244,6 +244,31 @@ describe("unresolved references (streaming)", () => {
   });
 });
 
+describe("incremental repair consumption", () => {
+  it("applies a complete repair without a trailing newline and resolves new helpers", () => {
+    const parser = createStreamParser(schema);
+    parser.push('root = Stack([content])\ncontent = Unknown("broken")\n');
+    const result = parser.push('helper = Title("fixed")\ncontent = Stack([helper])');
+
+    expect(result.meta.errors).toHaveLength(0);
+    expect(result.meta.unresolved).toHaveLength(0);
+    expect(result.root?.props.children).toMatchObject([
+      {
+        typeName: "Stack",
+        props: { children: [{ typeName: "Title", props: { text: "fixed" } }] },
+      },
+    ]);
+    expect(parser.getResult().root).toEqual(result.root);
+  });
+
+  it("keeps the accepted definition while its repair is still incomplete", () => {
+    const parser = createStreamParser(schema);
+    parser.push('root = Title("original")\n');
+    expect(parser.push('root = Title("rep').root?.props.text).toBe("original");
+    expect(parser.push('aired")').root?.props.text).toBe("repaired");
+  });
+});
+
 // ── existing error rules ──────────────────────────────────────────────────────
 
 describe("existing errors carry type and code", () => {

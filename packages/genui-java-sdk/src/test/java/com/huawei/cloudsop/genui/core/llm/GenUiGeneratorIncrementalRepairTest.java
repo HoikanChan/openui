@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.llm.stream.SseFrames;
 import com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport;
+import com.huawei.cloudsop.genui.core.llm.transport.LlmCall;
+import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 
@@ -21,12 +23,18 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -323,6 +331,147 @@ class GenUiGeneratorIncrementalRepairTest {
                 "the interrupted round records the session terminal reason");
         assertTrue(result.rounds().get(1).rawOutput().contains("root = Stack(["));
         assertEquals(1, envelopes.stream().filter(e -> RenderStreamEnvelope.TYPE_DONE.equals(e.type())).count());
+    }
+
+    @Test
+    void streamSeparatesAnUnterminatedRoundFromItsRepair() {
+        ScriptedTransport transport = ScriptedTransport.streams(
+                frame("root = Stack([late])\nlate = Bogus(") + SseFrames.done(),
+                frame("late = TextContent(\"fixed\")") + SseFrames.done());
+        ArrayList<RenderStreamEnvelope> events = new ArrayList<>();
+
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generateStream(req(), events::add);
+
+        assertEquals(ValidationStatus.VALID, result.validationStatus());
+        assertEquals("root = Stack([late])\nlate = Bogus()\nlate = TextContent(\"fixed\")",
+                String.join("", dslContents(events)), "the frontend receives separate complete statements");
+        assertEquals("root = Stack([late])\nlate = Bogus(", result.rounds().get(0).rawOutput(),
+                "normalization must not change the recorded model output");
+        assertEquals("late = TextContent(\"fixed\")", result.rounds().get(1).rawOutput());
+    }
+
+    @Test
+    void emptyAndRepeatedPatchesKeepRepairingUntilTheOriginalDeadline() {
+        ManualTime time = new ManualTime();
+        ScriptedTransport transport = ScriptedTransport.streams(frame("root = Bogus()\n") + SseFrames.done(),
+                SseFrames.done(), frame("root = Bogus()\n") + SseFrames.done(), "");
+        transport.advanceAfterStream(time, 4, 20);
+        AtomicInteger handoffs = new AtomicInteger();
+
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .withTiming(time.timing()).generateStream(req(), event -> {
+                }, (original, reason, sink) -> {
+                    handoffs.incrementAndGet();
+                    return new GenUiGenerationResult("fallback", original.response());
+                });
+
+        assertEquals(GenerationEndReason.TIMEOUT, result.endReason());
+        assertEquals(4, transport.streamCount, "neither empty output nor unchanged errors end the session");
+        assertEquals(1, time.schedules.get(), "all repair rounds share the original timer");
+        assertEquals(1, handoffs.get());
+        assertEquals("", result.rounds().get(1).rawOutput());
+    }
+
+    @Test
+    void recordsCrossRoundConsumerEvidenceWithIncompleteInitialAndRepairOutputs() throws Exception {
+        ScriptedTransport transport = ScriptedTransport.streams(
+                frame("root = Stack([late])\nlate = Bogus(") + SseFrames.done(),
+                frame("late = StillBogus(") + SseFrames.done(),
+                frame("helper = TextContent(\"repair helper visible\")\nlate = Stack([helper])") + SseFrames.done());
+        ArrayList<RenderStreamEnvelope> events = new ArrayList<>();
+
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generateStream(req(), events::add);
+
+        assertEquals(ValidationStatus.VALID, result.validationStatus());
+        assertEquals(3, result.rounds().size());
+        assertEquals("root = Stack([late])\nlate = Stack([helper])\nhelper = TextContent(\"repair helper visible\")",
+                result.dsl());
+        assertEquals(
+                List.of("root = Stack([late])\nlate = Bogus(", "late = StillBogus(",
+                        "helper = TextContent(\"repair helper visible\")\nlate = Stack([helper])"),
+                result.rounds().stream().map(round -> round.rawOutput()).toList());
+        assertEquals(1, events.stream().filter(event -> RenderStreamEnvelope.TYPE_DONE.equals(event.type())).count());
+        // Consumable evidence for the real frontend harness; only build output is written.
+        Path target = Path.of("target", "incremental-consumer-evidence.json");
+        Files.createDirectories(target.getParent());
+        Files.writeString(target, Json.stringify(Map.of("chunks", dslContents(events), "dsl", result.dsl(),
+                "roundDefinitions", result.rounds().stream().map(round -> round.currentDefinitions()).toList())));
+    }
+
+    @Test
+    void blockedRepairIsCancelledAndItsLateOutputCannotFollowTheSingleHandoff() throws Exception {
+        GenerationDeadlineTest.ManualTime time = new GenerationDeadlineTest.ManualTime();
+        CountDownLatch repairing = new CountDownLatch(1);
+        CountDownLatch cancelled = new CountDownLatch(1);
+        CountDownLatch lateRead = new CountDownLatch(1);
+        AtomicBoolean firstReleased = new AtomicBoolean();
+        AtomicInteger calls = new AtomicInteger();
+        LlmTransport transport = new LlmTransport() {
+            public String post(String body) {
+                throw new AssertionError();
+            }
+            public InputStream postStream(String body) {
+                throw new AssertionError();
+            }
+            public LlmCall newCall(String body, boolean stream) {
+                int number = calls.incrementAndGet();
+                if (number > 1)
+                    assertTrue(firstReleased.get(), "release the old source before repair");
+                return new LlmCall() {
+                    public InputStream execute() {
+                        if (number == 1)
+                            return new ByteArrayInputStream(
+                                    (frame("root = Bogus()\n") + SseFrames.done()).getBytes(StandardCharsets.UTF_8));
+                        repairing.countDown();
+                        while (cancelled.getCount() != 0) {
+                            try {
+                                cancelled.await();
+                            } catch (InterruptedException ignored) {
+                            }
+                        }
+                        return new ByteArrayInputStream(
+                                (frame("root = Stack([])\n") + SseFrames.done()).getBytes(StandardCharsets.UTF_8)) {
+                            public synchronized int read(byte[] b, int offset, int length) {
+                                lateRead.countDown();
+                                return super.read(b, offset, length);
+                            }
+                        };
+                    }
+                    public void cancel() {
+                        if (number == 1)
+                            firstReleased.set(true);
+                        else
+                            cancelled.countDown();
+                    }
+                };
+            }
+        };
+        var events = new CopyOnWriteArrayList<RenderStreamEnvelope>();
+        AtomicInteger handoffs = new AtomicInteger();
+        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .withTiming(time.timing());
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            var future = executor
+                    .submit(() -> generator.generateStream(req(), events::add, (original, reason, sink) -> {
+                        handoffs.incrementAndGet();
+                        assertEquals(0, cancelled.getCount());
+                        return new GenUiGenerationResult("fallback", original.response());
+                    }));
+            assertTrue(repairing.await(3, TimeUnit.SECONDS));
+            time.expire();
+            GenUiGenerationResult result = future.get(3, TimeUnit.SECONDS);
+            assertTrue(lateRead.await(3, TimeUnit.SECONDS));
+            assertEquals(GenerationEndReason.TIMEOUT, result.endReason());
+            assertEquals(List.of("root = Bogus()\n"), dslContents(events));
+            assertEquals(List.of("dataModel", "dsl", "replace", "done"),
+                    events.stream().map(RenderStreamEnvelope::type).toList());
+            assertEquals(1, handoffs.get());
+            assertEquals(1, time.schedules.get());
+            assertEquals(2, result.rounds().size());
+            assertEquals(GenerationEndReason.TIMEOUT, result.rounds().get(1).endReason());
+        }
     }
 
     // ── fake transports ─────────────────────────────────────────────────────

@@ -562,12 +562,12 @@ export function createStreamParser(
     }
 
     // Merge: completed cache + re-parsed pending statement.
-    // Pending statements can only add NEW IDs — they cannot overwrite completed ones.
-    // This prevents mid-stream partial text (e.g. `root = Card`) from corrupting
-    // existing completed statements during edit streaming.
+    // Keep the completed definition while its replacement is incomplete. Once
+    // syntactically complete, apply last-wins even without a trailing newline:
+    // repair requests may end immediately after their final closing delimiter.
     const allStmtMap = new Map(completedStmtMap);
     for (const s of stmts) {
-      if (completedStmtMap.has(s.id)) continue;
+      if (wasIncomplete && completedStmtMap.has(s.id)) continue;
       const expr = parseExpression(s.tokens);
       const stmt = classifyStatement(s, expr);
       allStmtMap.set(s.id, stmt);
