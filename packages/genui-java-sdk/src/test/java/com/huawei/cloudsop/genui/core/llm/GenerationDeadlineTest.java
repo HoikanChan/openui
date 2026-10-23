@@ -129,7 +129,7 @@ class GenerationDeadlineTest {
         LlmCall call = new LlmCall() {
             public InputStream execute() {
                 return new java.io.ByteArrayInputStream(
-                        frame("root = Stack([])").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        (frame("root = Stack([])") + "data: [DONE]").getBytes(java.nio.charset.StandardCharsets.UTF_8));
             }
             public void cancel() {
                 cancelled.countDown();
@@ -220,7 +220,8 @@ class GenerationDeadlineTest {
                         }
                         if (interrupted)
                             Thread.currentThread().interrupt();
-                        byte[] late = frame("root = Stack([])").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                        byte[] late = (frame("root = Stack([])") + "data: [DONE]")
+                                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
                         System.arraycopy(late, 0, bytes, offset, late.length);
                         deliveredLate.countDown();
                         return late.length;
@@ -251,8 +252,8 @@ class GenerationDeadlineTest {
     private static LlmTransport immediate(ManualTime time, int seconds) {
         return single(new LlmCall() {
             public InputStream execute() {
-                return new java.io.ByteArrayInputStream(
-                        frame("root = Stack([])").getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+                return new java.io.ByteArrayInputStream((frame("root = Stack([])") + "data: [DONE]")
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
                     public synchronized int read(byte[] b, int off, int len) {
                         int count = super.read(b, off, len);
                         if (count == -1)

@@ -42,7 +42,7 @@ public final class SseDeltaParser {
                 return accumulated.toString();
             }
         }
-        return accumulated.toString();
+        throw new IOException("SSE stream ended without stop or [DONE]");
     }
 
     private static void drainCompleteFrames(StringBuilder pending, StringBuilder accumulated, Consumer<String> sink)
@@ -82,6 +82,8 @@ public final class SseDeltaParser {
         String finishReason;
         try {
             Map<String, Object> object = Json.asObject(Json.parse(payload), "SSE frame");
+            if (object.get("error") != null)
+                throw new IOException("SSE upstream error frame");
             List<Object> choices = Json.asList(object.get("choices"), "choices");
             if (choices.isEmpty())
                 return;

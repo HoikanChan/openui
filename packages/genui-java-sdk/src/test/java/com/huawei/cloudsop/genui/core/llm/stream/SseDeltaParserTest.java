@@ -47,7 +47,8 @@ class SseDeltaParserTest {
     void handlesFramesSplitAcrossReads() throws IOException {
         ArrayList<String> deltas = new ArrayList<>();
 
-        String accumulated = SseDeltaParser.parse(oneByteAtATime(input(frame("split"))), deltas::add);
+        String accumulated = SseDeltaParser.parse(oneByteAtATime(input(frame("split") + SseFrames.done())),
+                deltas::add);
 
         assertEquals(List.of("split"), deltas);
         assertEquals("split", accumulated);
@@ -55,7 +56,7 @@ class SseDeltaParserTest {
 
     @Test
     void skipsBadFramesAndContinues() throws IOException {
-        String stream = "data: not-json\n\n" + frame("ok");
+        String stream = "data: not-json\n\n" + frame("ok") + SseFrames.done();
         ArrayList<String> deltas = new ArrayList<>();
 
         String accumulated = SseDeltaParser.parse(input(stream), deltas::add);
@@ -66,7 +67,7 @@ class SseDeltaParserTest {
 
     @Test
     void parsesFinalFrameWithoutTrailingBlankLine() throws IOException {
-        String stream = "data: {\"choices\":[{\"delta\":{\"content\":\"tail\"}}]}";
+        String stream = frame("tail") + "data: [DONE]";
         ArrayList<String> deltas = new ArrayList<>();
 
         String accumulated = SseDeltaParser.parse(input(stream), deltas::add);
@@ -77,7 +78,7 @@ class SseDeltaParserTest {
 
     @Test
     void skipsEmptyDeltaContent() throws IOException {
-        String stream = frame("") + frame("next");
+        String stream = frame("") + frame("next") + SseFrames.done();
         ArrayList<String> deltas = new ArrayList<>();
 
         String accumulated = SseDeltaParser.parse(input(stream), deltas::add);

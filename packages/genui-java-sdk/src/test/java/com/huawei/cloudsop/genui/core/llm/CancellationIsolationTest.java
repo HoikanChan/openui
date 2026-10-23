@@ -22,8 +22,9 @@ import java.util.concurrent.atomic.*;
 class CancellationIsolationTest {
 
     private static String frame(String dsl) {
-        return "data: " + Json.stringify(java.util.Map.of("choices",
-                List.of(java.util.Map.of("delta", java.util.Map.of("content", dsl))))) + "\n\n";
+        return "data: " + Json.stringify(
+                java.util.Map.of("choices", List.of(java.util.Map.of("delta", java.util.Map.of("content", dsl)))))
+                + "\n\n";
     }
 
     /** 可手动推进的时钟;每个请求各自注册截止动作,按注册顺序保存以便逐个触发。 */
@@ -101,8 +102,8 @@ class CancellationIsolationTest {
                 }
                 return new LlmCall() {
                     public InputStream execute() {
-                        return new java.io.ByteArrayInputStream(
-                                frame("root = Stack([])").getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+                        return new java.io.ByteArrayInputStream((frame("root = Stack([])") + "data: [DONE]")
+                                .getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
                             public synchronized int read(byte[] bytes, int offset, int length) {
                                 int count = super.read(bytes, offset, length);
                                 if (count == -1) {
@@ -123,16 +124,17 @@ class CancellationIsolationTest {
             }
         };
 
-        var generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport).withTiming(deadlines.timing());
+        var generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .withTiming(deadlines.timing());
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             try {
-                var blocked = executor.submit(() -> generator
-                        .generateStream(UiGenerationRequest.builder().userInput("first").build(), e -> {
+                var blocked = executor.submit(
+                        () -> generator.generateStream(UiGenerationRequest.builder().userInput("first").build(), e -> {
                         }));
                 assertTrue(reading.await(3, TimeUnit.SECONDS), "first request must be reading");
 
-                GenUiGenerationResult concurrent = generator.generateStream(
-                        UiGenerationRequest.builder().userInput("second").build(), e -> {
+                GenUiGenerationResult concurrent = generator
+                        .generateStream(UiGenerationRequest.builder().userInput("second").build(), e -> {
                         });
                 assertEquals(ValidationStatus.VALID, concurrent.validationStatus());
                 assertEquals(GenerationEndReason.CHECK_PASSED, concurrent.endReason());
