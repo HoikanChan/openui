@@ -1645,7 +1645,28 @@
           "type": "T[]"
         }
       ],
-      "returnType": "T"
+      "returnType": "T",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "array",
+            "accept": "array"
+          }
+        ],
+        "result": {
+          "op": "sequence.select",
+          "operands": [
+            {
+              "argument": 0
+            }
+          ]
+        }
+      }
     },
     {
       "name": "Last",
@@ -1658,7 +1679,28 @@
           "type": "T[]"
         }
       ],
-      "returnType": "T"
+      "returnType": "T",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "array",
+            "accept": "array"
+          }
+        ],
+        "result": {
+          "op": "sequence.select",
+          "operands": [
+            {
+              "argument": 0
+            }
+          ]
+        }
+      }
     },
     {
       "name": "Sum",
@@ -1770,7 +1812,34 @@
           "type": "array[]"
         }
       ],
-      "returnType": "array"
+      "returnType": "array",
+      "typeRule": {
+        "typeRulesVersion": 1,
+        "arity": {
+          "min": 1,
+          "max": 1
+        },
+        "parameters": [
+          {
+            "name": "array",
+            "accept": {
+              "tag": "sequence",
+              "element": {
+                "tag": "sequence",
+                "element": "any"
+              }
+            }
+          }
+        ],
+        "result": {
+          "op": "sequence.flattenOne",
+          "operands": [
+            {
+              "argument": 0
+            }
+          ]
+        }
+      }
     },
     {
       "name": "ObjectEntries",
