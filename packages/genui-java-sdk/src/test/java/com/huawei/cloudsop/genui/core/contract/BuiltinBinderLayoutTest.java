@@ -115,6 +115,29 @@ class BuiltinBinderLayoutTest {
     }
 
     @Test
+    void explicitNullInputOnConcreteArrayBinderIsRejectedAtLoadTime() {
+        Map<String, Object> raw = mutateEachSource("number[]", null);
+        GenerationSdkException error = assertThrows(GenerationSdkException.class,
+                () -> GenerationContractLoader.fromJson(Json.stringify(raw)));
+        assertTrue(error.getMessage().contains("element array"), error::getMessage);
+    }
+
+    @Test
+    void concreteArraySourceStillChecksIndependentBodyErrors() {
+        GenerationContract contract = GenerationContractLoader
+                .fromJson(Json.stringify(mutateEachSource("number[]", 0)));
+        var result = com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator.INSTANCE
+                .validate(com.huawei.cloudsop.genui.core.validation.ValidationRequest.builder()
+                        .dsl("root = Stack(@Each([1], row, TextContent(@Round(\"bad\"))))").contract(contract)
+                        .dataModel(Map.of()).mode(com.huawei.cloudsop.genui.core.validation.ValidationMode.FINAL)
+                        .build());
+        assertEquals(com.huawei.cloudsop.genui.core.validation.ValidationStatus.INVALID, result.status());
+        assertTrue(result.issues().stream().anyMatch(
+                issue -> "builtin-argument-type-mismatch".equals(issue.code()) && issue.message().contains("@Round")),
+                () -> String.valueOf(result.issues()));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void renderDeclaresExplicitNullInputAsNoElementSource() {
         // 默认契约用 "input": null 显式声明 Render 没有元素来源;键存在且值为 null,不是省略。
@@ -137,6 +160,13 @@ class BuiltinBinderLayoutTest {
 
     private static Map<String, Object> mutateEachInput(Object input) {
         return mutateBuiltin("Each", builtin -> builtin.put("input", input));
+    }
+
+    private static Map<String, Object> mutateEachSource(String type, Object input) {
+        Map<String, Object> raw = mutateEachInput(input);
+        Map<String, Object> each = builtinEntry(raw, "Each");
+        Json.asObject(Json.asList(each.get("params"), "params").get(0), "source").put("type", type);
+        return raw;
     }
 
     /** 复制默认契约 JSON,按 builtin 名修改条目后返回原始 map。 */

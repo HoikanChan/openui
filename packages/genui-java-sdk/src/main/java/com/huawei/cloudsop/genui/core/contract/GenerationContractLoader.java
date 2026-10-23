@@ -225,9 +225,9 @@ public final class GenerationContractLoader {
             }
         } else if (hasBinders) {
             // 显式 null 只允许用于确实没有元素来源的 binder builtin(Render);声明了元素数组参数
-            // (T[])却拒绝声明来源,等于用 null 绕过元素级检查,加载期直接拒绝。
+            // (含具体元素类型的数组)却拒绝声明来源,等于用 null 绕过元素级检查,加载期直接拒绝。
             for (BuiltinSpec.ParamSpec param : params) {
-                if (param.typeExpr() instanceof TypeExpr.ArrayOf array && containsTypeVar(array.element())) {
+                if (param.typeExpr() instanceof TypeExpr.ArrayOf) {
                     throw new GenerationSdkException("builtin '" + name + "': parameter '" + param.name()
                             + "' declares an element array, so 'input' must name its source index (not null)");
                 }
