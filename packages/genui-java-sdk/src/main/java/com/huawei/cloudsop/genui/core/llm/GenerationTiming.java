@@ -8,7 +8,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 
-/** Injectable monotonic clock and independent timer. The generation budget is always 20 seconds. */
+/** Injectable monotonic clock. The 20-second budget gates second and later incremental repairs only. */
 public record GenerationTiming(LongSupplier nanoTime, Scheduler scheduler) {
     public static final long BUDGET_NANOS = TimeUnit.SECONDS.toNanos(20);
     private static final ScheduledThreadPoolExecutor TIMER = timer();
@@ -18,6 +18,7 @@ public record GenerationTiming(LongSupplier nanoTime, Scheduler scheduler) {
         Objects.requireNonNull(scheduler);
     }
 
+    /** Retained for source compatibility; generation no longer schedules budget cancellation. */
     @FunctionalInterface
     public interface Scheduler {
         /** Schedule without blocking; return an idempotent cancellation action. */

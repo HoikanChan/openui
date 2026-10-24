@@ -142,7 +142,7 @@ public final class GenUiGenerator {
      * 同步生成:一次模型请求,轮末对当前有效程序统一校验。同名覆盖后旧定义及其错误不再生效;结果 dsl 是去重后的当前 有效定义。INVALID 时按
      * {@link GenUiValidationConfig#repairPolicy()} 分流:
      * <ul>
-     * <li>{@code INCREMENTAL_REPAIR}(默认):进入多轮增量修复;仍 INVALID 或 20 秒预算耗尽时返回整页 Markdown 降级结果,DSL 侧以
+     * <li>{@code INCREMENTAL_REPAIR}(默认):首轮修复必执行,后续轮次发起前检查 20 秒预算;修复结束仍 INVALID 时返回整页 Markdown 降级结果,DSL 侧以
      * {@code endReason=VALIDATION_FAILED}/{@code TIMEOUT}/{@code MODEL_REQUEST_FAILED} 标识。降级结果的
      * {@code validationStatus()} 为 null;宿主必须检查 endReason,不能把 Markdown 包装 DSL 当作校验成功。
      * <li>{@code NONE}:直接抛 {@link GenerationValidationException}。
@@ -197,8 +197,8 @@ public final class GenUiGenerator {
             final ProgramRoundSession roundSession = validate ? newRoundSession(promptRequest, merged) : null;
             RequestBody requestBody = buildRequest(promptRequest, effectiveRequest, false);
             state.beginInFlight();
-            budget.partialSnapshot(
-                    () -> partialResult(effectiveRequest, roundSession, state, rounds, interruptedReason(budget)));
+            budget.partialSnapshot(() -> partialResult(effectiveRequest, roundSession, state, rounds,
+                    GenerationEndReason.MODEL_REQUEST_FAILED));
             String response = transport.post(requestBody.json());
             String content;
             try {
@@ -287,7 +287,7 @@ public final class GenUiGenerator {
     }
 
     /**
-     * 同步增量修复(#58):每轮只请求覆盖/新增语句,合并进同一 {@link ProgramRoundSession} 后重新检查当前完整程序; 未到截止时间且仍有错误就继续,不以重复错误/空补丁/无进展提前退出。
+     * 同步增量修复(#58):每轮只请求覆盖/新增语句,合并进同一 {@link ProgramRoundSession} 后重新检查当前完整程序; 首轮修复必执行,后续轮次发起前检查预算,不以重复错误/空补丁/无进展提前退出。
      */
     private RoundEndResult runIncrementalSync(IncrementalRepairLoop loop, RoundEndResult current)
             throws LlmTransportException {
@@ -314,7 +314,7 @@ public final class GenUiGenerator {
             RepairRoundExecutor executor) throws LlmTransportException {
         int attempts = 0;
         int limit = validationConfig.maxIncrementalAttempts();
-        while (!loop.budget().expiredNow() && (limit == 0 || attempts < limit)) {
+        while ((attempts == 0 || !loop.budget().expiredNow()) && (limit == 0 || attempts < limit)) {
             attempts++;
             String body = incrementalRepairBody(loop, current);
             String previousOutput = loop.roundSession().rawOutput();
@@ -371,12 +371,7 @@ public final class GenUiGenerator {
         }
     }
 
-    /** Terminal reason for an interrupted round: the shared budget can only have expired or the request failed. */
-    private static GenerationEndReason interruptedReason(GenerationSession budget) {
-        return budget.expiredNow() ? GenerationEndReason.TIMEOUT : GenerationEndReason.MODEL_REQUEST_FAILED;
-    }
-
-    /** Mutable per-invocation markers shared with the timeout snapshot; guarded by its own monitor. */
+    /** Mutable per-invocation markers shared with the failure snapshot; guarded by its own monitor. */
     private static final class RepairLoopState {
         private boolean inFlight;
 
@@ -426,9 +421,10 @@ public final class GenUiGenerator {
     }
 
     /**
-     * Stream realtime DSL under one 20-second deadline. On timeout/model failure, cancel the DSL request, emit a
-     * whole-page {@code replace}, and invoke the independent Markdown path. One {@code done} ends the entire
-     * invocation; Markdown failure emits {@code error} before it.
+     * Stream realtime DSL, allowing the initial generation and first repair to finish. The 20-second budget gates
+     * subsequent repairs only. On budget exhaustion with invalid DSL or model failure, emit a whole-page
+     * {@code replace} and invoke the independent Markdown path. One {@code done} ends the entire invocation; Markdown
+     * failure emits {@code error} before it.
      */
     public GenUiGenerationResult generateStream(UiGenerationRequest request, Consumer<RenderStreamEnvelope> sink) {
         return generateStream(request, sink, (original, reason, output) -> markdown().generateStream(original, output));
@@ -493,12 +489,12 @@ public final class GenUiGenerator {
         // StringBuffer: the timeout/failure snapshot reads it from another thread while the stream thread appends.
         StringBuffer accumulated = new StringBuffer();
         if (roundSession != null) {
-            budget.partialSnapshot(
-                    () -> partialResult(effectiveRequest, roundSession, state, rounds, interruptedReason(budget)));
+            budget.partialSnapshot(() -> partialResult(effectiveRequest, roundSession, state, rounds,
+                    GenerationEndReason.MODEL_REQUEST_FAILED));
         } else {
             // DISABLED keeps validation off but must not discard partial streamed output on timeout/request failure.
             budget.partialSnapshot(() -> new GenUiGenerationResult(OpenuiCodeExtractor.extract(accumulated.toString()),
-                    dataModel, null, null, interruptedReason(budget), List.of()));
+                    dataModel, null, null, GenerationEndReason.MODEL_REQUEST_FAILED, List.of()));
         }
 
         try {
@@ -552,9 +548,10 @@ public final class GenUiGenerator {
             if (roundSession == null) {
                 // DISABLED: no round record; keep the streamed prefix so the interrupted result is not empty.
                 return new GenUiGenerationResult(OpenuiCodeExtractor.extract(accumulated.toString()), dataModel, null,
-                        null, interruptedReason(budget), List.of());
+                        null, GenerationEndReason.MODEL_REQUEST_FAILED, List.of());
             }
-            return partialResult(effectiveRequest, roundSession, state, rounds, interruptedReason(budget));
+            return partialResult(effectiveRequest, roundSession, state, rounds,
+                    GenerationEndReason.MODEL_REQUEST_FAILED);
         }
     }
 

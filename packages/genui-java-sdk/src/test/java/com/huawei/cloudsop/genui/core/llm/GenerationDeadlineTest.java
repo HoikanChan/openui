@@ -5,358 +5,338 @@ package com.huawei.cloudsop.genui.core.llm;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.llm.transport.*;
+import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
+import com.huawei.cloudsop.genui.core.validation.RepairPolicyKind;
+import com.huawei.cloudsop.genui.core.validation.ValidationConfigMode;
+import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * #102: the 20-second budget no longer cancels a running stage. The initial generation and the first incremental repair
+ * always run to completion; only the decision to start the second and later repair rounds consults the budget.
+ */
 class GenerationDeadlineTest {
-    @Test
-    void synchronousRepairSharesOriginalDeadlineAndMarkdownStartsOutsideIt() throws Exception {
-        ManualTime time = new ManualTime();
-        AtomicInteger calls = new AtomicInteger();
-        CountDownLatch repairStarted = new CountDownLatch(1);
-        CountDownLatch repairCancelled = new CountDownLatch(1);
-        LlmTransport transport = new LlmTransport() {
-            public String post(String body) {
-                throw new AssertionError();
-            }
-            public InputStream postStream(String body) {
-                throw new AssertionError();
-            }
-            public LlmCall newCall(String body, boolean stream) {
-                int callNumber = calls.incrementAndGet();
-                return new LlmCall() {
-                    public InputStream execute() throws LlmTransportException {
-                        if (callNumber == 2) {
-                            repairStarted.countDown();
-                            try {
-                                repairCancelled.await();
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                            }
-                            throw new LlmTransportException("cancelled repair");
-                        }
-                        if (callNumber == 1)
-                            time.now.set(TimeUnit.SECONDS.toNanos(19));
-                        else {
-                            assertTrue(body.contains("Markdown only"));
-                            time.now.set(TimeUnit.MINUTES.toNanos(2));
-                        }
-                        String content = callNumber == 1 ? "root = UnknownComponent([])" : "# Fallback";
-                        String response = com.huawei.cloudsop.genui.core.Json.stringify(java.util.Map.of("choices",
-                                List.of(java.util.Map.of("message", java.util.Map.of("content", content)))));
-                        return new java.io.ByteArrayInputStream(
-                                response.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                    }
-                    public void cancel() {
-                        if (callNumber == 2)
-                            repairCancelled.countDown();
-                    }
-                };
-            }
-        };
-        var validation = new com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig(
-                com.huawei.cloudsop.genui.core.validation.ValidationConfigMode.FINAL_ONLY,
-                com.huawei.cloudsop.genui.core.validation.RepairPolicyKind.FINAL_REPAIR);
-        var generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport, validation, null)
-                .withTiming(time.timing());
-        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            var future = executor.submit(() -> generator.generate(null));
-            assertTrue(repairStarted.await(3, TimeUnit.SECONDS));
-            time.expire();
-            var result = future.get(3, TimeUnit.SECONDS);
-            assertEquals(GenerationEndReason.TIMEOUT, result.endReason());
-            assertEquals("root = Stack([MarkDownRenderer(\"# Fallback\")])", result.dsl());
-            assertEquals(3, calls.get());
-            assertEquals(1, time.schedules.get(), "repair and Markdown must not reset the DSL timer");
-        }
-    }
+
+    // ── 首轮生成慢过预算仍应正常完成 ─────────────────────────────────────
 
     @Test
-    void deadlineIsInstalledBeforeTheInitialHostWrite() throws Exception {
+    void slowValidInitialSyncIsNotCancelledOrDowngraded() {
         ManualTime time = new ManualTime();
-        CountDownLatch writing = new CountDownLatch(1);
-        CountDownLatch release = new CountDownLatch(1);
-        AtomicInteger calls = new AtomicInteger();
-        LlmTransport transport = new LlmTransport() {
-            public String post(String body) {
-                throw new AssertionError();
-            }
-            public InputStream postStream(String body) {
-                throw new AssertionError();
-            }
-            public LlmCall newCall(String body, boolean stream) {
-                calls.incrementAndGet();
-                throw new AssertionError();
-            }
-        };
-        var generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport).withTiming(time.timing());
-        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            var result = executor.submit(() -> generator.generateStream(null, event -> {
-                if ("dataModel".equals(event.type())) {
-                    writing.countDown();
-                    while (release.getCount() > 0) {
-                        try {
-                            release.await();
-                        } catch (InterruptedException ignored) {
-                        }
-                    }
-                }
-            }, (request, reason, sink) -> new GenUiGenerationResult("fallback", request.response())));
-            try {
-                assertTrue(writing.await(3, TimeUnit.SECONDS));
-                assertNotNull(time.fire);
-                executor.submit(time::expire).get(1, TimeUnit.SECONDS);
-            } finally {
-                release.countDown();
-            }
-            assertEquals(GenerationEndReason.TIMEOUT, result.get(3, TimeUnit.SECONDS).endReason());
-            assertEquals(0, calls.get());
-        }
-    }
-
-    @Test
-    void slowConsumerCannotPreventTransportCancellation() throws Exception {
-        ManualTime time = new ManualTime();
-        CountDownLatch consuming = new CountDownLatch(1);
-        CountDownLatch release = new CountDownLatch(1);
-        CountDownLatch cancelled = new CountDownLatch(1);
-        LlmCall call = new LlmCall() {
-            public InputStream execute() {
-                return new java.io.ByteArrayInputStream(
-                        (frame("root = Stack([])") + "data: [DONE]").getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            }
-            public void cancel() {
-                cancelled.countDown();
-            }
-        };
-        var generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), single(call)).withTiming(time.timing());
-        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            var result = executor.submit(() -> generator.generateStream(null, event -> {
-                if ("dsl".equals(event.type())) {
-                    consuming.countDown();
-                    while (release.getCount() > 0) {
-                        try {
-                            release.await();
-                        } catch (InterruptedException ignored) {
-                        }
-                    }
-                }
-            }, (request, reason, sink) -> new GenUiGenerationResult("fallback", request.response())));
-            try {
-                assertTrue(consuming.await(3, TimeUnit.SECONDS));
-                var expiration = executor.submit(time::expire);
-                assertTrue(cancelled.await(1, TimeUnit.SECONDS),
-                        "consumer callbacks must not hold the cancellation lock");
-                expiration.get(1, TimeUnit.SECONDS);
-            } finally {
-                release.countDown();
-            }
-            assertEquals(GenerationEndReason.TIMEOUT, result.get(3, TimeUnit.SECONDS).endReason());
-        }
-    }
-
-    @Test
-    void completionJustBeforeDeadlineWinsAndKeepsRawOutput() {
-        ManualTime time = new ManualTime();
-        var events = new CopyOnWriteArrayList<RenderStreamEnvelope>();
-        var transport = immediate(time, 19);
-        var result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport).withTiming(time.timing())
-                .generateStream(UiGenerationRequest.builder().build(), events::add, (request, reason, sink) -> {
-                    throw new AssertionError("unexpected fallback");
-                });
-        time.expire();
-        assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason());
-        assertEquals(List.of("dataModel", "dsl", "done"), events.stream().map(RenderStreamEnvelope::type).toList());
-        assertEquals("root = Stack([])", events.get(1).content());
-    }
-
-    @Test
-    void exactDeadlineIsCheckedEvenIfSchedulerHasNotRun() {
-        ManualTime time = new ManualTime();
-        AtomicInteger handoffs = new AtomicInteger();
-        var generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), immediate(time, 20))
-                .withTiming(time.timing());
-        var result = generator.generateStream(UiGenerationRequest.builder().build(), e -> {
-        }, (request, reason, sink) -> {
-            handoffs.incrementAndGet();
-            return new GenUiGenerationResult("fallback", request.response());
+        ScriptedTransport transport = new ScriptedTransport().sync(() -> {
+            time.advanceTo(20); // exact budget boundary: 20 seconds must still count as a valid slow initial round
+            return syncContent("root = Stack([])");
         });
+
+        GenUiGenerationResult result = generator(transport, time).generate(request("slow initial"));
+
+        assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason());
+        assertEquals(ValidationStatus.VALID, result.validationStatus());
+        assertEquals("root = Stack([])", result.dsl());
+        assertEquals(1, transport.modelCalls.get());
+    }
+
+    @Test
+    void slowValidInitialStreamIsNotCancelledOrDowngraded() {
+        ManualTime time = new ManualTime();
+        ScriptedTransport transport = new ScriptedTransport()
+                .stream(() -> advancing(frame("root = Stack([])") + "data: [DONE]", time, 45));
+        CopyOnWriteArrayList<RenderStreamEnvelope> events = new CopyOnWriteArrayList<>();
+        AtomicInteger handoffs = new AtomicInteger();
+
+        GenUiGenerationResult result = generator(transport, time).generateStream(request("slow initial"), events::add,
+                (original, reason, sink) -> {
+                    handoffs.incrementAndGet();
+                    return new GenUiGenerationResult("fallback", original.response());
+                });
+
+        assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason());
+        assertEquals("root = Stack([])", result.dsl());
+        assertEquals(0, handoffs.get(), "a slow but valid stream must not fall back to Markdown");
+        assertEquals(List.of("dataModel", "dsl", "done"), events.stream().map(RenderStreamEnvelope::type).toList());
+    }
+
+    // ── 首轮修复固定执行 ────────────────────────────────────────────────
+
+    @Test
+    void firstRepairStillRunsAfterInitialExceedsBudget() {
+        ManualTime time = new ManualTime();
+        ScriptedTransport transport = new ScriptedTransport().sync(() -> {
+            time.advanceTo(30);
+            return syncContent("root = Bogus()");
+        }).sync(() -> syncContent("root = Stack([])"));
+
+        GenUiGenerationResult result = generator(transport, time).generate(request("slow invalid initial"));
+
+        assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason(),
+                "the first repair is not gated by the 20-second budget");
+        assertEquals("root = Stack([])", result.dsl());
+        assertEquals(2, transport.modelCalls.get(), "initial round + one first repair");
+        assertEquals(2, result.rounds().size());
+    }
+
+    @Test
+    void firstRepairMayCrossTheBudgetAndStillSucceed() {
+        ManualTime time = new ManualTime();
+        ScriptedTransport transport = new ScriptedTransport().sync(() -> {
+            time.advanceTo(10);
+            return syncContent("root = Bogus()");
+        }).sync(() -> {
+            time.advanceTo(35);
+            return syncContent("root = Stack([])");
+        });
+
+        GenUiGenerationResult result = generator(transport, time).generate(request("repair crosses budget"));
+
+        assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason(),
+                "a repair that starts before the budget expires may run past it");
+        assertEquals("root = Stack([])", result.dsl());
+        assertEquals(2, transport.modelCalls.get());
+    }
+
+    @Test
+    void invalidFirstRepairAtExactBudgetBoundaryFallsBackTimeoutWithoutSecondRepair() {
+        ManualTime time = new ManualTime();
+        ScriptedTransport transport = new ScriptedTransport().stream(() -> {
+            time.advanceTo(20); // exact boundary: the first repair is still allowed to start
+            return input(frame("root = Bogus()\n") + "data: [DONE]");
+        }).stream(() -> {
+            time.advanceTo(20);
+            return input(frame("root = StillBogus()\n") + "data: [DONE]");
+        });
+        AtomicInteger handoffs = new AtomicInteger();
+
+        GenUiGenerationResult result = generator(transport, time).generateStream(request("invalid first repair"),
+                event -> {
+                }, (original, reason, sink) -> {
+                    handoffs.incrementAndGet();
+                    assertEquals(GenerationEndReason.TIMEOUT, reason);
+                    return new GenUiGenerationResult("fallback", original.response());
+                });
+
         assertEquals(GenerationEndReason.TIMEOUT, result.endReason());
+        assertEquals(2, transport.modelCalls.get(),
+                "the first repair runs, but no second repair is requested at the 20-second boundary");
+        assertEquals(2, result.rounds().size());
         assertEquals(1, handoffs.get());
     }
 
     @Test
-    void blockedReadIsCancelledAndLateFragmentsCannotFollowReplacement() throws Exception {
+    void repairStartedBeforeBudgetMayCompleteAfterIt() {
         ManualTime time = new ManualTime();
-        CountDownLatch reading = new CountDownLatch(1);
-        CountDownLatch release = new CountDownLatch(1);
-        CountDownLatch deliveredLate = new CountDownLatch(1);
-        AtomicBoolean cancelled = new AtomicBoolean();
-        LlmCall call = new LlmCall() {
-            public InputStream execute() {
-                return new InputStream() {
-                    int reads;
-                    public int read() {
-                        throw new AssertionError("use bulk read");
-                    }
-                    public int read(byte[] bytes, int offset, int len) {
-                        if (reads++ > 0)
-                            return -1;
-                        reading.countDown();
-                        boolean interrupted = false;
-                        while (true) {
-                            try {
-                                release.await();
-                                break;
-                            } catch (InterruptedException e) {
-                                interrupted = true;
-                            }
-                        }
-                        if (interrupted)
-                            Thread.currentThread().interrupt();
-                        byte[] late = (frame("root = Stack([])") + "data: [DONE]")
-                                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                        System.arraycopy(late, 0, bytes, offset, late.length);
-                        deliveredLate.countDown();
-                        return late.length;
-                    }
-                };
-            }
-            public void cancel() {
-                cancelled.set(true);
-                release.countDown();
-            }
-        };
-        var generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), single(call)).withTiming(time.timing());
-        var events = new CopyOnWriteArrayList<RenderStreamEnvelope>();
-        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            var future = executor.submit(() -> generator.generateStream(null, events::add, (original, reason, sink) -> {
-                assertTrue(cancelled.get());
-                return new GenUiGenerationResult("fallback", original.response());
-            }));
-            assertTrue(reading.await(3, TimeUnit.SECONDS));
-            time.expire();
-            assertEquals(GenerationEndReason.TIMEOUT, future.get(3, TimeUnit.SECONDS).endReason());
-            assertTrue(deliveredLate.await(3, TimeUnit.SECONDS));
-            assertEquals(List.of("dataModel", "replace", "done"),
-                    events.stream().map(RenderStreamEnvelope::type).toList());
-        }
-    }
-
-    private static LlmTransport immediate(ManualTime time, int seconds) {
-        return single(new LlmCall() {
-            public InputStream execute() {
-                return new java.io.ByteArrayInputStream((frame("root = Stack([])") + "data: [DONE]")
-                        .getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
-                    public synchronized int read(byte[] b, int off, int len) {
-                        int count = super.read(b, off, len);
-                        if (count == -1)
-                            time.now.set(TimeUnit.SECONDS.toNanos(seconds));
-                        return count;
-                    }
-                };
-            }
-            public void cancel() {
-            }
+        ScriptedTransport transport = new ScriptedTransport().sync(() -> {
+            time.advanceTo(1);
+            return syncContent("root = Bogus()");
+        }).sync(() -> {
+            time.advanceTo(10);
+            return syncContent("root = StillBogus()");
+        }).sync(() -> {
+            time.advanceTo(40);
+            return syncContent("root = Stack([])");
         });
-    }
 
-    private static String frame(String dsl) {
-        return "data: " + com.huawei.cloudsop.genui.core.Json.stringify(
-                java.util.Map.of("choices", List.of(java.util.Map.of("delta", java.util.Map.of("content", dsl)))))
-                + "\n\n";
-    }
+        GenUiGenerationResult result = generator(transport, time).generate(request("later repair"));
 
-    private static LlmTransport single(LlmCall call) {
-        return new LlmTransport() {
-            public String post(String body) {
-                throw new AssertionError();
-            }
-            public InputStream postStream(String body) {
-                throw new AssertionError();
-            }
-            public LlmCall newCall(String body, boolean stream) {
-                return call;
-            }
-        };
+        assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason(),
+                "the second repair was started before the budget expired, so it may finish after it");
+        assertEquals("root = Stack([])", result.dsl());
+        assertEquals(3, transport.modelCalls.get());
+        assertEquals(3, result.rounds().size());
     }
 
     @Test
-    void timeoutBeforeHeadersCancelsAndHandsOffOnce() throws Exception {
+    void slowFinalRepairIsNotCancelled() {
         ManualTime time = new ManualTime();
-        CountDownLatch entered = new CountDownLatch(1);
-        CountDownLatch cancelled = new CountDownLatch(1);
-        LlmTransport transport = new LlmTransport() {
-            public String post(String body) {
-                throw new AssertionError();
-            }
-            public InputStream postStream(String body) {
-                throw new AssertionError();
-            }
-            public LlmCall newCall(String body, boolean stream) {
-                return new LlmCall() {
-                    public InputStream execute() throws LlmTransportException {
-                        entered.countDown();
-                        try {
-                            cancelled.await();
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                        }
-                        throw new LlmTransportException("cancelled");
-                    }
-                    public void cancel() {
-                        cancelled.countDown();
-                    }
-                };
+        ScriptedTransport transport = new ScriptedTransport().sync(() -> {
+            time.advanceTo(30);
+            return syncContent("root = Bogus()");
+        }).sync(() -> {
+            time.advanceTo(60);
+            return syncContent("root = Stack([])");
+        });
+        GenUiValidationConfig validation = new GenUiValidationConfig(ValidationConfigMode.FINAL_ONLY,
+                RepairPolicyKind.FINAL_REPAIR);
+
+        GenUiGenerationResult result = GenUiGenerator
+                .withTransport(GenUiLlmConfig.defaults(), transport, validation, null).withTiming(time.timing())
+                .generate(request("slow final repair"));
+
+        assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason(),
+                "the legacy FINAL_REPAIR path has no deadline either");
+        assertEquals("root = Stack([])", result.dsl());
+        assertEquals(2, transport.modelCalls.get());
+    }
+
+    // ── 模型失败与超时原因互不混淆 ──────────────────────────────────────
+
+    @Test
+    void modelFailureAfterBudgetRemainsModelRequestFailed() {
+        ManualTime time = new ManualTime();
+        ScriptedTransport transport = new ScriptedTransport().stream(() -> {
+            time.advanceTo(30);
+            throw new LlmTransportException("connection dropped");
+        });
+        AtomicInteger handoffs = new AtomicInteger();
+
+        GenUiGenerationResult result = generator(transport, time).generateStream(request("model failure"), event -> {
+        }, (original, reason, sink) -> {
+            handoffs.incrementAndGet();
+            return new GenUiGenerationResult("fallback", original.response());
+        });
+
+        assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.endReason(),
+                "a transport failure stays a model failure even after 20 seconds");
+        assertEquals(1, handoffs.get());
+    }
+
+    // ── helpers ─────────────────────────────────────────────────────────
+
+    private static GenUiGenerator generator(LlmTransport transport, ManualTime time) {
+        return GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport).withTiming(time.timing());
+    }
+
+    private static UiGenerationRequest request(String input) {
+        return UiGenerationRequest.builder().userInput(input).build();
+    }
+
+    private static String syncContent(String content) {
+        return Json.stringify(Map.of("choices", List.of(Map.of("message", Map.of("content", content)))));
+    }
+
+    private static String frame(String delta) {
+        return "data: " + Json.stringify(Map.of("choices", List.of(Map.of("delta", Map.of("content", delta)))))
+                + "\n\n";
+    }
+
+    private static InputStream input(String text) {
+        return new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** Advances the fake clock when the stream reaches EOF, i.e. after the initial round's deltas were emitted. */
+    private static InputStream advancing(String text, ManualTime time, long seconds) {
+        return new ByteArrayInputStream(text.getBytes(StandardCharsets.UTF_8)) {
+            public synchronized int read(byte[] bytes, int offset, int length) {
+                int count = super.read(bytes, offset, length);
+                if (count == -1) {
+                    time.advanceTo(seconds);
+                }
+                return count;
             }
         };
-        var generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport).withTiming(time.timing());
-        var events = new CopyOnWriteArrayList<RenderStreamEnvelope>();
-        AtomicInteger handoffs = new AtomicInteger();
-        var request = UiGenerationRequest.builder().userInput("original").build();
-        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            var result = executor
-                    .submit(() -> generator.generateStream(request, events::add, (original, reason, sink) -> {
-                        assertSame(request, original);
-                        assertEquals(GenerationEndReason.TIMEOUT, reason);
-                        assertEquals(0, cancelled.getCount());
-                        handoffs.incrementAndGet();
-                        time.now.addAndGet(TimeUnit.MINUTES.toNanos(1));
-                        sink.accept(RenderStreamEnvelope.dsl(1, "markdown page"));
-                        return new GenUiGenerationResult("markdown page", original.response());
-                    }));
-            assertTrue(entered.await(3, TimeUnit.SECONDS));
-            time.expire();
-            assertEquals(GenerationEndReason.TIMEOUT, result.get(3, TimeUnit.SECONDS).endReason());
-            time.fire.run();
-            assertEquals(1, handoffs.get());
-            assertEquals(List.of("dataModel", "replace", "dsl", "done"),
-                    events.stream().map(RenderStreamEnvelope::type).toList());
+    }
+
+    @FunctionalInterface
+    private interface SyncResponse {
+        String get() throws LlmTransportException;
+    }
+
+    @FunctionalInterface
+    private interface StreamResponse {
+        InputStream get() throws LlmTransportException;
+    }
+
+    /** Public-API transport double: each model request consumes one scripted sync or stream response in order. */
+    private static final class ScriptedTransport implements LlmTransport {
+        private final Deque<SyncResponse> syncs = new ArrayDeque<>();
+        private final Deque<StreamResponse> streams = new ArrayDeque<>();
+        final AtomicInteger modelCalls = new AtomicInteger();
+
+        ScriptedTransport sync(SyncResponse response) {
+            syncs.add(response);
+            return this;
+        }
+
+        ScriptedTransport stream(StreamResponse response) {
+            streams.add(response);
+            return this;
+        }
+
+        @Override
+        public String post(String body) {
+            throw new AssertionError("DSL requests are opened through newCall");
+        }
+
+        @Override
+        public InputStream postStream(String body) {
+            throw new AssertionError("DSL requests are opened through newCall");
+        }
+
+        /** Model calls arrive here; the independent Markdown fallback is answered without consuming the script. */
+        @Override
+        public LlmCall newCall(String body, boolean stream) {
+            if (body.contains("Markdown only")) {
+                return call(() -> input(stream ? frame("# fallback") + "data: [DONE]" : syncContent("# fallback")));
+            }
+            int callNumber = modelCalls.incrementAndGet();
+            if (stream) {
+                StreamResponse response = streams.poll();
+                if (response == null) {
+                    throw new AssertionError("unexpected stream model request #" + callNumber);
+                }
+                return call(response);
+            }
+            SyncResponse response = syncs.poll();
+            if (response == null) {
+                throw new AssertionError("unexpected sync model request #" + callNumber);
+            }
+            return call(() -> input(response.get()));
+        }
+
+        private static LlmCall call(StreamResponse body) {
+            return new LlmCall() {
+                public InputStream execute() throws LlmTransportException {
+                    return body.get();
+                }
+
+                public void cancel() {
+                }
+            };
         }
     }
 
+    /**
+     * Manual clock and timer for deterministic tests. The scheduler members are retained for compatibility with
+     * {@code GenUiGeneratorIncrementalRepairTest}; under #102 production no longer installs a 20-second cancellation.
+     */
     static final class ManualTime {
         final AtomicLong now = new AtomicLong();
         final AtomicInteger schedules = new AtomicInteger();
         volatile Runnable fire;
+
         GenerationTiming timing() {
             return new GenerationTiming(now::get, (action, delay) -> {
                 schedules.incrementAndGet();
-                assertTrue(delay <= TimeUnit.SECONDS.toNanos(20));
                 fire = action;
                 return () -> {
                 };
             });
         }
+
+        void advanceTo(long seconds) {
+            now.set(TimeUnit.SECONDS.toNanos(seconds));
+        }
+
+        /** Fire a scheduled deadline if production still installed one; a no-op once no timer is scheduled. */
         void expire() {
-            now.set(TimeUnit.SECONDS.toNanos(20));
-            fire.run();
+            advanceTo(20);
+            Runnable action = fire;
+            if (action != null) {
+                action.run();
+            }
         }
     }
 }
