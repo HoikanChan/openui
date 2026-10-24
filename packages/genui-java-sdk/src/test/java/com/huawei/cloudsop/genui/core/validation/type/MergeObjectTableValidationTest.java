@@ -125,11 +125,11 @@ class MergeObjectTableValidationTest {
     }
 
     @Test
-    void filterAndSortDoNotReviveMissingRowCounterexample() {
-        String source = "data.rows";
+    void partialRowPresenceStaysValidAcrossFilterAndSort() {
         String dsl = "root = Table([Col(\"Value\", \"value\")], %s)";
         Map<String, Object> data = Map.of("rows", List.of(Map.of("value", 1), Map.of("other", true)));
-        issue(validate(dsl.formatted(source), data), "type-table-column-missing", "/columns/value");
+        // 只要有一行带该字段,列引用就是合法用法(缺值行渲染空单元格)。
+        valid(validate(dsl.formatted("data.rows"), data));
         ValidationResult filtered = validate(dsl.formatted("@Sort(@Filter(data.rows, \"other\", \"==\", false), \"value\")"), data);
         valid(filtered);
         assertTrue(Long.parseLong(filtered.metadata().extra().get("typeChecks.unproven")) > 0);
