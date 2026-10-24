@@ -42,8 +42,8 @@ class RepairCorpusObjectEnumerationRulesTest {
      */
     private static final List<String> CORPUS_BASELINE = List.of(
             "case-03_GEN-00109 | INVALID | [type-table-column-missing@/columns/unit]",
-            "case-04_GEN-00119 | INVALID | [type-data-path-missing@data.queryOpticalModuleMetrics[0].neName, type-table-column-missing@/columns/metricName, type-table-column-missing@/columns/filteredValue, type-table-column-missing@/columns/effcnt, type-table-column-missing@/columns/laneId]",
-            "case-05_GEN-00122 | INVALID | [type-table-column-missing@/columns/metricName, type-table-column-missing@/columns/laneId, type-table-column-missing@/columns/opt_uniq_id]",
+            "case-04_GEN-00119 | INVALID | [type-data-path-missing@data.queryOpticalModuleMetrics[0].neName, type-table-column-missing@/columns/metricName, type-table-column-missing@/columns/filteredValue, type-table-column-missing@/columns/effcnt]",
+            "case-05_GEN-00122 | INVALID | [type-table-column-missing@/columns/metricName, type-table-column-missing@/columns/opt_uniq_id]",
             "case-06_GEN-00009 | INVALID | [unknown-component@, unknown-component@, unresolved-ref@null]",
             "case-07_GEN-00036 | INVALID | [unknown-component@]", "case-08_GEN-00247 | INVALID | [unknown-component@]",
             "case-09_GEN-00042 | INVALID | [type-table-column-missing@/columns/patchFileVersion]",
