@@ -301,6 +301,9 @@ final class RepairBenchRunner {
         LinkedHashMap<String, Object> line = new LinkedHashMap<>();
         line.put("type", "case");
         line.put("caseId", benchCase.id());
+        line.put("generationMode", "historical-initial-replay");
+        line.put("qualityCategory", "unconfirmed");
+        line.put("accuracyEligible", false);
         return line;
     }
 

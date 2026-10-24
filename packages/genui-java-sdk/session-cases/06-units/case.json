@@ -1,0 +1,40 @@
+{
+  "id": "session-units",
+  "originalIntent": "展示全部设备的 name 和 bytes，bytes 换成 MiB（1 MiB=1048576 bytes），注明单位，不修改输入。",
+  "dataModel": {
+    "rows": [
+      {
+        "name": "A",
+        "group": "east",
+        "bytes": 1048576,
+        "value": 10
+      },
+      {
+        "name": "B",
+        "group": "west",
+        "bytes": 2097152,
+        "value": 30
+      },
+      {
+        "name": "C",
+        "group": "east",
+        "bytes": 3145728,
+        "value": 20
+      },
+      {
+        "name": "D",
+        "group": "west",
+        "bytes": 4194304,
+        "value": 40
+      }
+    ]
+  },
+  "source": {
+    "kind": "agent-authored-proposal",
+    "humanConfirmed": false
+  },
+  "expectation": {
+    "state": "pending-human-confirmation",
+    "expected": "A1 MiB、B2 MiB、C3 MiB、D4 MiB；不能当 MB 或保留 bytes 却写 MiB。"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "id": "session-group-by",
+  "originalIntent": "按 group 分组统计设备数量，展示每组名称和数量。",
+  "dataModel": {
+    "rows": [
+      {
+        "name": "A",
+        "group": "east",
+        "bytes": 1048576,
+        "value": 10
+      },
+      {
+        "name": "B",
+        "group": "west",
+        "bytes": 2097152,
+        "value": 30
+      },
+      {
+        "name": "C",
+        "group": "east",
+        "bytes": 3145728,
+        "value": 20
+      },
+      {
+        "name": "D",
+        "group": "west",
+        "bytes": 4194304,
+        "value": 40
+      }
+    ]
+  },
+  "source": {
+    "kind": "agent-authored-proposal",
+    "humanConfirmed": false
+  },
+  "expectation": {
+    "state": "pending-human-confirmation",
+    "expected": "GroupBy 不支持时明确说明分组统计未完成，展示全部四条真实明细，group 第一列；不能编造统计。"
+  }
+}
