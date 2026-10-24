@@ -1,1 +1,0 @@
-root = Stack([TextContent("总和 40 平均 10")]);

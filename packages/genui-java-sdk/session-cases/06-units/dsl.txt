@@ -1,1 +1,0 @@
-root = Stack([TextContent("A 1048576 MiB")]);

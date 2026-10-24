@@ -1,1 +1,0 @@
-rows = @ObjectEntries(data.counts,"kind","count"); root = Stack([Table(rows,[Col("类别","key"),Col("数量","value")])]);

@@ -1,1 +1,0 @@
-root = Stack([LeftJoin(data.orders,data.devices,"deviceId")]);

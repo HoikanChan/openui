@@ -12,15 +12,15 @@ const options = Object.fromEntries(process.argv.slice(2).map(arg => {
   const at = arg.indexOf('='); if (at < 3 || !arg.startsWith('--')) throw Error('Use --key=value');
   return [arg.slice(2, at), arg.slice(at + 1)];
 }));
-for (const key of ['renderer-root', 'dependency-root', 'env-file', 'out']) {
-  if (!options[key]) throw Error(`Missing --${key}=...; see repair-cases/SESSION-BASELINE.md`);
+for (const key of ['renderer-root', 'dependency-root', 'env-file', 'cases', 'out']) {
+  if (!options[key]) throw Error(`Missing --${key}=...; --cases must point at real repair-cases packs`);
 }
 const sdk = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = resolve(sdk, '../..');
 const renderer = resolve(options['renderer-root']);
 const deps = resolve(options['dependency-root']);
 const out = resolve(options.out);
-const casesRoot = resolve(options.cases || join(sdk, 'session-cases'));
+const casesRoot = resolve(options.cases);
 const required = [join(renderer,'packages/react-lang/src/Renderer.tsx'),join(renderer,'packages/react-ui-dsl/src/genui-lib/dslLibrary.tsx'),join(deps,'package.json'),join(sdk,'target/session-bench-classpath.txt')];
 for (const path of required) if (!existsSync(path)) throw Error(`Required existing renderer/dependency/build artifact absent: ${path}`);
 mkdirSync(out,{recursive:true});

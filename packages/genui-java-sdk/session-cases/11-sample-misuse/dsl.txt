@@ -1,1 +1,0 @@
-root = Stack([TextContent("总和15 平均3 行数5")]);

@@ -1,1 +1,0 @@
-root = Stack([TopN(data.rows,2,"value")]);
