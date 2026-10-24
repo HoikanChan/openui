@@ -1288,7 +1288,6 @@ public final class AnalysisSession {
                     "Table rows must be a flat object array, but received " + rows.type().displayName() + ".",
                     statementId, "Table", "/rows", "Flatten nested @Each results before passing them to Table.");
         }
-        String rowsPath = dataPathOf(table.args().get(1)).map(DataPath::source).orElse(null);
         // 字段集合为空不是退出条件:逐列独立检查,某一列未证明不影响其他列。
         for (AstNode column : arrayElements(table.args().get(0))) {
             AstNode resolvedColumn = resolveNode(column, new LinkedHashSet<>());
@@ -1304,16 +1303,15 @@ public final class AnalysisSession {
             String columnStatementId = column instanceof AstNode.Ref ref && symbols.containsKey(ref.n())
                     ? ref.n()
                     : statementId;
-            checkTableColumn(call, field.v(), rowElement, rows, statementId, env, resolving, rowsPath, noRowEvidence,
+            checkTableColumn(call, field.v(), rowElement, rows, statementId, env, resolving, noRowEvidence,
                     columnStatementId);
         }
     }
 
     private void checkTableColumn(AstNode.Comp column, String field, Fact rowElement, Fact rows, String statementId,
-            LexicalEnvironment env, Set<String> resolving, String rowsPath, boolean noRowEvidence,
-            String columnStatementId) {
-        Expectation requirement = new Expectation.RequireField(field, new Expectation.Accept(Type.Unknown.INSTANCE));
-        Checks.CheckResult existence = Checks.check(rowElement, requirement, rowsPath);
+            LexicalEnvironment env, Set<String> resolving, boolean noRowEvidence, String columnStatementId) {
+        // 列字段存在性按"任意一行带该字段即满足"判定:部分行缺值是合法用法,只有所有行形状都没有才报。
+        Checks.CheckResult existence = Checks.checkColumnField(rowElement, field);
         // 所有已知行形状都没有该列是静态用法错误;Filter 仅删除行存在证据,不新增字段。
         boolean absentFromShape = isObjectShape(rowElement.type())
                 && TypeOps.flatten(rows.type()).stream().noneMatch(branch -> branch instanceof Type.Sequence sequence
@@ -1327,8 +1325,9 @@ public final class AnalysisSession {
                     Set.of(Checks.Reason.NO_ELEMENT_EVIDENCE), Set.of(), "no retained row counterexample");
         }
         coverage.record(new CoverageReport.Entry(new CoverageReport.Obligation(statementId,
-                "Table.columns[" + field + "]", "requireField", "/components/Table/columns/" + field,
-                requirement.toString()), existence.verdict(), List.copyOf(existence.reasons()), existence.upstreamErrors()));
+                "Table.columns[" + field + "]", "presentInAnyRow", "/components/Table/columns/" + field,
+                "field \"" + field + "\" present in at least one row"), existence.verdict(),
+                List.copyOf(existence.reasons()), existence.upstreamErrors()));
         if (existence.verdict() == Checks.Verdict.MISMATCH) {
             emit("type-table-column-missing", "Table column field \"" + field + "\" " + existence.detail() + ".",
                     statementId, "Table", "/columns/" + field, "Use a field present in the Table rows.");

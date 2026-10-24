@@ -397,6 +397,31 @@ public final class Checks {
     }
 
     /**
+     * Table 列的字段存在性:任意一行带该字段即满足。
+     *
+     * <p>
+     * 列渲染对缺值行天然容忍(渲染空单元格),因此"部分行有"是合法用法,不是静态错误——提示词侧的形状描述同样把这类字段标为
+     * optional。只有全部行形状都证明没有该字段,才判 {@code type-table-column-missing}。与 {@link #checkRequireField}
+     * 的区别仅此一处:后者用于单对象 props 的 required 判定,部分缺失仍是错误。
+     */
+    static CheckResult checkColumnField(Fact fact, String field) {
+        Presence presence = fieldPresence(fact, field);
+        if (presence == Presence.DEFINITELY_ABSENT) {
+            return CheckResult.mismatch("required field \"" + field + "\" is absent from the proven row shape");
+        }
+        if (presence == Presence.UNKNOWN) {
+            Set<Reason> reasons = lossesAsReasons(fact);
+            reasons.add(Reason.INSUFFICIENT_EVIDENCE);
+            if (fact.type() instanceof Type.Unknown) {
+                reasons.add(Reason.UNKNOWN_INPUT);
+            }
+            return CheckResult.unproven(reasons, fact.upstreamErrors(),
+                    "cannot prove field \"" + field + "\" exists");
+        }
+        return CheckResult.match();
+    }
+
+    /**
      * 条件字段(properties 非 required 项):字段存在才查值要求;确知不存在即满足;存在性未知则未证明。
      */
     private static CheckResult checkConditionalField(Fact fact, Expectation.ConditionalField conditionalField,

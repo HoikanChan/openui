@@ -38,16 +38,17 @@ class RepairCorpusSequenceRulesTest {
     private static final List<String> CASE_DIRS = List.of("case-04_GEN-00119", "case-05_GEN-00122");
 
     /**
-     * case-04 的真实诊断：neName 路径缺失 + 四个列在已证明的行形状中缺失（metricValue 是有效列，不得出现在此）。
+     * case-04 的真实诊断：neName 路径缺失 + 三个列在已证明的行形状中缺失（metricValue 每行都有；laneId 只有部分行有，
+     * 按"任意一行带该字段即满足"的列存在性口径不再算缺失）。
      */
     private static final List<String> CASE_04_EXPECTED = List.of(
             "type-data-path-missing@data.queryOpticalModuleMetrics[0].neName",
             "type-table-column-missing@/columns/metricName", "type-table-column-missing@/columns/filteredValue",
-            "type-table-column-missing@/columns/effcnt", "type-table-column-missing@/columns/laneId");
+            "type-table-column-missing@/columns/effcnt");
 
-    /** case-05 的真实诊断：三个缺失列。 */
+    /** case-05 的真实诊断：两个缺失列（laneId 只有部分行有，按列存在性新口径不再算缺失）。 */
     private static final List<String> CASE_05_EXPECTED = List.of("type-table-column-missing@/columns/metricName",
-            "type-table-column-missing@/columns/laneId", "type-table-column-missing@/columns/opt_uniq_id");
+            "type-table-column-missing@/columns/opt_uniq_id");
 
     /** 定位仓库根：从 CWD 向上第一个含 {@code .git} 的目录（与 RepairBenchCli 同规约）。 */
     private static Path repoRoot() {

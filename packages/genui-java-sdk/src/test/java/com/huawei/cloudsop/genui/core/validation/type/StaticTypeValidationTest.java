@@ -285,15 +285,27 @@ class StaticTypeValidationTest {
     }
 
     @Test
-    void rejectsTableColumnMissingFromSomeRows() {
+    void acceptsTableColumnPresentInSomeRows() {
+        // 列渲染容忍缺值行(空单元格),部分行有字段是合法用法:提示词侧形状描述同样把这类字段标为 optional。
         String dsl = "root = Table([aliasCol], data.users)\n" + "aliasCol = Col(\"Alias\", \"alias\")";
         Map<String, Object> dataModel = Map.of("users",
                 List.of(Map.of("name", "Ada", "alias", "a"), Map.of("name", "Grace")));
 
         ValidationResult result = validate(dsl, dataModel);
 
-        ValidationIssue issue = issue(result, "type-table-column-missing");
-        assertTrue(issue.message().contains("some rows"));
+        assertTrue(result.issues().stream().noneMatch(i -> "type-table-column-missing".equals(i.code())),
+                "部分行带该字段即满足列存在性: " + result.issues());
+    }
+
+    @Test
+    void rejectsTableColumnAbsentFromEveryRow() {
+        String dsl = "root = Table([aliasCol], data.users)\n" + "aliasCol = Col(\"Alias\", \"alias\")";
+        Map<String, Object> dataModel = Map.of("users",
+                List.of(Map.of("name", "Ada"), Map.of("name", "Grace")));
+
+        ValidationResult result = validate(dsl, dataModel);
+
+        issue(result, "type-table-column-missing");
     }
 
     @Test
