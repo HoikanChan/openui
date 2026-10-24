@@ -439,7 +439,7 @@ class GenUiGeneratorIncrementalRepairTest {
     void emptyAndRepeatedPatchesKeepRepairingUntilTheOriginalDeadline() {
         ManualTime time = new ManualTime();
         ScriptedTransport transport = ScriptedTransport.streams(frame("root = Bogus()\n") + SseFrames.done(),
-                SseFrames.done(), frame("root = Bogus()\n") + SseFrames.done(), "");
+                SseFrames.done(), frame("root = Bogus()\n") + SseFrames.done(), "data: [DONE]");
         transport.advanceAfterStream(time, 4, 20);
         AtomicInteger handoffs = new AtomicInteger();
 
@@ -452,7 +452,7 @@ class GenUiGeneratorIncrementalRepairTest {
 
         assertEquals(GenerationEndReason.TIMEOUT, result.endReason());
         assertEquals(4, transport.streamCount, "neither empty output nor unchanged errors end the session");
-        assertEquals(1, time.schedules.get(), "all repair rounds share the original timer");
+        assertEquals(0, time.schedules.get(), "repair budget must not install a cancellation timer");
         assertEquals(1, handoffs.get());
         assertEquals("", result.rounds().get(1).rawOutput());
     }
@@ -485,7 +485,7 @@ class GenUiGeneratorIncrementalRepairTest {
     }
 
     @Test
-    void blockedRepairIsCancelledAndItsLateOutputCannotFollowTheSingleHandoff() throws Exception {
+    void blockedFirstRepairCanCompleteAfterBudgetExpires() throws Exception {
         GenerationDeadlineTest.ManualTime time = new GenerationDeadlineTest.ManualTime();
         CountDownLatch repairing = new CountDownLatch(1);
         CountDownLatch cancelled = new CountDownLatch(1);
@@ -543,18 +543,23 @@ class GenUiGeneratorIncrementalRepairTest {
                         assertEquals(0, cancelled.getCount());
                         return new GenUiGenerationResult("fallback", original.response());
                     }));
-            assertTrue(repairing.await(3, TimeUnit.SECONDS));
-            time.expire();
+            try {
+                assertTrue(repairing.await(3, TimeUnit.SECONDS));
+                time.expire();
+                assertFalse(future.isDone(), "elapsed budget must not interrupt an in-flight repair");
+            } finally {
+                cancelled.countDown();
+            }
             GenUiGenerationResult result = future.get(3, TimeUnit.SECONDS);
             assertTrue(lateRead.await(3, TimeUnit.SECONDS));
-            assertEquals(GenerationEndReason.TIMEOUT, result.endReason());
-            assertEquals(List.of("root = Bogus()\n"), dslContents(events));
-            assertEquals(List.of("dataModel", "dsl", "replace", "done"),
+            assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason());
+            assertEquals(List.of("root = Bogus()\n", "root = Stack([])\n"), dslContents(events));
+            assertEquals(List.of("dataModel", "dsl", "dsl", "done"),
                     events.stream().map(RenderStreamEnvelope::type).toList());
-            assertEquals(1, handoffs.get());
-            assertEquals(1, time.schedules.get());
+            assertEquals(0, handoffs.get());
+            assertEquals(0, time.schedules.get());
             assertEquals(2, result.rounds().size());
-            assertEquals(GenerationEndReason.TIMEOUT, result.rounds().get(1).endReason());
+            assertNull(result.rounds().get(1).endReason());
         }
     }
 

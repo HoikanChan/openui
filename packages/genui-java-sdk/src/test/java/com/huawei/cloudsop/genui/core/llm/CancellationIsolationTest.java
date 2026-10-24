@@ -5,55 +5,35 @@ package com.huawei.cloudsop.genui.core.llm;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.llm.transport.*;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * #90 集成行为:一个请求被超时取消,不影响同一生成器上并发的另一个请求。
+ * #90/#102 取消隔离:一个调用方被中断而取消自己的在途请求,不影响同一生成器上并发的另一个请求。
  */
 class CancellationIsolationTest {
 
-    private static String frame(String dsl) {
-        return "data: " + Json.stringify(
-                java.util.Map.of("choices", List.of(java.util.Map.of("delta", java.util.Map.of("content", dsl)))))
-                + "\n\n";
-    }
-
-    /** 可手动推进的时钟;每个请求各自注册截止动作,按注册顺序保存以便逐个触发。 */
-    static final class Deadlines {
-        final AtomicLong now = new AtomicLong();
-        final List<Runnable> actions = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
-
-        GenerationTiming timing() {
-            return new GenerationTiming(now::get, (action, delay) -> {
-                actions.add(action);
-                return () -> {
-                };
-            });
-        }
-
-        void fireAll() {
-            now.set(TimeUnit.SECONDS.toNanos(20));
-            List.copyOf(actions).forEach(Runnable::run);
-        }
-    }
-
     @Test
-    void cancellingOneRequestDoesNotDisturbAConcurrentRequest() throws Exception {
-        Deadlines deadlines = new Deadlines();
+    void interruptingOneCallerDoesNotCancelAConcurrentRequest() throws Exception {
         CountDownLatch reading = new CountDownLatch(1);
-        CountDownLatch release = new CountDownLatch(1);
-        AtomicBoolean firstCancelled = new AtomicBoolean();
+        CountDownLatch firstCancelled = new CountDownLatch(1);
         AtomicBoolean secondCancelled = new AtomicBoolean();
-        AtomicBoolean secondCompleted = new AtomicBoolean();
+        AtomicBoolean secondFinished = new AtomicBoolean();
         AtomicInteger calls = new AtomicInteger();
 
         LlmTransport transport = new LlmTransport() {
@@ -69,45 +49,29 @@ class CancellationIsolationTest {
                 int call = calls.incrementAndGet();
                 if (call == 1) {
                     return new LlmCall() {
-                        public InputStream execute() {
-                            return new InputStream() {
-                                public int read() {
-                                    throw new AssertionError("use bulk read");
-                                }
-
-                                public int read(byte[] bytes, int offset, int length) {
-                                    reading.countDown();
-                                    boolean interrupted = false;
-                                    while (true) {
-                                        try {
-                                            release.await();
-                                            break;
-                                        } catch (InterruptedException error) {
-                                            interrupted = true;
-                                        }
-                                    }
-                                    if (interrupted) {
-                                        Thread.currentThread().interrupt();
-                                    }
-                                    return -1;
-                                }
-                            };
+                        public InputStream execute() throws LlmTransportException {
+                            reading.countDown();
+                            try {
+                                firstCancelled.await();
+                            } catch (InterruptedException error) {
+                                Thread.currentThread().interrupt();
+                            }
+                            throw new LlmTransportException("cancelled");
                         }
 
                         public void cancel() {
-                            firstCancelled.set(true);
-                            release.countDown();
+                            firstCancelled.countDown();
                         }
                     };
                 }
                 return new LlmCall() {
                     public InputStream execute() {
-                        return new java.io.ByteArrayInputStream((frame("root = Stack([])") + "data: [DONE]")
-                                .getBytes(java.nio.charset.StandardCharsets.UTF_8)) {
+                        return new ByteArrayInputStream(
+                                (frame("root = Stack([])") + "data: [DONE]").getBytes(StandardCharsets.UTF_8)) {
                             public synchronized int read(byte[] bytes, int offset, int length) {
                                 int count = super.read(bytes, offset, length);
                                 if (count == -1) {
-                                    secondCompleted.set(true);
+                                    secondFinished.set(true);
                                 }
                                 return count;
                             }
@@ -115,39 +79,51 @@ class CancellationIsolationTest {
                     }
 
                     public void cancel() {
-                        // close() 也走 cancel():正常读完后的关闭不算取消。
-                        if (!secondCompleted.get()) {
+                        // close() 也会走 cancel():正常读完后的关闭不算取消。
+                        if (!secondFinished.get()) {
                             secondCancelled.set(true);
                         }
                     }
                 };
             }
         };
-
-        var generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .withTiming(deadlines.timing());
-        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport);
+        AtomicReference<Throwable> callerFailure = new AtomicReference<>();
+        Thread firstCaller = Thread.ofVirtual().unstarted(() -> {
             try {
-                var blocked = executor.submit(
-                        () -> generator.generateStream(UiGenerationRequest.builder().userInput("first").build(), e -> {
-                        }));
-                assertTrue(reading.await(3, TimeUnit.SECONDS), "first request must be reading");
-
-                GenUiGenerationResult concurrent = generator
-                        .generateStream(UiGenerationRequest.builder().userInput("second").build(), e -> {
-                        });
-                assertEquals(ValidationStatus.VALID, concurrent.validationStatus());
-                assertEquals(GenerationEndReason.CHECK_PASSED, concurrent.endReason());
-                assertFalse(secondCancelled.get(), "the concurrent request must not be cancelled");
-
-                deadlines.fireAll();
-                assertEquals(GenerationEndReason.TIMEOUT, blocked.get(3, TimeUnit.SECONDS).endReason());
-                assertTrue(firstCancelled.get(), "only the timed-out request is cancelled");
-                assertFalse(secondCancelled.get(), "cancelling the first request must not touch the second");
-            } finally {
-                deadlines.fireAll();
-                release.countDown();
+                generator.generateStream(request("first"), event -> {
+                });
+            } catch (Throwable error) {
+                callerFailure.set(error);
             }
+        });
+
+        firstCaller.start();
+        try {
+            assertTrue(reading.await(3, TimeUnit.SECONDS), "first request must be reading");
+            firstCaller.interrupt();
+            firstCaller.join(TimeUnit.SECONDS.toMillis(3));
+            assertFalse(firstCaller.isAlive(), "the interrupted caller must return");
+            assertInstanceOf(GenerationSdkException.class, callerFailure.get());
+            assertTrue(firstCancelled.await(3, TimeUnit.SECONDS),
+                    "the interrupted caller's in-flight request is cancelled");
+
+            GenUiGenerationResult concurrent = generator.generateStream(request("second"), event -> {
+            });
+            assertEquals(ValidationStatus.VALID, concurrent.validationStatus());
+            assertEquals(GenerationEndReason.CHECK_PASSED, concurrent.endReason());
+            assertFalse(secondCancelled.get(), "the concurrent request must not be cancelled");
+        } finally {
+            firstCancelled.countDown();
+            firstCaller.join(TimeUnit.SECONDS.toMillis(3));
         }
+    }
+
+    private static UiGenerationRequest request(String input) {
+        return UiGenerationRequest.builder().userInput(input).build();
+    }
+
+    private static String frame(String dsl) {
+        return "data: " + Json.stringify(Map.of("choices", List.of(Map.of("delta", Map.of("content", dsl))))) + "\n\n";
     }
 }

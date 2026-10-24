@@ -9,12 +9,16 @@ Java 21 SDK for assembling GenUI system prompts from:
 It also provides `GenUiGenerator` for services that want the SDK to assemble the
 prompt, invoke an LLM, parse sync or streaming responses, and extract OpenUI Lang.
 
-## Generation deadline and Markdown fallback
+## Repair budget and Markdown fallback
 
-`generate` and `generateStream` share one 20-second monotonic budget per DSL invocation,
-including prompt assembly, all model calls and validation. An independent scheduler
-cancels the active request even before response headers or during a blocked read.
-`withTiming(GenerationTiming)` permits deterministic clock/scheduler tests.
+`generate` and `generateStream` measure a 20-second monotonic budget from the start of
+DSL generation, including prompt assembly, model calls and validation. The initial
+generation and first repair are always allowed. Before starting each subsequent
+incremental repair, the SDK checks the total elapsed time: at or beyond 20 seconds,
+a still-invalid program falls back to Markdown with `TIMEOUT`. A request already
+started can finish and pass validation even after the budget expires. There is no
+budget cancellation timer; individual request timeouts belong to the transport.
+`withTiming(GenerationTiming)` permits deterministic clock tests.
 
 The current transport is JDK `HttpClient`; pass a complete HTTP(S) endpoint:
 
@@ -174,7 +178,7 @@ policy to apply, and an optional cap on incremental repair rounds. Use the
 presets for the common modes:
 
 ```java
-GenUiValidationConfig cfg = GenUiValidationConfig.incremental(); // default: deadline-bound
+GenUiValidationConfig cfg = GenUiValidationConfig.incremental(); // default: elapsed-time repair budget
 GenUiValidationConfig capped = GenUiValidationConfig.incremental(3); // at most 3 repair rounds
 GenUiValidationConfig strict = GenUiValidationConfig.finalOnly(); // no repair; sync throws on INVALID
 GenUiValidationConfig off = GenUiValidationConfig.disabled();
@@ -254,15 +258,16 @@ Normal generation defaults to `GenUiValidationConfig.incremental()`:
 errors, the model is asked for **only overriding or new statements** (pure
 openui-lang, no full page/JSON/deletion). The SDK merges the patch into the same
 current program (last-wins by statement id), forwards the patch live on the stream,
-and re-checks the **whole merged program** after the round. Rounds repeat until the
-program is valid or the shared 20-second budget expires; duplicate errors, empty
-patches, and lack of progress are not separate early-exit conditions.
+and re-checks the **whole merged program** after the round. The first repair always
+runs. Further repairs start only while total elapsed time is below 20 seconds;
+duplicate errors, empty patches, and lack of progress are not separate early-exit
+conditions. Any repair already in progress is allowed to finish.
 
 All rounds share the original contract, system prompt, and one characterized data
 snapshot; each round's scanner is reset, so half statements never splice across
 model requests. Completed and interrupted rounds remain on `rounds()`.
 
-If repair cannot reach `VALID` before the budget ends, the DSL session ends
+If a completed repair is still invalid and the budget has ended, the DSL session ends
 unsuccessfully and the public entry performs exactly one whole-page Markdown
 handoff (`replace` + `done` on the stream; Markdown result on sync). Explicit
 `GenUiValidationConfig.finalOnly()` keeps the no-repair behavior (sync throws
@@ -286,8 +291,8 @@ RepairPolicy policy = RepairPolicy.of(RepairPolicyKind.FINAL_REPAIR, 2);
 ```
 
 Incremental repair does not read `RepairPolicy.maxAttempts`: by default it runs
-until the shared session deadline, because #58 forbids early exit on repeated
-errors, empty patches, or lack of progress. Pass
+with the shared elapsed-time check before the second and later repair attempts.
+Repeated errors, empty patches, or lack of progress do not stop it early. Pass
 `GenUiValidationConfig.incremental(n)` when a host needs a hard round cap instead.
 `RepairPolicy.from(...)` only governs the legacy FINAL_REPAIR path.
 

@@ -55,8 +55,6 @@ final class GenerationSession implements LlmTransport {
             }
             try {
                 GenUiGenerationResult result = work.call();
-                if (expired())
-                    fail(GenerationEndReason.TIMEOUT);
                 synchronized (lock) {
                     if (!terminal) {
                         terminal = true;
@@ -72,14 +70,12 @@ final class GenerationSession implements LlmTransport {
                 }
             }
         });
-        Runnable cancelTimer = timing.scheduler().schedule(() -> fail(GenerationEndReason.TIMEOUT),
-                Math.max(0, GenerationTiming.BUDGET_NANOS - (timing.nanoTime().getAsLong() - started)));
         try {
             worker.start();
             Outcome outcome = completion.get();
             synchronized (outputLock) {
                 // Finish an already-started write before the caller publishes replacement/done.
-                // The timer cancels transport using a separate lock and never waits here.
+                // Cancellation uses a separate lock and never waits here.
                 return outcome;
             }
         } catch (InterruptedException e) {
@@ -92,14 +88,10 @@ final class GenerationSession implements LlmTransport {
             if (e.getCause() instanceof Error error)
                 throw error;
             throw new GenerationSdkException("Generation failed", e.getCause());
-        } finally {
-            cancelTimer.run();
         }
     }
 
     void emit(RenderStreamEnvelope event) {
-        if (expired())
-            fail(GenerationEndReason.TIMEOUT);
         if (RenderStreamEnvelope.TYPE_DONE.equals(event.type()))
             return;
         if (RenderStreamEnvelope.TYPE_ERROR.equals(event.type()) && event.content() instanceof Map<?, ?> content
@@ -137,7 +129,7 @@ final class GenerationSession implements LlmTransport {
         this.partialSnapshot = supplier;
     }
 
-    /** Whether the shared 20-second budget is already exhausted. */
+    /** Whether elapsed time prevents starting a second or later incremental repair. */
     boolean expiredNow() {
         return expired();
     }
@@ -186,8 +178,6 @@ final class GenerationSession implements LlmTransport {
     }
 
     private LlmCall open(String body, boolean stream) throws LlmTransportException {
-        if (expired())
-            fail(GenerationEndReason.TIMEOUT);
         synchronized (lock) {
             if (terminal)
                 throw new LlmTransportException("Generation ended");
