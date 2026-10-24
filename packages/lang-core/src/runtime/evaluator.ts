@@ -229,7 +229,12 @@ export function evaluate(
       const idx = evaluate(node.index, context);
       if (obj == null || idx == null) return null;
       if (Array.isArray(obj)) {
-        return obj[toNumber(idx)];
+        // 数字索引 → 取元素；字符串索引 → pluck（与 Member 行为一致）
+        if (typeof idx === 'number') {
+          return obj[idx];
+        }
+        const field = String(idx);
+        return obj.map((item: any) => item?.[field] ?? null);
       }
       return obj[String(idx)];
     }
