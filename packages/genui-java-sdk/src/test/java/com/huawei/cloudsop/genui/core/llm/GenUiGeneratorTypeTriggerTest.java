@@ -21,8 +21,8 @@ import java.util.Map;
  * #90: 类型检查结论与修复触发条件在公开生成入口上的契约。
  *
  * <p>
- * 只有确定的类型错误(ERROR → {@link ValidationStatus#INVALID})才消费一次修复调用;仅有未证明(UNPROVEN)且无阻塞问题时状态仍是
- * VALID,不触发修复。测试使用受控 {@code ScriptedTransport},不访问真实模型。
+ * 只有确定的类型错误(ERROR → {@link ValidationStatus#INVALID})才消费一次修复调用;仅有未证明(UNPROVEN)且无阻塞问题时状态仍是 VALID,不触发修复。测试使用受控
+ * {@code ScriptedTransport},不访问真实模型。
  */
 class GenUiGeneratorTypeTriggerTest {
 
@@ -74,8 +74,8 @@ class GenUiGeneratorTypeTriggerTest {
         GenUiGeneratorIncrementalRepairTest.ScriptedTransport transport = GenUiGeneratorIncrementalRepairTest.ScriptedTransport
                 .sync(syncResponse(unprovenOnlyDsl()));
 
-        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport).generate(
-                UiGenerationRequest.builder().userInput("show value").response(numberData()).build());
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generate(UiGenerationRequest.builder().userInput("show value").response(numberData()).build());
 
         assertEquals(ValidationStatus.VALID, result.validationStatus());
         assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason());
@@ -89,7 +89,7 @@ class GenUiGeneratorTypeTriggerTest {
     @Test
     void streamingEntryPointAlsoTreatsUnprovenAsNonBlocking() {
         GenUiGeneratorIncrementalRepairTest.ScriptedTransport transport = GenUiGeneratorIncrementalRepairTest.ScriptedTransport
-                .streams(frame(unprovenOnlyDsl()));
+                .streams(frame(unprovenOnlyDsl()) + "data: [DONE]\n\n");
 
         GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
                 .generateStream(UiGenerationRequest.builder().userInput("show value").response(numberData()).build(),

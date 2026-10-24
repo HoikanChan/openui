@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 class GenUiGeneratorTest {
     @Test
@@ -202,6 +203,62 @@ class GenUiGeneratorTest {
         assertEquals("", result.dsl());
         assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.endReason());
         assertEquals(1, envelopes.stream().filter(e -> "replace".equals(e.type())).count());
+    }
+
+    @Test
+    void legalDslFollowedByEofHandsOffToMarkdownExactlyOnce() {
+        assertSseFailure(frame("root = Stack([])"));
+    }
+
+    @Test
+    void legalDslFollowedByErrorDiscardsLateOutputAndHandsOffOnce() {
+        assertSseFailure(frame("root = Stack([])") + "data: {\"error\":{\"message\":\"upstream failed\"}}\n\n"
+                + frame("late invalid DSL") + SseFrames.done());
+    }
+
+    @Test
+    void normalStopAndDoneFinishSuccessfullyAndDiscardLateOutput() {
+        for (String ending : List.of("data: {\"choices\":[{\"finish_reason\":\"stop\"}]}\n\n", SseFrames.done())) {
+            ArrayList<RenderStreamEnvelope> events = new ArrayList<>();
+            AtomicInteger handoffs = new AtomicInteger();
+            GenUiGenerationResult result = GenUiGenerator
+                    .withTransport(GenUiLlmConfig.defaults(),
+                            FakeTransport.stream(frame("root = Stack([])") + ending + frame("late invalid DSL")
+                                    + "data: {\"error\":{\"message\":\"late error\"}}\n\n"))
+                    .generateStream(UiGenerationRequest.builder().userInput("stream").build(), events::add,
+                            (original, reason, sink) -> {
+                                handoffs.incrementAndGet();
+                                return new GenUiGenerationResult("unexpected Markdown", original.response());
+                            });
+
+            assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason());
+            assertEquals("root = Stack([])", result.dsl());
+            assertEquals(0, handoffs.get());
+            assertEquals(List.of("dataModel", "dsl", "done"), events.stream().map(RenderStreamEnvelope::type).toList());
+            assertSeqStrictlyIncreasing(events);
+        }
+    }
+
+    private static void assertSseFailure(String stream) {
+        AtomicInteger handoffs = new AtomicInteger();
+        ArrayList<RenderStreamEnvelope> events = new ArrayList<>();
+        GenUiGenerationResult result = GenUiGenerator
+                .withTransport(GenUiLlmConfig.defaults(), FakeTransport.stream(stream))
+                .generateStream(UiGenerationRequest.builder().userInput("stream").build(), events::add,
+                        (original, reason, sink) -> {
+                            assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, reason);
+                            handoffs.incrementAndGet();
+                            sink.accept(RenderStreamEnvelope.dsl(0, "Markdown page"));
+                            return new GenUiGenerationResult("Markdown page", original.response());
+                        });
+
+        assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.endReason());
+        assertEquals(1, handoffs.get());
+        assertEquals(List.of("dataModel", "dsl", "replace", "dsl", "done"),
+                events.stream().map(RenderStreamEnvelope::type).toList());
+        assertEquals("root = Stack([])", events.get(1).content());
+        assertEquals("Markdown page", events.get(3).content());
+        assertSeqStrictlyIncreasing(events);
     }
 
     /** 断言 envelope 列表中的 seq 严格单调递增(seq 顺序即发出顺序)。 */

@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.llm.stream.SseFrames;
 import com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport;
+import com.huawei.cloudsop.genui.core.llm.transport.LlmCall;
+import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 
@@ -21,12 +23,18 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -105,6 +113,90 @@ class GenUiGeneratorIncrementalRepairTest {
 
         assertEquals(ValidationStatus.VALID, result.validationStatus(), String.valueOf(result.validationResult()));
         assertTrue(result.dsl().contains("TextContent(row.name)"), "new helper definition is retained");
+    }
+
+    @Test
+    void streamRepairsEachArrayShapeUpstreamAndPreservesOtherContent() throws IOException {
+        String initial = "root = Stack([keep, table])\nkeep = TextContent(\"unchanged heading\")\n"
+                + "rows = @Each(data.groups, group, group.rows)\n" + "table = Table([Col(\"Name\", \"name\")], rows)\n";
+        String patch = "rows = @Flatten(@Each(data.groups, group, group.rows))\n";
+        ScriptedTransport transport = ScriptedTransport.streams(frame(initial) + SseFrames.done(),
+                frame(patch) + SseFrames.done());
+        Map<String, Object> data = Map.of("groups", List.of(Map.of("rows", List.of(Map.of("name", "Alice"))),
+                Map.of("rows", List.of(Map.of("name", "Bob")))));
+        String originalData = Json.stringify(data);
+        ArrayList<RenderStreamEnvelope> events = new ArrayList<>();
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generateStream(UiGenerationRequest.builder().userInput("Show all names and keep the heading")
+                        .response(data).build(), events::add);
+        assertEquals(ValidationStatus.VALID, result.validationStatus(), String.valueOf(result.validationResult()));
+        assertEquals(2, result.rounds().size());
+        assertTrue(result.rounds().get(0).validationResult().issues().stream()
+                .anyMatch(issue -> "table".equals(issue.statementId()) && issue.code().contains("row-shape")));
+        assertTrue(transport.bodies.get(1).contains("@Each returns one result per input"),
+                "shape guidance must identify upstream flattening");
+        assertTrue(transport.bodies.get(1).contains("`table`: upstream/downstream related statements: `rows`, `root`"),
+                "repair context includes upstream and users");
+        assertEquals(List.of(initial, patch), dslContents(events), "upstream override is forwarded live");
+        assertTrue(result.dsl().contains("keep = TextContent(\"unchanged heading\")"));
+        assertTrue(result.dsl().contains("table = Table([Col(\"Name\", \"name\")], rows)"));
+        assertEquals(originalData, Json.stringify(data), "Render Data Model is unchanged");
+        Files.createDirectories(Path.of("target"));
+        Files.writeString(Path.of("target/upstream-consumer-evidence.json"),
+                Json.stringify(Map.of("chunks", dslContents(events), "roundDefinitions",
+                        result.rounds().stream().map(round -> round.currentDefinitions()).toList(), "dsl", result.dsl(),
+                        "dataModel", data)));
+    }
+
+    @Test
+    void repairsObjectEntriesArgumentThroughPublicGeneration() throws IOException {
+        String initial = "root = Stack([keep, table])\nkeep = TextContent(\"unchanged heading\")\n"
+                + "entries = @ObjectEntries(data.rows)\n"
+                + "table = Table([Col(\"Key\", \"key\"), Col(\"Value\", \"value\")], entries)\n";
+        String patch = "entries = @ObjectEntries(data.counts)\n";
+        ScriptedTransport transport = ScriptedTransport.streams(frame(initial) + SseFrames.done(),
+                frame(patch) + SseFrames.done());
+        Map<String, Object> data = Map.of("rows", List.of(Map.of("name", "Alice")), "counts",
+                Map.of("switches", 2, "routers", 3));
+        String original = Json.stringify(data);
+        ArrayList<RenderStreamEnvelope> events = new ArrayList<>();
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generateStream(
+                        UiGenerationRequest.builder().userInput("Show counts by device kind").response(data).build(),
+                        events::add);
+        assertEquals(ValidationStatus.VALID, result.validationStatus(), String.valueOf(result.validationResult()));
+        assertEquals(2, result.rounds().size());
+        assertTrue(result.rounds().get(0).validationResult().issues().stream()
+                .anyMatch(issue -> "entries".equals(issue.statementId())
+                        && "builtin-argument-type-mismatch".equals(issue.code())));
+        assertTrue(
+                transport.bodies.get(1).contains("`entries`: upstream/downstream related statements: `table`, `root`"));
+        assertEquals(original, Json.stringify(data));
+        assertTrue(result.dsl().contains("keep = TextContent(\"unchanged heading\")"));
+        Files.writeString(Path.of("target/object-entries-consumer-evidence.json"),
+                Json.stringify(Map.of("chunks", dslContents(events), "roundDefinitions",
+                        result.rounds().stream().map(round -> round.currentDefinitions()).toList(), "dsl", result.dsl(),
+                        "dataModel", data)));
+    }
+
+    @Test
+    void upstreamPatchRechecksOtherConsumersBeforeFinishing() {
+        String initial = "root = Stack([keep, primary, secondary])\nkeep = TextContent(\"unchanged\")\n"
+                + "rows = data.rows\nprimary = Table([Col(\"Label\", \"label\")], rows)\n"
+                + "secondary = Table([Col(\"Name\", \"name\")], rows)";
+        String upstreamPatch = "rows = @Each(data.rows, row, {label: row.name})";
+        String consumerPatch = "secondary = Table([Col(\"Name\", \"label\")], rows)";
+        ScriptedTransport transport = ScriptedTransport.sync(syncResponse(initial), syncResponse(upstreamPatch),
+                syncResponse(consumerPatch));
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generate(UiGenerationRequest.builder().userInput("Show rows in two views")
+                        .response(Map.of("rows", List.of(Map.of("name", "Alice")))).build());
+        assertEquals(ValidationStatus.VALID, result.validationStatus(), String.valueOf(result.validationResult()));
+        assertEquals(3, result.rounds().size(), "valid patch cannot bypass full-program recheck");
+        assertTrue(result.rounds().get(1).validationResult().issues().stream().anyMatch(
+                issue -> "secondary".equals(issue.statementId()) && "type-table-column-missing".equals(issue.code())));
+        assertTrue(transport.bodies.get(2).contains("secondary"));
+        assertTrue(result.dsl().contains("keep = TextContent(\"unchanged\")"));
     }
 
     // ── #75: 能力边界越界（如 @GroupBy）通过增量覆盖补丁收敛为 capabilityNotice + Table ──
@@ -277,9 +369,9 @@ class GenUiGeneratorIncrementalRepairTest {
         ManualTime time = new ManualTime();
         ScriptedTransport transport = ScriptedTransport.streams(frame("root = Bogus(\"x\")\n") + SseFrames.done(),
                 frame("root = StillBogus()\n") + SseFrames.done(),
-                // No [DONE] on the last script: the clock advances when this stream reaches EOF, so the round
-                // completes and the loop then observes the exhausted budget (rather than timing out mid-round).
-                frame("root = AlsoBogus()\n"));
+                // The final marker has no trailing blank line: EOF advances the clock before its handling,
+                // so the round completes and the loop then observes the exhausted budget.
+                frame("root = AlsoBogus()\n") + "data: [DONE]");
         transport.advanceAfterStream(time, 3, 20);
         ArrayList<RenderStreamEnvelope> envelopes = new ArrayList<>();
         AtomicInteger handoffs = new AtomicInteger();
@@ -323,6 +415,168 @@ class GenUiGeneratorIncrementalRepairTest {
                 "the interrupted round records the session terminal reason");
         assertTrue(result.rounds().get(1).rawOutput().contains("root = Stack(["));
         assertEquals(1, envelopes.stream().filter(e -> RenderStreamEnvelope.TYPE_DONE.equals(e.type())).count());
+    }
+
+    @Test
+    void streamSeparatesAnUnterminatedRoundFromItsRepair() {
+        ScriptedTransport transport = ScriptedTransport.streams(
+                frame("root = Stack([late])\nlate = Bogus(") + SseFrames.done(),
+                frame("late = TextContent(\"fixed\")") + SseFrames.done());
+        ArrayList<RenderStreamEnvelope> events = new ArrayList<>();
+
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generateStream(req(), events::add);
+
+        assertEquals(ValidationStatus.VALID, result.validationStatus());
+        assertEquals("root = Stack([late])\nlate = Bogus()\nlate = TextContent(\"fixed\")",
+                String.join("", dslContents(events)), "the frontend receives separate complete statements");
+        assertEquals("root = Stack([late])\nlate = Bogus(", result.rounds().get(0).rawOutput(),
+                "normalization must not change the recorded model output");
+        assertEquals("late = TextContent(\"fixed\")", result.rounds().get(1).rawOutput());
+    }
+
+    @Test
+    void emptyAndRepeatedPatchesKeepRepairingUntilTheOriginalDeadline() {
+        ManualTime time = new ManualTime();
+        ScriptedTransport transport = ScriptedTransport.streams(frame("root = Bogus()\n") + SseFrames.done(),
+                SseFrames.done(), frame("root = Bogus()\n") + SseFrames.done(), "");
+        transport.advanceAfterStream(time, 4, 20);
+        AtomicInteger handoffs = new AtomicInteger();
+
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .withTiming(time.timing()).generateStream(req(), event -> {
+                }, (original, reason, sink) -> {
+                    handoffs.incrementAndGet();
+                    return new GenUiGenerationResult("fallback", original.response());
+                });
+
+        assertEquals(GenerationEndReason.TIMEOUT, result.endReason());
+        assertEquals(4, transport.streamCount, "neither empty output nor unchanged errors end the session");
+        assertEquals(1, time.schedules.get(), "all repair rounds share the original timer");
+        assertEquals(1, handoffs.get());
+        assertEquals("", result.rounds().get(1).rawOutput());
+    }
+
+    @Test
+    void recordsCrossRoundConsumerEvidenceWithIncompleteInitialAndRepairOutputs() throws Exception {
+        ScriptedTransport transport = ScriptedTransport.streams(
+                frame("root = Stack([late])\nlate = Bogus(") + SseFrames.done(),
+                frame("late = StillBogus(") + SseFrames.done(),
+                frame("helper = TextContent(\"repair helper visible\")\nlate = Stack([helper])") + SseFrames.done());
+        ArrayList<RenderStreamEnvelope> events = new ArrayList<>();
+
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generateStream(req(), events::add);
+
+        assertEquals(ValidationStatus.VALID, result.validationStatus());
+        assertEquals(3, result.rounds().size());
+        assertEquals("root = Stack([late])\nlate = Stack([helper])\nhelper = TextContent(\"repair helper visible\")",
+                result.dsl());
+        assertEquals(
+                List.of("root = Stack([late])\nlate = Bogus(", "late = StillBogus(",
+                        "helper = TextContent(\"repair helper visible\")\nlate = Stack([helper])"),
+                result.rounds().stream().map(round -> round.rawOutput()).toList());
+        assertEquals(1, events.stream().filter(event -> RenderStreamEnvelope.TYPE_DONE.equals(event.type())).count());
+        // Consumable evidence for the real frontend harness; only build output is written.
+        Path target = Path.of("target", "incremental-consumer-evidence.json");
+        Files.createDirectories(target.getParent());
+        Files.writeString(target, Json.stringify(Map.of("chunks", dslContents(events), "dsl", result.dsl(),
+                "roundDefinitions", result.rounds().stream().map(round -> round.currentDefinitions()).toList())));
+    }
+
+    @Test
+    void blockedRepairIsCancelledAndItsLateOutputCannotFollowTheSingleHandoff() throws Exception {
+        GenerationDeadlineTest.ManualTime time = new GenerationDeadlineTest.ManualTime();
+        CountDownLatch repairing = new CountDownLatch(1);
+        CountDownLatch cancelled = new CountDownLatch(1);
+        CountDownLatch lateRead = new CountDownLatch(1);
+        AtomicBoolean firstReleased = new AtomicBoolean();
+        AtomicInteger calls = new AtomicInteger();
+        LlmTransport transport = new LlmTransport() {
+            public String post(String body) {
+                throw new AssertionError();
+            }
+            public InputStream postStream(String body) {
+                throw new AssertionError();
+            }
+            public LlmCall newCall(String body, boolean stream) {
+                int number = calls.incrementAndGet();
+                if (number > 1)
+                    assertTrue(firstReleased.get(), "release the old source before repair");
+                return new LlmCall() {
+                    public InputStream execute() {
+                        if (number == 1)
+                            return new ByteArrayInputStream(
+                                    (frame("root = Bogus()\n") + SseFrames.done()).getBytes(StandardCharsets.UTF_8));
+                        repairing.countDown();
+                        while (cancelled.getCount() != 0) {
+                            try {
+                                cancelled.await();
+                            } catch (InterruptedException ignored) {
+                            }
+                        }
+                        return new ByteArrayInputStream(
+                                (frame("root = Stack([])\n") + SseFrames.done()).getBytes(StandardCharsets.UTF_8)) {
+                            public synchronized int read(byte[] b, int offset, int length) {
+                                lateRead.countDown();
+                                return super.read(b, offset, length);
+                            }
+                        };
+                    }
+                    public void cancel() {
+                        if (number == 1)
+                            firstReleased.set(true);
+                        else
+                            cancelled.countDown();
+                    }
+                };
+            }
+        };
+        var events = new CopyOnWriteArrayList<RenderStreamEnvelope>();
+        AtomicInteger handoffs = new AtomicInteger();
+        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .withTiming(time.timing());
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            var future = executor
+                    .submit(() -> generator.generateStream(req(), events::add, (original, reason, sink) -> {
+                        handoffs.incrementAndGet();
+                        assertEquals(0, cancelled.getCount());
+                        return new GenUiGenerationResult("fallback", original.response());
+                    }));
+            assertTrue(repairing.await(3, TimeUnit.SECONDS));
+            time.expire();
+            GenUiGenerationResult result = future.get(3, TimeUnit.SECONDS);
+            assertTrue(lateRead.await(3, TimeUnit.SECONDS));
+            assertEquals(GenerationEndReason.TIMEOUT, result.endReason());
+            assertEquals(List.of("root = Bogus()\n"), dslContents(events));
+            assertEquals(List.of("dataModel", "dsl", "replace", "done"),
+                    events.stream().map(RenderStreamEnvelope::type).toList());
+            assertEquals(1, handoffs.get());
+            assertEquals(1, time.schedules.get());
+            assertEquals(2, result.rounds().size());
+            assertEquals(GenerationEndReason.TIMEOUT, result.rounds().get(1).endReason());
+        }
+    }
+
+    @Test
+    void rawCommentsAndStringWhitespaceCannotSwallowTheNextRepair() throws Exception {
+        List<String> rawOutputs = List.of("root = Bogus( // (", "root = Bogus( # (", "root = Bogus(\"abc\\   ");
+        List<String> boundaries = List.of("\n)\n", "\n)\n", "\")\n");
+        List<Map<String, Object>> evidence = new ArrayList<>();
+        for (int i = 0; i < rawOutputs.size(); i++) {
+            String raw = rawOutputs.get(i);
+            String patch = "root = TextContent(\"repair helper visible\")";
+            ScriptedTransport transport = ScriptedTransport.streams(frame(raw) + SseFrames.done(),
+                    frame(patch) + SseFrames.done());
+            List<RenderStreamEnvelope> events = new ArrayList<>();
+            GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                    .generateStream(req(), events::add);
+            assertEquals(ValidationStatus.VALID, result.validationStatus());
+            assertEquals(List.of(raw, boundaries.get(i), patch), dslContents(events), raw);
+            evidence.add(Map.of("chunks", dslContents(events), "dsl", result.dsl(), "roundDefinitions",
+                    result.rounds().stream().map(round -> round.currentDefinitions()).toList()));
+        }
+        Files.writeString(Path.of("target", "incremental-boundary-regressions.json"), Json.stringify(evidence));
     }
 
     // ── fake transports ─────────────────────────────────────────────────────

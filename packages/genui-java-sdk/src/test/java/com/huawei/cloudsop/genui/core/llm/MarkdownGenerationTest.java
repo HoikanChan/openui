@@ -48,7 +48,7 @@ class MarkdownGenerationTest {
                 String frame = "data: "
                         + Json.stringify(Map.of("choices", List.of(Map.of("delta", Map.of("content", markdown)))))
                         + "\n\n";
-                return new ByteArrayInputStream(frame.getBytes(StandardCharsets.UTF_8));
+                return new ByteArrayInputStream((frame + "data: [DONE]\n\n").getBytes(StandardCharsets.UTF_8));
             }
         };
         var request = UiGenerationRequest.builder().userInput("original request").response(Map.of("answer", 42))
