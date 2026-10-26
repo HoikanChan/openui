@@ -143,6 +143,9 @@ class IncrementalRepairPromptBuilderTest {
         assertTrue(text.contains("Do not treat sample rows as the full dataset"), "sample is not full data");
         assertTrue(text.contains("do not invent fields, functions, data, or statistics"), "no fabrication rule");
         assertTrue(text.contains("state the limitation in the page"), "real data + page explanation rule");
+        assertTrue(text.contains("caller-supplied data model as the primary subject"), "data-first rule");
+        assertTrue(text.contains("without exposing internal field/path names"), "no internal path leakage rule");
+        assertTrue(text.contains("数据源不匹配"), "no data-source mismatch title rule");
     }
 
     @Test

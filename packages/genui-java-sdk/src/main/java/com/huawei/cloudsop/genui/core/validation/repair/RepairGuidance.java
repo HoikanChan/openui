@@ -116,6 +116,15 @@ public final class RepairGuidance {
             selected.add("Do not derive counts, sums, averages, or other statistics from sample rows as if they "
                     + "were the full dataset. Use @builtins over actual data references; if the value cannot be "
                     + "known, render the real known data and state the limitation in the page.");
+            selected.add("Treat the caller-supplied data model as the primary content to render and the user "
+                    + "request as auxiliary context: rebind the diagnosed data reference to the real dataset in "
+                    + "`data`, update the `CardHeader` title/subtitle and `Table` columns (or `Descriptions`) to "
+                    + "match the real dataset's own entity name and fields (never mislabeling it as the requested "
+                    + "entity or topic), and include a `TextCallout` in the card/root with a neutral user-facing "
+                    + "title (e.g., \"提示\" / \"信息说明\", never \"数据源不匹配\" or system error terms) to state "
+                    + "what information is unavailable and what is shown instead, without exposing internal field "
+                    + "or path names (such as `data.xxx` or `queryXxx`). (If using `DescField(label, value, span?)`, "
+                    + "pass `@Switch(...)` directly as `value`; `{cell: @Render(...)}` is only for `Col`.)");
             return;
         }
 
@@ -124,6 +133,25 @@ public final class RepairGuidance {
                     + "of arrays. Trace the AST-related upstream definitions and fix the data shape to flat object "
                     + "rows (using @Flatten when declared in the current contract). Preserve Table columns that "
                     + "already match those rows; do not replace data processing with hand-written result values.");
+        }
+
+        if ("type-table-column-missing".equals(code)) {
+            selected.add("Treat the caller-supplied data model as the primary content to render and the user "
+                    + "request as auxiliary context: if the requested metric or attribute is absent from `data`, "
+                    + "remove the missing column from `Table([cols...], rows)` and keep only `Col` columns whose "
+                    + "fields genuinely match their column titles (or if the table used placeholder column names "
+                    + "like `metricName`/`filteredValue`, replace them with `Col` columns for the actual row fields). "
+                    + "Update `CardHeader`, `@Filter`, and `@Sort` to match the real metrics shown.");
+            selected.add("Never bind a column title to a semantically different row field (for example, never bind "
+                    + "\"发送丢包数\" to `recv_drop_pkts_cnt_filter` or \"CPU 利用率\" to `mem_usage`), and never "
+                    + "use `ExtraCol` to work around a missing row field with a fabricated constant (such as `0`, "
+                    + "`\"-\"`, or `\"无\"`), an unrelated field, or `row.<missingField>`. State what attribute is "
+                    + "unavailable in a `TextCallout` with a neutral user-facing title (e.g., \"提示\" / "
+                    + "\"信息说明\", never \"数据源\" or \"数据源不匹配\") and natural language without exposing "
+                    + "internal field/path names (such as `cpu_usage`, `send_drop_pkts_cnt`, or `patchFileVersion`); "
+                    + "if an existing `TextContent` or `TextCallout` in the DSL exposes raw field names, redefine "
+                    + "it (`TextContent(text, size?)` takes one text string; `TextCallout(variant, title, description)` takes three).");
+            return;
         }
 
         if (code.startsWith("type-")) {
