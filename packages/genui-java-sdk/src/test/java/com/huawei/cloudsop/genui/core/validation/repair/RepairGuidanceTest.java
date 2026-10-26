@@ -61,6 +61,18 @@ class RepairGuidanceTest {
         assertTrue(guidance.contains("`data.<path>` must exist"));
         assertTrue(guidance.contains("sample rows as if they were the full dataset"));
         assertTrue(guidance.contains("state the limitation in the page"));
+        assertTrue(guidance.contains("caller-supplied data model as the primary content"));
+        assertTrue(guidance.contains("without exposing internal field or path names"));
+        assertTrue(guidance.contains("never \"数据源不匹配\""));
+    }
+
+    @Test
+    void tableColumnMissingSelectsDataFirstAndNoExtraColWorkaroundGuidance() {
+        String guidance = joined(RepairGuidance.forIssues(List.of(error("type-table-column-missing", "type"))));
+        assertTrue(guidance.contains("caller-supplied data model as the primary content"));
+        assertTrue(guidance.contains("never use `ExtraCol` to work around a missing row field"));
+        assertTrue(guidance.contains("without exposing internal field/path names"));
+        assertTrue(guidance.contains("never \"数据源\" or \"数据源不匹配\""));
     }
 
     @Test

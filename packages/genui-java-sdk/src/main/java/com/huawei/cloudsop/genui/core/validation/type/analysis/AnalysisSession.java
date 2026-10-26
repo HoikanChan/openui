@@ -1330,7 +1330,8 @@ public final class AnalysisSession {
                 List.copyOf(existence.reasons()), existence.upstreamErrors()));
         if (existence.verdict() == Checks.Verdict.MISMATCH) {
             emit("type-table-column-missing", "Table column field \"" + field + "\" " + existence.detail() + ".",
-                    statementId, "Table", "/columns/" + field, "Use a field present in the Table rows.");
+                    statementId, "Table", "/columns/" + field,
+                    "Remove this column from the Table if its metric/attribute is absent from the data (or replace the Table columns with Col definitions matching the actual fields in the rows); never bind a column title to a semantically different field or replace Col with ExtraCol.");
         }
         // 元素 Never(空数组)时不再检查 cell 模板——无行结构可用。行存在性未证明(Filter 等)不妨碍
         // 按行形状上界检查 cell 模板:列存在性已在上方按 noRowEvidence 口径处理;字段值类型上界确定可知,

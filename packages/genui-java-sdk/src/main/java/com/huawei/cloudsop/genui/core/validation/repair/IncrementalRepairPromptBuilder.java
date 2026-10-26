@@ -240,7 +240,11 @@ public final class IncrementalRepairPromptBuilder {
         sb.append("8. Treat caller-supplied data as a description with a stated scale, not automatically the full "
                 + "render data model. Never present sample rows as complete data, and never fabricate statistics. "
                 + "If the available data cannot support a value, render the real known data and state the "
-                + "limitation in the page.\n");
+                + "limitation in the page (treating the caller-supplied data model as the primary subject to "
+                + "render and the user request as auxiliary context: render the actual data in `data` using its "
+                + "own entity names, titles, and fields, and state any limitation in natural user-facing language "
+                + "with a neutral notice title such as \"提示\" / \"信息说明\", without exposing internal field/path "
+                + "names like `data.xxx` / `queryXxx` or system terms like \"数据源不匹配\").\n");
         sb.append("9. Diagnose from the current DSL and the latest diagnostics. Historical rounds explain how the "
                 + "program changed; they do not override the current program.\n\n");
     }
@@ -340,7 +344,10 @@ public final class IncrementalRepairPromptBuilder {
                 + "its stated counts/scale exactly as given. Do not treat sample rows as the full dataset, do not "
                 + "invent fields, functions, data, or statistics, and do not compute a total from a sample unless "
                 + "the context explicitly says it is the full data. When the real data cannot support a value, show "
-                + "the real known data and state the limitation in the page.\n\n");
+                + "the real known data and state the limitation in the page (treating the caller-supplied data "
+                + "model as the primary subject to render and the user request as auxiliary context, using a "
+                + "neutral notice title such as \"提示\" / \"信息说明\" and natural user-facing language without "
+                + "exposing internal field/path names like `data.xxx` / `queryXxx` or system terms like \"数据源不匹配\").\n\n");
     }
 
     private static void appendSelectedGuidance(StringBuilder sb, List<ValidationIssue> latestIssues) {
