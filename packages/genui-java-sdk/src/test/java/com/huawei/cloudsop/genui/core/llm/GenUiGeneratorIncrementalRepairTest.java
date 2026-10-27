@@ -39,7 +39,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * #58 增量修复:通过公开入口 {@link GenUiGenerator#generate} / {@link #generateStream} 验证。
+ * #58 增量修复:通过公开流式入口 {@link GenUiGenerator#generateStream} 验证。同步 {@code generate()}
+ * 不再校验或修复,其行为由 {@link GenUiGeneratorValidationTest} 覆盖。
  *
  * <p>
  * 首轮输出结束后才校验;失败时模型只输出覆盖/新增语句,片段实时转发;后端合并当前程序后再检查;所有轮共享同一截止时间; 失败/超时保留完整轮与中断轮记录。
@@ -48,10 +49,6 @@ class GenUiGeneratorIncrementalRepairTest {
 
     private static UiGenerationRequest req() {
         return UiGenerationRequest.builder().userInput("build a page").build();
-    }
-
-    private static String syncResponse(String dsl) {
-        return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":" + Json.stringify(dsl) + "}}]}";
     }
 
     private static String frame(String content) {
@@ -69,33 +66,36 @@ class GenUiGeneratorIncrementalRepairTest {
         }
     }
 
-    // ── 同步:默认配置启用增量修复 ─────────────────────────────────────────
+    // ── 流式:默认配置启用增量修复 ─────────────────────────────────────────
 
     @Test
-    void syncFirstRoundPassReportsCheckPassed() {
-        ScriptedTransport transport = ScriptedTransport.sync(syncResponse("root = Stack([])"));
+    void streamFirstRoundPassReportsCheckPassed() {
+        ScriptedTransport transport = ScriptedTransport.streams(frame("root = Stack([])") + SseFrames.done());
 
         GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .generate(req());
+                .generateStream(req(), envelope -> {
+                });
 
         assertEquals(ValidationStatus.VALID, result.validationStatus());
         assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason(), "a validated first round is CHECK_PASSED");
-        assertEquals(1, transport.postCount());
+        assertEquals(1, transport.streamCount);
     }
 
     @Test
-    void syncRepairsWithPatchOnlyAndKeepsUnrelatedDefinitions() {
-        ScriptedTransport transport = ScriptedTransport.sync(
-                syncResponse("root = Bogus(\"x\")\nkeep = TextContent(\"k\")"), syncResponse("root = Stack([keep])"));
+    void streamRepairsWithPatchOnlyAndKeepsUnrelatedDefinitions() {
+        ScriptedTransport transport = ScriptedTransport.streams(
+                frame("root = Bogus(\"x\")\nkeep = TextContent(\"k\")") + SseFrames.done(),
+                frame("root = Stack([keep])") + SseFrames.done());
 
         GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .generate(req());
+                .generateStream(req(), envelope -> {
+                });
 
         assertEquals(ValidationStatus.VALID, result.validationStatus());
         assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason(), "a successful repair round is CHECK_PASSED");
         assertEquals("root = Stack([keep])\nkeep = TextContent(\"k\")", result.dsl(),
                 "only the patched statement is replaced; unrelated definitions survive");
-        assertEquals(2, transport.postCount(), "one initial round + one incremental repair round");
+        assertEquals(2, transport.streamCount, "one initial round + one incremental repair round");
         assertEquals(2, result.rounds().size());
         assertTrue(transport.bodies.get(1).contains("[REPAIR:INCREMENTAL]"),
                 "repair request carries the incremental repair prompt");
@@ -104,12 +104,16 @@ class GenUiGeneratorIncrementalRepairTest {
     }
 
     @Test
-    void syncKeepsNewHelperDefinitionFromPatch() {
-        ScriptedTransport transport = ScriptedTransport.sync(syncResponse("root = Table(data.rows)"),
-                syncResponse("rows = @Each(data.rows, row, TextContent(row.name))\nroot = Stack([rows])"));
+    void streamKeepsNewHelperDefinitionFromPatch() {
+        ScriptedTransport transport = ScriptedTransport.streams(
+                frame("root = Table(data.rows)") + SseFrames.done(),
+                frame("rows = @Each(data.rows, row, TextContent(row.name))\nroot = Stack([rows])")
+                        + SseFrames.done());
 
-        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport).generate(
-                UiGenerationRequest.builder().userInput("build").response(java.util.Map.of("rows", List.of())).build());
+        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                .generateStream(UiGenerationRequest.builder().userInput("build")
+                        .response(java.util.Map.of("rows", List.of())).build(), envelope -> {
+                        });
 
         assertEquals(ValidationStatus.VALID, result.validationStatus(), String.valueOf(result.validationResult()));
         assertTrue(result.dsl().contains("TextContent(row.name)"), "new helper definition is retained");
@@ -180,17 +184,18 @@ class GenUiGeneratorIncrementalRepairTest {
     }
 
     @Test
-    void upstreamPatchRechecksOtherConsumersBeforeFinishing() {
+    void streamUpstreamPatchRechecksOtherConsumersBeforeFinishing() {
         String initial = "root = Stack([keep, primary, secondary])\nkeep = TextContent(\"unchanged\")\n"
                 + "rows = data.rows\nprimary = Table([Col(\"Label\", \"label\")], rows)\n"
                 + "secondary = Table([Col(\"Name\", \"name\")], rows)";
         String upstreamPatch = "rows = @Each(data.rows, row, {label: row.name})";
         String consumerPatch = "secondary = Table([Col(\"Name\", \"label\")], rows)";
-        ScriptedTransport transport = ScriptedTransport.sync(syncResponse(initial), syncResponse(upstreamPatch),
-                syncResponse(consumerPatch));
+        ScriptedTransport transport = ScriptedTransport.streams(frame(initial) + SseFrames.done(),
+                frame(upstreamPatch) + SseFrames.done(), frame(consumerPatch) + SseFrames.done());
         GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .generate(UiGenerationRequest.builder().userInput("Show rows in two views")
-                        .response(Map.of("rows", List.of(Map.of("name", "Alice")))).build());
+                .generateStream(UiGenerationRequest.builder().userInput("Show rows in two views")
+                        .response(Map.of("rows", List.of(Map.of("name", "Alice")))).build(), envelope -> {
+                        });
         assertEquals(ValidationStatus.VALID, result.validationStatus(), String.valueOf(result.validationResult()));
         assertEquals(3, result.rounds().size(), "valid patch cannot bypass full-program recheck");
         assertTrue(result.rounds().get(1).validationResult().issues().stream().anyMatch(
@@ -200,35 +205,6 @@ class GenUiGeneratorIncrementalRepairTest {
     }
 
     // ── #75: 能力边界越界（如 @GroupBy）通过增量覆盖补丁收敛为 capabilityNotice + Table ──
-
-    @Test
-    void syncCapabilityGapGroupByConvergesInOneIncrementalPatchWithCapabilityNoticeAndTable() {
-        String initialDsl = "grouped = @GroupBy(data.boards, \"model\")\nroot = Stack([grouped])";
-        String patchDsl = "grouped = @Sort(data.boards, \"model\", \"asc\")\n"
-                + "capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\", \"暂不支持分组展示，以下按原始数据展示\")\n"
-                + "table = Table([Col(\"型号\", \"model\"), Col(\"槽位\", \"slot\")], grouped)\n"
-                + "root = Stack([capabilityNotice, table])";
-        ScriptedTransport transport = ScriptedTransport.sync(syncResponse(initialDsl), syncResponse(patchDsl));
-
-        UiGenerationRequest request = UiGenerationRequest.builder().userInput("按板卡型号分组展示")
-                .response(Map.of("boards", List.of(Map.of("model", "MPU", "slot", "1")))).build();
-        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .generate(request);
-
-        assertEquals(ValidationStatus.VALID, result.validationStatus(), String.valueOf(result.validationResult()));
-        assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason());
-        assertEquals(2, transport.postCount());
-        assertEquals(2, result.rounds().size());
-        assertTrue(transport.bodies.get(1).contains("## Capability boundary (overrides the original request)"),
-                "repair request must carry the capability boundary override section");
-        assertTrue(transport.bodies.get(1).contains("## Original request (for context only)"),
-                "repair request must mark Original request as for context only");
-        assertFalse(result.dsl().contains("GroupBy"), "invalid @GroupBy definition must be overridden by last-wins");
-        assertTrue(result.dsl().contains("capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\""),
-                "converged DSL must include capabilityNotice");
-        assertTrue(result.dsl().contains("root = Stack([capabilityNotice, table])"),
-                "root must place capabilityNotice as its first child");
-    }
 
     @Test
     void streamCapabilityGapGroupByConvergesInOneIncrementalPatchWithCapabilityNoticeAndTable() {
@@ -257,48 +233,9 @@ class GenUiGeneratorIncrementalRepairTest {
     }
 
     // ── 修复轮异常:空 content 不穿透,走 Markdown 降级并保留轮记录 ─────────────
-
-    @Test
-    void syncInitialEmptyContentHandsOffToMarkdown() {
-        // The very first response has no usable content (refusal / tool call only); the Markdown handoff follows.
-        ScriptedTransport transport = ScriptedTransport.sync(
-                "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null}}]}",
-                syncResponse("# Markdown fallback"));
-
-        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .generate(req());
-
-        assertTrue(result.dsl().contains("MarkDownRenderer") && result.dsl().contains("# Markdown fallback"),
-                "an empty initial response hands off to the Markdown wrapper instead of escaping; got: "
-                        + result.dsl());
-        assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.endReason());
-        assertEquals(2, transport.postCount(), "initial + markdown; no repair round is possible");
-        assertEquals(1, result.rounds().size(), "the interrupted initial request is recorded as an interrupted round");
-        assertNull(result.rounds().get(0).validationResult(), "no verdict for an interrupted initial round");
-        assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.rounds().get(0).endReason());
-    }
-
-    @Test
-    void syncRepairEmptyContentHandsOffToMarkdownAndKeepsRounds() {
-        // Round 1: INVALID DSL. Round 2 (repair): first choice has null content (e.g. tool-call only response).
-        // Round 3 (Markdown handoff): plain markdown text.
-        ScriptedTransport transport = ScriptedTransport.sync(syncResponse("root = Bogus(\"x\")"),
-                "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null}}]}",
-                syncResponse("# Markdown fallback"));
-
-        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .generate(req());
-
-        assertEquals("root = Stack([MarkDownRenderer(\"# Markdown fallback\")])", result.dsl(),
-                "empty repair content hands off to Markdown, not a throw");
-        assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.endReason(),
-                "the session terminates as MODEL_REQUEST_FAILED, not as a runtime exception");
-        assertEquals(3, transport.postCount(), "initial + repair + markdown");
-        assertEquals(2, result.rounds().size(), "the completed first round survives; the repair round is recorded");
-        assertNull(result.rounds().get(0).endReason(), "first round completed normally");
-        assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.rounds().get(1).endReason(),
-                "the empty repair round is recorded as interrupted by request failure");
-    }
+    // 空修复输出继续按原截止时间重试,由 emptyAndRepeatedPatchesKeepRepairingUntilTheOriginalDeadline 覆盖;
+    // 流中断导致的降级由 GenUiGeneratorRoundEndTest 覆盖。同步入口的响应失败直接抛异常,见
+    // GenUiGeneratorValidationTest。
 
     // ── 流式:修复片段实时转发,不额外 done ────────────────────────────────
 
@@ -587,20 +524,12 @@ class GenUiGeneratorIncrementalRepairTest {
     // ── fake transports ─────────────────────────────────────────────────────
 
     static final class ScriptedTransport implements InMemoryLlmTransport {
-        private final Deque<String> posts = new ArrayDeque<>();
         private final Deque<String> streams = new ArrayDeque<>();
         final List<String> bodies = new ArrayList<>();
-        private int postCount;
         int streamCount;
         private ManualTime time;
         private int advanceOnStream = -1;
         private long advanceToNanos = -1;
-
-        static ScriptedTransport sync(String... responses) {
-            ScriptedTransport transport = new ScriptedTransport();
-            transport.posts.addAll(List.of(responses));
-            return transport;
-        }
 
         static ScriptedTransport streams(String... scripts) {
             ScriptedTransport transport = new ScriptedTransport();
@@ -614,18 +543,9 @@ class GenUiGeneratorIncrementalRepairTest {
             this.advanceToNanos = TimeUnit.SECONDS.toNanos(seconds);
         }
 
-        int postCount() {
-            return postCount;
-        }
-
         @Override
-        public String post(String body) throws LlmTransportException {
-            postCount++;
-            bodies.add(body);
-            if (posts.isEmpty()) {
-                throw new LlmTransportException("no scripted sync response");
-            }
-            return posts.poll();
+        public String post(String body) {
+            throw new AssertionError("incremental repair must use streaming requests");
         }
 
         @Override

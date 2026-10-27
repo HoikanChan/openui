@@ -58,7 +58,7 @@ final class RepairCasePack {
      * @param id
      *            案例 id（以 case.json 的 {@code id} 字段为准，全语料唯一）
      * @param originalIntent
-     *            原始用户意图；缺失为 {@code null}（ReaskPromptBuilder 对 null/blank 跳过 Original request 段）
+     *            原始用户意图；缺失为 {@code null}（增量修复提示词对 null/blank 输出占位说明）
      * @param dataModel
      *            渲染数据模型：缺失/显式 null → {@code null}（仅数据依赖部分未知）；{@code {}} → 空 map（具体空模型）。 绝不能把缺失归一成空 map ——
      *            {@code ValidationRequest.dataModel} 区分两者

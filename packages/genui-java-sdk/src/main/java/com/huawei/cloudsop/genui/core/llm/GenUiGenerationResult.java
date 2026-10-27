@@ -17,13 +17,13 @@ import java.util.Map;
  * 结构化生成结果:同步与流式生成统一返回的可渲染结果。
  *
  * <p>
- * {@code dsl} 是当前有效定义——同名语句以最新定义为准(last-wins)去重后的完整 openui-lang(#56);{@code dataModel} 是
+ * {@code dsl} 在同步生成时是直接提取的原始 DSL;流式校验开启时是同名语句以最新定义为准(last-wins)去重后的当前完整程序。{@code dataModel} 是
  * {@code UiGenerationRequest.response()} 的防御性不可变拷贝,请求未提供数据时为空 map。
  *
  * <p>
  * {@code validationStatus} / {@code validationResult} 携带轮末统一校验的最终状态与详情,供服务层 做缓存决策(仅最终 {@link ValidationStatus#VALID}
  * 才缓存;repair 成功以 VALID 加 metadata 标记表达,见 design Section 9)与日志记录。校验被禁用
- * ({@link com.huawei.cloudsop.genui.core.validation.ValidationConfigMode#DISABLED}) 时二者均为 {@code null}。
+ * ({@link com.huawei.cloudsop.genui.core.validation.ValidationConfigMode#DISABLED}) 或同步生成时二者均为 {@code null}。
  *
  * <p>
  * {@code endReason}(#57)区分检查通过、校验失败、未检查、超时与模型请求失败——DSL 会话结论在独立 Markdown 降级成功时仍保留。

@@ -140,7 +140,7 @@ status=INVALID
         hint: "Math" is a JavaScript global — JS globals and methods are not available in openui-lang; use builtins like @Abs, @Round, @FormatNumber, @FormatDate instead
 ```
 
-hint 由 `RepairHints` 三档分流：精确同名 builtin（漏 `@`）→ did-you-mean `@X`；已知 JS global/关键字 → 上面的根因提示；其余 → `define a statement named "X" earlier in the document`（已移除误导修复模型的 "pass it as an external ref" 措辞）。`ReaskPromptBuilder` 在 prompt 视图做级联抑制（validator 输出保持全量），逐例对照见 `mvn test` 生成的 `target/interception-corpus-dump.md`。
+hint 由 `RepairHints` 三档分流：精确同名 builtin（漏 `@`）→ did-you-mean `@X`；已知 JS global/关键字 → 上面的根因提示；其余 → `define a statement named "X" earlier in the document`（已移除误导修复模型的 "pass it as an external ref" 措辞）。`IncrementalRepairPromptBuilder` 在 prompt 视图做级联抑制（validator 输出保持全量），逐例对照见 `mvn test` 生成的 `target/interception-corpus-dump.md`。
 
 `prose-chatter-intro`（无 fence 的开场白）：
 
@@ -168,7 +168,7 @@ status=INVALID  issues=41
 汇总: syntax-unexpected-token=4, syntax-unclosed-bracket=4, unknown-component=32, root-not-renderable=1
 ```
 
-这份输出说明拦截报告的实际粒度：一次校验给出全部问题（不是 fail-fast），每条可定位到语句与组件，语法错误可定位到行列，`hint` 字段可直接用于 re-ask 修复提示（`ReaskPromptBuilder` 消费同一结构）。
+这份输出说明拦截报告的实际粒度：一次校验给出全部问题（不是 fail-fast），每条可定位到语句与组件，语法错误可定位到行列，`hint` 字段可直接用于 re-ask 修复提示（`IncrementalRepairPromptBuilder` 消费同一结构）。
 
 ## 漏拦截分析
 

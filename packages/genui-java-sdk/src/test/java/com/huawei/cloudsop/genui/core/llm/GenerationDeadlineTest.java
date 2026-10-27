@@ -7,10 +7,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.llm.transport.*;
-import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
-import com.huawei.cloudsop.genui.core.validation.RepairPolicyKind;
-import com.huawei.cloudsop.genui.core.validation.ValidationConfigMode;
-import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 
 import org.junit.jupiter.api.Test;
 
@@ -33,22 +29,6 @@ import java.util.concurrent.atomic.AtomicLong;
 class GenerationDeadlineTest {
 
     // ── 首轮生成慢过预算仍应正常完成 ─────────────────────────────────────
-
-    @Test
-    void slowValidInitialSyncIsNotCancelledOrDowngraded() {
-        ManualTime time = new ManualTime();
-        ScriptedTransport transport = new ScriptedTransport().sync(() -> {
-            time.advanceTo(20); // exact budget boundary: 20 seconds must still count as a valid slow initial round
-            return syncContent("root = Stack([])");
-        });
-
-        GenUiGenerationResult result = generator(transport, time).generate(request("slow initial"));
-
-        assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason());
-        assertEquals(ValidationStatus.VALID, result.validationStatus());
-        assertEquals("root = Stack([])", result.dsl());
-        assertEquals(1, transport.modelCalls.get());
-    }
 
     @Test
     void slowValidInitialStreamIsNotCancelledOrDowngraded() {
@@ -75,12 +55,14 @@ class GenerationDeadlineTest {
     @Test
     void firstRepairStillRunsAfterInitialExceedsBudget() {
         ManualTime time = new ManualTime();
-        ScriptedTransport transport = new ScriptedTransport().sync(() -> {
+        ScriptedTransport transport = new ScriptedTransport().stream(() -> {
             time.advanceTo(30);
-            return syncContent("root = Bogus()");
-        }).sync(() -> syncContent("root = Stack([])"));
+            return input(frame("root = Bogus()\n") + "data: [DONE]");
+        }).stream(() -> input(frame("root = Stack([])") + "data: [DONE]"));
 
-        GenUiGenerationResult result = generator(transport, time).generate(request("slow invalid initial"));
+        GenUiGenerationResult result = generator(transport, time).generateStream(request("slow invalid initial"),
+                event -> {
+                });
 
         assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason(),
                 "the first repair is not gated by the 20-second budget");
@@ -92,15 +74,17 @@ class GenerationDeadlineTest {
     @Test
     void firstRepairMayCrossTheBudgetAndStillSucceed() {
         ManualTime time = new ManualTime();
-        ScriptedTransport transport = new ScriptedTransport().sync(() -> {
+        ScriptedTransport transport = new ScriptedTransport().stream(() -> {
             time.advanceTo(10);
-            return syncContent("root = Bogus()");
-        }).sync(() -> {
+            return input(frame("root = Bogus()\n") + "data: [DONE]");
+        }).stream(() -> {
             time.advanceTo(35);
-            return syncContent("root = Stack([])");
+            return input(frame("root = Stack([])") + "data: [DONE]");
         });
 
-        GenUiGenerationResult result = generator(transport, time).generate(request("repair crosses budget"));
+        GenUiGenerationResult result = generator(transport, time)
+                .generateStream(request("repair crosses budget"), event -> {
+                });
 
         assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason(),
                 "a repair that starts before the budget expires may run past it");
@@ -138,47 +122,26 @@ class GenerationDeadlineTest {
     @Test
     void repairStartedBeforeBudgetMayCompleteAfterIt() {
         ManualTime time = new ManualTime();
-        ScriptedTransport transport = new ScriptedTransport().sync(() -> {
+        ScriptedTransport transport = new ScriptedTransport().stream(() -> {
             time.advanceTo(1);
-            return syncContent("root = Bogus()");
-        }).sync(() -> {
+            return input(frame("root = Bogus()\n") + "data: [DONE]");
+        }).stream(() -> {
             time.advanceTo(10);
-            return syncContent("root = StillBogus()");
-        }).sync(() -> {
+            return input(frame("root = StillBogus()\n") + "data: [DONE]");
+        }).stream(() -> {
             time.advanceTo(40);
-            return syncContent("root = Stack([])");
+            return input(frame("root = Stack([])") + "data: [DONE]");
         });
 
-        GenUiGenerationResult result = generator(transport, time).generate(request("later repair"));
+        GenUiGenerationResult result = generator(transport, time).generateStream(request("later repair"),
+                event -> {
+                });
 
         assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason(),
                 "the second repair was started before the budget expired, so it may finish after it");
         assertEquals("root = Stack([])", result.dsl());
         assertEquals(3, transport.modelCalls.get());
         assertEquals(3, result.rounds().size());
-    }
-
-    @Test
-    void slowFinalRepairIsNotCancelled() {
-        ManualTime time = new ManualTime();
-        ScriptedTransport transport = new ScriptedTransport().sync(() -> {
-            time.advanceTo(30);
-            return syncContent("root = Bogus()");
-        }).sync(() -> {
-            time.advanceTo(60);
-            return syncContent("root = Stack([])");
-        });
-        GenUiValidationConfig validation = new GenUiValidationConfig(ValidationConfigMode.FINAL_ONLY,
-                RepairPolicyKind.FINAL_REPAIR);
-
-        GenUiGenerationResult result = GenUiGenerator
-                .withTransport(GenUiLlmConfig.defaults(), transport, validation, null).withTiming(time.timing())
-                .generate(request("slow final repair"));
-
-        assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason(),
-                "the legacy FINAL_REPAIR path has no deadline either");
-        assertEquals("root = Stack([])", result.dsl());
-        assertEquals(2, transport.modelCalls.get());
     }
 
     // ── 模型失败与超时原因互不混淆 ──────────────────────────────────────
@@ -240,25 +203,14 @@ class GenerationDeadlineTest {
     }
 
     @FunctionalInterface
-    private interface SyncResponse {
-        String get() throws LlmTransportException;
-    }
-
-    @FunctionalInterface
     private interface StreamResponse {
         InputStream get() throws LlmTransportException;
     }
 
     /** Public-API transport double: each model request consumes one scripted sync or stream response in order. */
     private static final class ScriptedTransport implements LlmTransport {
-        private final Deque<SyncResponse> syncs = new ArrayDeque<>();
         private final Deque<StreamResponse> streams = new ArrayDeque<>();
         final AtomicInteger modelCalls = new AtomicInteger();
-
-        ScriptedTransport sync(SyncResponse response) {
-            syncs.add(response);
-            return this;
-        }
 
         ScriptedTransport stream(StreamResponse response) {
             streams.add(response);
@@ -282,18 +234,15 @@ class GenerationDeadlineTest {
                 return call(() -> input(stream ? frame("# fallback") + "data: [DONE]" : syncContent("# fallback")));
             }
             int callNumber = modelCalls.incrementAndGet();
-            if (stream) {
-                StreamResponse response = streams.poll();
-                if (response == null) {
-                    throw new AssertionError("unexpected stream model request #" + callNumber);
-                }
-                return call(response);
+            if (!stream) {
+                throw new AssertionError("non-Markdown sync requests are unexpected in this stream test #"
+                        + callNumber);
             }
-            SyncResponse response = syncs.poll();
+            StreamResponse response = streams.poll();
             if (response == null) {
-                throw new AssertionError("unexpected sync model request #" + callNumber);
+                throw new AssertionError("unexpected stream model request #" + callNumber);
             }
-            return call(() -> input(response.get()));
+            return call(response);
         }
 
         private static LlmCall call(StreamResponse body) {

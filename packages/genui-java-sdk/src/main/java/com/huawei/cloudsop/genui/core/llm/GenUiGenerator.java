@@ -6,7 +6,6 @@ package com.huawei.cloudsop.genui.core.llm;
 
 import com.huawei.cloudsop.genui.core.GenerationSdk;
 import com.huawei.cloudsop.genui.core.GenerationSdkException;
-import com.huawei.cloudsop.genui.core.GenerationValidationException;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
 import com.huawei.cloudsop.genui.core.contract.GenUIExtension;
@@ -33,8 +32,6 @@ import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiPreprocessor;
 import com.huawei.cloudsop.genui.core.validation.repair.IncrementalRepairPromptBuilder;
-import com.huawei.cloudsop.genui.core.validation.repair.RepairCoordinator;
-import com.huawei.cloudsop.genui.core.validation.repair.RepairPolicy;
 import com.huawei.cloudsop.genui.core.validation.stream.ProgramRoundSession;
 import com.huawei.cloudsop.genui.core.validation.stream.RoundEndResult;
 
@@ -47,16 +44,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 /**
- * 公开生成入口(#56:首次生成实时展示,轮末统一校验当前程序)。
- *
- * <p>
- * 生成过程不因校验而扣留内容、不逐语句修复、不增加生成前模型请求;模型本轮输出结束后,对<b>当前有效程序</b>(同名语句
- * last-wins)执行一次统一校验(语法、引用、组件与算子契约、参数、数据路径、静态类型、页面完整性)。校验失败时,默认策略 (#58)由模型只输出覆盖/新增语句做增量修复,修复片段实时转发并合并进当前程序;直到通过或共享的 20
- * 秒预算耗尽。失败或 超时保留完整轮与中断轮记录,并由公开入口交接一次整页 Markdown 降级。显式 {@code NONE} 保留旧的失败处理 ({@link GenerationValidationException} 或
- * FINAL_REPAIR 整份修复)。
+ * 公开生成入口。同步生成直接返回提取结果;流式生成实时转发,轮末校验当前完整程序, 失败时默认增量修复,修复失败或模型请求失败时整页降级为 Markdown。
  */
 public final class GenUiGenerator {
     private final GenerationSdk sdk;
@@ -138,27 +128,18 @@ public final class GenUiGenerator {
         return this;
     }
 
-    /**
-     * 同步生成:一次模型请求,轮末对当前有效程序统一校验。同名覆盖后旧定义及其错误不再生效;结果 dsl 是去重后的当前 有效定义。INVALID 时按
-     * {@link GenUiValidationConfig#repairPolicy()} 分流:
-     * <ul>
-     * <li>{@code INCREMENTAL_REPAIR}(默认):首轮修复必执行,后续轮次发起前检查 20 秒预算;修复结束仍 INVALID 时返回整页 Markdown 降级结果,DSL 侧以
-     * {@code endReason=VALIDATION_FAILED}/{@code TIMEOUT}/{@code MODEL_REQUEST_FAILED} 标识。降级结果的
-     * {@code validationStatus()} 为 null;宿主必须检查 endReason,不能把 Markdown 包装 DSL 当作校验成功。
-     * <li>{@code NONE}:直接抛 {@link GenerationValidationException}。
-     * <li>{@code FINAL_REPAIR}:整份修复;仍 INVALID 抛 {@link GenerationValidationException}。
-     * </ul>
-     */
+    /** 同步生成:单次模型请求后直接返回提取的 DSL,不校验、不修复、不自动降级。 */
     public GenUiGenerationResult generate(UiGenerationRequest request) {
-        long started = timing.nanoTime().getAsLong();
         UiGenerationRequest effective = request == null ? UiGenerationRequest.builder().build() : request;
         if ("Markdown".equals(effective.renderComponentsKey()))
             return markdown().generate(effective);
-        GenerationSession session = new GenerationSession(transport, timing, started, null);
-        var outcome = session.run(() -> scoped(session).generateInternal(effective, session));
-        if (outcome.failure() == null)
-            return outcome.result();
-        return markdown().generate(effective).withEndReason(outcome.failure(), roundsOf(outcome.result()));
+        RequestBody body = buildRequest(toPromptRequest(effective), effective, false);
+        try {
+            String content = ChatCompletionResponse.parse(transport.post(body.json())).firstContent();
+            return new GenUiGenerationResult(OpenuiCodeExtractor.extract(content), effective.response());
+        } catch (LlmTransportException error) {
+            throw new GenerationSdkException("Model request failed: " + error.getMessage(), error);
+        }
     }
 
     /** Configure before use. Copies share the SDK's registered contracts, not invocation state. */
@@ -186,129 +167,8 @@ public final class GenUiGenerator {
         return new MarkdownGeneration(config, transport);
     }
 
-    private GenUiGenerationResult generateInternal(UiGenerationRequest request, GenerationSession budget) {
-        UiGenerationRequest effectiveRequest = request == null ? UiGenerationRequest.builder().build() : request;
-        GenUIPromptRequest promptRequest = toPromptRequest(effectiveRequest);
-        RepairLoopState state = new RepairLoopState();
-        List<RoundEndResult> rounds = new ArrayList<>();
-        try {
-            boolean validate = validationConfig.validationMode() != ValidationConfigMode.DISABLED;
-            GenerationContract merged = validate ? sdk.mergedContract(promptRequest) : null;
-            final ProgramRoundSession roundSession = validate ? newRoundSession(promptRequest, merged) : null;
-            RequestBody requestBody = buildRequest(promptRequest, effectiveRequest, false);
-            state.beginInFlight();
-            budget.partialSnapshot(() -> partialResult(effectiveRequest, roundSession, state, rounds,
-                    GenerationEndReason.MODEL_REQUEST_FAILED));
-            String response = transport.post(requestBody.json());
-            String content;
-            try {
-                content = ChatCompletionResponse.parse(response).firstContent();
-            } catch (GenerationSdkException error) {
-                // Refusal / tool-call-only / truncated initial response: no usable text. Treat it as a failed
-                // model request so the session falls back to Markdown instead of leaking a runtime exception.
-                throw new LlmTransportException("initial round returned no usable content: " + error.getMessage(),
-                        error);
-            }
-            String extracted = OpenuiCodeExtractor.extract(content);
-
-            if (!validate) {
-                return new GenUiGenerationResult(extracted, effectiveRequest.response());
-            }
-
-            // ── 轮末统一校验:当前程序 = 同名 last-wins 的有效定义 ─────────────
-            roundSession.onDelta(extracted);
-            RoundEndResult round;
-            synchronized (state) {
-                round = roundSession.onRoundEnd();
-                rounds.add(round);
-                state.endInFlight();
-            }
-            ValidationResult validationResult = round.validationResult();
-
-            if (validationResult.status() == ValidationStatus.INVALID) {
-                RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
-                if (policy.kind() == RepairPolicyKind.INCREMENTAL_REPAIR) {
-                    IncrementalRepairLoop loop = new IncrementalRepairLoop(requestBody.systemPrompt(), effectiveRequest,
-                            roundSession, rounds, merged, requestBody.dataContext(), budget, state, false);
-                    RoundEndResult current = runIncrementalSync(loop, round);
-                    if (current.validationResult().status() == ValidationStatus.VALID) {
-                        return new GenUiGenerationResult(current.currentDefinitions(), effectiveRequest.response(),
-                                ValidationStatus.VALID, markRepaired(current.validationResult()),
-                                GenerationEndReason.CHECK_PASSED, List.copyOf(rounds));
-                    }
-                    // Still invalid: end the DSL session unsuccessfully so generate() performs the existing
-                    // whole-page Markdown handoff instead of returning an invalid DSL page.
-                    GenerationEndReason failure = budget.expiredNow()
-                            ? GenerationEndReason.TIMEOUT
-                            : GenerationEndReason.VALIDATION_FAILED;
-                    budget.terminate(failure);
-                    return new GenUiGenerationResult(current.currentDefinitions(), effectiveRequest.response(),
-                            ValidationStatus.INVALID, current.validationResult(), failure, List.copyOf(rounds));
-                }
-                // Section 7: FINAL_REPAIR attempts sync whole-DSL repair before throwing; each attempt is
-                // re-validated in FINAL mode. NONE never repairs — both fall through to the throw below.
-                if (policy.kind() == RepairPolicyKind.FINAL_REPAIR) {
-                    RepairCoordinator.FullRepairOutcome outcome = repairCoordinator(policy,
-                            externalRefsFor(promptRequest), dataModelFor(promptRequest))
-                            .repairFull(userMessage(effectiveRequest), round.currentDefinitions(), validationResult,
-                                    merged, merged.root(), requestBody.systemPrompt());
-                    if (outcome.repaired()) {
-                        return new GenUiGenerationResult(outcome.dsl(), effectiveRequest.response(),
-                                ValidationStatus.VALID, markRepaired(outcome.result()),
-                                GenerationEndReason.CHECK_PASSED, List.copyOf(rounds));
-                    }
-                    // Exhausted / still invalid / timeout / transport error → throw with the last result.
-                    ValidationResult last = outcome.result() == null ? validationResult : outcome.result();
-                    throw new GenerationValidationException(
-                            "Generated DSL failed validation after repair: " + buildIssueSummary(last), last);
-                }
-                throw new GenerationValidationException(
-                        "Generated DSL failed validation: " + buildIssueSummary(validationResult), validationResult);
-            }
-
-            return new GenUiGenerationResult(round.currentDefinitions(), effectiveRequest.response(),
-                    validationResult.status(), validationResult,
-                    validationResult.status() == ValidationStatus.VALID
-                            ? GenerationEndReason.CHECK_PASSED
-                            : GenerationEndReason.VALIDATION_FAILED,
-                    List.copyOf(rounds));
-        } catch (GenerationValidationException e) {
-            // Re-throw directly — do not wrap in a generic GenerationSdkException.
-            throw e;
-        } catch (LlmTransportException error) {
-            // A repair or initial round whose response carries no usable content (refusal / tool call only /
-            // length-truncated) surfaces here as LlmTransportException. Terminate the session as
-            // MODEL_REQUEST_FAILED so the public entry performs the Markdown handoff and retains the completed +
-            // interrupted round records, instead of letting a runtime exception escape. The worker's return value is
-            // discarded: terminate() already completed the session with its failure snapshot.
-            budget.terminate(GenerationEndReason.MODEL_REQUEST_FAILED);
-            return new GenUiGenerationResult("", effectiveRequest.response());
-        }
-    }
-
     /**
-     * 同步增量修复(#58):每轮只请求覆盖/新增语句,合并进同一 {@link ProgramRoundSession} 后重新检查当前完整程序; 首轮修复必执行,后续轮次发起前检查预算,不以重复错误/空补丁/无进展提前退出。
-     */
-    private RoundEndResult runIncrementalSync(IncrementalRepairLoop loop, RoundEndResult current)
-            throws LlmTransportException {
-        return runIncrementalRepair(loop, current, (body, previousOutput) -> {
-            String response = transport.post(body);
-            // A refusal / tool-call-only / length-truncated response has no text content; treat the round
-            // as a failed request so the session terminates via Markdown handoff, not a runtime exception.
-            String content;
-            try {
-                content = ChatCompletionResponse.parse(response).firstContent();
-            } catch (GenerationSdkException error) {
-                throw new LlmTransportException("repair round returned no usable content: " + error.getMessage(),
-                        error);
-            }
-            String extracted = OpenuiCodeExtractor.extract(content);
-            loop.roundSession().onDelta(extracted);
-        });
-    }
-
-    /**
-     * 同步/流式共用的修复轮循环:构建增量提示词、重置轮状态、执行一次模型请求、合并并校验;通过或预算耗尽后返回。
+     * 流式修复轮循环:构建增量提示词、重置轮状态、执行一次模型请求、合并并校验;通过或预算耗尽后返回。
      */
     private RoundEndResult runIncrementalRepair(IncrementalRepairLoop loop, RoundEndResult current,
             RepairRoundExecutor executor) throws LlmTransportException {
@@ -334,7 +194,7 @@ public final class GenUiGenerator {
     private String incrementalRepairBody(IncrementalRepairLoop loop, RoundEndResult current) {
         List<ChatMessage> messages = IncrementalRepairPromptBuilder.build(loop.originalSystemPrompt(),
                 userMessage(loop.request()), loop.merged(), current, history(loop.rounds()), loop.dataContext());
-        return buildBodyFromMessages(messages, loop.stream());
+        return buildBodyFromMessages(messages);
     }
 
     /** Executes one repair model request; {@code body} is the full chat-completion JSON. */
@@ -343,10 +203,10 @@ public final class GenUiGenerator {
         void execute(String body, String previousOutput) throws LlmTransportException;
     }
 
-    /** Shared inputs for the sync and stream incremental-repair loops. */
+    /** Inputs for the stream incremental-repair loop. */
     private record IncrementalRepairLoop(String originalSystemPrompt, UiGenerationRequest request,
             ProgramRoundSession roundSession, List<RoundEndResult> rounds, GenerationContract merged,
-            String dataContext, GenerationSession budget, RepairLoopState state, boolean stream) {
+            String dataContext, GenerationSession budget, RepairLoopState state) {
     }
 
     private static List<RoundEndResult> history(List<RoundEndResult> rounds) {
@@ -395,8 +255,8 @@ public final class GenUiGenerator {
     }
 
     /** Serialize repair chat messages into a transport body, reusing the generation request shape. */
-    private String buildBodyFromMessages(List<ChatMessage> messages, boolean stream) {
-        return ChatCompletionRequest.of(repairConfig(), null, messages, stream).toJson();
+    private String buildBodyFromMessages(List<ChatMessage> messages) {
+        return ChatCompletionRequest.of(repairConfig(), null, messages, true).toJson();
     }
 
     /** Tag a repaired result's metadata with {@code repaired=true} for service-layer logging. */
@@ -411,13 +271,6 @@ public final class GenUiGenerator {
         ValidationMetadata newMeta = new ValidationMetadata(meta == null ? 0 : meta.statementCount(),
                 meta == null ? null : meta.rootName(), meta == null ? ValidationMode.FINAL : meta.mode(), extra);
         return ValidationResult.valid(result.normalizedDsl(), result.issues(), newMeta);
-    }
-
-    /** Summarize the first few blocking issues for the exception message. */
-    private static String buildIssueSummary(ValidationResult result) {
-        return result.issues().stream()
-                .filter(i -> i.severity() == com.huawei.cloudsop.genui.core.validation.ValidationSeverity.ERROR)
-                .limit(3).map(i -> "[" + i.code() + "] " + i.message()).collect(Collectors.joining("; "));
     }
 
     /**
@@ -517,11 +370,10 @@ public final class GenUiGenerator {
             }
 
             RoundEndResult current = completeRound(roundSession, rounds, state);
-            RepairPolicy policy = RepairPolicy.from(validationConfig.repairPolicy());
-            boolean incremental = policy.kind() == RepairPolicyKind.INCREMENTAL_REPAIR;
+            boolean incremental = validationConfig.repairPolicy() == RepairPolicyKind.INCREMENTAL_REPAIR;
             if (current.validationResult().status() == ValidationStatus.INVALID && incremental) {
                 IncrementalRepairLoop loop = new IncrementalRepairLoop(requestBody.systemPrompt(), effectiveRequest,
-                        roundSession, rounds, merged, requestBody.dataContext(), budget, state, true);
+                        roundSession, rounds, merged, requestBody.dataContext(), budget, state);
                 current = runIncrementalStream(loop, current, sink);
             }
 
@@ -585,21 +437,6 @@ public final class GenUiGenerator {
             state.endInFlight();
             return round;
         }
-    }
-
-    /** Build a repair coordinator bound to this generator's transport/validator + a policy. */
-    private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs) {
-        return repairCoordinator(policy, externalRefs, null);
-    }
-
-    /**
-     * Build a repair coordinator that also carries the render data model, so every re-validation attempt runs the same
-     * data-path/prop type validation as the initial round-end check.
-     */
-    private RepairCoordinator repairCoordinator(RepairPolicy policy, Set<String> externalRefs,
-            Map<String, Object> dataModel) {
-        return new RepairCoordinator(transport, validator, policy).withBodyBuilder(this::buildBodyFromMessages)
-                .withExternalRefs(externalRefs).withDataModel(dataModel);
     }
 
     private RequestBody buildRequest(GenUIPromptRequest promptRequest, UiGenerationRequest request, boolean stream) {

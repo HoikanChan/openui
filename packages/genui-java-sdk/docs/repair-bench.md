@@ -11,16 +11,18 @@ repair-bench 是真实错误语料的修复基准（内部迭代工具,住 genui
 java -cp <test-classpath> com.huawei.cloudsop.genui.bench.RepairBenchCli \
   --cases=repair-cases/ [--concurrency=4] [--limit=N] [--out=target/run.jsonl]
 
-# 完整修复：显式加 --repair 才烧 LLM
+# 流式修复：显式加 --repair 才烧 LLM
 java -cp <test-classpath> com.huawei.cloudsop.genui.bench.RepairBenchCli \
   --cases=repair-cases/ --repair [--max-attempts=3] [--timeout-minutes=0] \
   [--out=target/run.jsonl] [--html=target/run.html]
 ```
 
+bench 的修复链路只走 `GenUiGenerator.generateStream`：流式是 SDK 唯一的修复路径,同步 `generate` 不校验、不修复。三种模型请求都以 SSE 处理：初次生成由 bench 本地回放案例 DSL（不调模型）,增量修复转交真实模型流,修复失败后的整页 Markdown 降级由本地桩 SSE 承接（不再额外消耗模型调用）。
+
 | 参数 | 默认 | 说明 |
 |---|---|---|
 | `--cases` | 必填 | 案例包根目录,扫一层子目录中含 `case.json` 者 |
-| `--repair` | 关 | 开关。**不带 = validation-only**：每案例只做 FINAL 校验,输出 `invalid`（issueCodes 全量）/ `not-reproduced`,不读 .env、不建 transport;**带 = 完整修复**,现有行为 |
+| `--repair` | 关 | 开关。**不带 = validation-only**：每案例只做 FINAL 校验,输出 `invalid`（issueCodes 全量）/ `not-reproduced`,不读 .env、不建 transport;**带 = 流式增量修复**,走 `generateStream` |
 | `--concurrency` | 4 | 有界线程池大小 |
 | `--max-attempts` | 3 | 单案例修复尝试预算（仅 `--repair`） |
 | `--timeout-minutes` | 0（关） | 尝试之间的墙钟预算;关闭时靠 transport 的 10 分钟请求上限兜底 |

@@ -7,7 +7,7 @@ package com.huawei.cloudsop.genui.core.validation;
 import java.util.Objects;
 
 /**
- * GenUI 生成流水线的顶层校验配置。
+ * GenUI 流式生成流水线的顶层校验配置。同步生成不校验、不修复,不读取此配置。
  *
  * <p>
  * 暴露三个策略维度:<em>何时</em> 校验({@link ValidationConfigMode})、<em>失败时如何处理</em>
@@ -15,8 +15,7 @@ import java.util.Objects;
  *
  * <p>
  * 增量修复默认只受会话截止时间限制({@code maxIncrementalAttempts = 0});#58 要求不因重复错误、空补丁或无进展 提前退出。需要硬性上限时用
- * {@link #incremental(int)},它作用于 {@code INCREMENTAL_REPAIR},与仅服务 {@code FINAL_REPAIR} 的
- * {@link com.huawei.cloudsop.genui.core.validation.repair.RepairPolicy#maxAttempts()} 互不影响。
+ * {@link #incremental(int)} 设置增量修复次数。
  *
  * <pre>
  * GenUiValidationConfig cfg = GenUiValidationConfig.incremental(); // 默认配置(#58)
