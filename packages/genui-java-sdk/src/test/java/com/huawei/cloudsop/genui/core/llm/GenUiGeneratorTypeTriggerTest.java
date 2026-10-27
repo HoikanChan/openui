@@ -28,10 +28,6 @@ class GenUiGeneratorTypeTriggerTest {
 
     private static final String REPAIR_MARKER = IncrementalRepairPromptBuilder.INCREMENTAL_REPAIR_MARKER;
 
-    private static String syncResponse(String dsl) {
-        return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":" + Json.stringify(dsl) + "}}]}";
-    }
-
     private static String frame(String content) {
         return "data: {\"choices\":[{\"delta\":{\"content\":" + Json.stringify(content) + "}}]}\n\n";
     }
@@ -54,14 +50,17 @@ class GenUiGeneratorTypeTriggerTest {
     @Test
     void determinateTypeErrorIsConsumedByIncrementalRepair() {
         GenUiGeneratorIncrementalRepairTest.ScriptedTransport transport = GenUiGeneratorIncrementalRepairTest.ScriptedTransport
-                .sync(syncResponse("root = TextContent(data.missing.value)"), syncResponse("root = Stack([])"));
+                .streams(frame("root = TextContent(data.missing.value)") + "data: [DONE]\n\n",
+                        frame("root = Stack([])") + "data: [DONE]\n\n");
 
         GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .generate(UiGenerationRequest.builder().userInput("show users").response(rows()).build());
+                .generateStream(UiGenerationRequest.builder().userInput("show users").response(rows()).build(),
+                        envelope -> {
+                        });
 
         assertEquals(ValidationStatus.VALID, result.validationStatus());
         assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason());
-        assertEquals(2, transport.postCount(), "one initial round + one repair round for a determinate type error");
+        assertEquals(2, transport.streamCount, "one initial round + one repair round for a determinate type error");
         assertTrue(transport.bodies.get(1).contains(REPAIR_MARKER), "second call is the incremental repair prompt");
         assertTrue(transport.bodies.get(1).contains("type-data-path-missing"),
                 () -> "repair prompt must carry the determinate diagnostic, got: " + transport.bodies.get(1));
@@ -72,14 +71,16 @@ class GenUiGeneratorTypeTriggerTest {
     @Test
     void unprovenOnlyResultDoesNotTriggerRepair() {
         GenUiGeneratorIncrementalRepairTest.ScriptedTransport transport = GenUiGeneratorIncrementalRepairTest.ScriptedTransport
-                .sync(syncResponse(unprovenOnlyDsl()));
+                .streams(frame(unprovenOnlyDsl()) + "data: [DONE]\n\n");
 
         GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .generate(UiGenerationRequest.builder().userInput("show value").response(numberData()).build());
+                .generateStream(UiGenerationRequest.builder().userInput("show value").response(numberData()).build(),
+                        envelope -> {
+                        });
 
         assertEquals(ValidationStatus.VALID, result.validationStatus());
         assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason());
-        assertEquals(1, transport.postCount(), "UNPROVEN alone must not be a repair trigger");
+        assertEquals(1, transport.streamCount, "UNPROVEN alone must not be a repair trigger");
         Map<String, String> extra = result.validationResult().metadata().extra();
         assertTrue(Long.parseLong(extra.get("typeChecks.unproven")) > 0, () -> extra.toString());
         assertEquals("0", extra.get("typeChecks.mismatched"));

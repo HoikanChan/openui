@@ -13,6 +13,7 @@ import com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig;
 import com.huawei.cloudsop.genui.core.llm.GenerationEndReason;
 import com.huawei.cloudsop.genui.core.llm.GenerationTiming;
 import com.huawei.cloudsop.genui.core.llm.UiGenerationRequest;
+import com.huawei.cloudsop.genui.core.llm.stream.SseFrames;
 import com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
@@ -39,6 +40,7 @@ import com.huawei.cloudsop.genui.core.validation.stream.RoundEndResult;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -59,8 +61,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>
  * 单案例流程（实现设计 §3）：案例契约现算 initial FINAL 校验 → 复现判定（非 INVALID 即 {@code not-reproduced}）→ 用公开 {@link GenUiGenerator}
- * 跑一次真实生成会话：transport 把案例 DSL 当作"历史初次生成"返回，生成会话随后做轮末统一校验与增量修复 → 由轮记录映射输出状态。 全链路 issue code 一律取 <b>actionable</b>
- * 视图（与修复提示词所见一致）。
+ * 跑一次真实<b>流式</b>生成会话（{@code generateStream}；流式是唯一修复路径，同步 {@code generate} 不再校验/修复）：transport 以 SSE 把案例 DSL
+ * 当作"历史初次生成"回放，修复轮转交真实模型 SSE，整页 Markdown 降级由本地桩 SSE 承接，生成会话随后做轮末统一校验与增量修复 → 由轮记录映射输出状态。
+ * 全链路 issue code 一律取 <b>actionable</b> 视图（与修复提示词所见一致）。
  *
  * <p>
  * 每个案例独立构建 {@link GenerationSdk}（案例契约）与生成器，避免跨案例共享契约/会话状态。
@@ -191,14 +194,16 @@ final class RepairBenchRunner {
             return;
         }
 
-        // ── 步骤 2：真实生成会话（transport 重放历史 DSL 作为初次生成，轮末校验 + 增量修复）──
+        // ── 步骤 2：真实流式生成会话（transport 以 SSE 重放历史 DSL 作为初次生成，轮末校验 + 增量修复）──
         GenerationSdk sdk = GenerationSdk.builder().baseContract(benchCase.contract()).build();
         CaseReplayTransport replay = new CaseReplayTransport(transport, benchCase.dsl(), timeout);
         GenUiGenerator generator = GenUiGenerator.withTransport(sdk, repairConfig, replay,
                 GenUiValidationConfig.incremental(maxAttempts), null);
         UiGenerationRequest request = UiGenerationRequest.builder().userInput(benchCase.originalIntent())
                 .response(benchCase.dataModel()).build();
-        GenUiGenerationResult generated = generator.generate(request);
+        // 流事件仅是生成过程的实时转发；bench 只消费返回结果与轮记录，不落盘前端帧。
+        GenUiGenerationResult generated = generator.generateStream(request, event -> {
+        });
 
         List<RoundEndResult> rounds = generated.rounds();
         RoundEndResult lastValidated = null;
@@ -233,7 +238,7 @@ final class RepairBenchRunner {
         line.put("reproduced", true);
         line.put("initialIssueCodes", initialCodes);
         putInternalCodes(line, benchCase);
-        List<Object> attempts = attempts(rounds, replay, generated);
+        List<Object> attempts = attempts(rounds);
         line.put("attemptCount", attempts.size());
         line.put("attempts", attempts);
         line.put("endReason", generated.endReason() == null ? null : generated.endReason().name());
@@ -267,10 +272,10 @@ final class RepairBenchRunner {
     }
 
     /**
-     * 把生成会话的轮记录映射为旧的逐 attempt 输出：跳过初次生成轮；被中断/预算拒绝的请求没有校验结论，除 传输失败外不计入 attempt。
+     * 把流式生成会话的轮记录映射为逐 attempt 输出：首轮（index 0）是回放的案例 DSL，跳过；修复轮按轮末校验结论计入。 被中断（传输失败 / 超时 /
+     * 预算耗尽）的最后一轮没有校验结论，仍记一条 {@code valid=false、issueCodes=null} 的尝试——它确实消耗了一次模型请求。
      */
-    private static List<Object> attempts(List<RoundEndResult> rounds, CaseReplayTransport replay,
-            GenUiGenerationResult generated) {
+    private static List<Object> attempts(List<RoundEndResult> rounds) {
         List<Object> attempts = new ArrayList<>();
         for (int index = 1; index < rounds.size(); index++) {
             RoundEndResult round = rounds.get(index);
@@ -280,10 +285,8 @@ final class RepairBenchRunner {
             attempts.add(attemptLine(attempts.size() + 1, round.validationResult().isValid(),
                     actionableCodes(round.validationResult())));
         }
-        boolean interruptedTransportFailure = generated.endReason() == GenerationEndReason.MODEL_REQUEST_FAILED
-                && !replay.timedOut() && !rounds.isEmpty() && rounds.get(rounds.size() - 1).validationResult() == null;
-        if (interruptedTransportFailure) {
-            // 传输失败的请求没有轮末结论：旧输出的 attempt 行 valid=false、issueCodes=null。
+        boolean interruptedRepair = rounds.size() > 1 && rounds.get(rounds.size() - 1).validationResult() == null;
+        if (interruptedRepair) {
             attempts.add(attemptLine(attempts.size() + 1, false, null));
         }
         return attempts;
@@ -480,16 +483,26 @@ final class RepairBenchRunner {
     }
 
     /**
-     * 单案例 transport 包装：初次生成请求直接返回案例 DSL（bench 复现历史失败，不打模型），增量修复请求转交真实 transport，整页 Markdown 降级请求返回桩（修复失败不应额外消耗一次模型调用）。
+     * 单案例 transport 包装，三种请求都用 SSE 应答（{@code generateStream} 只走 {@code postStream}）：
+     *
+     * <ul>
+     * <li><b>初次生成</b>——把案例 DSL 作为一条 SSE 增量回放（bench 复现历史失败，不打模型）。
+     * <li><b>增量修复</b>——转交真实 transport 的 SSE 流；每次转交前检查 {@code --timeout-minutes} 墙钟预算，命中后抛
+     * {@link LlmTransportException} 并记录原因。
+     * <li><b>整页 Markdown 降级</b>——返回本地桩 SSE（修复失败不应额外消耗一次模型调用）。
+     * </ul>
      *
      * <p>
-     * 修复尝试次数由生成会话的 {@code maxIncrementalAttempts} 控制（与 CLI 的 {@code --max-attempts} 同值）； 本包装只额外执行
-     * {@code --timeout-minutes} 的墙钟检查，命中后抛 {@link LlmTransportException} 并记录原因。
+     * 修复尝试次数由生成会话的 {@code maxIncrementalAttempts} 控制（与 CLI 的 {@code --max-attempts} 同值）；本包装只负责超时检查与请求分类。同步
+     * {@code post} 显式拒绝：bench 全链路只走流式。
      */
     private static final class CaseReplayTransport implements InMemoryLlmTransport {
 
         /** 与 {@code MarkdownGeneration} 的固定 system 文案对齐，用于识别整页降级请求。 */
         private static final String MARKDOWN_SYSTEM_HINT = "Answer the user's request in Markdown only.";
+
+        /** 修复失败时整页降级的桩内容；不进入判定，只让 Markdown 交接正常完成。 */
+        private static final String MARKDOWN_STUB = "Incremental repair did not produce a valid page.";
 
         private final LlmTransport delegate;
 
@@ -515,28 +528,31 @@ final class RepairBenchRunner {
 
         @Override
         public String post(String body) throws LlmTransportException {
-            return switch (classify(body)) {
-                case INITIAL -> syncResponse(initialDsl);
-                case MARKDOWN -> syncResponse("Incremental repair did not produce a valid page.");
-                case REPAIR -> repair(body);
-            };
+            // bench 已完全迁到流式：generateStream 只经 newCall(stream=true)/postStream。保留同步入口只会
+            // 形成未经测试的死支路，因此显式拒绝。
+            throw new UnsupportedOperationException("repair-bench is streaming-only; use postStream");
         }
 
         @Override
         public InputStream postStream(String body) throws LlmTransportException {
             return switch (classify(body)) {
-                case INITIAL, MARKDOWN -> new ByteArrayInputStream(new byte[0]);
-                case REPAIR -> delegate.postStream(body);
+                case INITIAL -> sseResponse(initialDsl);
+                case MARKDOWN -> sseResponse(MARKDOWN_STUB);
+                case REPAIR -> repairStream(body);
             };
         }
 
-        private String repair(String body) throws LlmTransportException {
+        private InputStream repairStream(String body) throws LlmTransportException {
+            checkTimeout();
+            repairCalls.incrementAndGet();
+            return delegate.postStream(body);
+        }
+
+        private void checkTimeout() throws LlmTransportException {
             if (!timeout.isZero() && System.nanoTime() - repairStartedNanos >= timeout.toNanos()) {
                 timedOut = true;
                 throw new LlmTransportException("repair timeout after " + repairCalls.get() + " attempt(s)");
             }
-            repairCalls.incrementAndGet();
-            return delegate.post(body);
         }
 
         private static RequestKind classify(String body) {
@@ -564,9 +580,13 @@ final class RepairBenchRunner {
             }
         }
 
-        private static String syncResponse(String dsl) {
-            return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\""
-                    + dsl.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"}}]}";
+        /**
+         * 单增量 SSE 流：一个 {@code delta.content} 帧 + {@code [DONE]}。SseDeltaParser 在 {@code [DONE]} 或
+         * {@code finish_reason=stop} 时结束；这里用前者，避免额外的 finish 帧。
+         */
+        private static InputStream sseResponse(String content) {
+            String delta = "data: {\"choices\":[{\"delta\":{\"content\":" + Json.stringify(content) + "}}]}\n\n";
+            return new ByteArrayInputStream((delta + SseFrames.done()).getBytes(StandardCharsets.UTF_8));
         }
 
         private enum RequestKind {

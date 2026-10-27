@@ -12,13 +12,13 @@ package com.huawei.cloudsop.genui.bench;
  * @param concurrency
  *            有界线程池大小（repair 单案例含多次 LLM 往返，默认低于 generate 的 6）
  * @param maxAttempts
- *            单案例修复尝试预算，映射 {@code RepairPolicy.of(FINAL_REPAIR, N)}
+ *            单案例修复尝试预算，映射 {@code GenUiValidationConfig.incremental(N)}
  * @param timeoutMinutes
  *            尝试之间的墙钟预算（分钟）；0 = 不启用，靠 transport 请求上限兜底
  * @param limit
  *            按目录名排序取前 N 个案例（冒烟用）；{@code null} = 全部
  * @param repair
- *            是否跑修复：默认 false = 每案例只做 FINAL 校验（零 LLM 调用）；true = 完整修复流程
+ *            是否跑修复：默认 false = 每案例只做 FINAL 校验（零 LLM 调用）；true = 流式增量修复
  * @param out
  *            JSONL 输出文件；{@code null} = 写 stdout
  * @param html

@@ -170,7 +170,7 @@ render it. The validation data model lives under `core.validation`:
 - `ValidationSeverity` (`ERROR`, `WARNING`, `INFO`)
 - `ValidationIssue`, `ValidationResult`, `ValidationMetadata`, `ValidationRequest`
 - `ValidationConfigMode` (`FINAL_ONLY`, `DISABLED`)
-- `RepairPolicyKind` (`NONE`, `FINAL_REPAIR`)
+- `RepairPolicyKind` (`NONE`, `INCREMENTAL_REPAIR`)
 - `GenUiValidationConfig`, the top-level generator config record
 
 `GenUiValidationConfig` exposes three axes: when to validate, what coarse repair
@@ -180,24 +180,16 @@ presets for the common modes:
 ```java
 GenUiValidationConfig cfg = GenUiValidationConfig.incremental(); // default: elapsed-time repair budget
 GenUiValidationConfig capped = GenUiValidationConfig.incremental(3); // at most 3 repair rounds
-GenUiValidationConfig strict = GenUiValidationConfig.finalOnly(); // no repair; sync throws on INVALID
+GenUiValidationConfig strict = GenUiValidationConfig.finalOnly(); // stream validates without repair
 GenUiValidationConfig off = GenUiValidationConfig.disabled();
 ```
 
-`GenUiGenerator.generate()` runs one end-of-round unified check after extracting
-openui-lang from the LLM response — over the current effective program
-(last-wins by statement id), so superseded definitions no longer produce
-errors. With `DISABLED`, it skips validation and returns a backward-compatible
-`GenUiGenerationResult(dsl, dataModel)`, leaving `validationStatus()` and
-`validationResult()` as `null`. With `FINAL_ONLY`, a valid result returns the
-current effective DSL plus the populated `validationStatus()` and
-`validationResult()`. An `INVALID` result with `FINAL_ONLY` throws
-`GenerationValidationException`; callers can inspect
-`e.validationResult().actionableIssues()` for the low-noise blocking diagnostics.
-The complete parser-parity view remains available through `issues()`.
-With the default `INCREMENTAL_REPAIR`, an unrecoverable `INVALID` instead ends
-the DSL session and hands off to whole-page Markdown (see "Incremental repair"
-below).
+`GenUiGenerator.generate()` makes one model request and returns the extracted
+DSL directly. It does not validate, repair, deduplicate definitions, or fall back
+to Markdown on failure. Model failures are thrown to the caller. Its result has
+`validationStatus()` and `validationResult()` set to `null`, `endReason()` set
+to `UNCHECKED`, and an empty `rounds()` list. Validation configuration affects
+only `generateStream()`.
 
 Final validation is data-aware. The generator forwards the concrete response
 data through initial validation and every repair attempt, so the validator can
@@ -233,27 +225,9 @@ conservatively instead of guessing a type.
 - `actionableIssues()` preserves independent errors but removes exact duplicates and diagnostics
   dominated by syntax, Table row-shape, or root-cause issues. Repair prompts use this view.
 
-```java
-try {
-  GenUiGenerationResult result = generator.generate(request);
-  if (result.validationStatus() == ValidationStatus.VALID) {
-    cache(result.dsl());
-  }
-} catch (GenerationValidationException e) {
-  ValidationResult result = e.validationResult();
-  log.warn("Generated DSL failed validation: {}", result.actionableIssues());
-}
-```
-
-For sync repair, configure the coarse policy as `FINAL_REPAIR`. The generator
-maps that kind to `RepairPolicy.from(...)` and `RepairCoordinator.repairFull(...)`
-tries reflection repair before throwing. Repaired output is re-validated in
-`FINAL` mode and returned as `VALID`; the result metadata includes
-`extra["repaired"] = "true"`.
-
 ### Incremental repair (default, #58)
 
-Normal generation defaults to `GenUiValidationConfig.incremental()`:
+Streaming generation defaults to `GenUiValidationConfig.incremental()`:
 `FINAL_ONLY` validation plus `INCREMENTAL_REPAIR`. After a round ends with blocking
 errors, the model is asked for **only overriding or new statements** (pure
 openui-lang, no full page/JSON/deletion). The SDK merges the patch into the same
@@ -269,32 +243,14 @@ model requests. Completed and interrupted rounds remain on `rounds()`.
 
 If a completed repair is still invalid and the budget has ended, the DSL session ends
 unsuccessfully and the public entry performs exactly one whole-page Markdown
-handoff (`replace` + `done` on the stream; Markdown result on sync). Explicit
-`GenUiValidationConfig.finalOnly()` keeps the no-repair behavior (sync throws
-`GenerationValidationException`), and `disabled()` bypasses validation/repair
-entirely.
+handoff (`replace` + `done` on the stream). Explicit
+`GenUiValidationConfig.finalOnly()` validates without repair and returns the
+validation result; `disabled()` bypasses validation and repair entirely.
 
-```java
-GenUiValidationConfig cfg =
-    new GenUiValidationConfig(
-        ValidationConfigMode.FINAL_ONLY, RepairPolicyKind.FINAL_REPAIR);
-
-GenUiGenerator generator =
-    GenUiGenerator.withTransport(llmConfig, transport, cfg, null);
-```
-
-The lower-level `RepairPolicy` value object carries advanced attempt and timeout
-knobs for FINAL_REPAIR (whole-page DSL repair):
-
-```java
-RepairPolicy policy = RepairPolicy.of(RepairPolicyKind.FINAL_REPAIR, 2);
-```
-
-Incremental repair does not read `RepairPolicy.maxAttempts`: by default it runs
-with the shared elapsed-time check before the second and later repair attempts.
-Repeated errors, empty patches, or lack of progress do not stop it early. Pass
-`GenUiValidationConfig.incremental(n)` when a host needs a hard round cap instead.
-`RepairPolicy.from(...)` only governs the legacy FINAL_REPAIR path.
+Pass `GenUiValidationConfig.incremental(n)` when a host needs a hard repair
+round cap. Whole-page DSL repair and its public APIs have been removed:
+`FINAL_REPAIR`, `RepairPolicy`, `RepairCoordinator`, and `ReaskPromptBuilder`
+are no longer available. Existing callers must use streaming incremental repair.
 
 ### Streaming: live forwarding + end-of-round unified check (#56)
 
@@ -339,10 +295,6 @@ Validation and repair internals do not enter the public stream: issue lists,
 repair prompts, and repair attempts remain SDK-internal. Public stream
 consumers see only `dataModel`, `dsl` (raw deltas, live), terminal `error`,
 and `done` envelopes.
-
-Known limitation: sync repair `timeout` bounds the attempt count, not a single
-in-flight LLM call; it is inert at the default `Duration.ZERO`. Proper
-enforcement needs transport read-timeout cooperation.
 
 ### Rollback
 

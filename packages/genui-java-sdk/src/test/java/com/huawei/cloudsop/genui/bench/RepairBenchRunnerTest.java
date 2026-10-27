@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.bench.RepairCasePack.RepairCase;
 import com.huawei.cloudsop.genui.core.Json;
+import com.huawei.cloudsop.genui.core.llm.stream.SseFrames;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 
@@ -70,9 +71,9 @@ class RepairBenchRunnerTest {
 
     // ── 假 transport ─────────────────────────────────────────────────────────
 
-    private static String syncResponse(String dsl) {
-        return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\""
-                + dsl.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"}}]}";
+    /** 一条 SSE 增量帧；bench 的流式生成只消费 {@code delta.content}。 */
+    private static String frame(String content) {
+        return "data: {\"choices\":[{\"delta\":{\"content\":" + Json.stringify(content) + "}}]}\n\n";
     }
 
     /** 提取增量修复提示词中的当前有效 DSL 段；非修复请求返回 {@code null}。 */
@@ -109,7 +110,12 @@ class RepairBenchRunnerTest {
         }
 
         @Override
-        public String post(String body) throws LlmTransportException {
+        public String post(String body) {
+            throw new UnsupportedOperationException("streaming-only fake transport");
+        }
+
+        @Override
+        public InputStream postStream(String body) throws LlmTransportException {
             postCount[0]++;
             Map<String, Object> parsed = Json.asObject(Json.parse(body), "request body");
             List<Object> messages = Json.asList(parsed.get("messages"), "messages");
@@ -142,14 +148,9 @@ class RepairBenchRunnerTest {
                 if ("<boom>".equals(next)) {
                     throw new LlmTransportException("scripted boom");
                 }
-                return syncResponse(next);
+                return new ByteArrayInputStream((frame(next) + SseFrames.done()).getBytes(StandardCharsets.UTF_8));
             }
             throw new LlmTransportException("no script matches body");
-        }
-
-        @Override
-        public InputStream postStream(String body) {
-            return new ByteArrayInputStream(new byte[0]);
         }
     }
 
@@ -464,13 +465,13 @@ class RepairBenchRunnerTest {
         LlmTransport capturing = new com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport() {
             @Override
             public String post(String body) {
-                bodies.add(body);
-                return syncResponse(VALID_DSL);
+                throw new UnsupportedOperationException("streaming-only fake transport");
             }
 
             @Override
             public InputStream postStream(String body) {
-                return new ByteArrayInputStream(new byte[0]);
+                bodies.add(body);
+                return new ByteArrayInputStream((frame(VALID_DSL) + SseFrames.done()).getBytes(StandardCharsets.UTF_8));
             }
         };
         List<RepairCase> cases = RepairCasePack.load(packDir(), null);

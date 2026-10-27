@@ -31,7 +31,7 @@ import java.util.Map;
  * }</pre>
  *
  * 默认（不带 {@code --repair}）为 validation-only：每案例只做 FINAL 校验并输出 status + issueCodes， 不读 .env、不建 transport、零 LLM 调用。带
- * {@code --repair} 才走完整修复（此时才需要 LLM 配置）。
+ * {@code --repair} 才走流式增量修复（此时才需要 LLM 配置）。
  *
  * <p>
  * 输出：JSONL 默认写 stdout；{@code --out} 指定文件时写该文件。HTML 报告始终生成：{@code --html} 显式指定， 否则与 {@code --out} 同名 .html；未给

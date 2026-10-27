@@ -125,9 +125,9 @@ Java 21,fastjson2 2.0.60。能力按包分六层。
 
 ### 3.5 修复体系 `core/validation/repair`
 
-- **`RepairCoordinator`**:`repairFull()`(完整修复,`FullRepairOutcome` 含 OutcomeKind + 每轮 AttemptRecord)/ `reaskStream()`(流式前缀保留 + 单语句重请求)。
-- **`ReaskPromptBuilder`**:修复提示词(userIntent + acceptedPrefix + 校验 issue 的 actionable 视图 + 案例契约现算的 originalSystemPrompt)。
-- **`RepairPolicy`**:kind + maxAttempts + timeout + statementRepairTimeout。固定温度 0、不开 thinking。
+- **`IncrementalRepairPromptBuilder`**:以原始 system prompt、完整契约、数据描述、当前程序和最新诊断构造增量修复提示词;模型只输出覆盖或新增的完整语句。
+- **`GenUiGenerator.generateStream()`**:轮末校验完整程序,失败时合并增量修复并重新校验;固定温度 0、不开 thinking。次数由 `GenUiValidationConfig.incremental(n)` 控制,默认按时间预算决定是否继续。
+- 同步 `generate()` 只请求一次并返回提取结果,不校验、不修复,失败直接抛异常。全量 DSL 修复已删除。
 
 ### 3.6 内部基准 `src/test/.../bench/`(test scope,永不进交付物)
 

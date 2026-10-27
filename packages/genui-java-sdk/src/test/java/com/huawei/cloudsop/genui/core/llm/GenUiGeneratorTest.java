@@ -78,11 +78,15 @@ class GenUiGeneratorTest {
     }
 
     @Test
-    void syncThrowsOnTransportError() {
-        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), FakeTransport.failing());
+    void syncThrowsOnTransportErrorWithoutMarkdownFallback() {
+        FakeTransport transport = FakeTransport.failing();
+        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport);
 
         assertThrows(GenerationSdkException.class,
                 () -> generator.generate(UiGenerationRequest.builder().userInput("base").build()));
+
+        assertEquals(1, transport.postCalls.get(), "sync failure must not issue a Markdown fallback request");
+        assertEquals(0, transport.streamCalls.get());
     }
 
     @Test
@@ -328,6 +332,8 @@ class GenUiGeneratorTest {
         private final boolean fail;
         private final boolean failMidStream;
         private String lastBody;
+        final AtomicInteger postCalls = new AtomicInteger();
+        final AtomicInteger streamCalls = new AtomicInteger();
 
         private FakeTransport(String response, String stream, boolean fail, boolean failMidStream) {
             this.response = response;
@@ -354,6 +360,7 @@ class GenUiGeneratorTest {
 
         @Override
         public String post(String body) throws LlmTransportException {
+            postCalls.incrementAndGet();
             lastBody = body;
             if (fail)
                 throw new LlmTransportException("boom");
@@ -362,6 +369,7 @@ class GenUiGeneratorTest {
 
         @Override
         public InputStream postStream(String body) throws LlmTransportException {
+            streamCalls.incrementAndGet();
             lastBody = body;
             if (fail)
                 throw new LlmTransportException("boom");
