@@ -1,0 +1,1 @@
+Keep exactly one reachable `root` statement whose expression is a renderable component call. Redefine `root` if needed; do not delete it.

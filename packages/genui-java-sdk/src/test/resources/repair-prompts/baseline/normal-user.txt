@@ -1,0 +1,26 @@
+## Original request
+展示 {{name}}
+
+## Current effective DSL (the whole program; last-wins by statement id)
+```openui
+root = Stack([header])
+header = Header(title)
+title = Header("中文 {{value}} $ \\ <>&")
+```
+
+Every definition not re-emitted stays in force. Only override or append statements.
+
+### Current round raw model output (verbatim)
+```text
+header = Header(title)
+```
+
+## Latest round-end diagnostics (authoritative for this round)
+- [unresolved-ref] missing title (stmt=header, line 4:9)
+  hint: define title
+
+## Related statements for diagnosed ids (derived from the current AST/scope)
+- `header`: upstream/downstream related statements: `title`, `root`
+
+## Earlier round history (compact)
+- (no earlier rounds)

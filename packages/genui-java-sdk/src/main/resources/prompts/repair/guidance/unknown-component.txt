@@ -1,0 +1,1 @@
+Use only components listed in the current full contract. Copy the exact component name and positional argument order from its signature; a capitalized call is a component, not a builtin.

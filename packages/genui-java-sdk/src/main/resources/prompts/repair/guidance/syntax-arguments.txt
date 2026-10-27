@@ -1,0 +1,1 @@
+Arguments are positional: write `Name(value1, value2)`, not `Name(arg: value)`. Keep `key: value` only inside object literals `{...}`. Balance every `(`, `[`, `{`, and string quote.

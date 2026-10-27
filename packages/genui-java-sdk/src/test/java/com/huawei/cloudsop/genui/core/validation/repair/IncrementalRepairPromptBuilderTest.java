@@ -6,6 +6,7 @@ package com.huawei.cloudsop.genui.core.validation.repair;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,12 +24,14 @@ import com.huawei.cloudsop.genui.core.validation.stream.RoundEndResult;
 
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * 增量修复提示词的必要规则与上下文断言（不逐字匹配全文）。
+ * 增量修复提示词的必要规则与上下文断言；{@link #completeMessagesMatchBeforeResourceMigration()} 另外按黄金样本逐字符比对完整消息。
  *
  * @since 2026
  */
@@ -47,9 +50,11 @@ class IncrementalRepairPromptBuilderTest {
 
         BuiltinSpec each = new BuiltinSpec("Each", "Each(array, item, template)", "iterate an array in a template",
                 true, List.of(), null);
-        ToolSpec tool = new ToolSpec("get_sales", "read sales rows",
-                Map.of("type", "object", "properties", Map.of("days", Map.of("type", "number"))),
-                Map.of("type", "array"), null);
+        // LinkedHashMap keeps the rendered schema order stable across JVM runs (golden comparison).
+        LinkedHashMap<String, Object> inputSchema = new LinkedHashMap<>();
+        inputSchema.put("type", "object");
+        inputSchema.put("properties", Map.of("days", Map.of("type", "number")));
+        ToolSpec tool = new ToolSpec("get_sales", "read sales rows", inputSchema, Map.of("type", "array"), null);
         return new GenerationContract("contract-7", "Stack", components, List.of(), List.of(tool),
                 List.of("root = Stack([header])\nheader = Header(\"Hi\")"), List.of("Never invent tools."),
                 List.of(each), List.of(GROUP_BY_GAP));
@@ -236,6 +241,44 @@ class IncrementalRepairPromptBuilderTest {
         assertTrue(text.contains("No data context was supplied by the caller"), "missing data context is explicit");
         assertTrue(text.contains("No contract object was supplied"), "missing contract is explicit");
         assertTrue(text.contains("invent nothing"), "no invention rule present");
+    }
+
+    /**
+     * 迁移前的完整 system/user 消息原样留作黄金样本：资源迁移后逐字符比对，覆盖正常、缺失上下文、能力边界和历史四类场景。
+     */
+    @Test
+    void completeMessagesMatchBeforeResourceMigration() throws Exception {
+        RoundEndResult current = round("header = Header(title)",
+                "root = Stack([header])\nheader = Header(title)\ntitle = Header(\"中文 {{value}} $ \\\\ <>&\")",
+                List.of(issue("unresolved-ref", "reference", "missing title", "header", "define title")));
+        assertGolden("normal", IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "展示 {{name}}", contract(), current,
+                List.of(), "data.items: 中文 <>& $ \\\\ {{value}}"));
+        assertGolden("missing", IncrementalRepairPromptBuilder.build(null, null, null,
+                new RoundEndResult(null, null, null, 0L, null, null), null, null));
+        ValidationIssue gap = componentIssue("unknown-component", "contract", "unsupported GroupBy", "grouped",
+                "GroupBy", RepairHints.unknownComponentHint("GroupBy", List.of(GROUP_BY_GAP)));
+        assertGolden("capability",
+                IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "按型号分组", contract(),
+                        round("grouped = @GroupBy(data.items, \"model\")", "grouped = @GroupBy(data.items, \"model\")",
+                                List.of(gap, gap))));
+        String raw = "old = Header(\"old\")\n".repeat(150);
+        RoundEndResult earlier = round(raw, "root = Stack([])", List.of(gap));
+        assertGolden("history", IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "show header", contract(), current,
+                Arrays.asList(earlier, null, earlier, earlier, earlier), " "));
+    }
+
+    private static void assertGolden(String name, List<ChatMessage> messages) throws Exception {
+        assertEquals(2, messages.size());
+        for (int i = 0; i < messages.size(); i++) {
+            String role = i == 0 ? "system" : "user";
+            assertEquals(role, messages.get(i).role());
+            String path = "repair-prompts/baseline/" + name + "-" + role + ".txt";
+            try (var stream = IncrementalRepairPromptBuilderTest.class.getClassLoader().getResourceAsStream(path)) {
+                assertNotNull(stream, path);
+                assertEquals(new String(stream.readAllBytes(), StandardCharsets.UTF_8).replace("\r\n", "\n"),
+                        messages.get(i).content(), path);
+            }
+        }
     }
 
     @Test

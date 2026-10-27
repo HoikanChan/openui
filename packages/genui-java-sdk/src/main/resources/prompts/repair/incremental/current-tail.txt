@@ -1,0 +1,5 @@
+
+```
+
+Every definition not re-emitted stays in force. Only override or append statements.
+

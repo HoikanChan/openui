@@ -1,0 +1,1 @@
+Follow `## Capability boundary (overrides the original request)` above: stop trying to implement or approximate the unsupported operation, redefine every diagnosed statement id with a valid expression, display the real data using the fallback, and make `capabilityNotice` the first child of `root`.

@@ -1,0 +1,2 @@
+Historical diagnostics describe past states. They never override the current DSL or the latest diagnostics above.
+

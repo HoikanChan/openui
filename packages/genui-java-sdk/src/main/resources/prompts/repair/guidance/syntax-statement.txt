@@ -1,0 +1,1 @@
+Rewrite the whole diagnosed statement instead of patching one token. Keep one complete `name = Expression` per statement.

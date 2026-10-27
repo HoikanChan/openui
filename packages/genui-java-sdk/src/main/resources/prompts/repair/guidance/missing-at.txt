@@ -1,0 +1,1 @@
+Builtins and action steps require a leading `@`: rewrite the diagnosed call as `@Name(...)` matching the current contract signature.

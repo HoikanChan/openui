@@ -1,0 +1,23 @@
+## Original request
+(no original user message was supplied)
+
+## Current effective DSL (the whole program; last-wins by statement id)
+```openui
+
+```
+
+Every definition not re-emitted stays in force. Only override or append statements.
+
+### Current round raw model output (verbatim)
+```text
+
+```
+
+## Latest round-end diagnostics (authoritative for this round)
+- (no blocking ERROR diagnostics were supplied for the current program)
+
+## Related statements for diagnosed ids (derived from the current AST/scope)
+- (latest diagnostics do not attribute to a statement id)
+
+## Earlier round history (compact)
+- (no earlier rounds)

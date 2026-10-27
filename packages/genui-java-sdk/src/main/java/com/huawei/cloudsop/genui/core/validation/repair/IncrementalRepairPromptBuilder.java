@@ -13,6 +13,7 @@ import com.huawei.cloudsop.genui.core.contract.ComponentPropsSchema;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.ToolSpec;
 import com.huawei.cloudsop.genui.core.llm.protocol.ChatMessage;
+import com.huawei.cloudsop.genui.core.prompt.PromptResources;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssueReducer;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
@@ -156,16 +157,13 @@ public final class IncrementalRepairPromptBuilder {
     // ── system message ───────────────────────────────────────────────────────
 
     private static void appendOriginalSystemPrompt(StringBuilder sb, String originalSystemPrompt) {
-        sb.append("## Original generation system prompt (verbatim, once)\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/original-system-heading.txt"));
         if (isBlank(originalSystemPrompt)) {
-            sb.append("No original system prompt was supplied. Use only the current full contract and the "
-                    + "current DSL below as the language/component/data contract.\n\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/original-system-missing.txt"));
             return;
         }
         sb.append(originalSystemPrompt.strip()).append("\n\n");
-        sb.append("The prompt above remains authoritative for the openui-lang language, component, builtin, and "
-                + "data contract. The incremental repair instructions below override only the response shape "
-                + "and patch scope.\n\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/original-system-authority.txt"));
     }
 
     /**
@@ -176,21 +174,19 @@ public final class IncrementalRepairPromptBuilder {
         if (matchedGaps == null || matchedGaps.isEmpty()) {
             return;
         }
-        sb.append("## Capability boundary (overrides the original request)\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/capability-heading.txt"));
         for (int i = 0; i < matchedGaps.size(); i++) {
             CapabilityGapSpec gap = matchedGaps.get(i);
             if (matchedGaps.size() > 1) {
                 sb.append("### ").append(i + 1).append(". ").append(gap.name()).append(" (").append(gap.id())
                         .append(")\n");
             }
-            sb.append("1. The original request asks for \"").append(gap.name()).append(
-                    "\", which is NOT supported as a dynamic operation in openui-lang. If the input data already contains pre-aggregated/grouped rows, display that existing data directly; otherwise do NOT try to implement or approximate \"")
-                    .append(gap.name()).append("\".\n");
-            sb.append("2. Instead: ").append(gap.fallback()).append(
-                    ". Also redefine every diagnosed statement id that called the unsupported function with a valid expression so no invalid definition remains in the program.\n");
-            sb.append(
-                    "3. Redefine `root` so its first child is (write the notice in the same language as the user's request):\n");
-            sb.append("   ").append(gap.noticeStatement()).append('\n');
+            // A null gap field reaches PromptResources as a null variable, which reports both resource and name.
+            Map<String, String> variables = new LinkedHashMap<>();
+            variables.put("name", gap.name());
+            variables.put("fallback", gap.fallback());
+            variables.put("notice", gap.noticeStatement());
+            sb.append(PromptResources.render("prompts/repair/incremental/capability-gap.txt", variables));
         }
         sb.append('\n');
     }
@@ -219,51 +215,23 @@ public final class IncrementalRepairPromptBuilder {
     }
 
     private static void appendFixedRules(StringBuilder sb) {
-        sb.append("## Incremental repair rules (fixed)\n");
-        sb.append("1. Return ONLY complete openui-lang statements to change or add. This is a patch, not a page.\n");
-        sb.append("2. Keep existing statement ids exactly. Re-issuing `id = ...` replaces that definition "
-                + "(last-wins); a new id appends. Do not rename ids or re-emit unchanged statements.\n");
-        sb.append("3. Do not output a full page, JSON, prose explanations, or markdown outside a single "
-                + "```openui fenced block.\n");
-        sb.append("4. Never emit a deletion. To remove behavior, redefine the owning parent so the old statement "
-                + "is no longer referenced. Definitions remain in the program and are still type-checked; "
-                + "also replace any invalid unused definition with a valid expression.\n");
-        sb.append("5. Keep exactly one reachable `root` and keep every reference resolvable. Everything not "
-                + "redefined stays exactly as it is in the current effective DSL.\n");
-        sb.append("6. Use only components, builtins, tools, examples, and rules present in the current full "
-                + "contract below. Do not invent names, fields, functions, data, or statistics.\n");
-        sb.append("7. Classify every call from the current program, not from a past label: `@name(` is a builtin "
-                + "call, `Name(` is a component call, and a bare identifier is a statement reference. Check the "
-                + "current contract and the diagnosed statement's location/related statements. An earlier round's "
-                + "error code may be stale after overrides; do not repeat it unless the current DSL still supports "
-                + "it.\n");
-        sb.append("8. Treat caller-supplied data as a description with a stated scale, not automatically the full "
-                + "render data model. Never present sample rows as complete data, and never fabricate statistics. "
-                + "If the available data cannot support a value, render the real known data and state the "
-                + "limitation in the page (treating the caller-supplied data model as the primary subject to "
-                + "render and the user request as auxiliary context: render the actual data in `data` using its "
-                + "own entity names, titles, and fields, and state any limitation in natural user-facing language "
-                + "with a neutral notice title such as \"提示\" / \"信息说明\", without exposing internal field/path "
-                + "names like `data.xxx` / `queryXxx` or system terms like \"数据源不匹配\").\n");
-        sb.append("9. Diagnose from the current DSL and the latest diagnostics. Historical rounds explain how the "
-                + "program changed; they do not override the current program.\n\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/fixed-rules.txt"));
     }
 
     private static void appendContract(StringBuilder sb, GenerationContract contract) {
-        sb.append("## Current full contract (authoritative)\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/contract-heading.txt"));
         if (contract == null) {
-            sb.append("No contract object was supplied. Use only names already present in the original system "
-                    + "prompt and the current DSL; invent nothing.\n\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/contract-missing.txt"));
             return;
         }
 
         sb.append("- contractVersion: ").append(orUnknown(contract.contractVersion())).append('\n');
         sb.append("- root: ").append(orUnknown(contract.root())).append('\n');
 
-        sb.append("\n### Components\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/components-heading.txt"));
         Map<String, ComponentPromptSpec> components = contract.components();
         if (components == null || components.isEmpty()) {
-            sb.append("(none declared in this contract)\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/components-empty.txt"));
         } else {
             for (Map.Entry<String, ComponentPromptSpec> entry : components.entrySet()) {
                 sb.append("- ").append(ComponentPropsSchema.formatSignature(entry.getKey(), entry.getValue()));
@@ -274,7 +242,7 @@ public final class IncrementalRepairPromptBuilder {
 
         List<ComponentGroup> groups = contract.componentGroups();
         if (groups != null && !groups.isEmpty()) {
-            sb.append("\n### Component groups\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/groups-heading.txt"));
             for (ComponentGroup group : groups) {
                 sb.append("- ").append(orUnknown(group.name())).append(": ")
                         .append(String.join(", ", group.components())).append('\n');
@@ -284,10 +252,10 @@ public final class IncrementalRepairPromptBuilder {
             }
         }
 
-        sb.append("\n### Builtins\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/builtins-heading.txt"));
         List<BuiltinSpec> builtins = contract.builtins();
         if (builtins == null || builtins.isEmpty()) {
-            sb.append("(none declared in this contract)\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/builtins-empty.txt"));
         } else {
             for (BuiltinSpec builtin : builtins) {
                 sb.append("- ").append(formatBuiltinSignature(builtin.signature()));
@@ -297,10 +265,10 @@ public final class IncrementalRepairPromptBuilder {
             }
         }
 
-        sb.append("\n### Tools\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/tools-heading.txt"));
         List<ToolSpec> tools = contract.tools();
         if (tools == null || tools.isEmpty()) {
-            sb.append("(none declared in this contract)\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/tools-empty.txt"));
         } else {
             for (ToolSpec tool : tools) {
                 sb.append("- ").append(orUnknown(tool.name()));
@@ -311,18 +279,18 @@ public final class IncrementalRepairPromptBuilder {
             }
         }
 
-        sb.append("\n### Examples\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/examples-heading.txt"));
         if (contract.examples() == null || contract.examples().isEmpty()) {
-            sb.append("(none declared in this contract)\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/examples-empty.txt"));
         } else {
             for (String example : contract.examples()) {
                 sb.append(example).append("\n\n");
             }
         }
 
-        sb.append("### Additional rules\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/additional-rules-heading.txt"));
         if (contract.additionalRules() == null || contract.additionalRules().isEmpty()) {
-            sb.append("(none declared in this contract)\n\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/rules-empty.txt"));
         } else {
             for (String rule : contract.additionalRules()) {
                 sb.append("- ").append(rule).append('\n');
@@ -332,22 +300,13 @@ public final class IncrementalRepairPromptBuilder {
     }
 
     private static void appendDataContext(StringBuilder sb, String dataContext) {
-        sb.append("## Caller-supplied data context (structure, samples, and scale)\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/data-heading.txt"));
         if (isBlank(dataContext)) {
-            sb.append("No data context was supplied by the caller. Treat the data shape as unknown: do not invent "
-                    + "fields, values, functions, or statistics. Render only what the current DSL actually has and "
-                    + "state any missing-data limitation in the page.\n\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/data-missing.txt"));
             return;
         }
         sb.append(dataContext.strip()).append("\n\n");
-        sb.append("The block above is caller-supplied and may describe only part of the render data model. Use "
-                + "its stated counts/scale exactly as given. Do not treat sample rows as the full dataset, do not "
-                + "invent fields, functions, data, or statistics, and do not compute a total from a sample unless "
-                + "the context explicitly says it is the full data. When the real data cannot support a value, show "
-                + "the real known data and state the limitation in the page (treating the caller-supplied data "
-                + "model as the primary subject to render and the user request as auxiliary context, using a "
-                + "neutral notice title such as \"提示\" / \"信息说明\" and natural user-facing language without "
-                + "exposing internal field/path names like `data.xxx` / `queryXxx` or system terms like \"数据源不匹配\").\n\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/data-authority.txt"));
     }
 
     private static void appendSelectedGuidance(StringBuilder sb, List<ValidationIssue> latestIssues) {
@@ -355,7 +314,7 @@ public final class IncrementalRepairPromptBuilder {
         if (guidance.isEmpty()) {
             return;
         }
-        sb.append("## Diagnostic-selected guidance\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/guidance-heading.txt"));
         for (String line : guidance) {
             sb.append("- ").append(line).append('\n');
         }
@@ -366,29 +325,28 @@ public final class IncrementalRepairPromptBuilder {
 
     private static void appendOriginalRequest(StringBuilder sb, String originalUserMessage,
             boolean capabilityBoundaryActive) {
-        sb.append(capabilityBoundaryActive ? "## Original request (for context only)\n" : "## Original request\n");
+        sb.append(capabilityBoundaryActive
+                ? PromptResources.load("prompts/repair/incremental/request-context-heading.txt")
+                : PromptResources.load("prompts/repair/incremental/request-heading.txt"));
         if (isBlank(originalUserMessage)) {
-            sb.append("(no original user message was supplied)\n\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/request-missing.txt"));
             return;
         }
         sb.append(originalUserMessage.strip()).append("\n\n");
     }
 
     private static void appendCurrentProgram(StringBuilder sb, RoundEndResult current) {
-        sb.append("## Current effective DSL (the whole program; last-wins by statement id)\n");
-        sb.append("```openui\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/current-heading.txt"));
         sb.append(current.currentDefinitions() == null ? "" : current.currentDefinitions().strip());
-        sb.append("\n```\n\n");
-        sb.append("Every definition not re-emitted stays in force. Only override or append statements.\n\n");
-
-        sb.append("### Current round raw model output (verbatim)\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/current-tail.txt"));
+        sb.append(PromptResources.load("prompts/repair/incremental/raw-output-heading.txt"));
         appendTextBlock(sb, current.rawOutput());
     }
 
     private static void appendLatestDiagnostics(StringBuilder sb, List<ValidationIssue> latestIssues) {
-        sb.append("## Latest round-end diagnostics (authoritative for this round)\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/diagnostics-heading.txt"));
         if (latestIssues.isEmpty()) {
-            sb.append("- (no blocking ERROR diagnostics were supplied for the current program)\n\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/diagnostics-empty.txt"));
             return;
         }
         for (ValidationIssue issue : latestIssues) {
@@ -417,9 +375,9 @@ public final class IncrementalRepairPromptBuilder {
                 diagnosedIds.add(issue.statementId());
             }
         }
-        sb.append("## Related statements for diagnosed ids (derived from the current AST/scope)\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/related-heading.txt"));
         if (diagnosedIds.isEmpty()) {
-            sb.append("- (latest diagnostics do not attribute to a statement id)\n\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/related-unattributed.txt"));
             return;
         }
 
@@ -441,7 +399,7 @@ public final class IncrementalRepairPromptBuilder {
                     .append(String.join(", ", quoted)).append('\n');
         }
         if (!rendered) {
-            sb.append("- (no related statements were reported for the diagnosed ids)\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/related-empty.txt"));
         }
         sb.append('\n');
     }
@@ -455,13 +413,12 @@ public final class IncrementalRepairPromptBuilder {
                 }
             }
         }
-        sb.append("## Earlier round history (compact)\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/history-heading.txt"));
         if (rounds.isEmpty()) {
-            sb.append("- (no earlier rounds)\n");
+            sb.append(PromptResources.load("prompts/repair/incremental/history-empty.txt"));
             return;
         }
-        sb.append("Historical diagnostics describe past states. They never override the current DSL or the "
-                + "latest diagnostics above.\n\n");
+        sb.append(PromptResources.load("prompts/repair/incremental/history-authority.txt"));
         int first = Math.max(0, rounds.size() - HISTORY_ROUND_LIMIT);
         if (first > 0) {
             sb.append("- Earlier rounds omitted: ").append(first).append('\n');
@@ -490,12 +447,10 @@ public final class IncrementalRepairPromptBuilder {
         }
         int cut = completeStatementEnd(raw);
         if (cut <= 0) {
-            return "(the first statement of this earlier output exceeds the history excerpt limit; "
-                    + "read the current effective DSL instead)";
+            return PromptResources.load("prompts/repair/incremental/history-over-limit.txt");
         }
         return raw.substring(0, cut).stripTrailing()
-                + "\n[history excerpt truncated at a complete statement boundary; the current effective DSL above "
-                + "is the authoritative state — do not patch from this excerpt alone]";
+                + PromptResources.load("prompts/repair/incremental/history-truncated.txt");
     }
 
     /**

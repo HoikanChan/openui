@@ -1,0 +1,1 @@
+@Each returns one result per input; an array-valued template therefore produces an array of arrays. Trace the AST-related upstream definitions and fix the data shape to flat object rows (using @Flatten when declared in the current contract). Preserve Table columns that already match those rows; do not replace data processing with hand-written result values.

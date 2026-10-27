@@ -1,0 +1,24 @@
+## Original request (for context only)
+按型号分组
+
+## Current effective DSL (the whole program; last-wins by statement id)
+```openui
+grouped = @GroupBy(data.items, "model")
+```
+
+Every definition not re-emitted stays in force. Only override or append statements.
+
+### Current round raw model output (verbatim)
+```text
+grouped = @GroupBy(data.items, "model")
+```
+
+## Latest round-end diagnostics (authoritative for this round)
+- [unknown-component] unsupported GroupBy (component: GroupBy) (stmt=grouped, line 4:9)
+  hint: "GroupBy" (分组展示) exceeds the openui-lang capability boundary — if the input data already contains pre-aggregated/grouped rows, display that existing data directly; otherwise do not try to implement or approximate "分组展示"; instead: 用一张 Table 展示全部行；用 @Sort 按分组字段排序，并把该字段放在第一列. Redefine this statement id with a valid expression and make `capabilityNotice = TextCallout("info", "部分需求暂不支持", "暂不支持分组展示，以下按原始数据展示")` (in the same language as the user's request) the first child of `root`
+
+## Related statements for diagnosed ids (derived from the current AST/scope)
+- (no related statements were reported for the diagnosed ids)
+
+## Earlier round history (compact)
+- (no earlier rounds)

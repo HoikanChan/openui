@@ -1,0 +1,2 @@
+No data context was supplied by the caller. Treat the data shape as unknown: do not invent fields, values, functions, or statistics. Render only what the current DSL actually has and state any missing-data limitation in the page.
+

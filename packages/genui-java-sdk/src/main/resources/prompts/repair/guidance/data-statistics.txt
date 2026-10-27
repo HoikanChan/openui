@@ -1,0 +1,1 @@
+Do not derive counts, sums, averages, or other statistics from sample rows as if they were the full dataset. Use @builtins over actual data references; if the value cannot be known, render the real known data and state the limitation in the page.

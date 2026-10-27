@@ -1,0 +1,2 @@
+The prompt above remains authoritative for the openui-lang language, component, builtin, and data contract. The incremental repair instructions below override only the response shape and patch scope.
+

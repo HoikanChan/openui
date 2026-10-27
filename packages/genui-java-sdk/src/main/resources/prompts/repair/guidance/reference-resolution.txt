@@ -1,0 +1,1 @@
+If the name is a builtin or action step, add the leading `@`. If it is a statement, define it with that exact id or correct the reference. JavaScript globals are unavailable; replace them with contract builtins. Never invent an external reference, tool, or field.

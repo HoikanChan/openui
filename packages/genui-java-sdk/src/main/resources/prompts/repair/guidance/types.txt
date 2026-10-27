@@ -1,0 +1,1 @@
+Match the declared prop, operator, chart, and table types. If a value's type cannot be proven from the available data, do not assert a definite mismatch; render real data and state the limitation in the page.

@@ -1,0 +1,4 @@
+1. The original request asks for "{{name}}", which is NOT supported as a dynamic operation in openui-lang. If the input data already contains pre-aggregated/grouped rows, display that existing data directly; otherwise do NOT try to implement or approximate "{{name}}".
+2. Instead: {{fallback}}. Also redefine every diagnosed statement id that called the unsupported function with a valid expression so no invalid definition remains in the program.
+3. Redefine `root` so its first child is (write the notice in the same language as the user's request):
+   {{notice}}

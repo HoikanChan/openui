@@ -1,0 +1,47 @@
+[REPAIR:INCREMENTAL]
+## Original generation system prompt (verbatim, once)
+ORIGINAL SYSTEM PROMPT: use openui-lang only.
+
+The prompt above remains authoritative for the openui-lang language, component, builtin, and data contract. The incremental repair instructions below override only the response shape and patch scope.
+
+## Incremental repair rules (fixed)
+1. Return ONLY complete openui-lang statements to change or add. This is a patch, not a page.
+2. Keep existing statement ids exactly. Re-issuing `id = ...` replaces that definition (last-wins); a new id appends. Do not rename ids or re-emit unchanged statements.
+3. Do not output a full page, JSON, prose explanations, or markdown outside a single ```openui fenced block.
+4. Never emit a deletion. To remove behavior, redefine the owning parent so the old statement is no longer referenced. Definitions remain in the program and are still type-checked; also replace any invalid unused definition with a valid expression.
+5. Keep exactly one reachable `root` and keep every reference resolvable. Everything not redefined stays exactly as it is in the current effective DSL.
+6. Use only components, builtins, tools, examples, and rules present in the current full contract below. Do not invent names, fields, functions, data, or statistics.
+7. Classify every call from the current program, not from a past label: `@name(` is a builtin call, `Name(` is a component call, and a bare identifier is a statement reference. Check the current contract and the diagnosed statement's location/related statements. An earlier round's error code may be stale after overrides; do not repeat it unless the current DSL still supports it.
+8. Treat caller-supplied data as a description with a stated scale, not automatically the full render data model. Never present sample rows as complete data, and never fabricate statistics. If the available data cannot support a value, render the real known data and state the limitation in the page (treating the caller-supplied data model as the primary subject to render and the user request as auxiliary context: render the actual data in `data` using its own entity names, titles, and fields, and state any limitation in natural user-facing language with a neutral notice title such as "提示" / "信息说明", without exposing internal field/path names like `data.xxx` / `queryXxx` or system terms like "数据源不匹配").
+9. Diagnose from the current DSL and the latest diagnostics. Historical rounds explain how the program changed; they do not override the current program.
+
+## Current full contract (authoritative)
+- contractVersion: contract-7
+- root: Stack
+
+### Components
+- Stack(children: Component[]) — vertical layout
+- Header(text: string) — page header
+
+### Builtins
+- @Each(array, item, template) [template] — iterate an array in a template
+
+### Tools
+- get_sales — read sales rows
+  - inputSchema: {"type":"object","properties":{"days":{"type":"number"}}}
+  - outputSchema: {"type":"array"}
+
+### Examples
+root = Stack([header])
+header = Header("Hi")
+
+### Additional rules
+- Never invent tools.
+
+## Caller-supplied data context (structure, samples, and scale)
+No data context was supplied by the caller. Treat the data shape as unknown: do not invent fields, values, functions, or statistics. Render only what the current DSL actually has and state any missing-data limitation in the page.
+
+## Diagnostic-selected guidance
+- Classify the unresolved name from its syntax: `@name(...)` is a builtin call, `Name(...)` is a component call, and a bare identifier is a statement reference. Only builtins take a leading `@`.
+- If the name is a builtin or action step, add the leading `@`. If it is a statement, define it with that exact id or correct the reference. JavaScript globals are unavailable; replace them with contract builtins. Never invent an external reference, tool, or field.
+

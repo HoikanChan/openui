@@ -1,0 +1,1 @@
+Arrow functions, template strings, and JavaScript statements are not openui-lang. Use double-quoted strings with `+` concatenation and `@Each`/`@Render` templates.

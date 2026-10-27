@@ -1,0 +1,1 @@
+Classify the unresolved name from its syntax: `@name(...)` is a builtin call, `Name(...)` is a component call, and a bare identifier is a statement reference. Only builtins take a leading `@`.

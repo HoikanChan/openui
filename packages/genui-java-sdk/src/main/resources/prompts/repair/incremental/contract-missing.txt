@@ -1,0 +1,2 @@
+No contract object was supplied. Use only names already present in the original system prompt and the current DSL; invent nothing.
+

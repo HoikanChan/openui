@@ -1,0 +1,1 @@
+Match the current contract signature exactly: argument count, positional order, and parameter kind. Binder arguments are double-quoted names and are only in scope inside that builtin's template expression.

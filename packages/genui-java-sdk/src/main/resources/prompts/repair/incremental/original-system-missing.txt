@@ -1,0 +1,2 @@
+No original system prompt was supplied. Use only the current full contract and the current DSL below as the language/component/data contract.
+
