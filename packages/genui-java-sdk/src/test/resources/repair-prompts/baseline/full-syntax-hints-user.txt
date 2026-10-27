@@ -1,0 +1,7 @@
+## Original request
+hints
+
+## DSL that failed validation
+```openui
+root = Stack([])
+```

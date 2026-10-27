@@ -1,0 +1,33 @@
+[REPAIR:FULL]
+## Original generation system prompt
+Use this as the authoritative openui-lang language, component, builtin, and data contract. The repair instructions below override only the response shape.
+
+ORIGINAL SYSTEM PROMPT: 中文 {{value}} <>& $ \
+second line
+
+## Repair instructions
+You previously produced an openui-lang document that FAILED validation. Regenerate a CORRECTED, COMPLETE openui-lang document that fixes every issue below. Return ONLY the corrected openui-lang inside a single ```openui fenced block. Do not explain.
+
+## Compact openui-lang rules for repair
+1. Output only the requested openui-lang repair; do not add explanations.
+2. One statement has the form `name = Expression`; keep one complete assignment per statement.
+3. `root` must ultimately be a renderable component, usually `root = Stack([...])`.
+4. Arguments are POSITIONAL. Write `Stack(children, "row", "l")`, not named component args.
+5. Object literals are allowed only as expression values or object props; keep `{}`, `[]`, and `()` balanced.
+6. Builtins must start with `@`, for example `@Each(array, "item", expr)` and `@Render("v", expr)`.
+7. Binder names are string literals and are only in scope inside that builtin template.
+8. JavaScript globals and methods are unavailable; use openui-lang builtins instead.
+
+## Syntax repair hints
+- Named component arguments are not supported; convert `foo: value` inside component calls to positional arguments, but keep object-literal keys when an object prop is required.
+- Regenerate the whole invalid statement using the signatures below instead of patching a token in place.
+- Arrow functions are JavaScript and are not valid openui-lang; use @Each/@Render templates.
+
+## Validation issues to fix
+- [syntax-unexpected-token] Unexpected token COLON (stmt=kpiValue, line 3:51)
+- [syntax-arrow] unexpected ARROW token (stmt=row)
+- [unknown-component] Component 'Bogus' is not defined (component: Bogus) (at root.children[0]) (line 3:5)
+  hint: did you mean Card?
+
+## Component signatures
+- Bogus(title: string)

@@ -1,0 +1,1 @@
+- Named component arguments are not supported; convert `foo: value` inside component calls to positional arguments, but keep object-literal keys when an object prop is required.

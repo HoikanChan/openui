@@ -1,0 +1,2 @@
+You previously produced an openui-lang document that FAILED validation. Regenerate a CORRECTED, COMPLETE openui-lang document that fixes every issue below. Return ONLY the corrected openui-lang inside a single ```openui fenced block. Do not explain.
+

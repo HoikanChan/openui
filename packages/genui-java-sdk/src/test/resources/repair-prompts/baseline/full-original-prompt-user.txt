@@ -1,0 +1,8 @@
+## Original request
+show {{name}} <b>$ \ 中文
+
+## DSL that failed validation
+```openui
+root = Stack([kpiValue])
+kpiValue = Bogus(title: "x", "extra")
+```

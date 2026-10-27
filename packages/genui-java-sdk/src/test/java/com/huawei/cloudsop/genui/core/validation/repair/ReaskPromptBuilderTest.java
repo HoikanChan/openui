@@ -6,6 +6,7 @@ package com.huawei.cloudsop.genui.core.validation.repair;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
@@ -16,6 +17,7 @@ import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
 
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +27,9 @@ import java.util.Map;
  * @since 2026
  */
 class ReaskPromptBuilderTest {
+
+    private static final String GOLDEN_INTENT = "show {{name}} <b>$ \\ 中文";
+    private static final String GOLDEN_DSL = "root = Stack([kpiValue])\nkpiValue = Bogus(title: \"x\", \"extra\")";
 
     private static GenerationContract contractWith(String name, String signature) {
         return new GenerationContract("1.0", "Stack", Map.of(name, new ComponentPromptSpec(signature, "desc")),
@@ -168,5 +173,86 @@ class ReaskPromptBuilderTest {
                 null);
         String text = join(messages);
         assertFalse(text.contains("soft-warn"), "non-ERROR issues must not drive repair");
+    }
+
+    // ── resource migration goldens ──────────────────────────────────────────────
+
+    private static ValidationIssue syntaxIssue(String code, String message, String statementId, int line, int column) {
+        return new ValidationIssue(code, ValidationSeverity.ERROR, "syntax", message, statementId, null, null, line,
+                column, null, false);
+    }
+
+    /**
+     * 迁移前的完整 system/user 消息原样留作黄金样本：整份修复改为资源加载后逐字符比对，覆盖正常场景、原始 system prompt、全部语法提示与空输入兜底。
+     */
+    @Test
+    void completeMessagesMatchBeforeResourceMigration() throws Exception {
+        GenerationContract contract = contractWith("Bogus", "Bogus(title: string)");
+        List<ValidationIssue> issues = List.of(
+                syntaxIssue("syntax-unexpected-token", "Unexpected token COLON", "kpiValue", 3, 51),
+                syntaxIssue("syntax-unclosed-bracket", "unclosed bracket", "kpiValue", 4, 2),
+                syntaxIssue("syntax-arrow", "unexpected ARROW token", "row", -1, -1),
+                syntaxIssue("syntax-template", "unexpected TEMPLATE literal", "row", -1, -1),
+                issue("unknown-component", "Component 'Bogus' is not defined", "Bogus", "did you mean Card?"));
+
+        assertGolden("full-normal", ReaskPromptBuilder.buildFullRepair(GOLDEN_INTENT, GOLDEN_DSL, issues, contract));
+        assertGolden("full-original-prompt", ReaskPromptBuilder.buildFullRepair(GOLDEN_INTENT, GOLDEN_DSL, issues,
+                contract, "ORIGINAL SYSTEM PROMPT: 中文 {{value}} <>& $ \\\nsecond line"));
+
+        // 每个 statement 只保留首条 syntax 错误，因此五个提示文案各占一条语句。
+        List<ValidationIssue> onePerStatement = List.of(
+                syntaxIssue("syntax-unexpected-token", "Unexpected token COLON", "namedArgs", 10, 7),
+                syntaxIssue("syntax-unclosed-bracket", "unclosed bracket", "unclosed", 11, 1),
+                syntaxIssue("syntax-arrow", "unexpected ARROW token", "arrow", 12, 3),
+                syntaxIssue("syntax-template", "unexpected TEMPLATE literal", "template", 13, 5));
+        assertGolden("full-syntax-hints",
+                ReaskPromptBuilder.buildFullRepair("hints", "root = Stack([])", onePerStatement, null));
+
+        assertGolden("full-missing", ReaskPromptBuilder.buildFullRepair(null, null, List.of(), null, "   "));
+    }
+
+    /**
+     * CRLF 是调用方输入里的真实内容：旧实现只 trim 两端，内部 {@code \r\n} 原样保留。该场景的黄金文件按字面存储， 因此不做行尾归一化。
+     */
+    @Test
+    void crlfInputsArePreservedVerbatim() throws Exception {
+        GenerationContract contract = contractWith("Header", "Header(title: string)");
+        List<ValidationIssue> issues = List.of(new ValidationIssue("unknown-component", ValidationSeverity.ERROR,
+                "contract", "Component 'Header' arg mismatch", null, "Header", "root.children[0]", 2, 1, null, false));
+        assertGoldenExact("full-crlf",
+                ReaskPromptBuilder.buildFullRepair("第一行 {{name}} <>& $ \\\r\n第二行",
+                        "root = Stack([header])\r\nheader = Header(\"中文 {{value}}\")", issues, contract,
+                        "ORIGINAL SYSTEM PROMPT\r\n中文 {{value}} <>& $ \\"));
+    }
+
+    /**
+     * 与 {@link #assertGolden} 相同，但对 {@code -text} 黄金文件按字节比较，不做行尾归一化。
+     */
+    private static void assertGoldenExact(String name, List<ChatMessage> messages) throws Exception {
+        assertEquals(2, messages.size());
+        for (int i = 0; i < messages.size(); i++) {
+            String role = i == 0 ? "system" : "user";
+            assertEquals(role, messages.get(i).role());
+            String path = "repair-prompts/baseline/" + name + "-" + role + ".txt";
+            try (var stream = ReaskPromptBuilderTest.class.getClassLoader().getResourceAsStream(path)) {
+                assertNotNull(stream, path);
+                assertEquals(new String(stream.readAllBytes(), StandardCharsets.UTF_8), messages.get(i).content(),
+                        path);
+            }
+        }
+    }
+
+    private static void assertGolden(String name, List<ChatMessage> messages) throws Exception {
+        assertEquals(2, messages.size());
+        for (int i = 0; i < messages.size(); i++) {
+            String role = i == 0 ? "system" : "user";
+            assertEquals(role, messages.get(i).role());
+            String path = "repair-prompts/baseline/" + name + "-" + role + ".txt";
+            try (var stream = ReaskPromptBuilderTest.class.getClassLoader().getResourceAsStream(path)) {
+                assertNotNull(stream, path);
+                assertEquals(new String(stream.readAllBytes(), StandardCharsets.UTF_8).replace("\r\n", "\n"),
+                        messages.get(i).content(), path);
+            }
+        }
     }
 }

@@ -1,0 +1,2 @@
+Use this as the authoritative openui-lang language, component, builtin, and data contract. The repair instructions below override only the response shape.
+

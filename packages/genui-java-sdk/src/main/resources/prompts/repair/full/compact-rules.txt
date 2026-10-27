@@ -1,0 +1,10 @@
+## Compact openui-lang rules for repair
+1. Output only the requested openui-lang repair; do not add explanations.
+2. One statement has the form `name = Expression`; keep one complete assignment per statement.
+3. `root` must ultimately be a renderable component, usually `root = Stack([...])`.
+4. Arguments are POSITIONAL. Write `Stack(children, "row", "l")`, not named component args.
+5. Object literals are allowed only as expression values or object props; keep `{}`, `[]`, and `()` balanced.
+6. Builtins must start with `@`, for example `@Each(array, "item", expr)` and `@Render("v", expr)`.
+7. Binder names are string literals and are only in scope inside that builtin template.
+8. JavaScript globals and methods are unavailable; use openui-lang builtins instead.
+

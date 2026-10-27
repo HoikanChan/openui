@@ -1,0 +1,1 @@
+- Close every `(`, `[`, and `{` opened by the invalid statement before starting another statement.

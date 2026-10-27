@@ -8,6 +8,7 @@ import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentPropsSchema;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.llm.protocol.ChatMessage;
+import com.huawei.cloudsop.genui.core.prompt.PromptResources;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssueReducer;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
@@ -46,6 +47,9 @@ public final class ReaskPromptBuilder {
 
     /** 机器可解析的标记，供测试/日志识别修复类系统消息（完整修复）。 */
     public static final String FULL_REPAIR_MARKER = "[REPAIR:FULL]";
+
+    /** Static prompt text for full repair lives beside the incremental resources of the same module. */
+    private static final String RESOURCE_ROOT = "prompts/repair/full/";
 
     private static final Pattern COMPONENT_CALL = Pattern.compile("(?<![@A-Za-z0-9_])([A-Z][A-Za-z0-9_]*)\\s*\\(");
 
@@ -90,10 +94,7 @@ public final class ReaskPromptBuilder {
         StringBuilder system = new StringBuilder();
         system.append(FULL_REPAIR_MARKER).append('\n');
         appendOriginalSystemPrompt(system, originalSystemPrompt);
-        system.append("You previously produced an openui-lang document that FAILED validation. "
-                + "Regenerate a CORRECTED, COMPLETE openui-lang document that fixes every issue below. "
-                + "Return ONLY the corrected openui-lang inside a single ```openui fenced block. "
-                + "Do not explain.\n\n");
+        system.append(load("main-instruction.txt"));
         appendCompactSyntaxRules(system);
         appendSyntaxRepairHints(system, issues);
         // 提示词视图消费 ValidationIssueReducer 的可操作子集（去重 + 级联抑制），完整 issues 仍可经
@@ -103,39 +104,35 @@ public final class ReaskPromptBuilder {
 
         StringBuilder user = new StringBuilder();
         if (userIntent != null && !userIntent.isBlank()) {
-            user.append("## Original request\n").append(userIntent.trim()).append("\n\n");
+            user.append(render("user-request.txt", Map.of("intent", userIntent.trim())));
         }
-        user.append("## DSL that failed validation\n```openui\n").append(invalidDsl == null ? "" : invalidDsl.trim())
-                .append("\n```");
+        user.append(render("user-dsl.txt", Map.of("dsl", invalidDsl == null ? "" : invalidDsl.trim())));
 
         return List.of(ChatMessage.system(system.toString()), ChatMessage.user(user.toString()));
     }
 
     // ── 共享渲染逻辑 ────────────────────────────────────────────────────────
 
+    private static String load(String resource) {
+        return PromptResources.load(RESOURCE_ROOT + resource);
+    }
+
+    private static String render(String resource, Map<String, String> variables) {
+        return PromptResources.render(RESOURCE_ROOT + resource, variables);
+    }
+
     private static void appendOriginalSystemPrompt(StringBuilder sb, String originalSystemPrompt) {
         if (originalSystemPrompt == null || originalSystemPrompt.isBlank()) {
             return;
         }
-        sb.append("## Original generation system prompt\n");
-        sb.append("Use this as the authoritative openui-lang language, component, builtin, and data contract. ")
-                .append("The repair instructions below override only the response shape.\n\n");
+        sb.append(load("original-system-heading.txt"));
+        sb.append(load("original-system-authority.txt"));
         sb.append(originalSystemPrompt.trim()).append("\n\n");
-        sb.append("## Repair instructions\n");
+        sb.append(load("repair-instructions-heading.txt"));
     }
 
     private static void appendCompactSyntaxRules(StringBuilder sb) {
-        sb.append("## Compact openui-lang rules for repair\n");
-        sb.append("1. Output only the requested openui-lang repair; do not add explanations.\n");
-        sb.append("2. One statement has the form `name = Expression`; keep one complete assignment per statement.\n");
-        sb.append("3. `root` must ultimately be a renderable component, usually `root = Stack([...])`.\n");
-        sb.append("4. Arguments are POSITIONAL. Write `Stack(children, \"row\", \"l\")`, not named component args.\n");
-        sb.append(
-                "5. Object literals are allowed only as expression values or object props; keep `{}`, `[]`, and `()` balanced.\n");
-        sb.append(
-                "6. Builtins must start with `@`, for example `@Each(array, \"item\", expr)` and `@Render(\"v\", expr)`.\n");
-        sb.append("7. Binder names are string literals and are only in scope inside that builtin template.\n");
-        sb.append("8. JavaScript globals and methods are unavailable; use openui-lang builtins instead.\n\n");
+        sb.append(load("compact-rules.txt"));
     }
 
     private static void appendSyntaxRepairHints(StringBuilder sb, List<ValidationIssue> issues) {
@@ -150,38 +147,34 @@ public final class ReaskPromptBuilder {
             }
             String message = issue.message() == null ? "" : issue.message();
             if (message.contains("COLON")) {
-                hints.add("Named component arguments are not supported; convert `foo: value` inside component calls "
-                        + "to positional arguments, but keep object-literal keys when an object prop is required.");
+                hints.add(load("hint-named-arguments.txt"));
             }
             if ("syntax-unclosed-bracket".equals(issue.code())
                     || message.toLowerCase(java.util.Locale.ROOT).contains("unclosed")) {
-                hints.add("Close every `(`, `[`, and `{` opened by the invalid statement before starting another "
-                        + "statement.");
+                hints.add(load("hint-unclosed-bracket.txt"));
             }
             if (message.contains("ARROW") || message.contains("FAT_ARROW")) {
-                hints.add("Arrow functions are JavaScript and are not valid openui-lang; use @Each/@Render templates.");
+                hints.add(load("hint-arrow-function.txt"));
             }
             if (message.contains("TEMPLATE")) {
-                hints.add("Template strings are JavaScript and are not valid openui-lang; use double-quoted strings "
-                        + "and `+` concatenation.");
+                hints.add(load("hint-template-string.txt"));
             }
-            hints.add("Regenerate the whole invalid statement using the signatures below instead of patching a token "
-                    + "in place.");
+            hints.add(load("hint-regenerate-statement.txt"));
         }
         if (hints.isEmpty()) {
             return;
         }
-        sb.append("## Syntax repair hints\n");
+        sb.append(load("syntax-hints-heading.txt"));
         for (String hint : hints) {
-            sb.append("- ").append(hint).append('\n');
+            sb.append(hint);
         }
         sb.append('\n');
     }
 
     private static void appendIssues(StringBuilder sb, List<ValidationIssue> issues) {
-        sb.append("## Validation issues to fix\n");
+        sb.append(load("issues-heading.txt"));
         if (issues == null || issues.isEmpty()) {
-            sb.append("- (no structured issues supplied)\n");
+            sb.append(load("issues-empty.txt"));
             return;
         }
         for (ValidationIssue issue : issues) {
@@ -260,7 +253,7 @@ public final class ReaskPromptBuilder {
         if (lines.isEmpty()) {
             return;
         }
-        sb.append("\n## Component signatures\n");
+        sb.append(load("signatures-heading.txt"));
         for (String line : lines) {
             sb.append(line).append('\n');
         }

@@ -1,0 +1,4 @@
+## DSL that failed validation
+```openui
+{{dsl}}
+```

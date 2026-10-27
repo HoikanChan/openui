@@ -1,0 +1,1 @@
+- Template strings are JavaScript and are not valid openui-lang; use double-quoted strings and `+` concatenation.

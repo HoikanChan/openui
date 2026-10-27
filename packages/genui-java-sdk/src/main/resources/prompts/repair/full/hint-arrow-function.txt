@@ -1,0 +1,1 @@
+- Arrow functions are JavaScript and are not valid openui-lang; use @Each/@Render templates.

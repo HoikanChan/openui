@@ -1,0 +1,9 @@
+## Original request
+第一行 {{name}} <>& $ \
+第二行
+
+## DSL that failed validation
+```openui
+root = Stack([header])
+header = Header("中文 {{value}}")
+```

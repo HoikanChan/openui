@@ -1,0 +1,3 @@
+# CRLF is meaningful inside these two goldens: they freeze that CRLF in caller input survives verbatim.
+full-crlf-system.txt -text
+full-crlf-user.txt -text
