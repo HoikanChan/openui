@@ -4,9 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.huawei.cloudsop</groupId>
+  <parent>
+    <groupId>com.huawei.cloudsop</groupId>
+    <artifactId>openui-java</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
   <artifactId>genui-core</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
   <name>OpenUI GenUI Java SDK</name>
 
   <properties>
@@ -15,6 +20,7 @@
     <fastjson2.version>2.0.60</fastjson2.version>
     <junit.version>5.11.4</junit.version>
     <bsp-restclient.version>25.590.54</bsp-restclient.version>
+    <lint.config.dir>${project.basedir}/../../config</lint.config.dir>
   </properties>
 
   <dependencies>
@@ -44,47 +50,6 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.5.2</version>
-      </plugin>
-      <plugin>
-        <groupId>com.diffplug.spotless</groupId>
-        <artifactId>spotless-maven-plugin</artifactId>
-        <version>2.43.0</version>
-        <configuration>
-          <java>
-            <includes>
-              <include>src/main/java/**/*.java</include>
-              <include>src/test/java/**/*.java</include>
-            </includes>
-            <eclipse>
-              <file>${project.basedir}/../../config/spotless/eclipse-format.xml</file>
-            </eclipse>
-            <importOrder>
-              <file>${project.basedir}/../../config/spotless/huawei.importorder</file>
-            </importOrder>
-            <removeUnusedImports/>
-            <trimTrailingWhitespace/>
-            <endWithNewline/>
-          </java>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-checkstyle-plugin</artifactId>
-        <version>3.6.0</version>
-        <dependencies>
-          <dependency>
-            <groupId>com.puppycrawl.tools</groupId>
-            <artifactId>checkstyle</artifactId>
-            <version>10.21.0</version>
-          </dependency>
-        </dependencies>
-        <configuration>
-          <configLocation>${project.basedir}/../../config/checkstyle/huawei_checks.xml</configLocation>
-          <suppressionsLocation>${project.basedir}/../../config/checkstyle/suppressions.xml</suppressionsLocation>
-          <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
-          <includeTestSourceDirectory>true</includeTestSourceDirectory>
-          <failOnViolation>false</failOnViolation>
-        </configuration>
       </plugin>
     </plugins>
   </build>
