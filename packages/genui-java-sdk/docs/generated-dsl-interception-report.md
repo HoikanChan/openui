@@ -57,7 +57,7 @@
 
 ## 方法
 
-验证入口是 JUnit：`InterceptionCorpusTest`。测试从 `src/test/resources/interception-corpus/manifest.json` 读取每个样本，加载共享 `GenerationContract`，以 `ValidationMode.FINAL` 调用真实 `DefaultOpenuiLangValidator.INSTANCE.validate(...)`。
+验证入口是 JUnit：`InterceptionCorpusTest`。测试从 `src/test/resources/interception-corpus/manifest.json` 读取每个样本，加载共享 `GenerationContract`，调用真实 `DefaultOpenuiLangValidator.INSTANCE.validate(...)` 执行完整校验。
 
 样本来源分三类：
 

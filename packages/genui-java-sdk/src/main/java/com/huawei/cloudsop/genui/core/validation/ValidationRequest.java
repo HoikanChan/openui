@@ -30,15 +30,11 @@ import java.util.Set;
  *            DSL 中引用的外部类型名集合；不会为 {@code null}
  * @param dataModel
  *            用于校验生成数据路径的具体渲染数据模型；未提供时为 {@code null}
- * @param mode
- *            校验模式
- * @param requestId
- *            调用方提供的日志关联 id，或 {@code null}
  *
  * @since 2026
  */
 public record ValidationRequest(String dsl, GenerationContract contract, String rootName, Set<String> externalRefs,
-        Map<String, Object> dataModel, ValidationMode mode, String requestId) {
+        Map<String, Object> dataModel) {
 
     /**
      * 紧凑构造方法，将 {@code externalRefs} 归一化为不可变集合、{@code dataModel} 归一化为不可变 map。
@@ -48,27 +44,6 @@ public record ValidationRequest(String dsl, GenerationContract contract, String 
         if (dataModel != null) {
             dataModel = Collections.unmodifiableMap(new LinkedHashMap<>(dataModel));
         }
-    }
-
-    /**
-     * 源码兼容构造方法：供按 dataModel 引入前的签名编译的调用方使用（{@code dataModel} 视为 {@code null}）。
-     *
-     * @param dsl
-     *            待校验的 DSL 字符串
-     * @param contract
-     *            用于校验的合约
-     * @param rootName
-     *            预期的根组件名
-     * @param externalRefs
-     *            外部类型名集合
-     * @param mode
-     *            校验模式
-     * @param requestId
-     *            日志关联 id
-     */
-    public ValidationRequest(String dsl, GenerationContract contract, String rootName, Set<String> externalRefs,
-            ValidationMode mode, String requestId) {
-        this(dsl, contract, rootName, externalRefs, null, mode, requestId);
     }
 
     /**
@@ -95,10 +70,6 @@ public record ValidationRequest(String dsl, GenerationContract contract, String 
         private Set<String> externalRefs;
 
         private Map<String, Object> dataModel;
-
-        private ValidationMode mode;
-
-        private String requestId;
 
         private Builder() {
         }
@@ -164,38 +135,13 @@ public record ValidationRequest(String dsl, GenerationContract contract, String 
         }
 
         /**
-         * 设置校验模式。
-         *
-         * @param mode
-         *            校验模式
-         * @return 本构造器，便于链式调用
-         */
-        public Builder mode(ValidationMode mode) {
-            this.mode = mode;
-            return this;
-        }
-
-        /**
-         * 设置日志关联 id。
-         *
-         * @param requestId
-         *            关联 id
-         * @return 本构造器，便于链式调用
-         */
-        public Builder requestId(String requestId) {
-            this.requestId = requestId;
-            return this;
-        }
-
-        /**
          * 构建 {@link ValidationRequest} 实例。
          *
          * @return 校验请求
          */
         public ValidationRequest build() {
             Objects.requireNonNull(dsl, "dsl");
-            Objects.requireNonNull(mode, "mode");
-            return new ValidationRequest(dsl, contract, rootName, externalRefs, dataModel, mode, requestId);
+            return new ValidationRequest(dsl, contract, rootName, externalRefs, dataModel);
         }
     }
 }

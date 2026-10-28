@@ -110,9 +110,10 @@ public sealed interface Type {
     }
 
     /**
-     * 对象额外字段约束。{@link Extra#closed()} 归一为 {@code open(Never)};显式列出的字段不再受 extra 重复限制。
+     * 对象额外字段约束。{@link Extra#closed()} 表示不允许额外字段,等价于额外字段值类型为 {@link Never} 的开放约束;
+     * 显式列出的字段不再受 extra 重复限制。
      */
-    record Extra(Type valueType, boolean displayClosed) {
+    record Extra(Type valueType) {
         public Extra {
             if (valueType == null) {
                 throw new IllegalArgumentException("extra requires a value type");
@@ -120,11 +121,11 @@ public sealed interface Type {
         }
 
         public static Extra closed() {
-            return new Extra(Never.INSTANCE, true);
+            return new Extra(Never.INSTANCE);
         }
 
         public static Extra open(Type valueType) {
-            return new Extra(valueType, false);
+            return new Extra(valueType);
         }
 
         public boolean isClosed() {

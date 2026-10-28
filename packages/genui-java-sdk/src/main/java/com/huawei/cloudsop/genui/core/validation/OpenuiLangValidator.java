@@ -11,7 +11,6 @@ package com.huawei.cloudsop.genui.core.validation;
  * 接收一个 {@link ValidationRequest}，返回一个 {@link ValidationResult}，其 {@link ValidationStatus} 由实现方计算：
  * <ul>
  * <li>{@link ValidationStatus#INVALID} —— 存在任意 {@code ERROR} 级别的问题。</li>
- * <li>{@link ValidationStatus#PARTIAL} —— 仅在 {@link ValidationMode#STREAMING} 下，存在非阻塞（非 ERROR）问题且无阻塞 ERROR 时出现。</li>
  * <li>{@link ValidationStatus#VALID} —— 无问题，或仅有提示性/非阻塞问题。</li>
  * </ul>
  *

@@ -5,7 +5,6 @@ import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 
@@ -54,7 +53,7 @@ public final class ValidationCorpusReportGenerator {
                 String id = String.valueOf(testCase.get("id"));
                 ValidationResult validation = DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder()
                         .dsl(String.valueOf(testCase.get("dsl"))).contract(contract)
-                        .dataModel((Map<String, Object>) testCase.get("dataModel")).mode(ValidationMode.FINAL).build());
+                        .dataModel((Map<String, Object>) testCase.get("dataModel")).build());
                 CaseResult result = new CaseResult(id, source.getFileName().toString(), caseIndex + 1,
                         annotations.get(id), String.valueOf(testCase.get("dsl")),
                         (Map<String, Object>) testCase.get("dataModel"), validation);

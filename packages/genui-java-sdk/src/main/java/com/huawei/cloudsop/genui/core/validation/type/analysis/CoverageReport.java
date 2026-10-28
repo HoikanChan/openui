@@ -19,8 +19,7 @@ import java.util.Set;
 public final class CoverageReport {
 
     /** 一条检查要求的稳定身份:语句/表达式路径 + 使用位置 + 要求种类 + 契约路径。 */
-    public record Obligation(String statementId, String useSite, String kind, String contractPath,
-            String display) {
+    public record Obligation(String statementId, String useSite, String kind, String contractPath) {
 
         /** 稳定身份键(同一次分析内去重)。 */
         String identity() {
@@ -29,12 +28,10 @@ public final class CoverageReport {
     }
 
     /** 单条检查要求的结论记录。 */
-    public record Entry(Obligation obligation, Checks.Verdict verdict, List<Checks.Reason> reasons,
-            Set<String> upstreamErrors) {
+    public record Entry(Obligation obligation, Checks.Verdict verdict, List<Fact.Loss> reasons) {
 
         public Entry {
             reasons = reasons == null ? List.of() : List.copyOf(reasons);
-            upstreamErrors = upstreamErrors == null ? Set.of() : Set.copyOf(upstreamErrors);
         }
     }
 
@@ -51,7 +48,7 @@ public final class CoverageReport {
     /** 登记一条检查结论;同一身份重复登记时保留首条(同一检查不因重试重复计数)。 */
     public void record(Entry entry) {
         entries.putIfAbsent(entry.obligation().identity(), entry);
-        if (entry.reasons().contains(Checks.Reason.PRECISION_BUDGET)) {
+        if (entry.reasons().contains(Fact.Loss.PRECISION_BUDGET)) {
             markTraversalTruncated();
         }
     }
@@ -59,11 +56,6 @@ public final class CoverageReport {
     /** 标记遍历被截断(预算或访问限制导致后续要求尚未发现)。 */
     public void markTraversalTruncated() {
         this.traversalTruncated = true;
-    }
-
-    /** 全部结论(登记顺序)。 */
-    public List<Entry> entries() {
-        return List.copyOf(entries.values());
     }
 
     public int discovered() {
@@ -91,20 +83,16 @@ public final class CoverageReport {
         return !traversalTruncated;
     }
 
-    public boolean traversalTruncated() {
-        return traversalTruncated;
-    }
-
     /** 未证明原因计数;同一要求可计入多个原因,不依赖集合遍历顺序。 */
-    public Map<Checks.Reason, Long> unprovenReasons() {
-        Map<Checks.Reason, Long> counts = new EnumMap<>(Checks.Reason.class);
+    public Map<Fact.Loss, Long> unprovenReasons() {
+        Map<Fact.Loss, Long> counts = new EnumMap<>(Fact.Loss.class);
         for (Entry entry : entries.values()) {
             if (entry.verdict() == Checks.Verdict.UNPROVEN && !entry.reasons().isEmpty()) {
-                for (Checks.Reason reason : Set.copyOf(entry.reasons())) {
+                for (Fact.Loss reason : Set.copyOf(entry.reasons())) {
                     counts.merge(reason, 1L, Long::sum);
                 }
             } else if (entry.verdict() == Checks.Verdict.UNPROVEN) {
-                counts.merge(Checks.Reason.INSUFFICIENT_EVIDENCE, 1L, Long::sum);
+                counts.merge(Fact.Loss.INSUFFICIENT_EVIDENCE, 1L, Long::sum);
             }
         }
         return Collections.unmodifiableMap(counts);
@@ -124,7 +112,7 @@ public final class CoverageReport {
         if (precisionLost) {
             summary.put("typeChecks.precisionLosses", "PRECISION_BUDGET");
         }
-        Map<Checks.Reason, Long> reasons = unprovenReasons();
+        Map<Fact.Loss, Long> reasons = unprovenReasons();
         if (!reasons.isEmpty()) {
             StringBuilder text = new StringBuilder();
             reasons.forEach((reason, count) -> {

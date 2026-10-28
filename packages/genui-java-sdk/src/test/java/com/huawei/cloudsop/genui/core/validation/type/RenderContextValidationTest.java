@@ -8,7 +8,6 @@ import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -222,7 +221,7 @@ class RenderContextValidationTest {
     private static ValidationResult validate(String dsl, Map<String, Object> dataModel) {
         return DefaultOpenuiLangValidator.INSTANCE
                 .validate(ValidationRequest.builder().dsl(dsl).contract(GenerationContractLoader.loadDefault())
-                        .dataModel(dataModel).mode(ValidationMode.FINAL).build());
+                        .dataModel(dataModel).build());
     }
 
     private static ValidationIssue issue(ValidationResult result, String code) {

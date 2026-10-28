@@ -5,8 +5,6 @@
 package com.huawei.cloudsop.genui.core.validation.repair;
 
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationIssueReducer;
-import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
 import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
 
 import java.util.LinkedHashMap;
@@ -52,15 +50,12 @@ public final class RepairGuidance {
      * 根据当前诊断选取去重后的专项修复指导开关（输出顺序由模板决定）。
      *
      * @param issues
-     *            当前轮末诊断；内部按 {@link ValidationIssueReducer#actionable(List)} 过滤派生噪声
+     *            已去噪的当前轮末诊断
      * @return 指导开关；无阻塞诊断时全部为 false
      */
-    public static Map<String, Boolean> forIssues(List<ValidationIssue> issues) {
+    static Map<String, Boolean> forActionableIssues(List<ValidationIssue> issues) {
         LinkedHashSet<String> selected = new LinkedHashSet<>();
-        for (ValidationIssue issue : ValidationIssueReducer.actionable(issues)) {
-            if (issue == null || issue.severity() != ValidationSeverity.ERROR) {
-                continue;
-            }
+        for (ValidationIssue issue : issues) {
             select(selected, issue);
         }
         Map<String, Boolean> flags = new LinkedHashMap<>();

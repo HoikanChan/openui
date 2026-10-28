@@ -44,7 +44,6 @@ class StatementSplitterTest {
         var stmts = split("$count = 0");
         assertEquals(1, stmts.size());
         assertEquals("$count", stmts.get(0).id());
-        assertEquals(TokenType.STATE_VAR, stmts.get(0).idTokenType());
     }
 
     @Test

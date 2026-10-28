@@ -20,8 +20,6 @@ public enum ParseErrorCode {
     INVALID_STATEMENT,
     /** 开括号 {@code (} / {@code [} / {@code &#123;} 未闭合。 */
     UNCLOSED_BRACKET,
-    /** 字符串字面量未闭合。 */
-    UNCLOSED_STRING,
     /** 出现了表达式文法无法使用的 token。 */
     UNEXPECTED_TOKEN
 }

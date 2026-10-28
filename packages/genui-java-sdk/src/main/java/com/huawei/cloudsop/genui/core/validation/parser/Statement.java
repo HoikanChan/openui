@@ -4,8 +4,6 @@
 
 package com.huawei.cloudsop.genui.core.validation.parser;
 
-import java.util.List;
-
 /**
  * 形如 {@code id = expression} 的顶层类型化语句。
  *
@@ -32,24 +30,11 @@ public sealed interface Statement permits Statement.Value, Statement.State, Stat
     SourceSpan span();
 
     /**
-     * 从 {@code Comp} 节点提取出的工具/查询调用形状。
+     * 语句的取值表达式：{@link State} 为初始化表达式，其余变体为右值表达式。
      *
-     * @param callee
-     *            被调用的名称
-     * @param args
-     *            调用参数列表
-     *
-     * @since 2026
+     * @return 取值表达式
      */
-    record CallNode(String callee, List<AstNode> args) {
-
-        /**
-         * 紧凑构造方法，将参数列表归一化为不可变列表。
-         */
-        public CallNode {
-            args = args == null ? List.of() : List.copyOf(args);
-        }
-    }
+    AstNode expr();
 
     /**
      * {@code id = expr} —— 普通取值声明（可能是一个组件）。
@@ -79,6 +64,11 @@ public sealed interface Statement permits Statement.Value, Statement.State, Stat
      * @since 2026
      */
     record State(String id, AstNode init, SourceSpan span) implements Statement {
+
+        @Override
+        public AstNode expr() {
+            return init;
+        }
     }
 
     /**
@@ -86,25 +76,14 @@ public sealed interface Statement permits Statement.Value, Statement.State, Stat
      *
      * @param id
      *            语句标识符
-     * @param call
-     *            查询调用形状
      * @param expr
      *            整体表达式
-     * @param deps
-     *            依赖项列表
      * @param span
      *            源码位置范围
      *
      * @since 2026
      */
-    record Query(String id, CallNode call, AstNode expr, List<String> deps, SourceSpan span) implements Statement {
-
-        /**
-         * 紧凑构造方法，将依赖列表归一化为不可变列表。
-         */
-        public Query {
-            deps = deps == null ? List.of() : List.copyOf(deps);
-        }
+    record Query(String id, AstNode expr, SourceSpan span) implements Statement {
     }
 
     /**
@@ -112,8 +91,6 @@ public sealed interface Statement permits Statement.Value, Statement.State, Stat
      *
      * @param id
      *            语句标识符
-     * @param call
-     *            变更调用形状
      * @param expr
      *            整体表达式
      * @param span
@@ -121,6 +98,6 @@ public sealed interface Statement permits Statement.Value, Statement.State, Stat
      *
      * @since 2026
      */
-    record Mutation(String id, CallNode call, AstNode expr, SourceSpan span) implements Statement {
+    record Mutation(String id, AstNode expr, SourceSpan span) implements Statement {
     }
 }

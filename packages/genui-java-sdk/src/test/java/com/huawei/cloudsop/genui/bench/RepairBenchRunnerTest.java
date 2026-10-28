@@ -487,7 +487,7 @@ class RepairBenchRunnerTest {
     }
 
     @Test
-    void capabilityBoundaryMetricsTrackReachableAndUnreachedGapAliasesAndNotice() throws Exception {
+    void capabilityBoundaryMetricsTrackRemainingGapAliasesAndNotice() throws Exception {
         String contractWithGap = "{\"contractVersion\":\"v1\",\"root\":\"Stack\",\"components\":{"
                 + "\"Stack\":{\"description\":\"Flex\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
                 + "\"children\":{\"type\":\"array\"}},\"required\":[\"children\"]}},"
@@ -501,11 +501,11 @@ class RepairBenchRunnerTest {
         Files.writeString(tempDir.resolve("contract.json"), contractWithGap, StandardCharsets.UTF_8);
 
         String invalidDsl = "grouped = @GroupBy(data.items, \"k\")\nroot = Stack([grouped])";
-        String repairedWithDeadCodeAndNotice = "capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\", \"暂不支持分组展示，以下按原始数据展示\")\n"
+        String repairedWithNotice = "capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\", \"暂不支持分组展示，以下按原始数据展示\")\n"
                 + "root = Stack([capabilityNotice, TextContent(\"ok\")])";
         writeCase("case-gap", "gap-case", invalidDsl, null);
 
-        ScriptedTransport transport = new ScriptedTransport().answer(invalidDsl, repairedWithDeadCodeAndNotice);
+        ScriptedTransport transport = new ScriptedTransport().answer(invalidDsl, repairedWithNotice);
         List<RepairCase> cases = RepairCasePack.load(tempDir, null);
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         PrintStream print = new PrintStream(buffer, true, StandardCharsets.UTF_8);
@@ -530,7 +530,6 @@ class RepairBenchRunnerTest {
         assertEquals("repaired", caseLine.get("status"));
         assertEquals(true, caseLine.get("capabilityNoticePresent"));
         assertEquals(List.of(), strings(caseLine, "remainingCapabilityGapAliases"));
-        assertEquals(List.of("GroupBy"), strings(caseLine, "unreachedCapabilityGapAliases"));
         assertEquals(List.of(), strings(caseLine, "consecutiveUnmatchedUnknownComponents"));
 
         Map<String, Object> boundary = map(summary, "capabilityBoundary");
@@ -539,7 +538,6 @@ class RepairBenchRunnerTest {
         assertEquals(1L, longOf(boundary.get("capabilityGapRepaired")));
         assertEquals(1L, longOf(boundary.get("capabilityNoticeCount")));
         assertEquals(0L, longOf(boundary.get("casesWithRemainingGapCalls")));
-        assertEquals(1L, longOf(boundary.get("casesWithUnreachedGapCalls")));
         assertEquals(0L, longOf(boundary.get("consecutiveUnmatchedUnknownComponentCases")));
     }
 }

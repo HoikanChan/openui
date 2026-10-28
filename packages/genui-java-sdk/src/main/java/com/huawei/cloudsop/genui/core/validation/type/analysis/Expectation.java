@@ -14,7 +14,7 @@ import java.util.Set;
  */
 public sealed interface Expectation
         permits Expectation.Accept, Expectation.RequireField, Expectation.ConditionalField, Expectation.AllOf,
-        Expectation.AnyOf, Expectation.ExactlyOne, Expectation.EnumValues, Expectation.Predicate,
+        Expectation.AnyOf, Expectation.ExactlyOne, Expectation.EnumValues,
         Expectation.SequenceOf, Expectation.Unsupported, SchemaCompiler.ExtraClosed,
         SchemaCompiler.ExtraConstraint {
 
@@ -94,18 +94,6 @@ public sealed interface Expectation
                 throw new IllegalArgumentException("enum requires at least one value");
             }
         }
-    }
-
-    /** 简单谓词种类(封闭枚举,不开放任意表达式)。 */
-    enum PredicateKind {
-        /** 数组长度下界。 */
-        MIN_LENGTH,
-        /** 数组长度上界。 */
-        MAX_LENGTH
-    }
-
-    /** 谓词要求。 */
-    record Predicate(PredicateKind kind, long parameter) implements Expectation {
     }
 
     /**

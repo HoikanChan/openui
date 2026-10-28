@@ -10,7 +10,6 @@ import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 
@@ -46,7 +45,7 @@ public final class ValidateCli {
         // Mirror the real pipeline: with a data model present, "data" is a known external ref.
         ValidationResult result = new DefaultOpenuiLangValidator().validate(ValidationRequest.builder().dsl(dsl)
                 .contract(merged).rootName(merged.root() == null ? "root" : merged.root())
-                .externalRefs(java.util.Set.of("data")).mode(ValidationMode.FINAL).build());
+                .externalRefs(java.util.Set.of("data")).build());
 
         LinkedHashMap<String, Object> out = new LinkedHashMap<>();
         out.put("status", result.status().name());

@@ -37,11 +37,6 @@ public record Fact(Type type, Set<Evidence> evidence, Set<Loss> losses, Set<Stri
         return new Fact(type, Set.of(), Set.of(), Set.of());
     }
 
-    /** 携带证据的事实。 */
-    public static Fact of(Type type, Set<Evidence> evidence) {
-        return new Fact(type, evidence, Set.of(), Set.of());
-    }
-
     /** 信息不足的事实:Unknown + 至少一条损失原因。 */
     public static Fact unknown(Loss loss, Loss... more) {
         Set<Loss> losses = new java.util.LinkedHashSet<>();
@@ -54,13 +49,6 @@ public record Fact(Type type, Set<Evidence> evidence, Set<Loss> losses, Set<Stri
     public Fact withEvidence(Evidence item) {
         Set<Evidence> merged = new java.util.LinkedHashSet<>(evidence);
         merged.add(item);
-        return new Fact(type, merged, losses, upstreamErrors);
-    }
-
-    /** 附加证据集合,返回新事实。 */
-    public Fact withEvidence(Set<Evidence> items) {
-        Set<Evidence> merged = new java.util.LinkedHashSet<>(evidence);
-        merged.addAll(items);
         return new Fact(type, merged, losses, upstreamErrors);
     }
 
@@ -90,11 +78,6 @@ public record Fact(Type type, Set<Evidence> evidence, Set<Loss> losses, Set<Stri
         Set<Loss> merged = new java.util.LinkedHashSet<>(losses);
         merged.addAll(items);
         return new Fact(type, evidence, merged, upstreamErrors);
-    }
-
-    /** 替换类型上界(类型运算传播证据时使用),证据/损失/上游错误原样保留。 */
-    public Fact withType(Type newType) {
-        return new Fact(newType, evidence, losses, upstreamErrors);
     }
 
     /** 是否与上游错误关联(关联的检查结论须抑制,不能当作独立反例)。 */
@@ -132,15 +115,6 @@ public record Fact(Type type, Set<Evidence> evidence, Set<Loss> losses, Set<Stri
         }
 
         /**
-         * 确定长度证据(字面量或快照数组的实际长度;Filter 之后不得沿用)。
-         *
-         * @param length
-         *            确定长度
-         */
-        record ExactLength(long length) implements Evidence {
-        }
-
-        /**
          * 元素存在证据:数组确定含至少一个元素(Sort 保留、Filter 删除)。
          */
         record ElementPresence() implements Evidence {
@@ -166,6 +140,8 @@ public record Fact(Type type, Set<Evidence> evidence, Set<Loss> losses, Set<Stri
         /** 上游已报错,本检查依赖受污染输入。 */
         BLOCKED_BY_ERROR,
         /** 未绑定类型变量按 Unknown 处理。 */
-        UNBOUND_TYPE_VARIABLE
+        UNBOUND_TYPE_VARIABLE,
+        /** 既有可能通过也有可能失败,且无适用于当前检查对象的证据(检查层专有原因,不进入事实损失)。 */
+        INSUFFICIENT_EVIDENCE
     }
 }

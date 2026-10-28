@@ -12,7 +12,6 @@ import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -140,7 +139,7 @@ class ObjectEnumerationValidationTest {
         for (String builtin : new String[]{"ObjectKeys", "ObjectValues", "ObjectEntries"}) {
             ValidationResult result = DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder()
                     .dsl("root = Stack(@Each(@" + builtin + "(data.object), e, TextContent(@String(e))))")
-                    .contract(GenerationContractLoader.loadDefault()).mode(ValidationMode.FINAL).build());
+                    .contract(GenerationContractLoader.loadDefault()).build());
             assertFalse(result.issues().stream().anyMatch(i -> "builtin-argument-type-mismatch".equals(i.code())),
                     () -> result.issues().toString());
             assertTrue(Long.parseLong(result.metadata().extra().get("typeChecks.unproven")) > 0);
@@ -172,6 +171,6 @@ class ObjectEnumerationValidationTest {
 
     private static ValidationResult validate(GenerationContract contract, String dsl) {
         return DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder().dsl(dsl).contract(contract)
-                .dataModel(Map.of()).mode(ValidationMode.FINAL).build());
+                .dataModel(Map.of()).build());
     }
 }

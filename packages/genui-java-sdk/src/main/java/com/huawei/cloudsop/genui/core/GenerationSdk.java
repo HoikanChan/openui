@@ -161,14 +161,7 @@ public final class GenerationSdk {
         GenUIPromptAssemblyMetadata metadata = new GenUIPromptAssemblyMetadata(effectiveRequest.extensionId(),
                 baseContract.contractVersion(), generation == null ? null : generation.version(),
                 new ArrayList<>(registeredToolNames));
-        return new GenUIPromptAssemblyResult(prompt, metadata, dataContext(characterizedData));
-    }
-
-    /** Repair rounds reuse the exact data section the initial system prompt rendered; empty raw data renders none. */
-    private static String dataContext(DataModelSpec characterizedData) {
-        return characterizedData == null || characterizedData.raw() == null || characterizedData.raw().isEmpty()
-                ? null
-                : PromptAssembler.dataModelSection(characterizedData);
+        return new GenUIPromptAssemblyResult(prompt, metadata);
     }
 
     /**

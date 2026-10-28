@@ -165,17 +165,15 @@ byte-for-byte premise no longer holds. See
 `GenUiGenerator` can validate generated openui-lang before services cache or
 render it. The validation data model lives under `core.validation`:
 
-- `ValidationStatus` (`VALID`, `PARTIAL`, `INVALID`)
-- `ValidationMode` (`FINAL`, `STREAMING`)
+- `ValidationStatus` (`VALID`, `INVALID`)
 - `ValidationSeverity` (`ERROR`, `WARNING`, `INFO`)
 - `ValidationIssue`, `ValidationResult`, `ValidationMetadata`, `ValidationRequest`
-- `ValidationConfigMode` (`FINAL_ONLY`, `DISABLED`)
-- `RepairPolicyKind` (`NONE`, `INCREMENTAL_REPAIR`)
+- `ValidationConfigMode` (`INCREMENTAL`, `FINAL_ONLY`, `DISABLED`)
 - `GenUiValidationConfig`, the top-level generator config record
 
-`GenUiValidationConfig` exposes three axes: when to validate, what coarse repair
-policy to apply, and an optional cap on incremental repair rounds. Use the
-presets for the common modes:
+`GenUiValidationConfig` exposes two axes: the validation strategy (incremental
+repair, final-only check, or disabled) and an optional cap on incremental repair
+rounds. Use the presets for the common modes:
 
 ```java
 GenUiValidationConfig cfg = GenUiValidationConfig.incremental(); // default: elapsed-time repair budget
@@ -202,7 +200,6 @@ ValidationResult result = DefaultOpenuiLangValidator.INSTANCE.validate(
         .dsl(generatedDsl)
         .contract(contract)
         .dataModel(renderDataModel)
-        .mode(ValidationMode.FINAL)
         .build());
 ```
 
@@ -227,8 +224,8 @@ conservatively instead of guessing a type.
 
 ### Incremental repair (default, #58)
 
-Streaming generation defaults to `GenUiValidationConfig.incremental()`:
-`FINAL_ONLY` validation plus `INCREMENTAL_REPAIR`. After a round ends with blocking
+Streaming generation defaults to `GenUiValidationConfig.incremental()`
+(`INCREMENTAL`): round-end validation plus incremental repair. After a round ends with blocking
 errors, the model is asked for **only overriding or new statements** (pure
 openui-lang, no full page/JSON/deletion). The SDK merges the patch into the same
 current program (last-wins by statement id), forwards the patch live on the stream,
@@ -269,8 +266,6 @@ repair system message, followed by fixed repair rules and then dynamic guidance.
 This preserves the shared prefix for services that support prompt caching; actual
 cache hits depend on the service. Contract and data context are not assembled a
 second time. The contract object is still used for capability matching and analysis.
-The legacy `dataContext` builder argument is retained for source compatibility but
-is no longer inserted separately.
 Java computes diagnostic selection, statement relations, and history truncation,
 then passes structured lists to the templates. Repeated capability-boundary entries,
 diagnostics, and history rounds use `{{#for items}}...{{/for}}` directly in the
@@ -309,6 +304,7 @@ pre-generation model request is issued. The remaining behavior depends on
 |---|---|
 | `DISABLED` | Raw LLM deltas are emitted as `dsl` envelopes. No validation result is attached. |
 | `FINAL_ONLY` | Raw LLM deltas are emitted as `dsl` envelopes. When the model's output round ends cleanly, one unified validation runs over the **current effective program**; the status is carried by the returned `GenUiGenerationResult`, with no late `error` frame. |
+| `INCREMENTAL` | Same round-end check as `FINAL_ONLY`; when it fails, the model is asked for override/new statements and the merged program is re-checked, within the repair budget. |
 
 The end-of-round check is maintained by `ProgramRoundSession` (the Program
 State & Validation module): complete statements are parsed as they arrive and

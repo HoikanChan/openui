@@ -162,7 +162,7 @@ TS 后续工作集中跟踪于 [#91：权威契约导出与模板接口同步](h
 | 项 | 终态 | 证据 |
 | --- | --- | --- |
 | 类型分析路径 | `TypeAnalysis.analyze` → `type/analysis` 内核（Type/Fact/TypeOps/Checks/CoverageReport）+ `contract.RuleEvaluator` | `DefaultOpenuiLangValidator` FINAL 分支；`StaticTypeValidationTest` |
-| builtin 词表 | 契约 `builtins` 派生；`Builtins.java` 只保留 Query/Mutation/Action 等语句关键字 | `BuiltinCatalog.fromContract`；`Builtins` 搜索无函数名单表 |
+| builtin 词表 | 契约 `builtins` 派生；Query/Mutation/Action 等语句关键字单独判断 | `BuiltinCatalog.fromContract` 和语法保留字判断 |
 | 求值规则 | `typeRule`（`RuleCompiler` 加载期封闭文法 + `RuleEvaluator` 运行期） | `RuleCompilerTest`、`ContractBuiltinRulesTest` |
 | 已删除 | `ValueType`/`ValueTypes`/旧 `DataPath*`、`TypeTranslator`、`returnType`+`params` 泛型求值（`genericResult`/`collectLowerBounds`/`instantiate`） | 全局搜索无引用；`DataPathResolverTest` 改用新 `Type` |
 | 参数检查覆盖 | 每次规则模式检查登记 MATCH/MISMATCH/UNPROVEN；只有 MISMATCH 且无上游错误上报 | `typeChecks.*` 元数据；`StaticTypeValidationTest` |

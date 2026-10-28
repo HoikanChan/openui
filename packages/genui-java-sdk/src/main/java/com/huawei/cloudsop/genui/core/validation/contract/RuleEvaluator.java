@@ -113,7 +113,7 @@ public final class RuleEvaluator {
         // object 参数要求整个值是对象。内核 Accept 检查对“可能为空数组”的分支保留逐元素空集容错
         // （空数组满足“所有元素属于 T”），但空数组本身仍是确定的非对象，不能因此放过 object 参数。
         if (pattern instanceof TypePattern.AnyRecord && definitelyNotRecord(actual.type())) {
-            Checks.CheckResult mismatch = new Checks.CheckResult(Checks.Verdict.MISMATCH, Set.of(), Set.of(),
+            Checks.CheckResult mismatch = new Checks.CheckResult(Checks.Verdict.MISMATCH, Set.of(),
                     "value is not an object");
             callSite.recordArgumentCheck(index, pattern, actual, mismatch);
             if (!actual.hasUpstreamErrors()) {
@@ -141,22 +141,9 @@ public final class RuleEvaluator {
         if (pattern instanceof TypePattern.Any || pattern instanceof TypePattern.Variable) {
             return new Expectation.Accept(Type.Unknown.INSTANCE);
         }
-        if (pattern instanceof TypePattern.Unknown) {
-            return null;
-        }
-        if (pattern instanceof TypePattern.Scalar scalar) {
-            return new Expectation.Accept(Types.scalar(switch (scalar.kind()) {
-                case NUMBER -> Type.ScalarKind.NUMBER;
-                case STRING -> Type.ScalarKind.STRING;
-                case BOOLEAN -> Type.ScalarKind.BOOLEAN;
-                case NULL -> Type.ScalarKind.NULL;
-            }));
-        }
-        if (pattern instanceof TypePattern.AnyRecord) {
-            return new Expectation.Accept(Types.record(Map.of(), Type.Extra.open(Type.Unknown.INSTANCE)));
-        }
-        if (pattern instanceof TypePattern.AnySequence) {
-            return new Expectation.Accept(Types.unknownSequence());
+        Type fixed = fixedType(pattern);
+        if (fixed != null) {
+            return new Expectation.Accept(fixed);
         }
         if (pattern instanceof TypePattern.SequenceOf sequence) {
             Expectation element = toExpectation(sequence.element());
@@ -313,23 +300,29 @@ public final class RuleEvaluator {
         return Fact.unknown(Fact.Loss.UNSUPPORTED_RULE);
     }
 
-    /** 固定结果类型；明确声明的粗输出（object/array/unknown）合法存在，Unknown 记 UNKNOWN_INPUT 使影响可见。 */
-    private static Fact constantType(TypePattern pattern) {
+    /** 模式直接对应的内核类型：标量、任意对象、任意数组；其余模式没有固定类型。 */
+    private static Type fixedType(TypePattern pattern) {
         if (pattern instanceof TypePattern.Scalar scalar) {
-            return Fact.of(Types.scalar(switch (scalar.kind()) {
+            return Types.scalar(switch (scalar.kind()) {
                 case NUMBER -> Type.ScalarKind.NUMBER;
                 case STRING -> Type.ScalarKind.STRING;
                 case BOOLEAN -> Type.ScalarKind.BOOLEAN;
                 case NULL -> Type.ScalarKind.NULL;
-            }));
+            });
         }
         if (pattern instanceof TypePattern.AnyRecord) {
-            return Fact.of(Types.record(Map.of(), Type.Extra.open(Type.Unknown.INSTANCE)));
+            return Types.openRecord();
         }
         if (pattern instanceof TypePattern.AnySequence) {
-            return Fact.of(Types.unknownSequence());
+            return Types.unknownSequence();
         }
-        return Fact.unknown(Fact.Loss.UNKNOWN_INPUT);
+        return null;
+    }
+
+    /** 固定结果类型；明确声明的粗输出（object/array/unknown）合法存在，Unknown 记 UNKNOWN_INPUT 使影响可见。 */
+    private static Fact constantType(TypePattern pattern) {
+        Type fixed = fixedType(pattern);
+        return fixed == null ? Fact.unknown(Fact.Loss.UNKNOWN_INPUT) : Fact.of(fixed);
     }
 
     private static List<Type> flatten(Type type) {

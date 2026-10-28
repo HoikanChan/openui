@@ -11,7 +11,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -128,7 +127,7 @@ class FormatBuiltinValidationTest {
     private static ValidationResult validateWithContract(String dsl, Map<String, Object> dataModel,
             GenerationContract contract) {
         return DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder().dsl(dsl).contract(contract)
-                .dataModel(dataModel).mode(ValidationMode.FINAL).build());
+                .dataModel(dataModel).build());
     }
 
     private static Map<String, Object> row(String key, Object value, String secondKey, Object secondValue) {

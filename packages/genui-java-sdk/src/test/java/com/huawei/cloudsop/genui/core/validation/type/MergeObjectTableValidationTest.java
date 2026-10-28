@@ -11,7 +11,6 @@ import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -156,7 +155,7 @@ class MergeObjectTableValidationTest {
 
     private static ValidationResult validate(GenerationContract contract, String dsl, Map<String, Object> data) {
         return DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder().dsl(dsl).contract(contract)
-                .dataModel(data).mode(ValidationMode.FINAL).build());
+                .dataModel(data).build());
     }
 
     private static void valid(ValidationResult result) {

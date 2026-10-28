@@ -31,8 +31,6 @@ class ContractCatalogTest {
                         "required", List.of("title")));
         ContractCatalog catalog = ContractCatalog.from(contract("Header", Map.of("Header", header)));
 
-        assertTrue(catalog.isKnown("Header"));
-        assertEquals("Header", catalog.root());
         ComponentDef def = catalog.get("Header");
         assertFalse(def.signatureOnly());
 
@@ -60,7 +58,6 @@ class ContractCatalogTest {
     @Test
     void unknownComponentReturnsNull() {
         ContractCatalog catalog = ContractCatalog.from(contract(null, Map.of()));
-        assertFalse(catalog.isKnown("Nope"));
         assertNull(catalog.get("Nope"));
     }
 

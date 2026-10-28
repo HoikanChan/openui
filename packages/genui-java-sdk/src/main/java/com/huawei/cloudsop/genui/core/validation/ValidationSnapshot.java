@@ -32,28 +32,26 @@ public final class ValidationSnapshot {
     private final BuiltinCatalog builtins;
     private final ProgramAnalysis analysis;
     private final Map<String, Object> dataModel;
-    private final ValidationMode mode;
     private final String rootName;
     private final Set<String> externalRefs;
     private final String normalizedDsl;
 
     private ValidationSnapshot(ValidationRequest request) {
         GenerationContract contract = copyContract(request.contract());
-        dataModel = request.dataModel() == null ? null : copyMap(request.dataModel());
-        mode = request.mode();
-        ParseMode parseMode = mode == ValidationMode.STREAMING ? ParseMode.STREAMING : ParseMode.FINAL;
+        dataModel = request.dataModel();
         builtins = BuiltinCatalog.of(copyBuiltins(BuiltinCatalog.fromContract(contract).specsForTypeValidation()));
         catalog = ContractCatalog.from(contract);
         String dsl = request.dsl() == null ? "" : request.dsl();
-        program = OpenuiParser.parse(dsl, parseMode, builtins);
+        OpenuiPreprocessor.Result preprocessed = OpenuiPreprocessor.process(dsl, ParseMode.FINAL);
+        program = OpenuiParser.parse(preprocessed, builtins);
         rootName = request.rootName();
         LinkedHashSet<String> refs = new LinkedHashSet<>(request.externalRefs());
         if (dataModel != null) {
             refs.add("data");
         }
         externalRefs = Collections.unmodifiableSet(refs);
-        analysis = new ProgramAnalyzer(catalog, builtins).analyze(program, mode, rootName, externalRefs);
-        normalizedDsl = OpenuiPreprocessor.process(dsl, parseMode).text();
+        analysis = new ProgramAnalyzer(catalog, builtins).analyze(program, rootName, externalRefs);
+        normalizedDsl = preprocessed.text();
     }
 
     static ValidationSnapshot build(ValidationRequest request) {
@@ -78,10 +76,6 @@ public final class ValidationSnapshot {
 
     public Map<String, Object> dataModel() {
         return dataModel;
-    }
-
-    public ValidationMode mode() {
-        return mode;
     }
 
     public String rootName() {

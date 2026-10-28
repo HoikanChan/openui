@@ -49,7 +49,9 @@ public final class DataPathResolver {
         for (int i = 0; i < pluckDepth; i++) {
             type = Types.sequence(type, 0, Type.Sequence.UNBOUNDED);
         }
-        return new DataPathResolution.Resolved(path.source(), type, evidence);
+        // 非投影路径只剩一个值;投影结果是数组,旧快照查值在数组字段投影处返回空,故不保留。
+        Object observedValue = pluckDepth == 0 && values.size() == 1 ? values.get(0) : null;
+        return new DataPathResolution.Resolved(path.source(), type, evidence, observedValue);
     }
 
     /** Return a proven array cardinality for a literal data path, or empty when traversal is uncertain. */
@@ -159,9 +161,6 @@ public final class DataPathResolver {
                     next.add(member);
                 }
                 continue;
-            }
-            if (segment instanceof Key key && value instanceof List<?>) {
-                throw new IllegalStateException("Array key must be handled by pluck: " + key.name());
             }
             return Step.failure(new DataPathResolution.InvalidTraversal(path, coarseTypeName(value),
                     "Member access requires an object or array."));

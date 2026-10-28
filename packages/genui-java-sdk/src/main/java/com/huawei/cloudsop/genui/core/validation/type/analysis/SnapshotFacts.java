@@ -20,9 +20,6 @@ import java.util.Set;
  */
 public final class SnapshotFacts {
 
-    /** 字符串字面值域上限(超出后退化为 string 标量)。 */
-    static final int MAX_STRING_DOMAIN = 32;
-
     private SnapshotFacts() {
     }
 
@@ -38,7 +35,7 @@ public final class SnapshotFacts {
         Set<Fact.Evidence> evidence = new LinkedHashSet<>();
         Set<Fact.Loss> losses = new LinkedHashSet<>();
         if (path != null) {
-            evidence.add(new Fact.Evidence.ObservedValue(path, deepFreeze(value)));
+            evidence.add(new Fact.Evidence.ObservedValue(path, value));
         }
         Type type = typeOf(value, path, depth, budget, evidence, losses);
         return new Fact(type, evidence, losses, Set.of());
@@ -79,7 +76,6 @@ public final class SnapshotFacts {
             return Types.emptySequence();
         }
         if (path != null) {
-            evidence.add(new Fact.Evidence.ExactLength(list.size()));
             evidence.add(new Fact.Evidence.ElementPresence());
         }
         long sampleLimit = budget.budget().maxArraySample();
@@ -110,23 +106,4 @@ public final class SnapshotFacts {
         return Types.record(fields, Type.Extra.closed());
     }
 
-    /** 冻结嵌套集合,防止调用方后续修改使证据失真(快照隔离)。 */
-    @SuppressWarnings("unchecked")
-    static Object deepFreeze(Object value) {
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> frozen = new LinkedHashMap<>();
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                frozen.put(String.valueOf(entry.getKey()), deepFreeze(entry.getValue()));
-            }
-            return java.util.Collections.unmodifiableMap(frozen);
-        }
-        if (value instanceof List<?> list) {
-            List<Object> frozen = new ArrayList<>();
-            for (Object element : list) {
-                frozen.add(deepFreeze(element));
-            }
-            return java.util.Collections.unmodifiableList(frozen);
-        }
-        return value;
-    }
 }

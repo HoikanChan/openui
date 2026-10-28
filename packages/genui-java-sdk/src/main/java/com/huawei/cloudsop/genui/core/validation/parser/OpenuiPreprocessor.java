@@ -6,6 +6,9 @@ package com.huawei.cloudsop.genui.core.validation.parser;
 
 import com.huawei.cloudsop.genui.core.llm.extract.OpenuiCodeExtractor;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+
 /**
  * 将 LLM 响应清洗为可解析的 openui-lang 源码。
  *
@@ -14,8 +17,10 @@ import com.huawei.cloudsop.genui.core.llm.extract.OpenuiCodeExtractor;
  * {@link OpenuiCodeExtractor}（SDK 已有的 markdown 围栏逻辑）而非重新实现，以保持 两者一致。
  *
  * <p>
- * {@link #process(String, ParseMode)} 在 {@link ParseMode#STREAMING} 模式下会额外运行 {@code autoClose} （对应
- * {@code statements.ts}），修复未闭合的括号/字符串以实现部分输入的容错解析。
+ * 去注释与自动闭合共用 {@link #scan(String)} 的一次字符扫描：去注释按行维护引号状态（字符串不跨行），自动闭合按整个文本
+ * 维护引号状态（未闭合字符串延续到下一行），两种状态彼此独立。{@link #process(String, ParseMode)} 在
+ * {@link ParseMode#STREAMING} 模式下使用扫描结果补齐未闭合的括号/字符串（对应 {@code statements.ts} 中的
+ * {@code autoClose}），实现部分输入的容错解析。
  *
  * @since 2026
  */
@@ -38,6 +43,39 @@ public final class OpenuiPreprocessor {
     }
 
     /**
+     * 一次扫描的产物：去注释后的文本、结束时仍未闭合的引号，以及由内到外排列的待闭合括号。
+     */
+    private record Scan(String cleaned, char openQuote, String closers) {
+
+        boolean wasIncomplete() {
+            return openQuote != 0 || !closers.isEmpty();
+        }
+
+        /**
+         * 以 {@code text} 为最终文本计算自动闭合后缀。转义状态不单独保存：字符串仍未闭合时，末尾连续反斜杠为奇数
+         * 即表示最后一个反斜杠仍在转义。
+         */
+        String closeSuffix(String text) {
+            StringBuilder suffix = new StringBuilder();
+            if (openQuote != 0) {
+                if (endsWithDanglingEscape(text)) {
+                    suffix.append('\\');
+                }
+                suffix.append(openQuote);
+            }
+            return suffix.append(closers).toString();
+        }
+
+        private static boolean endsWithDanglingEscape(String text) {
+            int backslashes = 0;
+            for (int i = text.length() - 1; i >= 0 && text.charAt(i) == '\\'; i--) {
+                backslashes++;
+            }
+            return (backslashes & 1) == 1;
+        }
+    }
+
+    /**
      * 去除围栏与注释并归一化空白，不做自动闭合。等价于 TS 侧一次性清理的 {@code preprocess()}。
      *
      * @param input
@@ -45,11 +83,7 @@ public final class OpenuiPreprocessor {
      * @return 清洗后的文本
      */
     public static String preprocess(String input) {
-        if (input == null) {
-            return "";
-        }
-        String stripped = OpenuiCodeExtractor.extract(input.trim());
-        return stripComments(stripped).trim();
+        return scan(stripFences(input)).cleaned().trim();
     }
 
     /**
@@ -63,9 +97,10 @@ public final class OpenuiPreprocessor {
      * @return 预处理结果
      */
     public static Result process(String input, ParseMode mode) {
-        String cleaned = preprocess(input);
+        Scan scan = scan(stripFences(input));
+        String cleaned = scan.cleaned().trim();
         if (mode == ParseMode.STREAMING) {
-            return autoClose(cleaned);
+            return new Result(cleaned + scan.closeSuffix(cleaned), scan.wasIncomplete());
         }
         return new Result(cleaned, false);
     }
@@ -81,124 +116,107 @@ public final class OpenuiPreprocessor {
      */
     public static String streamRoundBoundary(String raw) {
         String input = raw == null ? "" : raw;
-        String cleaned = stripComments(input);
-        String closed = autoClose(cleaned).text();
-        String suffix = closed.substring(cleaned.length());
-        boolean trailingComment = input.substring(input.lastIndexOf('\n') + 1).length() > cleaned
-                .substring(cleaned.lastIndexOf('\n') + 1).length();
+        Scan scan = scan(input);
+        String cleaned = scan.cleaned();
+        String suffix = scan.closeSuffix(cleaned);
+        boolean trailingComment = input.substring(input.lastIndexOf('\n') + 1).length()
+                > cleaned.substring(cleaned.lastIndexOf('\n') + 1).length();
         if (suffix.isEmpty() && input.endsWith("\n")) {
             return "";
         }
         return (trailingComment ? "\n" : "") + suffix + "\n";
     }
 
+    private static String stripFences(String input) {
+        if (input == null) {
+            return "";
+        }
+        return OpenuiCodeExtractor.extract(input.trim());
+    }
+
     /**
-     * 去除出现在字符串字面量（{@code "} 与 {@code '} 两种定界符）之外的 {@code //} 与 {@code #} 行注释。 对应 {@code parser.ts} 中的
-     * {@code stripComments}。
+     * 单次扫描同时完成去注释与自动闭合分析。
+     *
+     * <p>
+     * {@code commentQuote} 是去注释用的按行引号状态：每行重置，与 {@code parser.ts} 的 {@code stripComments} 一致；
+     * {@code autoQuote}/{@code brackets} 是自动闭合用的全局状态：字符串可跨行，只在引号外统计括号。注释内容不进入
+     * 自动闭合状态，等价于先去掉注释再对结果做自动闭合。
      */
-    static String stripComments(String input) {
-        String[] lines = input.split("\n", -1);
+    private static Scan scan(String input) {
         StringBuilder out = new StringBuilder(input.length());
-        for (int li = 0; li < lines.length; li++) {
-            if (li > 0) {
-                out.append('\n');
-            }
-            out.append(stripCommentFromLine(lines[li]));
-        }
-        return out.toString();
-    }
+        Deque<Character> brackets = new ArrayDeque<>();
 
-    private static String stripCommentFromLine(String line) {
-        char inStr = 0; // 0 = not in string, else the quote char
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (inStr != 0) {
-                if (c == '\\' && i + 1 < line.length()) {
-                    i++; // skip escaped char
-                    continue;
-                }
-                if (c == inStr) {
-                    inStr = 0;
-                }
-                continue;
-            }
-            if (c == '"' || c == '\'') {
-                inStr = c;
-                continue;
-            }
-            if (c == '/' && i + 1 < line.length() && line.charAt(i + 1) == '/') {
-                return trimEnd(line.substring(0, i));
-            }
-            if (c == '#') {
-                return trimEnd(line.substring(0, i));
-            }
-        }
-        return line;
-    }
-
-    /**
-     * 自动闭合未闭合的字符串与括号，使部分/流式输入也能无语法错误地解析。对应 {@code statements.ts} 中的 {@code autoClose}。
-     */
-    static Result autoClose(String input) {
-        java.util.Deque<Character> stack = new java.util.ArrayDeque<>();
-        char inStr = 0;
-        boolean esc = false;
+        char commentQuote = 0;
+        boolean commentEscaped = false;
+        char autoQuote = 0;
+        boolean autoEscaped = false;
+        int lineStart = 0;
 
         for (int i = 0; i < input.length(); i++) {
             char c = input.charAt(i);
-            if (esc) {
-                esc = false;
-                continue;
-            }
-            if (c == '\\' && inStr != 0) {
-                esc = true;
-                continue;
-            }
-            if (inStr != 0) {
-                if (c == inStr) {
-                    inStr = 0;
+
+            if (commentQuote == 0 && (c == '#' || (c == '/' && i + 1 < input.length() && input.charAt(i + 1) == '/'))) {
+                trimTrailingWhitespace(out, lineStart);
+                if (c == '/') {
+                    i++;
+                }
+                while (i + 1 < input.length() && input.charAt(i + 1) != '\n') {
+                    i++;
                 }
                 continue;
             }
-            if (c == '"' || c == '\'') {
-                inStr = c;
-                continue;
+
+            out.append(c);
+
+            if (c == '\n') {
+                commentQuote = 0;
+                commentEscaped = false;
+                lineStart = out.length();
+            } else if (commentQuote != 0) {
+                if (commentEscaped) {
+                    commentEscaped = false;
+                } else if (c == '\\') {
+                    commentEscaped = i + 1 < input.length() && input.charAt(i + 1) != '\n';
+                } else if (c == commentQuote) {
+                    commentQuote = 0;
+                }
+            } else if (c == '"' || c == '\'') {
+                commentQuote = c;
             }
-            if (c == '(' || c == '[' || c == '{') {
-                stack.push(c);
-            } else if (c == ')' && !stack.isEmpty() && stack.peek() == '(') {
-                stack.pop();
-            } else if (c == ']' && !stack.isEmpty() && stack.peek() == '[') {
-                stack.pop();
-            } else if (c == '}' && !stack.isEmpty() && stack.peek() == '{') {
-                stack.pop();
+
+            if (autoEscaped) {
+                autoEscaped = false;
+            } else if (c == '\\' && autoQuote != 0) {
+                autoEscaped = true;
+            } else if (autoQuote != 0) {
+                if (c == autoQuote) {
+                    autoQuote = 0;
+                }
+            } else if (c == '"' || c == '\'') {
+                autoQuote = c;
+            } else if (c == '(' || c == '[' || c == '{') {
+                brackets.push(c);
+            } else if (c == ')' && !brackets.isEmpty() && brackets.peek() == '(') {
+                brackets.pop();
+            } else if (c == ']' && !brackets.isEmpty() && brackets.peek() == '[') {
+                brackets.pop();
+            } else if (c == '}' && !brackets.isEmpty() && brackets.peek() == '{') {
+                brackets.pop();
             }
         }
 
-        boolean wasIncomplete = inStr != 0 || !stack.isEmpty();
-        if (!wasIncomplete) {
-            return new Result(input, false);
+        StringBuilder closers = new StringBuilder(brackets.size());
+        for (char open : brackets) {
+            closers.append(open == '(' ? ')' : open == '[' ? ']' : '}');
         }
-
-        StringBuilder out = new StringBuilder(input);
-        if (inStr != 0) {
-            if (esc) {
-                out.append('\\');
-            }
-            out.append(inStr);
-        }
-        // Deque iterates top-first, i.e. innermost bracket first — the correct close order.
-        for (char open : stack) {
-            out.append(open == '(' ? ')' : open == '[' ? ']' : '}');
-        }
-        return new Result(out.toString(), true);
+        return new Scan(out.toString(), autoQuote, closers.toString());
     }
 
-    private static String trimEnd(String s) {
-        int end = s.length();
-        while (end > 0 && Character.isWhitespace(s.charAt(end - 1))) {
-            end--;
+    private static void trimTrailingWhitespace(StringBuilder out, int lineStart) {
+        int keep = out.length();
+        while (keep > lineStart && Character.isWhitespace(out.charAt(keep - 1))) {
+            keep--;
         }
-        return s.substring(0, end);
+        out.setLength(keep);
     }
 }

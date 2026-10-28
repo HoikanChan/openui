@@ -15,7 +15,6 @@ import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -106,8 +105,8 @@ class InterceptionCorpusTest {
         GenerationContract contract = loadContract(str(testCase.get("contractFile")));
         Set<String> externalRefs = new LinkedHashSet<>(strings(manifest.get("externalRefs")));
         return DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder().dsl(dsl).contract(contract)
-                .rootName(str(manifest.get("rootName"))).externalRefs(externalRefs).mode(ValidationMode.FINAL)
-                .requestId(str(testCase.get("id"))).build());
+                .rootName(str(manifest.get("rootName"))).externalRefs(externalRefs)
+                .build());
     }
 
     static GenerationContract loadContract(String contractFile) {

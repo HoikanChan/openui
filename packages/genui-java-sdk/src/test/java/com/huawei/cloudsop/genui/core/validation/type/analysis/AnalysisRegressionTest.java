@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 class AnalysisRegressionTest {
 
@@ -16,10 +18,34 @@ class AnalysisRegressionTest {
         Fact fact = Fact.of(Types.union(java.util.List.of(closed, open)));
 
         Checks.CheckResult result = Checks.check(fact,
-                new SchemaCompiler.ExtraClosed("/additionalProperties"), null);
+                new SchemaCompiler.ExtraClosed("/additionalProperties", Set.of()), null);
 
         assertEquals(Checks.Verdict.UNPROVEN, result.verdict());
-        assertTrue(result.reasons().contains(Checks.Reason.INSUFFICIENT_EVIDENCE));
+        assertTrue(result.reasons().contains(Fact.Loss.INSUFFICIENT_EVIDENCE));
+    }
+
+    @Test
+    void structuralKeyKeepsLiteralBranchesWithSeparatorsDistinct() {
+        Type singleValueWithComma = Types.stringLiterals(Set.of("a,b"));
+        Type twoValues = Types.stringLiterals(Set.of("a", "b"));
+
+        assertEquals(2, TypeOps.flatten(Types.union(List.of(singleValueWithComma, twoValues))).size());
+        assertEquals(1, TypeOps.flatten(Types.union(List.of(twoValues, twoValues))).size());
+    }
+
+    @Test
+    void unionBranchBudgetLossReachesReturnedFact() {
+        Type number = Types.scalar(Type.ScalarKind.NUMBER);
+        Type string = Types.scalar(Type.ScalarKind.STRING);
+        Fact object = Fact.of(Types.union(List.of(
+                Types.record(Map.of("value", Type.Field.required(number)), Type.Extra.closed()),
+                Types.record(Map.of("value", Type.Field.required(string)), Type.Extra.closed()))));
+        TypeOps ops = new TypeOps(new AnalysisBudget(4096, 1, 16, 256, 2048).tracker());
+
+        Fact result = ops.readField(object, "value");
+
+        assertEquals(Type.Unknown.INSTANCE, result.type());
+        assertTrue(result.losses().contains(Fact.Loss.PRECISION_BUDGET));
     }
 
     @Test

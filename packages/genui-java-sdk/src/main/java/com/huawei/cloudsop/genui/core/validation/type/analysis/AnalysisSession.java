@@ -11,6 +11,7 @@ import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.parser.SourceSpan;
 import com.huawei.cloudsop.genui.core.validation.parser.Statement;
+import com.huawei.cloudsop.genui.core.validation.semantic.AstReferenceWalker;
 import com.huawei.cloudsop.genui.core.validation.semantic.ComponentDef;
 import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
 import com.huawei.cloudsop.genui.core.validation.semantic.LazyBuiltinBinders;
@@ -98,7 +99,7 @@ public final class AnalysisSession {
         }
         Map<String, Statement> current = input.program().currentById();
         for (Map.Entry<String, Statement> entry : current.entrySet()) {
-            AstNode expr = expressionOf(entry.getValue());
+            AstNode expr = entry.getValue().expr();
             if (expr != null) {
                 symbols.put(entry.getKey(), expr);
             }
@@ -171,90 +172,14 @@ public final class AnalysisSession {
                 continue;
             }
             Set<String> refs = new LinkedHashSet<>();
-            collectRefs(expr, refs, LexicalEnvironment.root(), new LinkedHashSet<>());
+            AstReferenceWalker.walkReachability(expr, input.builtins(), (name, scope) -> {
+                if (!"data".equals(name)) {
+                    refs.add(name);
+                }
+            });
             refs.stream().filter(symbols::containsKey).forEach(work::add);
         }
         return reached;
-    }
-
-    /** 收集表达式引用的语句名(binder 遮蔽的名字不算语句引用)。 */
-    private void collectRefs(AstNode node, Set<String> out, LexicalEnvironment env, Set<AstNode> visiting) {
-        if (node == null || !visiting.add(node)) {
-            return;
-        }
-        if (node instanceof AstNode.Ref ref) {
-            if (!env.isBound(ref.n()) && !"data".equals(ref.n())) {
-                out.add(ref.n());
-            }
-            return;
-        }
-        if (node instanceof AstNode.Comp comp) {
-            BuiltinSpec spec = input.builtins().spec(comp.name());
-            if (spec != null && !spec.binderIndexes().isEmpty()) {
-                LexicalEnvironment extended = env;
-                for (int binderIndex : spec.activeBinderIndexes(comp.args().size())) {
-                    String binder = LazyBuiltinBinders.binderName(spec, comp, binderIndex);
-                    if (binder != null) {
-                        extended = extended.bind(binder);
-                    }
-                }
-                int bodyIndex = LazyBuiltinBinders.bodyIndex(spec, comp);
-                for (int i = 0; i < comp.args().size(); i++) {
-                    collectRefs(comp.args().get(i), out, i == bodyIndex ? extended : env, visiting);
-                }
-            } else {
-                comp.args().forEach(arg -> collectRefs(arg, out, env, visiting));
-            }
-            comp.mappedProps().values().forEach(value -> collectRefs(value, out, env, visiting));
-            return;
-        }
-        if (node instanceof AstNode.Arr arr) {
-            arr.els().forEach(el -> collectRefs(el, out, env, visiting));
-            return;
-        }
-        if (node instanceof AstNode.Obj obj) {
-            obj.entries().forEach(entry -> collectRefs(entry.value(), out, env, visiting));
-            return;
-        }
-        if (node instanceof AstNode.BinOp bin) {
-            collectRefs(bin.left(), out, env, visiting);
-            collectRefs(bin.right(), out, env, visiting);
-            return;
-        }
-        if (node instanceof AstNode.UnaryOp unary) {
-            collectRefs(unary.operand(), out, env, visiting);
-            return;
-        }
-        if (node instanceof AstNode.Ternary ternary) {
-            collectRefs(ternary.cond(), out, env, visiting);
-            collectRefs(ternary.then(), out, env, visiting);
-            collectRefs(ternary.otherwise(), out, env, visiting);
-            return;
-        }
-        if (node instanceof AstNode.Member member) {
-            collectRefs(member.obj(), out, env, visiting);
-            return;
-        }
-        if (node instanceof AstNode.Index index) {
-            collectRefs(index.obj(), out, env, visiting);
-            collectRefs(index.index(), out, env, visiting);
-        }
-    }
-
-    private static AstNode expressionOf(Statement statement) {
-        if (statement instanceof Statement.Value value) {
-            return value.expr();
-        }
-        if (statement instanceof Statement.State state) {
-            return state.init();
-        }
-        if (statement instanceof Statement.Query query) {
-            return query.expr();
-        }
-        if (statement instanceof Statement.Mutation mutation) {
-            return mutation.expr();
-        }
-        return null;
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -279,11 +204,6 @@ public final class AnalysisSession {
 
         LexicalEnvironment bind(String boundName, Fact boundValue) {
             return new LexicalEnvironment(this, boundName, boundValue);
-        }
-
-        /** 只注册名字(引用收集用,不带值)。 */
-        LexicalEnvironment bind(String boundName) {
-            return bind(boundName, null);
         }
 
         Optional<Fact> lookup(String lookedUp) {
@@ -350,9 +270,6 @@ public final class AnalysisSession {
         if (node instanceof AstNode.Ref || node instanceof AstNode.StateRef) {
             return synthRef(node, statementId, env, resolving);
         }
-        if (node instanceof AstNode.RuntimeRef runtimeRef) {
-            return synthRuntimeRef(runtimeRef, statementId, env, resolving);
-        }
         if (node instanceof AstNode.Member member) {
             return synthMember(member, statementId, env, resolving);
         }
@@ -396,8 +313,7 @@ public final class AnalysisSession {
         }
         Type element = Types.union(elements);
         return new Fact(Types.sequence(element, array.els().size(), array.els().size()),
-                Set.of(new Fact.Evidence.ExactLength(array.els().size()), new Fact.Evidence.ElementPresence()), losses,
-                upstream);
+                Set.of(new Fact.Evidence.ElementPresence()), losses, upstream);
     }
 
     private Fact synthObject(AstNode.Obj object, String statementId, LexicalEnvironment env, Set<String> resolving) {
@@ -446,15 +362,6 @@ public final class AnalysisSession {
             return Fact.unknown(Fact.Loss.UNKNOWN_INPUT);
         }
         return SnapshotFacts.typeOfValue(input.dataModel(), "data", 0, budget);
-    }
-
-    private Fact synthRuntimeRef(AstNode.RuntimeRef runtimeRef, String statementId, LexicalEnvironment env,
-            Set<String> resolving) {
-        if (runtimeRef.refType() == AstNode.RefType.DATA && "data".equals(runtimeRef.n())) {
-            return dataRootFact();
-        }
-        // Query/Mutation 无结果契约:Unknown。
-        return Fact.unknown(Fact.Loss.UNKNOWN_INPUT);
     }
 
     private Fact synthMember(AstNode.Member member, String statementId, LexicalEnvironment env, Set<String> resolving) {
@@ -570,41 +477,12 @@ public final class AnalysisSession {
                 }
             }
         }
-        // 快照值证据:观察到的实际值(数组元素反例等真实证据);嵌套集合冻结隔离。
-        Object snapshotValue = snapshotAtPath(path);
+        // 快照值证据:观察到的实际值(数组元素反例等真实证据);直接引用快照值,不再递归复制。
+        Object snapshotValue = resolved.observedValue();
         if (snapshotValue != null) {
-            evidence.add(new Fact.Evidence.ObservedValue(path, SnapshotFacts.deepFreeze(snapshotValue)));
+            evidence.add(new Fact.Evidence.ObservedValue(path, snapshotValue));
         }
         return new Fact(type, evidence, losses, Set.of());
-    }
-
-    /** 从 Render Data Model 按数据路径取快照值(数组 pluck 路径返回数组本身)。 */
-    private Object snapshotAtPath(String pathSource) {
-        if (input.dataModel() == null || pathSource == null) {
-            return null;
-        }
-        try {
-            DataPath path = DataPath.parse(pathSource);
-            Object current = input.dataModel();
-            for (DataPath.Segment segment : path.segments()) {
-                if (segment instanceof DataPath.Key key) {
-                    if (current instanceof Map<?, ?> map) {
-                        current = map.get(key.name());
-                    } else {
-                        return null;
-                    }
-                } else if (segment instanceof DataPath.Index index) {
-                    if (current instanceof List<?> list && index.value() >= 0 && index.value() < list.size()) {
-                        current = list.get((int) index.value());
-                    } else {
-                        return null;
-                    }
-                }
-            }
-            return current;
-        } catch (IllegalArgumentException error) {
-            return null;
-        }
     }
 
     private Fact emitPathIssue(DataPathResolution resolution, String statementId) {
@@ -907,9 +785,8 @@ public final class AnalysisSession {
         TemplateUseSite site = templateUseSites.peek();
         coverage.record(new CoverageReport.Entry(
                 new CoverageReport.Obligation(site == null ? statementId : site.statementId(),
-                        site == null ? useSite : site.coverageUseSite() + ":" + useSite, kind, contractPath,
-                        expectation.toString()),
-                result.verdict(), List.copyOf(result.reasons()), result.upstreamErrors()));
+                        site == null ? useSite : site.coverageUseSite() + ":" + useSite, kind, contractPath),
+                result.verdict(), List.copyOf(result.reasons())));
         return result;
     }
 
@@ -1009,9 +886,8 @@ public final class AnalysisSession {
                     // 未证明不会被隐藏;同一规则模式只按实参位置计一条要求。
                     coverage.record(new CoverageReport.Entry(
                             new CoverageReport.Obligation(statementId, "@" + call.name() + "/args/" + index, "param",
-                                    "/builtins/" + call.name() + "/typeRule/parameters/" + index,
-                                    RuleEvaluator.displayPattern(pattern)),
-                            result.verdict(), List.copyOf(result.reasons()), result.upstreamErrors()));
+                                    "/builtins/" + call.name() + "/typeRule/parameters/" + index),
+                            result.verdict(), List.copyOf(result.reasons())));
                 }
 
                 @Override
@@ -1082,7 +958,7 @@ public final class AnalysisSession {
                 case "number" -> new Expectation.Accept(Types.scalar(Type.ScalarKind.NUMBER));
                 case "string" -> new Expectation.Accept(Types.scalar(Type.ScalarKind.STRING));
                 case "boolean" -> new Expectation.Accept(Types.scalar(Type.ScalarKind.BOOLEAN));
-                case "object" -> new Expectation.Accept(openRecordType());
+                case "object" -> new Expectation.Accept(Types.openRecord());
                 case "array" -> new Expectation.Accept(Types.unknownSequence());
                 default -> null;
             };
@@ -1099,10 +975,6 @@ public final class AnalysisSession {
         }
         // RecordOf/ObjectLiteral/UnionOf/TypeVar/ParamRef/Conditional:入口检查在结果代入或调用级完成。
         return null;
-    }
-
-    private static Type openRecordType() {
-        return Types.record(Map.of(), Type.Extra.open(Type.Unknown.INSTANCE));
     }
 
     /** Each:元素绑定 binder 检查 body,数量保留;空输入仍检查 body 中独立错误,元素依赖记 no-element-evidence。 */
@@ -1251,9 +1123,7 @@ public final class AnalysisSession {
             upstream.addAll(caseFact.upstreamErrors());
         }
         if (call.args().size() > 2) {
-            Fact defaultFact = arguments.size() > 2
-                    ? arguments.get(2)
-                    : synth(call.args().get(2), statementId, env, resolving);
+            Fact defaultFact = arguments.get(2);
             results.add(defaultFact.type());
             losses.addAll(defaultFact.losses());
             upstream.addAll(defaultFact.upstreamErrors());
@@ -1322,12 +1192,11 @@ public final class AnalysisSession {
                 });
         if (existence.verdict() == Checks.Verdict.MISMATCH && noRowEvidence && !absentFromShape) {
             existence = new Checks.CheckResult(Checks.Verdict.UNPROVEN,
-                    Set.of(Checks.Reason.NO_ELEMENT_EVIDENCE), Set.of(), "no retained row counterexample");
+                    Set.of(Fact.Loss.NO_ELEMENT_EVIDENCE), "no retained row counterexample");
         }
         coverage.record(new CoverageReport.Entry(new CoverageReport.Obligation(statementId,
-                "Table.columns[" + field + "]", "presentInAnyRow", "/components/Table/columns/" + field,
-                "field \"" + field + "\" present in at least one row"), existence.verdict(),
-                List.copyOf(existence.reasons()), existence.upstreamErrors()));
+                "Table.columns[" + field + "]", "presentInAnyRow", "/components/Table/columns/" + field),
+                existence.verdict(), List.copyOf(existence.reasons())));
         if (existence.verdict() == Checks.Verdict.MISMATCH) {
             emit("type-table-column-missing", "Table column field \"" + field + "\" " + existence.detail() + ".",
                     statementId, "Table", "/columns/" + field,
@@ -1449,7 +1318,7 @@ public final class AnalysisSession {
             AstNode valuesNode, long[] valueRange, int seriesIndex, String statementId) {
         Checks.CheckResult result;
         if (labelRange == null || valueRange == null) {
-            result = Checks.CheckResult.unproven(Set.of(Checks.Reason.INSUFFICIENT_EVIDENCE), Set.of(),
+            result = Checks.CheckResult.unproven(Set.of(Fact.Loss.INSUFFICIENT_EVIDENCE),
                     "chart length cannot be proven");
         } else if (labelRange[0] > valueRange[1] || valueRange[0] > labelRange[1]) {
             result = Checks.CheckResult.mismatch("labels length [" + labelRange[0] + ".." + labelRange[1]
@@ -1457,16 +1326,14 @@ public final class AnalysisSession {
         } else if (provenSameLength(labelsNode, labelRange, valuesNode, valueRange)) {
             result = Checks.CheckResult.match();
         } else {
-            result = Checks.CheckResult.unproven(Set.of(Checks.Reason.INSUFFICIENT_EVIDENCE), Set.of(),
+            result = Checks.CheckResult.unproven(Set.of(Fact.Loss.INSUFFICIENT_EVIDENCE),
                     "overlapping length ranges do not prove equal length");
         }
         String useSite = chart.name() + ".series[" + seriesIndex + "].length";
         coverage.record(new CoverageReport.Entry(
                 new CoverageReport.Obligation(statementId, useSite, "chartLengthRelation",
-                        "/components/" + chart.name() + "/series",
-                        "labels[" + (labelRange == null ? "?" : labelRange[0] + ".." + labelRange[1]) + "] vs values["
-                                + (valueRange == null ? "?" : valueRange[0] + ".." + valueRange[1]) + "]"),
-                result.verdict(), List.copyOf(result.reasons()), result.upstreamErrors()));
+                        "/components/" + chart.name() + "/series"),
+                result.verdict(), List.copyOf(result.reasons())));
         if (result.verdict() == Checks.Verdict.MISMATCH) {
             emit("type-chart-length-mismatch",
                     chart.name() + " labels length [" + labelRange[0] + ".." + labelRange[1] + "] cannot match series "
@@ -1596,9 +1463,6 @@ public final class AnalysisSession {
 
     private static String dataPathSource(AstNode node) {
         if (node instanceof AstNode.Ref ref && "data".equals(ref.n())) {
-            return "data";
-        }
-        if (node instanceof AstNode.RuntimeRef ref && ref.refType() == AstNode.RefType.DATA && "data".equals(ref.n())) {
             return "data";
         }
         if (node instanceof AstNode.Member member) {

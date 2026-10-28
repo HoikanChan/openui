@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.huawei.cloudsop.genui.core.validation.ValidationMetadata;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 
@@ -52,7 +51,7 @@ class GenUiGenerationResultTest {
     @Test
     void canonicalConstructorCarriesValidationStatusAndResult() {
         ValidationResult validationResult = ValidationResult.valid("root = Stack([])", List.of(),
-                new ValidationMetadata(1, "root", ValidationMode.FINAL, null));
+                new ValidationMetadata(1, "root", null));
 
         GenUiGenerationResult result = new GenUiGenerationResult("root = Stack([])", Map.of(), ValidationStatus.VALID,
                 validationResult);

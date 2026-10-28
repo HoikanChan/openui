@@ -110,12 +110,11 @@ class RepairPromptBuilderTest {
         for (List<ValidationIssue> issues : List.of(List.<ValidationIssue>of(),
                 List.of(issue("syntax-unclosed-bracket", "syntax", "broken", "root", null)))) {
             String system = RepairPromptBuilder.build(original, "x", contract(),
-                    round("", "root = Stack([])", issues), List.of(), "SHOULD_NOT_BE_REINSERTED")
+                    round("", "root = Stack([])", issues), List.of())
                     .get(0).content();
             assertTrue(system.startsWith(original));
             assertEquals(1, occurrences(system, original));
             assertFalse(system.contains("Stack(children: Component[])"));
-            assertFalse(system.contains("SHOULD_NOT_BE_REINSERTED"));
             assertTrue(system.indexOf(RepairPromptBuilder.INCREMENTAL_REPAIR_MARKER)
                     >= original.length());
         }

@@ -49,9 +49,6 @@ public sealed interface RulePlan {
          * 参数布局：展示名、{@code rest}（接收该下标起的全部剩余实参）与可选的 accept 模式。 accept 为 null 表示该参数不做结构化模式检查（沿用既有契约 params 检查）。
          */
         public record ParamLayout(String name, boolean rest, TypePattern accept) {
-            public ParamLayout(String name, boolean rest) {
-                this(name, rest, null);
-            }
         }
     }
 
@@ -162,10 +159,6 @@ public sealed interface RulePlan {
 
         Op(String wireName) {
             this.wireName = wireName;
-        }
-
-        public String wireName() {
-            return wireName;
         }
 
         public static Optional<Op> byWireName(String name) {
