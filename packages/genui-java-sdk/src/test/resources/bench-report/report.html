@@ -90,7 +90,7 @@ __CSS__
   中的原始 DSL（按 <code>case.json</code> 的 id 匹配）；AFTER 对已修复案例为 JSONL <code>outputDsl</code>，
   对未修复案例为最后一次校验的 DSL（<code>finalDsl</code>）。Markdown 降级占位不展示，也不参与 diff。</div>
   <div style="margin-top:6px"><b>反思 Prompt。</b>运行产物未保存 Prompt 原文；报告按 SDK
-  <code>IncrementalRepairPromptBuilder</code> 的模板，从每轮已存字段还原用户消息（原始需求、当前有效 DSL、
+  <code>RepairPromptBuilder</code> 的模板，从每轮已存字段还原用户消息（原始需求、当前有效 DSL、
   本轮原始输出、最新诊断、历史轮摘要）。系统消息中的完整契约、原始 system prompt 与固定增量规则未展开；
   「相关语句」按文本引用近似还原，专项指导按 <code>RepairGuidance</code> 规则还原。</div>
   <div style="margin-top:6px"><b>每轮详情。</b>多轮案例默认只展开最后一轮；其余轮次点击展开。每轮的

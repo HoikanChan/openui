@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>
  * 首轮输出结束后才校验;失败时模型只输出覆盖/新增语句,片段实时转发;后端合并当前程序后再检查;所有轮共享同一截止时间; 失败/超时保留完整轮与中断轮记录。
  */
-class GenUiGeneratorIncrementalRepairTest {
+class GenUiGeneratorRepairTest {
 
     private static UiGenerationRequest req() {
         return UiGenerationRequest.builder().userInput("build a page").build();

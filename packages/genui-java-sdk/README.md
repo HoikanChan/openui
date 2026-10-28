@@ -252,6 +252,50 @@ round cap. Whole-page DSL repair and its public APIs have been removed:
 `FINAL_REPAIR`, `RepairPolicy`, `RepairCoordinator`, and `ReaskPromptBuilder`
 are no longer available. Existing callers must use streaming incremental repair.
 
+### Maintaining repair prompts (#107)
+
+模板语法、Java 调用和局部 View 示例见 [Prompt 模板使用说明](docs/prompt-template.md)。
+
+Incremental repair uses two complete UTF-8 Markdown views under
+`src/main/resources/prompts/repair/`: `system.md` and `user.md`.
+Edit specific diagnostic guidance directly in the conditional sections of
+`system.md`; do not create separate files for error codes, headings, or empty states.
+`RepairGuidance` selects Boolean flags from the latest actionable errors. Guidance
+appears once in the fixed order written in the template, regardless of diagnostic order.
+Optional sections with no content are omitted; prompts do not emit empty-state
+placeholders such as `none`, `not supplied`, or `not declared`.
+The original generation system prompt is preserved verbatim at the start of every
+repair system message, followed by fixed repair rules and then dynamic guidance.
+This preserves the shared prefix for services that support prompt caching; actual
+cache hits depend on the service. Contract and data context are not assembled a
+second time. The contract object is still used for capability matching and analysis.
+The legacy `dataContext` builder argument is retained for source compatibility but
+is no longer inserted separately.
+Java computes diagnostic selection, statement relations, and history truncation,
+then passes structured lists to the templates. Repeated capability-boundary entries,
+diagnostics, and history rounds use `{{#for items}}...{{/for}}` directly in the
+message body. There are no local views, metadata headers, or extra prompt files.
+The user message includes raw model output only for syntax failures, where parsing
+may have excluded malformed statements from the effective DSL. History includes
+only rounds sharing an error code with the current diagnostics, retaining at most
+three matching rounds. Repair requests use the original user context without the
+generation-only `/no_think` suffix.
+
+`PromptRenderer.render(resource, model)` supports raw `{{name}}` insertion and
+`{{#if flag}}...{{else}}...{{/if}}` blocks (`else` is optional), and
+`{{#for items}}...{{/for}}` over collections of string-keyed maps.
+Conditions can nest and combine with a loop; loops cannot nest within loops.
+Conditions render for `true`, nonblank text, and nonempty collections/maps;
+`false`, null, blank text, and empty collections/maps select the else branch.
+Missing condition variables and unsupported types still fail explicitly.
+Use `{{#if currentProgram}}` directly rather than supplying a duplicate `hasCurrentProgram` flag.
+The renderer caches parsed classpath resources,
+normalizes template line endings to LF and never parses inserted values again.
+Control tags on their own line consume that line (including its indentation and
+newline); inline tags preserve surrounding text and other whitespace. Missing values and invalid template syntax fail
+with the resource name and location. Variables in unselected branches are optional.
+Includes, local views, metadata, expressions, object reflection, and method calls are unsupported.
+
 ### Streaming: live forwarding + end-of-round unified check (#56)
 
 `GenUiGenerator.generateStream(request, sink)` always starts by sending a

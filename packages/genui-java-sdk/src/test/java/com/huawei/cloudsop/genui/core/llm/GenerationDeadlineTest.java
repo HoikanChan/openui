@@ -259,7 +259,7 @@ class GenerationDeadlineTest {
 
     /**
      * Manual clock and timer for deterministic tests. The scheduler members are retained for compatibility with
-     * {@code GenUiGeneratorIncrementalRepairTest}; under #102 production no longer installs a 20-second cancellation.
+     * {@code GenUiGeneratorRepairTest}; under #102 production no longer installs a 20-second cancellation.
      */
     static final class ManualTime {
         final AtomicLong now = new AtomicLong();

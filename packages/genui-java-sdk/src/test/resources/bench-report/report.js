@@ -698,7 +698,7 @@
     var promptDetails = el('details', 'prompt-details');
     promptDetails.appendChild(el('summary', null, '反思 Prompt（本轮诊断 → 下一轮修复）'));
     promptDetails.appendChild(el('div', 'prompt-note',
-      note + ' 运行产物未保存 Prompt 原文；此处按 IncrementalRepairPromptBuilder 模板还原用户消息，「相关语句」为文本引用近似。'));
+      note + ' 运行产物未保存 Prompt 原文；此处按 RepairPromptBuilder 模板还原用户消息，「相关语句」为文本引用近似。'));
     var guidance = guidanceFor(round.issues);
     if (guidance.length) {
       promptDetails.appendChild(el('div', 'prompt-sub', '系统消息中的专项指导（按诊断选取，原文）'));

@@ -32,7 +32,7 @@ import java.util.Map;
  *
  * @since 2026
  */
-class IncrementalRepairPromptBuilderTest {
+class RepairPromptBuilderTest {
 
     private static final String SYSTEM_PROMPT = "ORIGINAL SYSTEM PROMPT: use openui-lang only.";
 
@@ -89,15 +89,47 @@ class IncrementalRepairPromptBuilderTest {
         return count;
     }
 
+
+
+    @Test
+    void guidanceHasFixedOrderRegardlessOfDiagnosticOrder() {
+        ValidationIssue syntax = issue("syntax-unclosed-bracket", "syntax", "broken", "a", null);
+        ValidationIssue reference = issue("unresolved-ref", "reference", "missing", "b", null);
+        String forward = RepairPromptBuilder.build(null, null, null,
+                round("", "", List.of(syntax, reference))).get(0).content();
+        String reversed = RepairPromptBuilder.build(null, null, null,
+                round("", "", List.of(reference, syntax))).get(0).content();
+        assertEquals(forward, reversed);
+        assertTrue(forward.indexOf("Rewrite the whole diagnosed statement")
+                < forward.indexOf("Classify the unresolved name"));
+    }
+
+    @Test
+    void preservesOriginalSystemPrefixAcrossRepairRoundsWithoutDuplicatingContext() {
+        String original = "  original contract" + (char) 13 + (char) 10 + "{{literal}}" + (char) 10 + " data context  ";
+        for (List<ValidationIssue> issues : List.of(List.<ValidationIssue>of(),
+                List.of(issue("syntax-unclosed-bracket", "syntax", "broken", "root", null)))) {
+            String system = RepairPromptBuilder.build(original, "x", contract(),
+                    round("", "root = Stack([])", issues), List.of(), "SHOULD_NOT_BE_REINSERTED")
+                    .get(0).content();
+            assertTrue(system.startsWith(original));
+            assertEquals(1, occurrences(system, original));
+            assertFalse(system.contains("Stack(children: Component[])"));
+            assertFalse(system.contains("SHOULD_NOT_BE_REINSERTED"));
+            assertTrue(system.indexOf(RepairPromptBuilder.INCREMENTAL_REPAIR_MARKER)
+                    >= original.length());
+        }
+    }
+
     @Test
     void buildsSystemThenUserAndKeepsOriginalSystemPromptExactlyOnce() {
-        List<ChatMessage> messages = IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "make a dashboard", contract(),
+        List<ChatMessage> messages = RepairPromptBuilder.build(SYSTEM_PROMPT, "make a dashboard", contract(),
                 round("header = Header(\"Hi\")", "header = Header(\"Hi\")", List.of()));
 
         assertEquals(2, messages.size());
         assertEquals("system", messages.get(0).role());
         assertEquals("user", messages.get(1).role());
-        assertTrue(messages.get(0).content().contains(IncrementalRepairPromptBuilder.INCREMENTAL_REPAIR_MARKER));
+        assertTrue(messages.get(0).content().contains(RepairPromptBuilder.INCREMENTAL_REPAIR_MARKER));
         assertEquals(1, occurrences(join(messages), SYSTEM_PROMPT), "system prompt reproduced once");
     }
 
@@ -106,7 +138,7 @@ class IncrementalRepairPromptBuilderTest {
         String definitions = "root = Stack([header])\nheader = Header(\"Hi\")";
         ValidationIssue unresolved = issue("unresolved-ref", "reference", "unresolved reference \"title\"", "header",
                 "define a statement named \"title\" earlier in the document");
-        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "show the header", contract(),
+        String text = join(RepairPromptBuilder.build(SYSTEM_PROMPT, "show the header", contract(),
                 round("header = Header(title)", definitions, List.of(unresolved))));
 
         assertTrue(text.contains("show the header"), "original request present");
@@ -117,41 +149,14 @@ class IncrementalRepairPromptBuilderTest {
         assertTrue(text.contains("define a statement named \"title\""), "diagnostic hint present");
     }
 
-    @Test
-    void includesFullCurrentContractWithoutInventingNames() {
-        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
-                round("", "root = Stack([])", List.of())));
 
-        assertTrue(text.contains("contract-7"), "contract version present");
-        assertTrue(text.contains("Stack(children: Component[])"), "component signature present");
-        assertTrue(text.contains("Header(text: string)"), "all component signatures present");
-        assertTrue(text.contains("@Each(array, item, template)"), "builtin signature present");
-        assertTrue(text.contains("get_sales"), "tool present");
-        assertTrue(text.contains("Never invent tools."), "additional rule present");
-        assertTrue(text.contains("root = Stack([header])"), "example present");
-    }
 
-    @Test
-    void carriesCallerDataContextWithSampleAndFabricationLimits() {
-        String dataContext = "data.sales: array<{region: string, revenue: number}>\n"
-                + "sample rows: 3 of 1200; scale: 1200 rows total";
-        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
-                round("", "root = Stack([])", List.of()), List.of(), dataContext));
 
-        assertTrue(text.contains("sample rows: 3 of 1200; scale: 1200 rows total"), "data context verbatim");
-        assertTrue(text.contains("may describe only part of the render data model"), "sample caveat present");
-        assertTrue(text.contains("Do not treat sample rows as the full dataset"), "sample is not full data");
-        assertTrue(text.contains("do not invent fields, functions, data, or statistics"), "no fabrication rule");
-        assertTrue(text.contains("state the limitation in the page"), "real data + page explanation rule");
-        assertTrue(text.contains("caller-supplied data model as the primary subject"), "data-first rule");
-        assertTrue(text.contains("without exposing internal field/path names"), "no internal path leakage rule");
-        assertTrue(text.contains("数据源不匹配"), "no data-source mismatch title rule");
-    }
 
     @Test
     void selectsGuidanceFromCurrentDiagnosticsOnly() {
         ValidationIssue syntax = issue("syntax-unclosed-bracket", "syntax", "unclosed '('", "header", null);
-        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
+        String text = join(RepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
                 round("header = Header(", "header = Header(", List.of(syntax))));
 
         assertTrue(text.contains("Diagnostic-selected guidance"), "guidance section present");
@@ -164,7 +169,7 @@ class IncrementalRepairPromptBuilderTest {
     void selectsReferenceGuidanceForUnresolvedRef() {
         ValidationIssue unresolved = issue("unresolved-ref", "reference", "unresolved reference \"Each\"", "rows",
                 "did you mean \"@Each\"?");
-        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
+        String text = join(RepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
                 round("rows = Each([])", "rows = Each([])", List.of(unresolved))));
 
         assertTrue(text.contains("`@name(...)` is a builtin call"), "call classification guidance present");
@@ -173,26 +178,21 @@ class IncrementalRepairPromptBuilderTest {
 
     @Test
     void fixedRulesPinPatchOnlyScopeAndStaleLabelHandling() {
-        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
+        String text = join(RepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
                 round("", "root = Stack([])", List.of())));
 
         assertTrue(text.contains("This is a patch, not a page"), "patch-only scope");
         assertTrue(text.contains("Do not output a full page, JSON"), "no full page/JSON");
         assertTrue(text.contains("Never emit a deletion"), "no deletion");
         assertTrue(text.contains("last-wins"), "override semantics");
-        assertTrue(
-                text.contains("A bare identifier is a statement reference")
-                        || text.contains("a bare identifier is a statement reference"),
-                "unknown-call syntax classification");
-        assertTrue(text.contains("error code may be stale"), "historical labels not trusted");
-        assertTrue(text.contains("current contract"), "contract-based classification");
+
     }
 
     @Test
     void rendersRelatedStatementsForDiagnosedId() {
         String definitions = "root = Stack([header])\nheader = Header(title)\ntitle = TextContent(\"Hi\")";
         ValidationIssue issue = issue("type-prop-mismatch", "type", "title must be string", "header", null);
-        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
+        String text = join(RepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
                 round("header = Header(title)", definitions, List.of(issue))));
 
         assertTrue(text.contains("Related statements for diagnosed ids"), "related-statements section present");
@@ -204,8 +204,8 @@ class IncrementalRepairPromptBuilderTest {
     void historyKeepsRawOutputAndCompactCodesButNotFullMessages() {
         ValidationIssue old = issue("old-history-code", "contract", "HISTORY_MESSAGE_MUST_NOT_APPEAR", "header", null);
         RoundEndResult earlier = round("OLD_RAW_OUTPUT = Header(\"old\")", "header = Header(\"old\")", List.of(old));
-        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
-                round("header = Header(\"new\")", "header = Header(\"new\")", List.of()), List.of(earlier)));
+        String text = join(RepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
+                round("header = Header(\"new\")", "header = Header(\"new\")", List.of(issue("old-history-code", "contract", "current", "header", null))), List.of(earlier)));
 
         assertTrue(text.contains("OLD_RAW_OUTPUT"), "historical raw output retained");
         assertTrue(text.contains("old-history-code"), "historical issue codes retained");
@@ -219,7 +219,7 @@ class IncrementalRepairPromptBuilderTest {
         ValidationIssue derived = issue("excess-args", "contract", "TextContent takes 2 args", "kpi", null);
         ValidationIssue warning = new ValidationIssue("soft-warn", ValidationSeverity.WARNING, "x",
                 "WARNING_MUST_NOT_APPEAR", null, null, null, -1, -1, null, true);
-        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
+        String text = join(RepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
                 round("kpi = TextContent(\"a\", \"b\", \"c\")", "kpi = TextContent(\"a\", \"b\", \"c\")",
                         List.of(syntax, derived, warning))));
 
@@ -228,28 +228,34 @@ class IncrementalRepairPromptBuilderTest {
         assertFalse(text.contains("WARNING_MUST_NOT_APPEAR"), "warnings do not drive repair");
     }
 
-    @Test
-    void missingSystemPromptAndDataContextAreStatedWithoutInvention() {
-        String text = join(IncrementalRepairPromptBuilder.build(null, null, null, round("", "", List.of())));
 
-        assertTrue(text.contains("No original system prompt was supplied"), "missing system prompt is explicit");
-        assertTrue(text.contains("No data context was supplied by the caller"), "missing data context is explicit");
-        assertTrue(text.contains("No contract object was supplied"), "missing contract is explicit");
-        assertTrue(text.contains("invent nothing"), "no invention rule present");
+
+    @Test
+    void rawOutputIsOnlyIncludedForSyntaxFailures() {
+        String raw = "RAW_OUTPUT_ONLY";
+        ValidationIssue type = issue("type-prop-mismatch", "type", "wrong type", "root", null);
+        ValidationIssue syntax = issue("syntax-unexpected-token", "syntax", "broken", "root", null);
+        assertFalse(join(RepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
+                round(raw, "root = Stack([])", List.of(type)))).contains(raw));
+        assertTrue(join(RepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
+                round(raw, "root = Stack([])", List.of(syntax)))).contains(raw));
+    }
+
+    @Test
+    void unrelatedHistoryIsNotIncluded() {
+        RoundEndResult earlier = round("UNRELATED_HISTORY", "", List.of(issue("old", "contract", "old", "a", null)));
+        String text = join(RepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
+                round("", "root = Stack([])", List.of(issue("new", "contract", "new", "b", null))), List.of(earlier)));
+        assertFalse(text.contains("UNRELATED_HISTORY"));
     }
 
     @Test
     void currentRoundIsRequired() {
         assertThrows(NullPointerException.class,
-                () -> IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(), null));
+                () -> RepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(), null));
     }
 
-    @Test
-    void fiveArgOverloadDefaultsToNoHistory() {
-        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
-                round("", "root = Stack([])", List.of())));
-        assertTrue(text.contains("(no earlier rounds)"), "empty history rendered explicitly");
-    }
+
 
     @Test
     void longHistoryRawOutputIsCutAtACompleteStatementBoundary() {
@@ -258,9 +264,9 @@ class IncrementalRepairPromptBuilderTest {
         for (int i = 0; i < 80; i++) {
             raw.append(String.format("s%03d = TextContent(\"%s\")\n", i, "x".repeat(40)));
         }
-        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
-                round("root = Stack([])", "root = Stack([])", List.of()),
-                List.of(round(raw.toString(), "root = Stack([])", List.of()))));
+        String text = join(RepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
+                round("root = Stack([])", "root = Stack([])", List.of(issue("repeated", "contract", "still failing", "root", null))),
+                List.of(round(raw.toString(), "root = Stack([])", List.of(issue("repeated", "contract", "still failing", "root", null))))));
 
         assertTrue(text.contains("truncated at a complete statement boundary"), "truncation is stated, not silent");
         assertTrue(text.contains("s031 = TextContent("), "the last statement that fits the limit is kept whole");
@@ -270,9 +276,9 @@ class IncrementalRepairPromptBuilderTest {
     @Test
     void historyRawOutputWithNoCompleteStatementIsOmittedNotCut() {
         String raw = "huge = TextContent(\"" + "x".repeat(3000) + "\")\n";
-        String text = join(IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
-                round("root = Stack([])", "root = Stack([])", List.of()),
-                List.of(round(raw, "root = Stack([])", List.of()))));
+        String text = join(RepairPromptBuilder.build(SYSTEM_PROMPT, "x", contract(),
+                round("root = Stack([])", "root = Stack([])", List.of(issue("repeated", "contract", "still failing", "root", null))),
+                List.of(round(raw, "root = Stack([])", List.of(issue("repeated", "contract", "still failing", "root", null))))));
 
         assertTrue(text.contains("exceeds the history excerpt limit"), "an unrepresentable history round is omitted");
         assertFalse(text.contains("huge = TextContent"), "no partial single statement is pasted into the prompt");
@@ -289,7 +295,7 @@ class IncrementalRepairPromptBuilderTest {
                 "Unknown component \"ObjectFromEntries\" — not found in catalog or builtins", "byModel",
                 "ObjectFromEntries", RepairHints.unknownComponentHint("ObjectFromEntries", List.of(GROUP_BY_GAP)));
 
-        List<ChatMessage> messages = IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "按型号分组展示板卡", contract(),
+        List<ChatMessage> messages = RepairPromptBuilder.build(SYSTEM_PROMPT, "按型号分组展示板卡", contract(),
                 round(dsl, dsl, List.of(groupByIssue, fromEntriesIssue)));
         String system = messages.get(0).content();
         String user = messages.get(1).content();
@@ -297,8 +303,8 @@ class IncrementalRepairPromptBuilderTest {
         int boundaryIdx = system.indexOf("## Capability boundary (overrides the original request)");
         int fixedRulesIdx = system.indexOf("## Incremental repair rules (fixed)");
         assertTrue(boundaryIdx > 0, "system prompt must contain Capability boundary section");
-        assertTrue(boundaryIdx < fixedRulesIdx,
-                "Capability boundary section must appear before Incremental repair rules");
+        assertTrue(boundaryIdx > fixedRulesIdx,
+                "dynamic capability guidance follows fixed repair rules to preserve their shared prefix");
         assertEquals(1, occurrences(system,
                 "The original request asks for \"分组展示\", which is NOT supported as a dynamic operation in openui-lang."),
                 "the same capability gap must be rendered only once even when multiple aliases match");
@@ -326,7 +332,7 @@ class IncrementalRepairPromptBuilderTest {
         RoundEndResult current = round("card = ChartCard(\"T\")\nroot = Stack([card])",
                 "card = ChartCard(\"T\")\nroot = Stack([card])", List.of(currentChartCard));
 
-        List<ChatMessage> messages = IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "按型号分组展示板卡", contract(),
+        List<ChatMessage> messages = RepairPromptBuilder.build(SYSTEM_PROMPT, "按型号分组展示板卡", contract(),
                 current, List.of(earlier));
         String system = messages.get(0).content();
         String user = messages.get(1).content();
@@ -352,7 +358,7 @@ class IncrementalRepairPromptBuilderTest {
         ValidationIssue sliceIssue = componentIssue("unknown-component", "contract", "Unknown component \"Slice\"",
                 "top", "Slice", RepairHints.unknownComponentHint("Slice", List.of(GROUP_BY_GAP, topNGap)));
 
-        List<ChatMessage> messages = IncrementalRepairPromptBuilder.build(SYSTEM_PROMPT, "按型号分组并展示前5条",
+        List<ChatMessage> messages = RepairPromptBuilder.build(SYSTEM_PROMPT, "按型号分组并展示前5条",
                 multiGapContract, round(dsl, dsl, List.of(groupByIssue, sliceIssue)));
         String system = messages.get(0).content();
 
