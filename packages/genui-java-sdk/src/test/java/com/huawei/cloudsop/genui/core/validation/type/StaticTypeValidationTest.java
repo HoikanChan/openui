@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -340,7 +339,7 @@ class StaticTypeValidationTest {
     void noDataModelReportsUnprovenReasonsWithoutIncompleteTraversal() {
         ValidationResult result = DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder()
                 .dsl("root = TextContent(data.title)").contract(GenerationContractLoader.loadDefault())
-                .externalRefs(java.util.Set.of("data")).mode(ValidationMode.FINAL).build());
+                .externalRefs(java.util.Set.of("data")).build());
 
         Map<String, String> extra = result.metadata().extra();
         assertEquals(ValidationStatus.VALID, result.status());
@@ -359,7 +358,7 @@ class StaticTypeValidationTest {
         ValidationRequest request = ValidationRequest.builder()
                 .dsl("root = DescField(label, @String(@ObjectValues(data)))\nlabel = \"label\"")
                 .contract(GenerationContractLoader.loadDefault())
-                .dataModel(Map.of("values", List.of("one", "two"))).mode(ValidationMode.FINAL).build();
+                .dataModel(Map.of("values", List.of("one", "two"))).build();
         var sampled = new DefaultOpenuiLangValidator(
                 new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(4096, 64, 16, 1, 2048))
                 .validate(request);
@@ -389,7 +388,7 @@ class StaticTypeValidationTest {
         ValidationResult result = validator.validate(ValidationRequest.builder()
                 .dsl("root = TextContent(@First(@First(@ObjectValues(data))))")
                 .contract(GenerationContractLoader.loadDefault())
-                .dataModel(Map.of("values", List.of("one", "two"))).mode(ValidationMode.FINAL).build());
+                .dataModel(Map.of("values", List.of("one", "two"))).build());
 
         assertEquals("false", result.metadata().extra().get("typeChecks.analysisComplete"));
         assertEquals("true", result.metadata().extra().get("typeChecks.traversalTruncated"));
@@ -403,7 +402,7 @@ class StaticTypeValidationTest {
         ValidationResult result = validator.validate(ValidationRequest.builder()
                 .dsl("root = TextContent(value)\nvalue = @First(@First(@ObjectValues(data)))")
                 .contract(GenerationContractLoader.loadDefault())
-                .dataModel(Map.of("values", List.of("one", "two"))).mode(ValidationMode.FINAL).build());
+                .dataModel(Map.of("values", List.of("one", "two"))).build());
 
         Map<String, String> extra = result.metadata().extra();
         assertEquals("true", extra.get("typeChecks.traversalTruncated"));
@@ -415,7 +414,7 @@ class StaticTypeValidationTest {
     private static ValidationResult validate(String dsl, Map<String, Object> dataModel) {
         return DefaultOpenuiLangValidator.INSTANCE
                 .validate(ValidationRequest.builder().dsl(dsl).contract(GenerationContractLoader.loadDefault())
-                        .dataModel(dataModel).mode(ValidationMode.FINAL).build());
+                        .dataModel(dataModel).build());
     }
 
     @Test

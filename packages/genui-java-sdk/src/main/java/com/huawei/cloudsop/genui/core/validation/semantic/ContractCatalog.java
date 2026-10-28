@@ -33,12 +33,10 @@ public final class ContractCatalog {
     private static final String SIGNATURE_KEY = "x-openui-signature";
 
     private final Map<String, ComponentDef> byName;
-    private final String rootName;
     private final List<CapabilityGapSpec> capabilityGaps;
 
-    private ContractCatalog(Map<String, ComponentDef> byName, String rootName, List<CapabilityGapSpec> capabilityGaps) {
+    private ContractCatalog(Map<String, ComponentDef> byName, List<CapabilityGapSpec> capabilityGaps) {
         this.byName = byName;
-        this.rootName = rootName;
         this.capabilityGaps = capabilityGaps == null ? List.of() : List.copyOf(capabilityGaps);
     }
 
@@ -56,18 +54,8 @@ public final class ContractCatalog {
                 byName.put(entry.getKey(), buildDef(entry.getKey(), entry.getValue()));
             }
         }
-        String root = contract == null ? null : contract.root();
         List<CapabilityGapSpec> gaps = contract == null ? List.of() : contract.capabilityGaps();
-        return new ContractCatalog(Collections.unmodifiableMap(byName), root, gaps);
-    }
-
-    /**
-     * 获取合约中配置的根组件名。
-     *
-     * @return 根组件名，可能为 {@code null}
-     */
-    public String root() {
-        return rootName;
+        return new ContractCatalog(Collections.unmodifiableMap(byName), gaps);
     }
 
     /**
@@ -77,17 +65,6 @@ public final class ContractCatalog {
      */
     public List<CapabilityGapSpec> capabilityGaps() {
         return capabilityGaps;
-    }
-
-    /**
-     * 判断 {@code name} 是否为目录中已知的组件。
-     *
-     * @param name
-     *            组件名
-     * @return 是已知组件时返回 {@code true}
-     */
-    public boolean isKnown(String name) {
-        return byName.containsKey(name);
     }
 
     /**

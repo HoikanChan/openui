@@ -16,7 +16,7 @@ import java.util.Set;
  * <li>复合要求先对同一个值(或能对齐的共同分区)组合,再汇总:AnyOf 找的是“存在一个值违反全部候选”,
  * 不是“每个候选分别存在反例”。
  * <li>对未完整覆盖的样本不能证明全部通过;检查数组元素时不得忽略空数组可能性。
- * <li>上游错误身份随结果带出,报告层据此抑制连锁诊断。
+ * <li>上游已报错的事实返回 UNPROVEN(BLOCKED_BY_ERROR),不产生独立反例。
  * </ul>
  *
  * @since 2026
@@ -33,49 +33,24 @@ public final class Checks {
         UNPROVEN
     }
 
-    /** 未证明原因(面向报告;与 {@link Fact.Loss} 分开,检查自身也会发现原因)。 */
-    public enum Reason {
-        UNKNOWN_INPUT,
-        UNSUPPORTED_RULE,
-        MISSING_CONTEXT,
-        PRECISION_BUDGET,
-        NO_ELEMENT_EVIDENCE,
-        BLOCKED_BY_ERROR,
-        UNBOUND_TYPE_VARIABLE,
-        /** 既有可能通过也有可能失败,且无适用于当前检查对象的证据。 */
-        INSUFFICIENT_EVIDENCE
-    }
-
-    /** 一次检查的结论。 */
-    public record CheckResult(Verdict verdict, Set<Reason> reasons, Set<String> upstreamErrors, String detail) {
+    /** 一次检查的结论;未证明原因直接复用 {@link Fact.Loss}(含检查层专有的 INSUFFICIENT_EVIDENCE)。 */
+    public record CheckResult(Verdict verdict, Set<Fact.Loss> reasons, String detail) {
 
         public CheckResult {
             reasons = reasons == null ? Set.of() : Set.copyOf(reasons);
-            upstreamErrors = upstreamErrors == null ? Set.of() : Set.copyOf(upstreamErrors);
-        }
-
-        static CheckResult of(Verdict verdict, Set<Reason> reasons, Set<String> upstreamErrors, String detail) {
-            return new CheckResult(verdict, reasons, upstreamErrors, detail);
         }
 
         static CheckResult match() {
-            return new CheckResult(Verdict.MATCH, Set.of(), Set.of(), null);
+            return new CheckResult(Verdict.MATCH, Set.of(), null);
         }
 
         static CheckResult mismatch(String detail) {
-            return new CheckResult(Verdict.MISMATCH, Set.of(), Set.of(), detail);
+            return new CheckResult(Verdict.MISMATCH, Set.of(), detail);
         }
 
-        static CheckResult unproven(Set<Reason> reasons, Set<String> upstreamErrors, String detail) {
-            return new CheckResult(Verdict.UNPROVEN, reasons, upstreamErrors, detail);
+        static CheckResult unproven(Set<Fact.Loss> reasons, String detail) {
+            return new CheckResult(Verdict.UNPROVEN, reasons, detail);
         }
-    }
-
-    /** 内部三态:单个值或共同分区上的判定。分区上 FAIL 必须表示其中所有值都不满足。 */
-    private enum Tri {
-        PASS,
-        FAIL,
-        UNKNOWN
     }
 
     /**
@@ -84,10 +59,10 @@ public final class Checks {
      */
     public static CheckResult check(Fact fact, Expectation expectation, String checkedPath) {
         if (fact.hasUpstreamErrors()) {
-            return CheckResult.unproven(Set.of(Reason.BLOCKED_BY_ERROR), fact.upstreamErrors(), null);
+            return CheckResult.unproven(Set.of(Fact.Loss.BLOCKED_BY_ERROR), null);
         }
         if (expectation instanceof Expectation.Unsupported unsupported) {
-            return CheckResult.unproven(Set.of(Reason.UNSUPPORTED_RULE), Set.of(),
+            return CheckResult.unproven(Set.of(Fact.Loss.UNSUPPORTED_RULE),
                     "unsupported schema keyword " + unsupported.keyword() + " at " + unsupported.schemaPath());
         }
         if (expectation instanceof Expectation.Accept accept) {
@@ -111,11 +86,8 @@ public final class Checks {
         if (expectation instanceof Expectation.SequenceOf sequenceOf) {
             return checkSequenceOf(fact, sequenceOf, checkedPath);
         }
-        if (expectation instanceof Expectation.Predicate predicate) {
-            return checkPredicate(fact, predicate);
-        }
         if (expectation instanceof Expectation.AllOf allOf) {
-            Set<Reason> reasons = new LinkedHashSet<>();
+            Set<Fact.Loss> reasons = new LinkedHashSet<>();
             for (Expectation part : allOf.expectations()) {
                 CheckResult result = check(fact, part, checkedPath);
                 if (result.verdict() == Verdict.MISMATCH) {
@@ -126,7 +98,7 @@ public final class Checks {
                 }
             }
             return reasons.isEmpty() ? CheckResult.match()
-                    : CheckResult.unproven(reasons, fact.upstreamErrors(), null);
+                    : CheckResult.unproven(reasons, null);
         }
         if (expectation instanceof Expectation.AnyOf anyOf) {
             return checkComposite(fact, anyOf.expectations(), CompositeKind.ANY_OF, checkedPath);
@@ -134,7 +106,7 @@ public final class Checks {
         if (expectation instanceof Expectation.ExactlyOne exactlyOne) {
             return checkComposite(fact, exactlyOne.expectations(), CompositeKind.EXACTLY_ONE, checkedPath);
         }
-        return CheckResult.unproven(Set.of(Reason.UNSUPPORTED_RULE), Set.of(), "unknown expectation kind");
+        return CheckResult.unproven(Set.of(Fact.Loss.UNSUPPORTED_RULE), "unknown expectation kind");
     }
 
     private enum CompositeKind {
@@ -152,14 +124,13 @@ public final class Checks {
         if (target instanceof Type.Unknown) {
             return CheckResult.match();
         }
-        Set<Reason> reasons = lossesAsReasons(fact);
-        if (Relations.proveIncluded(fact.type(), target) == Relations.Outcome.PROVEN) {
+        Set<Fact.Loss> reasons = lossesAsReasons(fact);
+        if (Relations.proveIncluded(fact.type(), target)) {
             return reasons.isEmpty() ? CheckResult.match()
-                    : CheckResult.unproven(reasons, Set.of(), "inclusion proven but analysis incomplete");
+                    : CheckResult.unproven(reasons, "inclusion proven but analysis incomplete");
         }
         // 包含未证明:先查“全部可能值都不兼容”——数组情形须先证明当前确有元素(不能忽略空数组可能性)。
-        if (Relations.proveDisjoint(fact.type(), target) == Relations.Outcome.PROVEN
-                && existenceProven(fact, checkedPath)) {
+        if (Relations.proveDisjoint(fact.type(), target) && existenceProven(fact, checkedPath)) {
             return CheckResult.mismatch("all possible values are disjoint from " + target.displayName());
         }
         // 再按分支找类型级确定反例(某分支与目标互斥且该分支不是纯未知)。
@@ -172,11 +143,11 @@ public final class Checks {
         if (counterexample != null) {
             return CheckResult.mismatch(counterexample.detail());
         }
-        reasons.add(Reason.INSUFFICIENT_EVIDENCE);
+        reasons.add(Fact.Loss.INSUFFICIENT_EVIDENCE);
         if (fact.type() instanceof Type.Unknown) {
-            reasons.add(Reason.UNKNOWN_INPUT);
+            reasons.add(Fact.Loss.UNKNOWN_INPUT);
         }
-        return CheckResult.unproven(reasons, Set.of(),
+        return CheckResult.unproven(reasons,
                 "cannot prove inclusion into " + target.displayName());
     }
 
@@ -208,18 +179,17 @@ public final class Checks {
         if (target instanceof Type.Unknown) {
             return CheckResult.match();
         }
-        if (Relations.proveIncluded(valueFact.type(), target) == Relations.Outcome.PROVEN) {
+        if (Relations.proveIncluded(valueFact.type(), target)) {
             return CheckResult.match();
         }
-        if (Relations.proveDisjoint(valueFact.type(), target) == Relations.Outcome.PROVEN
-                && existenceProven(valueFact, checkedPath)) {
+        if (Relations.proveDisjoint(valueFact.type(), target) && existenceProven(valueFact, checkedPath)) {
             return CheckResult.mismatch("all possible values are disjoint from " + target.displayName());
         }
         if (definiteTypeCounterexample(valueFact.type(), target)) {
             return CheckResult.mismatch("values of type " + valueFact.type().displayName()
                     + " cannot satisfy " + target.displayName());
         }
-        return CheckResult.unproven(Set.of(Reason.INSUFFICIENT_EVIDENCE), Set.of(),
+        return CheckResult.unproven(Set.of(Fact.Loss.INSUFFICIENT_EVIDENCE),
                 "cannot prove inclusion into " + target.displayName());
     }
 
@@ -232,7 +202,7 @@ public final class Checks {
             if (branch instanceof Type.Never || branch instanceof Type.Unknown) {
                 continue;
             }
-            if (Relations.proveDisjoint(branch, target) == Relations.Outcome.PROVEN) {
+            if (Relations.proveDisjoint(branch, target)) {
                 // 数组分支允许零长度时,空数组不违反逐元素要求——不构成反例。
                 if (branch instanceof Type.Sequence sequence && sequence.minLength() == 0) {
                     continue;
@@ -299,13 +269,13 @@ public final class Checks {
         }
         boolean sawPass = false;
         boolean sawFail = false;
-        Set<Reason> reasons = lossesAsReasons(fact);
+        Set<Fact.Loss> reasons = lossesAsReasons(fact);
         for (Type branch : TypeOps.flatten(fact.type())) {
             if (branch instanceof Type.Never) {
                 continue;
             }
             if (!(branch instanceof Type.RecordType record)) {
-                reasons.add(Reason.UNKNOWN_INPUT);
+                reasons.add(Fact.Loss.UNKNOWN_INPUT);
                 continue;
             }
             boolean fails = false;
@@ -336,7 +306,7 @@ public final class Checks {
             if (fails) {
                 sawFail = true;
             } else if (uncertain) {
-                reasons.add(Reason.INSUFFICIENT_EVIDENCE);
+                reasons.add(Fact.Loss.INSUFFICIENT_EVIDENCE);
             } else {
                 sawPass = true;
             }
@@ -347,8 +317,8 @@ public final class Checks {
         if (!sawFail && reasons.isEmpty()) {
             return CheckResult.match();
         }
-        reasons.add(Reason.INSUFFICIENT_EVIDENCE);
-        return CheckResult.unproven(reasons, fact.upstreamErrors(), null);
+        reasons.add(Fact.Loss.INSUFFICIENT_EVIDENCE);
+        return CheckResult.unproven(reasons, null);
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -357,7 +327,7 @@ public final class Checks {
 
     private static CheckResult checkRequireField(Fact fact, Expectation.RequireField requireField,
             String checkedPath) {
-        Set<Reason> reasons = lossesAsReasons(fact);
+        Set<Fact.Loss> reasons = lossesAsReasons(fact);
         // 1. 存在性:先找真实反例(观察到的行缺字段),再做结构判定。
         Presence presence = fieldPresence(fact, requireField.name());
         for (Fact.Evidence evidence : fact.evidence()) {
@@ -379,18 +349,18 @@ public final class Checks {
                         + "\" is absent from the proven row shape");
             }
             case UNKNOWN -> {
-                reasons.add(Reason.INSUFFICIENT_EVIDENCE);
+                reasons.add(Fact.Loss.INSUFFICIENT_EVIDENCE);
                 if (fact.type() instanceof Type.Unknown) {
-                    reasons.add(Reason.UNKNOWN_INPUT);
+                    reasons.add(Fact.Loss.UNKNOWN_INPUT);
                 }
-                return CheckResult.unproven(reasons, fact.upstreamErrors(),
+                return CheckResult.unproven(reasons,
                         "cannot prove field \"" + requireField.name() + "\" exists");
             }
         }
         // 2. 值要求:字段存在且类型上界已知时,检查嵌套期望。
         Type fieldType = fieldTypeOf(fact.type(), requireField.name());
         if (fieldType == null) {
-            return CheckResult.unproven(reasons, fact.upstreamErrors(), null);
+            return CheckResult.unproven(reasons, null);
         }
         return check(new Fact(fieldType, fieldEvidence(fact, requireField.name()), Set.of(),
                 fact.upstreamErrors()), requireField.expectation(), checkedPath);
@@ -410,12 +380,12 @@ public final class Checks {
             return CheckResult.mismatch("required field \"" + field + "\" is absent from the proven row shape");
         }
         if (presence == Presence.UNKNOWN) {
-            Set<Reason> reasons = lossesAsReasons(fact);
-            reasons.add(Reason.INSUFFICIENT_EVIDENCE);
+            Set<Fact.Loss> reasons = lossesAsReasons(fact);
+            reasons.add(Fact.Loss.INSUFFICIENT_EVIDENCE);
             if (fact.type() instanceof Type.Unknown) {
-                reasons.add(Reason.UNKNOWN_INPUT);
+                reasons.add(Fact.Loss.UNKNOWN_INPUT);
             }
-            return CheckResult.unproven(reasons, fact.upstreamErrors(),
+            return CheckResult.unproven(reasons,
                     "cannot prove field \"" + field + "\" exists");
         }
         return CheckResult.match();
@@ -426,26 +396,26 @@ public final class Checks {
      */
     private static CheckResult checkConditionalField(Fact fact, Expectation.ConditionalField conditionalField,
             String checkedPath) {
-        Set<Reason> reasons = lossesAsReasons(fact);
+        Set<Fact.Loss> reasons = lossesAsReasons(fact);
         Presence presence = fieldPresence(fact, conditionalField.name());
         switch (presence) {
             case DEFINITELY_ABSENT -> {
                 return reasons.isEmpty() ? CheckResult.match()
-                        : CheckResult.unproven(reasons, fact.upstreamErrors(), null);
+                        : CheckResult.unproven(reasons, null);
             }
             case UNKNOWN -> {
-                reasons.add(Reason.INSUFFICIENT_EVIDENCE);
+                reasons.add(Fact.Loss.INSUFFICIENT_EVIDENCE);
                 if (fact.type() instanceof Type.Unknown) {
-                    reasons.add(Reason.UNKNOWN_INPUT);
+                    reasons.add(Fact.Loss.UNKNOWN_INPUT);
                 }
-                return CheckResult.unproven(reasons, fact.upstreamErrors(), null);
+                return CheckResult.unproven(reasons, null);
             }
             default -> {
             }
         }
         Type fieldType = fieldTypeOf(fact.type(), conditionalField.name());
         if (fieldType == null) {
-            return CheckResult.unproven(reasons, fact.upstreamErrors(), null);
+            return CheckResult.unproven(reasons, null);
         }
         return check(new Fact(fieldType, fieldEvidence(fact, conditionalField.name()), Set.of(),
                 fact.upstreamErrors()), conditionalField.expectation(), checkedPath);
@@ -538,7 +508,7 @@ public final class Checks {
      * 非空分支,或观察到的实际元素)即 MISMATCH;否则 UNPROVEN。
      */
     private static CheckResult checkSequenceOf(Fact fact, Expectation.SequenceOf sequenceOf, String checkedPath) {
-        Set<Reason> reasons = lossesAsReasons(fact);
+        Set<Fact.Loss> reasons = lossesAsReasons(fact);
         // 1. 观察到的实际数组元素:同一快照值逐个检查(真实反例)。证据可来自事实自身或调用方提供。
         List<Object> observedArrays = new ArrayList<>();
         for (Fact.Evidence evidence : fact.evidence()) {
@@ -591,67 +561,20 @@ public final class Checks {
             }
         }
         if (sawUnknown) {
-            reasons.add(Reason.INSUFFICIENT_EVIDENCE);
-            return CheckResult.unproven(reasons, fact.upstreamErrors(), null);
+            reasons.add(Fact.Loss.INSUFFICIENT_EVIDENCE);
+            return CheckResult.unproven(reasons, null);
         }
         return reasons.isEmpty() ? CheckResult.match()
-                : CheckResult.unproven(reasons, fact.upstreamErrors(), null);
+                : CheckResult.unproven(reasons, null);
     }
 
     // ───────────────────────────────────────────────────────────────────────
-    // Enum / Predicate
+    // Enum
     // ───────────────────────────────────────────────────────────────────────
 
     private static CheckResult checkEnum(Fact fact, Expectation.EnumValues enumValues, String checkedPath) {
         Type literals = Types.stringLiterals(enumValues.values());
         return checkAccept(fact, new Expectation.Accept(literals), checkedPath);
-    }
-
-    private static CheckResult checkPredicate(Fact fact, Expectation.Predicate predicate) {
-        Set<Reason> reasons = lossesAsReasons(fact);
-        boolean possibleSequence = false;
-        Long min = null;
-        Long max = null;
-        for (Type branch : TypeOps.flatten(fact.type())) {
-            if (branch instanceof Type.Sequence sequence) {
-                possibleSequence = true;
-                min = min == null ? sequence.minLength() : Math.min(min, sequence.minLength());
-                long branchMax = sequence.maxLength();
-                max = max == null || branchMax == Type.Sequence.UNBOUNDED
-                        ? (branchMax == Type.Sequence.UNBOUNDED ? null : Math.max(max, branchMax))
-                        : Math.max(max, branchMax);
-            } else if (branch instanceof Type.Unknown) {
-                reasons.add(Reason.UNKNOWN_INPUT);
-            } else {
-                return CheckResult.mismatch("length predicate applied to " + branch.displayName());
-            }
-        }
-        if (!possibleSequence && min == null) {
-            reasons.add(Reason.INSUFFICIENT_EVIDENCE);
-            return CheckResult.unproven(reasons, fact.upstreamErrors(), null);
-        }
-        return switch (predicate.kind()) {
-            case MIN_LENGTH -> {
-                if (min != null && min >= predicate.parameter()) {
-                    yield CheckResult.match();
-                }
-                if (max != null && max < predicate.parameter()) {
-                    yield CheckResult.mismatch("length upper bound " + max + " < required " + predicate.parameter());
-                }
-                reasons.add(Reason.NO_ELEMENT_EVIDENCE);
-                yield CheckResult.unproven(reasons, fact.upstreamErrors(), null);
-            }
-            case MAX_LENGTH -> {
-                if (max != null && max <= predicate.parameter()) {
-                    yield CheckResult.match();
-                }
-                if (min != null && min > predicate.parameter()) {
-                    yield CheckResult.mismatch("length lower bound " + min + " > allowed " + predicate.parameter());
-                }
-                reasons.add(Reason.INSUFFICIENT_EVIDENCE);
-                yield CheckResult.unproven(reasons, fact.upstreamErrors(), null);
-            }
-        };
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -667,8 +590,8 @@ public final class Checks {
             String failDetail = null;
             for (Object value : observedValues) {
                 Fact valueFact = SnapshotFacts.typeOfValue(value, checkedPath, 0);
-                Tri tri = combineOnValue(valueFact, expectations, kind, checkedPath);
-                if (tri == Tri.FAIL) {
+                Verdict verdict = combineOnValue(valueFact, expectations, kind, checkedPath);
+                if (verdict == Verdict.MISMATCH) {
                     sawFail = true;
                     failDetail = "observed value at " + checkedPath + " fails composite requirement";
                 }
@@ -688,10 +611,10 @@ public final class Checks {
             if (branch instanceof Type.Never) {
                 continue;
             }
-            Tri branchTri = combineOnType(branch, expectations, kind);
-            if (branchTri == Tri.FAIL) {
+            Verdict branchVerdict = combineOnType(branch, expectations, kind);
+            if (branchVerdict == Verdict.MISMATCH) {
                 sawFail = true;
-            } else if (branchTri == Tri.UNKNOWN) {
+            } else if (branchVerdict == Verdict.UNPROVEN) {
                 sawUnknown = true;
             } else {
                 sawPass = true;
@@ -701,16 +624,16 @@ public final class Checks {
             return CheckResult.mismatch("composite requirement fails on every possible partition");
         }
         if (!sawFail && !sawUnknown) {
-            Set<Reason> reasons = lossesAsReasons(fact);
+            Set<Fact.Loss> reasons = lossesAsReasons(fact);
             return reasons.isEmpty() ? CheckResult.match()
-                    : CheckResult.unproven(reasons, fact.upstreamErrors(), null);
+                    : CheckResult.unproven(reasons, null);
         }
-        Set<Reason> reasons = lossesAsReasons(fact);
-        reasons.add(Reason.INSUFFICIENT_EVIDENCE);
+        Set<Fact.Loss> reasons = lossesAsReasons(fact);
+        reasons.add(Fact.Loss.INSUFFICIENT_EVIDENCE);
         if (fact.type() instanceof Type.Unknown) {
-            reasons.add(Reason.UNKNOWN_INPUT);
+            reasons.add(Fact.Loss.UNKNOWN_INPUT);
         }
-        return CheckResult.unproven(reasons, fact.upstreamErrors(), null);
+        return CheckResult.unproven(reasons, null);
     }
 
     /** 适用于当前检查对象路径的观察值列表。 */
@@ -726,23 +649,18 @@ public final class Checks {
     }
 
     /** 同一确定值上的候选组合(每个候选先独立判定该值)。 */
-    private static Tri combineOnValue(Fact valueFact, List<Expectation> expectations, CompositeKind kind,
+    private static Verdict combineOnValue(Fact valueFact, List<Expectation> expectations, CompositeKind kind,
             String checkedPath) {
-        List<Tri> outcomes = new ArrayList<>();
+        List<Verdict> outcomes = new ArrayList<>();
         for (Expectation expectation : expectations) {
-            CheckResult result = check(valueFact, expectation, checkedPath);
-            outcomes.add(switch (result.verdict()) {
-                case MATCH -> Tri.PASS;
-                case MISMATCH -> Tri.FAIL;
-                case UNPROVEN -> Tri.UNKNOWN;
-            });
+            outcomes.add(check(valueFact, expectation, checkedPath).verdict());
         }
         return combine(outcomes, kind);
     }
 
     /** 抽象分区上的候选组合:各类要求按分区语义判定(SequenceOf 递归进元素;复合要求按分区组合)。 */
-    private static Tri combineOnType(Type type, List<Expectation> expectations, CompositeKind kind) {
-        List<Tri> outcomes = new ArrayList<>();
+    private static Verdict combineOnType(Type type, List<Expectation> expectations, CompositeKind kind) {
+        List<Verdict> outcomes = new ArrayList<>();
         for (Expectation expectation : expectations) {
             outcomes.add(evaluateOnType(type, expectation));
         }
@@ -750,7 +668,7 @@ public final class Checks {
     }
 
     /** 单一要求在抽象分区上的判定。 */
-    private static Tri evaluateOnType(Type type, Expectation expectation) {
+    private static Verdict evaluateOnType(Type type, Expectation expectation) {
         if (expectation instanceof Expectation.Accept accept) {
             return acceptOnType(type, accept.type());
         }
@@ -759,30 +677,26 @@ public final class Checks {
         }
         if (expectation instanceof Expectation.SequenceOf sequenceOf) {
             if (type instanceof Type.Unknown) {
-                return Tri.UNKNOWN;
+                return Verdict.UNPROVEN;
             }
             if (!(type instanceof Type.Sequence sequence)) {
-                return Tri.FAIL;
+                return Verdict.MISMATCH;
             }
             if (sequence.maxLength() == 0) {
-                return Tri.PASS;
+                return Verdict.MATCH;
             }
-            List<Tri> elements = TypeOps.flatten(sequence.element()).stream()
+            List<Verdict> elements = TypeOps.flatten(sequence.element()).stream()
                     .map(element -> evaluateOnType(element, sequenceOf.elementExpectation())).toList();
-            if (elements.stream().allMatch(result -> result == Tri.PASS)) {
-                return Tri.PASS;
+            if (elements.stream().allMatch(result -> result == Verdict.MATCH)) {
+                return Verdict.MATCH;
             }
-            return sequence.minLength() > 0 && elements.stream().allMatch(result -> result == Tri.FAIL)
-                    ? Tri.FAIL : Tri.UNKNOWN;
+            return sequence.minLength() > 0 && elements.stream().allMatch(result -> result == Verdict.MISMATCH)
+                    ? Verdict.MISMATCH : Verdict.UNPROVEN;
         }
         if (expectation instanceof Expectation.RequireField
                 || expectation instanceof SchemaCompiler.ExtraClosed
                 || expectation instanceof SchemaCompiler.ExtraConstraint) {
-            return switch (check(Fact.of(type), expectation, null).verdict()) {
-                case MATCH -> Tri.PASS;
-                case MISMATCH -> Tri.FAIL;
-                case UNPROVEN -> Tri.UNKNOWN;
-            };
+            return check(Fact.of(type), expectation, null).verdict();
         }
         if (expectation instanceof Expectation.ConditionalField conditionalField) {
             return conditionalFieldOnType(type, conditionalField);
@@ -796,60 +710,47 @@ public final class Checks {
         if (expectation instanceof Expectation.ExactlyOne exactlyOne) {
             return combineOnType(type, exactlyOne.expectations(), CompositeKind.EXACTLY_ONE);
         }
-        if (expectation instanceof Expectation.Unsupported) {
-            return Tri.UNKNOWN;
-        }
-        return Tri.UNKNOWN;
+        return Verdict.UNPROVEN;
     }
 
     /** 条件字段在抽象分区上的判定:确知无此字段的分区满足;有此字段则值须满足;开放尾部未知。 */
-    private static Tri conditionalFieldOnType(Type type, Expectation.ConditionalField conditionalField) {
+    private static Verdict conditionalFieldOnType(Type type, Expectation.ConditionalField conditionalField) {
         if (!(type instanceof Type.RecordType record)) {
-            return type instanceof Type.Unknown ? Tri.UNKNOWN : Tri.FAIL;
+            return type instanceof Type.Unknown ? Verdict.UNPROVEN : Verdict.MISMATCH;
         }
         Type.Field field = record.fields().get(conditionalField.name());
         if (field == null) {
-            return record.extra().isClosed() ? Tri.PASS : Tri.UNKNOWN;
+            return record.extra().isClosed() ? Verdict.MATCH : Verdict.UNPROVEN;
         }
         return evaluateOnType(field.type(), conditionalField.expectation());
     }
 
     /** 分区值集合对 Accept 的判定:数组分区按“逐元素满足”语义——包含看元素,互斥看元素且忽略空数组。 */
-    private static Tri acceptOnType(Type type, Type target) {
-        if (Relations.proveIncluded(type, target) == Relations.Outcome.PROVEN) {
-            return Tri.PASS;
+    private static Verdict acceptOnType(Type type, Type target) {
+        if (Relations.proveIncluded(type, target)) {
+            return Verdict.MATCH;
         }
-        if (Relations.proveDisjoint(type, target) == Relations.Outcome.PROVEN) {
-            return Tri.FAIL;
+        if (Relations.proveDisjoint(type, target)) {
+            return Verdict.MISMATCH;
         }
-        return Tri.UNKNOWN;
+        return Verdict.UNPROVEN;
     }
 
-    private static Tri combine(List<Tri> outcomes, CompositeKind kind) {
-        long pass = outcomes.stream().filter(o -> o == Tri.PASS).count();
-        long fail = outcomes.stream().filter(o -> o == Tri.FAIL).count();
+    private static Verdict combine(List<Verdict> outcomes, CompositeKind kind) {
+        long pass = outcomes.stream().filter(o -> o == Verdict.MATCH).count();
+        long fail = outcomes.stream().filter(o -> o == Verdict.MISMATCH).count();
         return switch (kind) {
-            case ALL_OF -> fail > 0 ? Tri.FAIL : pass == outcomes.size() ? Tri.PASS : Tri.UNKNOWN;
-            case ANY_OF -> pass > 0 ? Tri.PASS : fail == outcomes.size() ? Tri.FAIL : Tri.UNKNOWN;
-            case EXACTLY_ONE -> pass == 1 && fail == outcomes.size() - 1 ? Tri.PASS
-                    : pass >= 2 || fail == outcomes.size() ? Tri.FAIL : Tri.UNKNOWN;
+            case ALL_OF -> fail > 0 ? Verdict.MISMATCH
+                    : pass == outcomes.size() ? Verdict.MATCH : Verdict.UNPROVEN;
+            case ANY_OF -> pass > 0 ? Verdict.MATCH
+                    : fail == outcomes.size() ? Verdict.MISMATCH : Verdict.UNPROVEN;
+            case EXACTLY_ONE -> pass == 1 && fail == outcomes.size() - 1 ? Verdict.MATCH
+                    : pass >= 2 || fail == outcomes.size() ? Verdict.MISMATCH : Verdict.UNPROVEN;
         };
     }
 
-    /** Fact 损失映射为检查原因。 */
-    static Set<Reason> lossesAsReasons(Fact fact) {
-        Set<Reason> reasons = new LinkedHashSet<>();
-        for (Fact.Loss loss : fact.losses()) {
-            reasons.add(switch (loss) {
-                case UNKNOWN_INPUT -> Reason.UNKNOWN_INPUT;
-                case UNSUPPORTED_RULE -> Reason.UNSUPPORTED_RULE;
-                case MISSING_CONTEXT -> Reason.MISSING_CONTEXT;
-                case PRECISION_BUDGET -> Reason.PRECISION_BUDGET;
-                case NO_ELEMENT_EVIDENCE -> Reason.NO_ELEMENT_EVIDENCE;
-                case BLOCKED_BY_ERROR -> Reason.BLOCKED_BY_ERROR;
-                case UNBOUND_TYPE_VARIABLE -> Reason.UNBOUND_TYPE_VARIABLE;
-            });
-        }
-        return reasons;
+    /** Fact 损失直接作为检查原因的可变副本。 */
+    static Set<Fact.Loss> lossesAsReasons(Fact fact) {
+        return new LinkedHashSet<>(fact.losses());
     }
 }

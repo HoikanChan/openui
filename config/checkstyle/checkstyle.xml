@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+    SmartCanvas Checkstyle 配置（verify 阶段强制检查）
+    等效替代 CodeCheckCLI 中的 fixbotengine-java + cMetrics 部分规则。
+    与 lint-config 模板的差异：版权头沿用仓库既有格式；移除不存在的 DelegationAssert；
+    SuppressionFilter 指向 config/checkstyle/suppressions.xml。
+-->
+<module name="Checker">
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="warning"/>
+
+    <!-- 文件末尾换行 -->
+    <module name="NewlineAtEndOfFile"/>
+
+    <!-- 禁止 Tab -->
+    <module name="FileTabCharacter"/>
+
+    <!-- 文件长度（替代 cMetrics huge_non_headerfile=2000） -->
+    <module name="FileLength">
+        <property name="max" value="2000"/>
+    </module>
+
+    <!-- 头文件检查（替代 fixbotengine-java FileHeaderComment），沿用仓库既有版权头格式 -->
+    <module name="RegexpHeader">
+        <property name="header"
+                  value="^/\*$\n^ \* Copyright \(c\) Huawei Technologies Co\., Ltd\. \d{4}(-\d{4})?\. All rights reserved\.$\n^ \*/$"/>
+        <property name="fileExtensions" value="java"/>
+    </module>
+
+    <module name="SuppressionFilter">
+        <property name="file" value="${checkstyle.suppressions.file}"/>
+        <property name="optional" value="true"/>
+    </module>
+
+    <module name="TreeWalker">
+        <!-- ========== 命名规范 ========== -->
+        <module name="ConstantName"/>
+        <module name="LocalFinalVariableName"/>
+        <module name="LocalVariableName"/>
+        <module name="MemberName"/>
+        <module name="MethodName"/>
+        <module name="PackageName"/>
+        <module name="ParameterName"/>
+        <module name="StaticVariableName"/>
+        <module name="TypeName"/>
+
+        <!-- ========== 导入规范 ========== -->
+        <module name="AvoidStarImport"/>
+        <module name="IllegalImport"/>
+        <module name="RedundantImport"/>
+        <module name="UnusedImports"/>
+
+        <!-- ========== 代码块规范（替代 fixbotengine-java 大括号规则） ========== -->
+        <module name="EmptyBlock">
+            <property name="option" value="TEXT"/>
+        </module>
+        <module name="LeftCurly"/>
+        <module name="NeedBraces"/>
+        <module name="RightCurly"/>
+
+        <!-- ========== 代码质量 ========== -->
+        <module name="EmptyStatement"/>
+        <module name="EqualsHashCode"/>
+        <module name="MissingSwitchDefault"/>
+        <module name="SimplifyBooleanExpression"/>
+        <module name="SimplifyBooleanReturn"/>
+        <module name="DefaultComesLast"/>
+        <module name="FallThrough"/>
+
+        <!-- ========== 方法长度（替代 fixbotengine-java IdentifierName maxLength=64） ========== -->
+        <module name="MethodLength">
+            <property name="max" value="150"/>
+            <property name="countEmpty" value="false"/>
+        </module>
+
+        <!-- ========== 参数数量 ========== -->
+        <module name="ParameterNumber">
+            <property name="max" value="7"/>
+        </module>
+
+        <!-- ========== 圈复杂度（替代 cMetrics huge_cyclomatic_complexity=20，这里设更严格的15） ========== -->
+        <module name="CyclomaticComplexity">
+            <property name="max" value="15"/>
+        </module>
+
+        <!-- ========== 类数据抽象耦合 ========== -->
+        <module name="ClassDataAbstractionCoupling">
+            <property name="max" value="20"/>
+        </module>
+
+        <!-- ========== 魔法值 ========== -->
+        <module name="MagicNumber">
+            <property name="ignoreNumbers" value="-1, 0, 1, 2"/>
+            <property name="ignoreAnnotation" value="true"/>
+        </module>
+
+        <!-- ========== 最终化 ========== -->
+        <module name="FinalLocalVariable">
+            <property name="validateEnhancedForLoopVariable" value="true"/>
+        </module>
+    </module>
+</module>

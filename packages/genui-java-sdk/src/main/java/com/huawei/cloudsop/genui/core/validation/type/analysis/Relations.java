@@ -15,27 +15,24 @@ public final class Relations {
     private Relations() {
     }
 
-    /** 关系结果;证明失败不区分“确有不兼容”与“精度不足”,由检查层结合证据定夺。 */
-    public enum Outcome {
-        PROVEN,
-        NOT_PROVEN
-    }
-
     /**
      * 证明 A 的全部可能值都被 B 接受(γ(A) ⊆ γ(B))。
+     *
+     * <p>
+     * 证明失败不区分“确有不兼容”与“精度不足”,由检查层结合证据定夺。
      *
      * <p>
      * 规则要点:Unknown 只被 Unknown 接受;Never 被任何类型接受;StringLiterals ⊆ string 标量;字面值集合按子集
      * 判定;联合要求源联合全部分支被目标接受、目标联合允许任一分支;RecordType 按字段与额外约束结构判定;
      * Component 按名义;Template 只接受 Template。
      */
-    public static Outcome proveIncluded(Type source, Type target) {
-        return included(source, target) ? Outcome.PROVEN : Outcome.NOT_PROVEN;
+    public static boolean proveIncluded(Type source, Type target) {
+        return included(source, target);
     }
 
     /** 证明两者没有共同值(用于“全部不兼容”证据)。 */
-    public static Outcome proveDisjoint(Type left, Type right) {
-        return disjoint(left, right) ? Outcome.PROVEN : Outcome.NOT_PROVEN;
+    public static boolean proveDisjoint(Type left, Type right) {
+        return disjoint(left, right);
     }
 
     private static boolean included(Type source, Type target) {

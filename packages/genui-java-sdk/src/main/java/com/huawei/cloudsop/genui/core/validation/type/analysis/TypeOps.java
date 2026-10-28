@@ -48,41 +48,34 @@ public final class TypeOps {
         Set<Fact.Evidence> evidence = new LinkedHashSet<>();
         Set<Fact.Loss> losses = new LinkedHashSet<>(object.losses());
         boolean definitelyMissing = true;
-        boolean possiblyPresent = false;
         for (Type branch : branches) {
             if (!(branch instanceof Type.RecordType record)) {
                 losses.add(Fact.Loss.UNKNOWN_INPUT);
                 results.add(Type.Unknown.INSTANCE);
                 definitelyMissing = false;
-                possiblyPresent = true;
                 continue;
             }
             Type.Field field = record.fields().get(name);
             if (field != null) {
                 definitelyMissing = false;
-                possiblyPresent = true;
                 results.add(field.type());
                 continue;
             }
             if (!record.extra().isClosed()) {
                 definitelyMissing = false;
-                possiblyPresent = true;
                 results.add(record.extra().valueType());
             }
         }
         for (Fact.Evidence item : object.evidence()) {
             if (item instanceof Fact.Evidence.ObservedValue observed && observed.value() instanceof Map<?, ?> row
                     && row.containsKey(name)) {
-                evidence.add(new Fact.Evidence.ObservedValue(null, SnapshotFacts.deepFreeze(row.get(name))));
+                evidence.add(new Fact.Evidence.ObservedValue(null, row.get(name)));
             }
         }
         if (definitelyMissing) {
             return new Fact(Type.Never.INSTANCE, Set.of(), losses, object.upstreamErrors());
         }
-        if (!possiblyPresent) {
-            losses.add(Fact.Loss.UNKNOWN_INPUT);
-        }
-        return new Fact(unionWithinBudget(results, object), evidence, losses, object.upstreamErrors());
+        return new Fact(unionWithinBudget(results, losses), evidence, losses, object.upstreamErrors());
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -122,7 +115,7 @@ public final class TypeOps {
                 return new Fact(Type.Unknown.INSTANCE, Set.of(), losses, Set.of());
             }
         }
-        return new Fact(unionWithinBudget(results, null), Set.of(), losses, Set.of());
+        return new Fact(unionWithinBudget(results, losses), Set.of(), losses, Set.of());
     }
 
     private Type overlayCombination(List<Type> combination, Set<Fact.Loss> losses) {
@@ -218,7 +211,7 @@ public final class TypeOps {
             }
             results.add(projectRecord(record, projection));
         }
-        return new Fact(unionWithinBudget(results, object), Set.of(), losses, object.upstreamErrors());
+        return new Fact(unionWithinBudget(results, losses), Set.of(), losses, object.upstreamErrors());
     }
 
     private Type projectRecord(Type.RecordType record, Projection projection) {
@@ -376,7 +369,7 @@ public final class TypeOps {
         List<Object> observedElements = new ArrayList<>();
         for (Fact.Evidence item : body.evidence()) {
             if (item instanceof Fact.Evidence.ObservedValue observed) {
-                observedElements.add(SnapshotFacts.deepFreeze(observed.value()));
+                observedElements.add(observed.value());
             }
         }
         if (inputProvablyNonempty && !observedElements.isEmpty()) {
@@ -418,7 +411,7 @@ public final class TypeOps {
                 results.add(Types.scalar(Type.ScalarKind.STRING));
             }
         }
-        return new Fact(unionWithinBudget(results, input), Set.of(), losses, input.upstreamErrors());
+        return new Fact(unionWithinBudget(results, losses), Set.of(), losses, input.upstreamErrors());
     }
 
     /**
@@ -504,7 +497,7 @@ public final class TypeOps {
             }
             results.add(Types.union(fieldTypes));
         }
-        return new Fact(unionWithinBudget(results, object), Set.of(), losses, object.upstreamErrors());
+        return new Fact(unionWithinBudget(results, losses), Set.of(), losses, object.upstreamErrors());
     }
 
     /**
@@ -561,7 +554,7 @@ public final class TypeOps {
             Type element = Types.union(sequenceBranches.stream().map(s -> ((Type.Sequence) s).element()).toList());
             results.add(Types.sequence(element, min, unbounded ? Type.Sequence.UNBOUNDED : max));
         }
-        return new Fact(unionWithinBudget(results, sequence), Set.of(), losses, sequence.upstreamErrors());
+        return new Fact(unionWithinBudget(results, losses), Set.of(), losses, sequence.upstreamErrors());
     }
 
     private static long safeMultiply(long left, long right) {
@@ -602,13 +595,9 @@ public final class TypeOps {
         return acc;
     }
 
-    /** 联合并在预算超限时改用安全摘要(Unknown + PRECISION_BUDGET),不制造通过或错误证据。 */
-    private Type unionWithinBudget(List<Type> alternatives, Fact source) {
+    /** 联合并在预算超限时改用安全摘要(Unknown + PRECISION_BUDGET),损失并入调用方事实。 */
+    private Type unionWithinBudget(List<Type> alternatives, Set<Fact.Loss> losses) {
         if (!budget.unionBranchesWithinBudget(alternatives.size())) {
-            Set<Fact.Loss> losses = new LinkedHashSet<>();
-            if (source != null) {
-                losses.addAll(source.losses());
-            }
             losses.add(Fact.Loss.PRECISION_BUDGET);
             return Type.Unknown.INSTANCE;
         }

@@ -105,15 +105,11 @@ generator aborts further incremental repair rounds early instead of exhausting
 
 ### D8 — Unreached (dead-code) statements do not block FINAL validation
 
-Semantic validation (`ProgramTypeValidator`) only type-checks statements
-reachable from `root`. Unreached helper statements (`ProgramAnalysis.orphaned()`)
-left behind after an incremental repair splice (for example, an orphaned
-`grouped = @GroupBy(...)` whose reference was removed from `root`) have zero
-effect on frontend rendering and must **not** trigger validation failure or
-extra repair rounds. Instead, `repair-bench` records reachable
-(`remainingCapabilityGapAliases`) and unreached
-(`unreachedCapabilityGapAliases`) capability-gap alias calls separately for
-observability.
+Type validation only checks statements reachable from `root`. Unreached helper
+statements left behind after an incremental repair splice do not affect frontend
+rendering and must not trigger validation failure or extra repair rounds.
+Repair bench derives the reachable statement set from the entry statement's
+references and reports capability-gap aliases only from reachable statements.
 
 ## Consequences
 
@@ -122,6 +118,6 @@ observability.
   `capabilityNotice = TextCallout(...)` snippet across `PromptAssembler`,
   `RepairHints`, and `RepairPromptBuilder`.
 - `repair-bench` reports per-case `capabilityNoticePresent`,
-  `remainingCapabilityGapAliases`, `unreachedCapabilityGapAliases`, and
+  `remainingCapabilityGapAliases` and
   `consecutiveUnmatchedUnknownComponents`, plus a top-level
   `summary.capabilityBoundary` aggregate.

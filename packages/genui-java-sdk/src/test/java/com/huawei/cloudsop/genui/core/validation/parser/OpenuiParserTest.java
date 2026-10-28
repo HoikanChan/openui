@@ -20,7 +20,7 @@ class OpenuiParserTest {
         Statement.Value v = assertInstanceOf(Statement.Value.class, p.statements().get(0));
         assertEquals("root", v.id());
         assertInstanceOf(AstNode.Comp.class, v.expr());
-        assertTrue(p.isClean());
+        assertTrue(p.diagnostics().isEmpty());
     }
 
     @Test
@@ -35,7 +35,7 @@ class OpenuiParserTest {
         Program p = OpenuiParser.parse("metrics = Query(\"get_metrics\", {})");
         Statement.Query q = assertInstanceOf(Statement.Query.class, p.statements().get(0));
         assertEquals("metrics", q.id());
-        assertEquals("Query", q.call().callee());
+        assertEquals("Query", assertInstanceOf(AstNode.Comp.class, q.expr()).name());
     }
 
     @Test
@@ -43,7 +43,7 @@ class OpenuiParserTest {
         Program p = OpenuiParser.parse("save = Mutation(\"create\", {})");
         Statement.Mutation m = assertInstanceOf(Statement.Mutation.class, p.statements().get(0));
         assertEquals("save", m.id());
-        assertEquals("Mutation", m.call().callee());
+        assertEquals("Mutation", assertInstanceOf(AstNode.Comp.class, m.expr()).name());
     }
 
     @Test

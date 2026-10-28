@@ -1,7 +1,6 @@
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -123,7 +122,7 @@ public final class SchemaCompiler {
 
     private static List<Expectation> compileObject(Map<String, Object> schema, String schemaPath) {
         List<Expectation> requirements = new ArrayList<>();
-        requirements.add(new Expectation.Accept(openRecord()));
+        requirements.add(new Expectation.Accept(Types.openRecord()));
         Object properties = schema.get("properties");
         if (properties instanceof Map<?, ?> propertyMap) {
             for (Map.Entry<?, ?> entry : propertyMap.entrySet()) {
@@ -144,17 +143,10 @@ public final class SchemaCompiler {
         if (required instanceof List<?> names) {
             for (Object name : names) {
                 String fieldName = String.valueOf(name);
-                // required 字段未出现在 properties 时,建立必有且值不受限的要求。
-                Expectation nested = null;
-                if (properties instanceof Map<?, ?> propertyMap
-                        && propertyMap.get(fieldName) instanceof Map<?, ?> fieldSchema) {
-                    @SuppressWarnings("unchecked")
-                    Expectation compiled = compile((Map<String, Object>) fieldSchema,
-                            schemaPath + "/properties/" + fieldName);
-                    nested = compiled;
-                }
+                // 值要求已由 properties 的 ConditionalField 覆盖(含属性 schema 非对象时的 Unsupported);
+                // required 只补充字段存在性,不重复编译同一属性 schema。
                 requirements.add(new Expectation.RequireField(fieldName,
-                        nested == null ? new Expectation.Accept(Type.Unknown.INSTANCE) : nested));
+                        new Expectation.Accept(Type.Unknown.INSTANCE)));
             }
         }
         Object additional = schema.get("additionalProperties");
@@ -174,20 +166,12 @@ public final class SchemaCompiler {
         public ExtraClosed {
             declaredFields = java.util.Set.copyOf(declaredFields);
         }
-
-        public ExtraClosed(String schemaPath) {
-            this(schemaPath, java.util.Set.of());
-        }
     }
 
     /** 额外字段受约束要求(内部标记)。 */
     public record ExtraConstraint(Expectation expectation, java.util.Set<String> declaredFields) implements Expectation {
         public ExtraConstraint {
             declaredFields = java.util.Set.copyOf(declaredFields);
-        }
-
-        public ExtraConstraint(Expectation expectation) {
-            this(expectation, java.util.Set.of());
         }
     }
 
@@ -197,21 +181,6 @@ public final class SchemaCompiler {
             properties.keySet().forEach(key -> names.add(String.valueOf(key)));
         }
         return names;
-    }
-
-    private static Type openRecord() {
-        return Types.record(Map.of(), Type.Extra.open(Type.Unknown.INSTANCE));
-    }
-
-    /** 若要求可完整表达为值类型则返回之;含复合/谓词/Unsupported 时返回 null。 */
-    static Type expectationAsType(Expectation expectation) {
-        if (expectation instanceof Expectation.Accept accept) {
-            return accept.type();
-        }
-        if (expectation instanceof Expectation.EnumValues enumValues) {
-            return Types.stringLiterals(enumValues.values());
-        }
-        return null;
     }
 
 }

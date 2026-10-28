@@ -44,8 +44,8 @@ import java.util.Set;
  * 是组件、裸标识符是语句引用）、契约和语句位置判断，而不是照搬旧错误标签。
  *
  * <p>
- * <b>数据诚实的边界。</b>{@code dataContext} 由调用方原样传入（结构、样本与规模）；本类不解析、不补全、不推断。提示词明确
- * 要求模型不得把样本当全量、不得编造函数/数据/统计；数据不足以支撑时，渲染真实已知数据并在页面说明限制。
+ * <b>数据诚实的边界。</b>原始 system prompt 包含数据上下文；本类不解析、不补全、不推断。提示词要求模型不得把样本当全量，
+ * 数据不足以支撑时，渲染真实已知数据并在页面说明限制。
  *
  * <p>
  * 纯函数、无副作用；消息文本由单元测试固定断言必要片段。
@@ -83,27 +83,7 @@ public final class RepairPromptBuilder {
      */
     public static List<ChatMessage> build(String originalSystemPrompt, String originalUserMessage,
             GenerationContract contract, RoundEndResult current) {
-        return build(originalSystemPrompt, originalUserMessage, contract, current, List.of(), null);
-    }
-
-    /**
-     * 带历史轮次、但不带调用方数据描述的便捷入口。
-     *
-     * @param originalSystemPrompt
-     *            初次生成请求使用的完整 system prompt，可为 {@code null}
-     * @param originalUserMessage
-     *            原始用户需求，可为 {@code null}
-     * @param contract
-     *            当前生效的完整合并契约，可为 {@code null}
-     * @param current
-     *            本轮轮末结果
-     * @param history
-     *            早前轮次记录，可为 {@code null}
-     * @return 系统消息 + 用户消息组成的对话消息列表
-     */
-    public static List<ChatMessage> build(String originalSystemPrompt, String originalUserMessage,
-            GenerationContract contract, RoundEndResult current, List<RoundEndResult> history) {
-        return build(originalSystemPrompt, originalUserMessage, contract, current, history, null);
+        return build(originalSystemPrompt, originalUserMessage, contract, current, List.of());
     }
 
     /**
@@ -119,12 +99,10 @@ public final class RepairPromptBuilder {
      *            本轮轮末结果；不可为 {@code null}
      * @param history
      *            早前轮次记录；{@code null} 视同空列表，只用于原始输出/检查摘要，不覆盖当前状态
-     * @param dataContext
-     *            兼容旧调用保留；数据上下文已包含在原始 system prompt 中，此参数不再重复插入
      * @return 系统消息 + 用户消息组成的对话消息列表
      */
     public static List<ChatMessage> build(String originalSystemPrompt, String originalUserMessage,
-            GenerationContract contract, RoundEndResult current, List<RoundEndResult> history, String dataContext) {
+            GenerationContract contract, RoundEndResult current, List<RoundEndResult> history) {
         Objects.requireNonNull(current, "current");
 
         List<ValidationIssue> latestIssues = latestActionableIssues(current);
@@ -143,7 +121,7 @@ public final class RepairPromptBuilder {
         model.put("capabilityBoundary", capabilityBoundary);
 
 
-        model.putAll(RepairGuidance.forIssues(latestIssues));
+        model.putAll(RepairGuidance.forActionableIssues(latestIssues));
         model.put("originalRequest", stripped(originalUserMessage));
         model.put("currentProgram", currentProgram);
         boolean syntaxFailure = latestIssues.stream().anyMatch(issue -> "syntax".equals(issue.source())

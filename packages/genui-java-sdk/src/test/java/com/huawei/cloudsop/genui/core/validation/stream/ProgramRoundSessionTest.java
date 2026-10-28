@@ -14,7 +14,6 @@ import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
@@ -150,7 +149,7 @@ class ProgramRoundSessionTest {
         ProgramRoundSession s = new ProgramRoundSession(request -> {
             captured.set(request);
             return ValidationResult.valid(request.dsl(), List.of(),
-                    new com.huawei.cloudsop.genui.core.validation.ValidationMetadata(1, "root", request.mode(), null));
+                    new com.huawei.cloudsop.genui.core.validation.ValidationMetadata(1, "root", null));
         }, baseContract(), "Stack", Set.of("data"), Map.of("name", "dev"));
         s.onDelta("root = Stack([])\n");
         s.onRoundEnd();
@@ -158,7 +157,6 @@ class ProgramRoundSessionTest {
         ValidationRequest request = captured.get();
         assertNotNull(request, "轮末必须执行一次校验");
         assertEquals("root = Stack([])", request.dsl(), "校验对象是当前有效定义");
-        assertEquals(ValidationMode.FINAL, request.mode(), "轮末统一校验为 FINAL");
         assertEquals(Map.of("name", "dev"), request.dataModel(), "完整 Render Data Model 透传");
         assertTrue(request.externalRefs().contains("data"));
     }

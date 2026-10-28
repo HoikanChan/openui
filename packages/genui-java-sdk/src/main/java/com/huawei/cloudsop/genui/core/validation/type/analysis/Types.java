@@ -1,7 +1,6 @@
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,16 +25,6 @@ import java.util.Set;
 public final class Types {
 
     private Types() {
-    }
-
-    /** 全类型单例。 */
-    public static Type unknown() {
-        return Type.Unknown.INSTANCE;
-    }
-
-    /** 底类型单例。 */
-    public static Type never() {
-        return Type.Never.INSTANCE;
     }
 
     /** 基础标量。 */
@@ -77,6 +66,11 @@ public final class Types {
     public static Type record(Map<String, Type.Field> fields, Type.Extra extra) {
         return new Type.RecordType(fields == null ? Map.of() : fields,
                 extra == null ? Type.Extra.closed() : extra);
+    }
+
+    /** 开放结构对象:无已声明字段,额外字段任意。 */
+    public static Type openRecord() {
+        return record(Map.of(), Type.Extra.open(Type.Unknown.INSTANCE));
     }
 
     /**
@@ -126,30 +120,60 @@ public final class Types {
         return union(List.of(left, right));
     }
 
-    /** 稳定结构键,用于联合去重与排序;与 {@code equals} 一致。 */
+    /**
+     * 稳定结构键,用于联合去重与排序;与 {@code equals} 一致。字符串与容器元素均带长度前缀编码,
+     * 值内部的分隔符(逗号、竖线、冒号等)不会改变键的结构,避免不同分支生成相同键而被误去重。
+     */
     static String structuralKey(Type type) {
-        return switch (type) {
-            case Type.Never ignored -> "0:never";
-            case Type.Unknown ignored -> "1:unknown";
-            case Type.Scalar scalar -> "2:scalar:" + scalar.kind().name();
-            case Type.StringLiterals literals -> "3:literals:" + String.join(",", new java.util.TreeSet<>(literals.values()));
-            case Type.Sequence sequence -> "4:seq:" + structuralKey(sequence.element()) + ":" + sequence.minLength()
-                    + ":" + sequence.maxLength();
-            case Type.RecordType record -> "5:record:" + recordKey(record);
-            case Type.Union union -> "6:union:" + union.alternatives().stream().map(Types::structuralKey)
-                    .reduce((a, b) -> a + "|" + b).orElse("");
-            case Type.Component component -> "7:component:" + component.name();
-            case Type.Template ignored -> "8:template";
-        };
+        StringBuilder key = new StringBuilder();
+        appendStructuralKey(key, type);
+        return key.toString();
     }
 
-    private static String recordKey(Type.RecordType record) {
-        StringBuilder key = new StringBuilder();
-        record.fields().entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> key.append(entry.getKey())
-                .append(entry.getValue().presence() == Type.Presence.REQUIRED ? '!' : '?')
-                .append(structuralKey(entry.getValue().type())).append(';'));
-        key.append(record.extra().isClosed() ? "#closed" : "#open:" + structuralKey(record.extra().valueType()));
-        return key.toString();
+    private static void appendStructuralKey(StringBuilder key, Type type) {
+        switch (type) {
+            case Type.Never ignored -> key.append("0;");
+            case Type.Unknown ignored -> key.append("1;");
+            case Type.Scalar scalar -> appendText(key.append("2;"), scalar.kind().name());
+            case Type.StringLiterals literals -> {
+                List<String> values = new ArrayList<>(literals.values());
+                values.sort(String::compareTo);
+                key.append("3;").append(values.size()).append(';');
+                values.forEach(value -> appendText(key, value));
+            }
+            case Type.Sequence sequence -> {
+                key.append("4;");
+                appendStructuralKey(key, sequence.element());
+                key.append(sequence.minLength()).append(';').append(sequence.maxLength()).append(';');
+            }
+            case Type.RecordType record -> {
+                key.append("5;");
+                List<Map.Entry<String, Type.Field>> fields = new ArrayList<>(record.fields().entrySet());
+                fields.sort(Map.Entry.comparingByKey());
+                key.append(fields.size()).append(';');
+                for (Map.Entry<String, Type.Field> entry : fields) {
+                    appendText(key, entry.getKey());
+                    key.append(entry.getValue().presence() == Type.Presence.REQUIRED ? '!' : '?');
+                    appendStructuralKey(key, entry.getValue().type());
+                }
+                if (record.extra().isClosed()) {
+                    key.append("c;");
+                } else {
+                    key.append("o;");
+                    appendStructuralKey(key, record.extra().valueType());
+                }
+            }
+            case Type.Union union -> {
+                key.append("6;").append(union.alternatives().size()).append(';');
+                union.alternatives().forEach(alternative -> appendStructuralKey(key, alternative));
+            }
+            case Type.Component component -> appendText(key.append("7;"), component.name());
+            case Type.Template ignored -> key.append("8;");
+        }
+    }
+
+    private static void appendText(StringBuilder key, String text) {
+        key.append(text.length()).append(':').append(text);
     }
 
     private static boolean isStringScalar(Type type) {

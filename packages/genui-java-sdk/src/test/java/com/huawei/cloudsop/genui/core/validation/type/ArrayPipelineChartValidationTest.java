@@ -12,7 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -323,7 +322,7 @@ class ArrayPipelineChartValidationTest {
     private static ValidationResult validate(String dsl, Map<String, Object> dataModel) {
         return DefaultOpenuiLangValidator.INSTANCE
                 .validate(ValidationRequest.builder().dsl(dsl).contract(GenerationContractLoader.loadDefault())
-                        .dataModel(dataModel).mode(ValidationMode.FINAL).build());
+                        .dataModel(dataModel).build());
     }
 
     /** 构造允许显式 null 的行。 */

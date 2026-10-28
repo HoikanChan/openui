@@ -4,18 +4,15 @@
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
 
-import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
-import com.huawei.cloudsop.genui.core.validation.parser.Builtins;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
 import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.parser.Statement;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.LinkedHashMap;
@@ -78,12 +75,8 @@ public final class StatementRelations {
             }
             Set<String> upstream = reachable(id, dependencies);
             Set<String> downstream = reachable(id, dependents);
-            ArrayList<String> related = new ArrayList<>(upstream);
-            for (String down : downstream) {
-                if (!related.contains(down)) {
-                    related.add(down);
-                }
-            }
+            LinkedHashSet<String> related = new LinkedHashSet<>(upstream);
+            related.addAll(downstream);
             result.put(id, List.copyOf(related));
         }
         return Collections.unmodifiableMap(result);
@@ -105,9 +98,10 @@ public final class StatementRelations {
                 : statements.entrySet().stream()
                         .filter(e -> e.getValue() instanceof Statement.Value value
                                 && value.expr() instanceof AstNode.Comp comp && !builtins.isBuiltin(comp.name())
-                                && !Builtins.isReservedCall(comp.name()))
+                                && !BuiltinCatalog.isReservedCall(comp.name()))
                         .map(Map.Entry::getKey).findFirst().orElse(statements.keySet().iterator().next());
         visit(new ScopedStatement(entry, Set.of()), statements, builtins, dependencies);
+
         for (String id : statements.keySet()) {
             if (dependencies.keySet().stream().noneMatch(key -> key.id().equals(id))) {
                 visit(new ScopedStatement(id, Set.of()), statements, builtins, dependencies);
@@ -123,120 +117,15 @@ public final class StatementRelations {
         }
         LinkedHashSet<ScopedStatement> refs = new LinkedHashSet<>();
         dependencies.put(statement, refs);
-        Deque<Set<String>> scopeFrames = new ArrayDeque<>();
-        scopeFrames.push(statement.bindings());
-        collectRefs(expressionOf(statements.get(statement.id())), statements.keySet(), builtins, scopeFrames, refs);
+        AstReferenceWalker.walkDependencies(statements.get(statement.id()).expr(), builtins, statement.bindings(),
+                (name, scope) -> {
+                    if (statements.containsKey(name)) {
+                        refs.add(new ScopedStatement(name, scope));
+                    }
+                });
         for (ScopedStatement ref : refs) {
             visit(ref, statements, builtins, dependencies);
         }
-    }
-
-    private static void collectRefs(AstNode node, Set<String> knownIds, BuiltinCatalog builtins,
-            Deque<Set<String>> scopeFrames, Set<ScopedStatement> refs) {
-        if (node == null) {
-            return;
-        }
-        if (node instanceof AstNode.Ref ref) {
-            if (!inScope(ref.n(), scopeFrames) && knownIds.contains(ref.n())) {
-                LinkedHashSet<String> bindings = new LinkedHashSet<>();
-                scopeFrames.forEach(bindings::addAll);
-                refs.add(new ScopedStatement(ref.n(), bindings));
-            }
-            return;
-        }
-        if (node instanceof AstNode.Comp comp) {
-            List<Integer> binderIndexes = LazyBuiltinBinders.binderIndexes(comp, builtins);
-            if (!binderIndexes.isEmpty()) {
-                BuiltinSpec spec = builtins.spec(comp.name());
-                Set<String> binders = new LinkedHashSet<>();
-                boolean valid = true;
-                for (int index : binderIndexes) {
-                    String binder = LazyBuiltinBinders.binderName(spec, comp, index);
-                    if (binder == null) {
-                        valid = false;
-                        break;
-                    }
-                    binders.add(binder);
-                }
-                if (valid) {
-                    // binder 只作用于 body(#77 §10.1):body 恒为最后一个实参,其余实参在外层作用域收集依赖。
-                    int bodyIndex = LazyBuiltinBinders.bodyIndex(spec, comp);
-                    for (int i = 0; i < comp.args().size(); i++) {
-                        if (i != bodyIndex && !binderIndexes.contains(i)) {
-                            collectRefs(comp.args().get(i), knownIds, builtins, scopeFrames, refs);
-                        }
-                    }
-                    scopeFrames.push(binders);
-                    try {
-                        collectRefs(comp.args().get(bodyIndex), knownIds, builtins, scopeFrames, refs);
-                    } finally {
-                        scopeFrames.pop();
-                    }
-                    comp.mappedProps().values()
-                            .forEach(value -> collectRefs(value, knownIds, builtins, scopeFrames, refs));
-                    return;
-                }
-            }
-            for (AstNode arg : comp.args()) {
-                collectRefs(arg, knownIds, builtins, scopeFrames, refs);
-            }
-            comp.mappedProps().values().forEach(value -> collectRefs(value, knownIds, builtins, scopeFrames, refs));
-            return;
-        }
-        if (node instanceof AstNode.Arr arr) {
-            arr.els().forEach(element -> collectRefs(element, knownIds, builtins, scopeFrames, refs));
-            return;
-        }
-        if (node instanceof AstNode.Obj obj) {
-            obj.entries().forEach(e -> collectRefs(e.value(), knownIds, builtins, scopeFrames, refs));
-            return;
-        }
-        if (node instanceof AstNode.BinOp op) {
-            collectRefs(op.left(), knownIds, builtins, scopeFrames, refs);
-            collectRefs(op.right(), knownIds, builtins, scopeFrames, refs);
-            return;
-        }
-        if (node instanceof AstNode.UnaryOp op) {
-            collectRefs(op.operand(), knownIds, builtins, scopeFrames, refs);
-            return;
-        }
-        if (node instanceof AstNode.Ternary ternary) {
-            collectRefs(ternary.cond(), knownIds, builtins, scopeFrames, refs);
-            collectRefs(ternary.then(), knownIds, builtins, scopeFrames, refs);
-            collectRefs(ternary.otherwise(), knownIds, builtins, scopeFrames, refs);
-            return;
-        }
-        if (node instanceof AstNode.Member member) {
-            collectRefs(member.obj(), knownIds, builtins, scopeFrames, refs);
-            return;
-        }
-        if (node instanceof AstNode.Index index) {
-            collectRefs(index.obj(), knownIds, builtins, scopeFrames, refs);
-            collectRefs(index.index(), knownIds, builtins, scopeFrames, refs);
-            return;
-        }
-        if (node instanceof AstNode.Assign assign) {
-            collectRefs(assign.value(), knownIds, builtins, scopeFrames, refs);
-        }
-        // Str/Num/Bool/Null/Ph/StateRef/RuntimeRef carry no statement dependency.
-    }
-
-    private static boolean inScope(String name, Deque<Set<String>> scopeFrames) {
-        for (Set<String> frame : scopeFrames) {
-            if (frame.contains(name)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static AstNode expressionOf(Statement statement) {
-        return switch (statement) {
-            case Statement.Value value -> value.expr();
-            case Statement.State state -> state.init();
-            case Statement.Query query -> query.expr();
-            case Statement.Mutation mutation -> mutation.expr();
-        };
     }
 
     private static Set<String> reachable(String start, Map<ScopedStatement, Set<ScopedStatement>> edges) {

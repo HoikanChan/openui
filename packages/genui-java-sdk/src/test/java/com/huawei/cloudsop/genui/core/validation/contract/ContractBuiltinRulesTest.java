@@ -14,7 +14,6 @@ import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -236,7 +235,7 @@ class ContractBuiltinRulesTest {
 
     private static ValidationResult validate(GenerationContract contract, String dsl, Map<String, Object> dataModel) {
         return DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder().dsl(dsl).contract(contract)
-                .dataModel(dataModel).mode(ValidationMode.FINAL).build());
+                .dataModel(dataModel).build());
     }
 
     private static boolean hasCode(ValidationResult result, String code) {

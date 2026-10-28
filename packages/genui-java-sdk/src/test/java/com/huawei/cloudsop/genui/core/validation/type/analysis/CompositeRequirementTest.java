@@ -63,8 +63,7 @@ class CompositeRequirementTest {
         assertEquals(Checks.Verdict.UNPROVEN, Checks.check(budgeted, requirement, "value").verdict());
         Checks.CheckResult blockedResult = Checks.check(blocked, requirement, "value");
         assertEquals(Checks.Verdict.UNPROVEN, blockedResult.verdict());
-        assertEquals(java.util.Set.of(Checks.Reason.BLOCKED_BY_ERROR), blockedResult.reasons());
-        assertEquals(java.util.Set.of("data.items"), blockedResult.upstreamErrors());
+        assertEquals(java.util.Set.of(Fact.Loss.BLOCKED_BY_ERROR), blockedResult.reasons());
         Expectation text = SchemaCompiler.compileParam(Map.of("type", "number"), "/text");
         assertEquals(Checks.Verdict.MATCH, Checks.check(Fact.of(number()), text, "value").verdict());
         assertEquals(Checks.Verdict.MISMATCH, Checks.check(Fact.of(Types.union(List.of(number(), boolean_())))
@@ -166,7 +165,7 @@ class CompositeRequirementTest {
         Checks.CheckResult result = Checks.check(Fact.of(number()), new Expectation.Unsupported("/rules", "minLength"),
                 null);
         assertEquals(Checks.Verdict.UNPROVEN, result.verdict());
-        assertTrue(result.reasons().contains(Checks.Reason.UNSUPPORTED_RULE));
+        assertTrue(result.reasons().contains(Fact.Loss.UNSUPPORTED_RULE));
     }
 
     @Test

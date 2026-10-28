@@ -15,7 +15,6 @@ import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssueReducer;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
 import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
@@ -61,10 +60,9 @@ class SemanticValidationTest {
                 .from(new GenerationContract("v1", "Header", comps, List.of(), List.of(), List.of(), List.of()));
     }
 
-    private static ProgramAnalysis analyze(String dsl, ValidationMode mode) {
-        ParseMode pm = mode == ValidationMode.FINAL ? ParseMode.FINAL : ParseMode.STREAMING;
-        Program program = OpenuiParser.parse(dsl, pm);
-        return new ProgramAnalyzer(catalog()).analyze(program, mode);
+    private static ProgramAnalysis analyze(String dsl) {
+        Program program = OpenuiParser.parse(dsl, ParseMode.FINAL);
+        return new ProgramAnalyzer(catalog()).analyze(program, null, Set.of());
     }
 
     private static ValidationIssue issue(ProgramAnalysis a, String code) {
@@ -75,7 +73,7 @@ class SemanticValidationTest {
 
     @Test
     void unknownComponent() {
-        ProgramAnalysis a = analyze("root = Bogus(\"x\")", ValidationMode.FINAL);
+        ProgramAnalysis a = analyze("root = Bogus(\"x\")");
         ValidationIssue i = issue(a, "unknown-component");
         assertNotNull(i, "expected unknown-component issue");
         assertEquals("Bogus", i.component());
@@ -86,7 +84,7 @@ class SemanticValidationTest {
 
     @Test
     void missingRequired() {
-        ProgramAnalysis a = analyze("root = Header()", ValidationMode.FINAL);
+        ProgramAnalysis a = analyze("root = Header()");
         ValidationIssue i = issue(a, "missing-required");
         assertNotNull(i, "expected missing-required issue");
         assertEquals("Header", i.component());
@@ -97,7 +95,7 @@ class SemanticValidationTest {
 
     @Test
     void nullRequired() {
-        ProgramAnalysis a = analyze("root = Header(null)", ValidationMode.FINAL);
+        ProgramAnalysis a = analyze("root = Header(null)");
         ValidationIssue i = issue(a, "null-required");
         assertNotNull(i, "expected null-required issue");
         assertEquals("Header", i.component());
@@ -107,7 +105,7 @@ class SemanticValidationTest {
 
     @Test
     void colOptionsFormatRemoved() {
-        ProgramAnalysis a = analyze("root = Col(\"Name\", \"name\", { format: \"date\" })", ValidationMode.FINAL);
+        ProgramAnalysis a = analyze("root = Col(\"Name\", \"name\", { format: \"date\" })");
         ValidationIssue i = issue(a, "invalid-prop");
         assertNotNull(i, "expected invalid-prop issue");
         assertEquals("Col", i.component());
@@ -117,7 +115,7 @@ class SemanticValidationTest {
 
     @Test
     void excessArgs() {
-        ProgramAnalysis a = analyze("root = Header(\"Title\", \"Sub\", \"Extra\")", ValidationMode.FINAL);
+        ProgramAnalysis a = analyze("root = Header(\"Title\", \"Sub\", \"Extra\")");
         ValidationIssue i = issue(a, "excess-args");
         assertNotNull(i, "expected excess-args issue");
         assertEquals("Header", i.component());
@@ -128,7 +126,7 @@ class SemanticValidationTest {
     @Test
     void rootMissingFinal() {
         // Only a $state statement — no renderable component.
-        ProgramAnalysis a = analyze("$count = 0", ValidationMode.FINAL);
+        ProgramAnalysis a = analyze("$count = 0");
         ValidationIssue i = issue(a, "root-not-renderable");
         ValidationIssue m = issue(a, "root-missing");
         assertTrue(i != null || m != null, "expected a root structural issue");
@@ -138,7 +136,7 @@ class SemanticValidationTest {
     @Test
     void emptyProgramRootMissingFinal() {
         Program program = OpenuiParser.parse("", ParseMode.FINAL);
-        ProgramAnalysis a = new ProgramAnalyzer(catalog()).analyze(program, ValidationMode.FINAL);
+        ProgramAnalysis a = new ProgramAnalyzer(catalog()).analyze(program, null, Set.of());
         ValidationIssue i = issue(a, "root-missing");
         assertNotNull(i, "expected root-missing on empty program");
         assertEquals(ValidationSeverity.ERROR, i.severity());
@@ -146,7 +144,7 @@ class SemanticValidationTest {
 
     @Test
     void finalUnresolvedRefIsBlocking() {
-        ProgramAnalysis a = analyze("root = Header(\"Hi\", missingRef)", ValidationMode.FINAL);
+        ProgramAnalysis a = analyze("root = Header(\"Hi\", missingRef)");
         ValidationIssue i = issue(a, "unresolved-ref");
         assertNotNull(i, "expected unresolved-ref issue");
         assertEquals(ValidationSeverity.ERROR, i.severity());
@@ -159,7 +157,7 @@ class SemanticValidationTest {
         // Spec (Final unresolved reference is invalid): the issue identifies the unresolved
         // reference AND the statement that used it — not the root/entry statement.
         String dsl = "kpi = Header(\"T\", missingRef)\nroot = Table([], [kpi])";
-        ProgramAnalysis a = analyze(dsl, ValidationMode.FINAL);
+        ProgramAnalysis a = analyze(dsl);
         ValidationIssue i = issue(a, "unresolved-ref");
         assertNotNull(i, "expected unresolved-ref issue");
         assertEquals("kpi", i.statementId());
@@ -171,7 +169,7 @@ class SemanticValidationTest {
     void unresolvedJsGlobalHintRoutedThroughRepairHints() {
         // `Math` leaked from JS → the FINAL unresolved-ref hint must be the root-cause hint,
         // not "define a statement named Math or pass it as an external ref".
-        ProgramAnalysis a = analyze("root = Header(\"T\", Math)", ValidationMode.FINAL);
+        ProgramAnalysis a = analyze("root = Header(\"T\", Math)");
         ValidationIssue i = issue(a, "unresolved-ref");
         assertNotNull(i, "expected unresolved-ref issue");
         assertEquals(RepairHints.unresolvedRefHint("Math"), i.hint());
@@ -180,21 +178,10 @@ class SemanticValidationTest {
 
     @Test
     void unresolvedBuiltinNameHintSuggestsAtPrefix() {
-        ProgramAnalysis a = analyze("root = Header(\"T\", FormatNumber)", ValidationMode.FINAL);
+        ProgramAnalysis a = analyze("root = Header(\"T\", FormatNumber)");
         ValidationIssue i = issue(a, "unresolved-ref");
         assertNotNull(i, "expected unresolved-ref issue");
         assertEquals(RepairHints.unresolvedRefHint("FormatNumber"), i.hint());
-    }
-
-    @Test
-    void streamingTemporaryUnresolvedIsNotBlocking() {
-        // Streaming + incomplete: reference to a not-yet-defined statement is a WARNING, retryable.
-        Program program = OpenuiParser.parse("root = Header(\"Hi\", laterRef", ParseMode.STREAMING);
-        ProgramAnalysis a = new ProgramAnalyzer(catalog()).analyze(program, ValidationMode.STREAMING);
-        ValidationIssue i = issue(a, "unresolved-ref");
-        assertNotNull(i, "expected unresolved-ref issue");
-        assertEquals(ValidationSeverity.WARNING, i.severity());
-        assertTrue(i.retryable());
     }
 
     @Test
@@ -202,7 +189,7 @@ class SemanticValidationTest {
         // Two statements with id `root`: the LAST wins → Table (renderable, valid).
         // The first (Header()) would be missing-required; if last-wins works, no missing-required fires.
         String dsl = "root = Header()\nroot = Table([], [])";
-        ProgramAnalysis a = analyze(dsl, ValidationMode.FINAL);
+        ProgramAnalysis a = analyze(dsl);
         assertEquals(1, a.statementCount(), "duplicate ids collapse to one symbol");
         assertNull(issue(a, "missing-required"));
         assertTrue(a.rootResolved(), "root resolves to the last-wins Table");
@@ -217,7 +204,7 @@ class SemanticValidationTest {
         ContractCatalog cat = ContractCatalog
                 .from(new GenerationContract("v1", "Box", comps, List.of(), List.of(), List.of(), List.of()));
         Program program = OpenuiParser.parse("root = Box()", ParseMode.FINAL);
-        ProgramAnalysis a = new ProgramAnalyzer(cat).analyze(program, ValidationMode.FINAL);
+        ProgramAnalysis a = new ProgramAnalyzer(cat).analyze(program, null, Set.of());
         assertNull(a.issues().stream().filter(i -> i.code().equals("missing-required")).findFirst().orElse(null));
         assertTrue(a.rootResolved());
     }
@@ -229,7 +216,7 @@ class SemanticValidationTest {
         ContractCatalog cat = ContractCatalog
                 .from(new GenerationContract("v1", "Widget", comps, List.of(), List.of(), List.of(), List.of()));
         Program program = OpenuiParser.parse("root = Widget()", ParseMode.FINAL);
-        ProgramAnalysis a = new ProgramAnalyzer(cat).analyze(program, ValidationMode.FINAL);
+        ProgramAnalysis a = new ProgramAnalyzer(cat).analyze(program, null, Set.of());
         // Existence OK, no prop-level false positives.
         assertTrue(a.issues().stream().noneMatch(i -> i.code().equals("missing-required")));
         assertTrue(a.issues().stream().noneMatch(i -> i.code().equals("unknown-component")));
@@ -238,91 +225,11 @@ class SemanticValidationTest {
 
     @Test
     void validProgramHasNoBlockingIssues() {
-        ProgramAnalysis a = analyze("root = Header(\"Hello\", \"World\")", ValidationMode.FINAL);
+        ProgramAnalysis a = analyze("root = Header(\"Hello\", \"World\")");
         assertTrue(a.issues().stream().noneMatch(i -> i.severity() == ValidationSeverity.ERROR),
                 "clean program should have no blocking issues: " + a.issues());
         assertTrue(a.rootResolved());
         assertEquals("root", a.entryId());
-    }
-
-    // ── Streaming blocking classification (per-statement completeness) ─────────
-
-    /**
-     * When a COMPLETE statement earlier in the stream has a definitively-invalid error (unknown-component) and the LAST
-     * statement is an incomplete tail, the earlier statement's error must remain ERROR (blocking). Only the tail
-     * statement's non-definitive errors are tolerated.
-     *
-     * <p>
-     * DSL: {@code root = Bogus("x")\nheader = Header(} — "root" is fully received (not the last statement); "header" is
-     * the last (partially received) tail making the program incomplete. The unknown-component on "root" must be ERROR.
-     */
-    @Test
-    void streamingCompleteInvalidStatementBeforeIncompleteTailStaysBlocking() {
-        // "root" is the first statement (fully received, NOT the last).
-        // "header" is the second/last statement and is incomplete (unclosed paren → program.incomplete).
-        String dsl = "root = Bogus(\"x\")\nheader = Header(";
-        Program program = OpenuiParser.parse(dsl, ParseMode.STREAMING);
-        assertTrue(program.incomplete(), "program must be incomplete for this test to exercise the path");
-
-        ProgramAnalysis a = new ProgramAnalyzer(catalog()).analyze(program, ValidationMode.STREAMING);
-
-        ValidationIssue unknownComp = issue(a, "unknown-component");
-        assertNotNull(unknownComp, "expected unknown-component issue on earlier complete statement");
-        assertEquals("root", unknownComp.statementId());
-        assertEquals("Bogus", unknownComp.component());
-        assertEquals(ValidationSeverity.ERROR, unknownComp.severity(),
-                "complete earlier statement's unknown-component must stay blocking (ERROR)");
-        assertFalse(unknownComp.retryable(), "blocking issue must not be retryable");
-    }
-
-    /**
-     * {@code unknown-component} is always blocking even when it appears on the LAST (potentially partial) statement,
-     * because the component name is already fully received and cannot become valid by appending more tokens.
-     *
-     * <p>
-     * DSL: {@code root = Bogus("x"} — single statement, incomplete (unclosed paren), but the name "Bogus" is
-     * definitively unknown. Must remain ERROR.
-     */
-    @Test
-    void streamingUnknownComponentAlwaysBlockingEvenOnLastStatement() {
-        String dsl = "root = Bogus(\"x\"";
-        Program program = OpenuiParser.parse(dsl, ParseMode.STREAMING);
-        assertTrue(program.incomplete(), "program must be incomplete for this test");
-
-        ProgramAnalysis a = new ProgramAnalyzer(catalog()).analyze(program, ValidationMode.STREAMING);
-
-        ValidationIssue unknownComp = issue(a, "unknown-component");
-        assertNotNull(unknownComp, "expected unknown-component issue");
-        assertEquals("Bogus", unknownComp.component());
-        assertEquals(ValidationSeverity.ERROR, unknownComp.severity(),
-                "unknown-component must be blocking (ERROR) even on the last/partial statement");
-        assertFalse(unknownComp.retryable(), "unknown-component is never retryable");
-    }
-
-    /**
-     * A known component on the last (partially received) statement that is still missing a required prop — while the
-     * program is incomplete — should be downgraded to a WARNING (retryable). The required arg may still arrive as more
-     * tokens stream in.
-     *
-     * <p>
-     * DSL: {@code root = Header(} — "Header" is known but "title" is missing. The statement is the last and the program
-     * is incomplete → should be WARNING/retryable, not ERROR.
-     */
-    @Test
-    void streamingTailMissingRequiredIsTolerated() {
-        String dsl = "root = Header(";
-        Program program = OpenuiParser.parse(dsl, ParseMode.STREAMING);
-        assertTrue(program.incomplete(), "program must be incomplete for this test");
-
-        ProgramAnalysis a = new ProgramAnalyzer(catalog()).analyze(program, ValidationMode.STREAMING);
-
-        ValidationIssue missingReq = issue(a, "missing-required");
-        assertNotNull(missingReq, "expected missing-required issue on tail statement");
-        assertEquals("Header", missingReq.component());
-        assertEquals("/title", missingReq.path());
-        assertEquals(ValidationSeverity.WARNING, missingReq.severity(),
-                "tail statement missing-required must be tolerated (WARNING) while streaming");
-        assertTrue(missingReq.retryable(), "tail missing-required must be retryable");
     }
 
     // ── Lazy builtin binder scoping (@Render/@Each) — mirrors materialize.ts ───
@@ -333,7 +240,7 @@ class SemanticValidationTest {
      */
     @Test
     void renderStringBinderResolvesInsideTemplate() {
-        ProgramAnalysis a = analyze("root = Header(\"T\", @Render(\"v\", Header(v)))", ValidationMode.FINAL);
+        ProgramAnalysis a = analyze("root = Header(\"T\", @Render(\"v\", Header(v)))");
         assertNull(issue(a, "unresolved-ref"),
                 "@Render binder \"v\" must be scoped inside its template: " + a.issues());
         assertTrue(a.rootResolved());
@@ -346,7 +253,7 @@ class SemanticValidationTest {
     @Test
     void eachStringBinderResolvesInsideTemplate() {
         String dsl = "rows = [1, 2]\nroot = Header(\"T\", @Each(rows, \"item\", Header(item)))";
-        ProgramAnalysis a = analyze(dsl, ValidationMode.FINAL);
+        ProgramAnalysis a = analyze(dsl);
         assertNull(issue(a, "unresolved-ref"),
                 "@Each binder \"item\" must be scoped inside its template: " + a.issues());
         assertTrue(a.rootResolved());
@@ -356,7 +263,7 @@ class SemanticValidationTest {
     @Test
     void eachRefBinderResolvesInsideTemplate() {
         String dsl = "rows = [1, 2]\nroot = Header(\"T\", @Each(rows, item, Header(item)))";
-        ProgramAnalysis a = analyze(dsl, ValidationMode.FINAL);
+        ProgramAnalysis a = analyze(dsl);
         assertNull(issue(a, "unresolved-ref"),
                 "@Each ref-form binder \"item\" must be scoped inside its template: " + a.issues());
     }
@@ -365,7 +272,7 @@ class SemanticValidationTest {
     @Test
     void eachWithoutTemplateArgHasNoBinderScope() {
         String dsl = "rows = [1, 2]\nroot = Header(\"T\", @Each(rows, item))";
-        ProgramAnalysis a = analyze(dsl, ValidationMode.FINAL);
+        ProgramAnalysis a = analyze(dsl);
         ValidationIssue i = issue(a, "unresolved-ref");
         assertNotNull(i, "two-arg @Each must not create a binder scope");
         assertTrue(a.unresolvedRefs().contains("item"));
@@ -374,7 +281,7 @@ class SemanticValidationTest {
     /** The binder scope covers ONLY the lazy builtin's own arguments — it must not leak to sibling args. */
     @Test
     void binderNotVisibleOutsideTemplate() {
-        ProgramAnalysis a = analyze("root = Header(@Render(\"v\", Header(v)), v)", ValidationMode.FINAL);
+        ProgramAnalysis a = analyze("root = Header(@Render(\"v\", Header(v)), v)");
         ValidationIssue i = issue(a, "unresolved-ref");
         assertNotNull(i, "binder \"v\" must not leak outside the @Render call");
         assertTrue(a.unresolvedRefs().contains("v"));
@@ -384,7 +291,7 @@ class SemanticValidationTest {
     @Test
     void nestedLazyBuiltinsStackScopes() {
         String dsl = "root = Header(\"T\", @Render(\"a\", Header(@Each([1], \"b\", Header(b)), a)))";
-        ProgramAnalysis a = analyze(dsl, ValidationMode.FINAL);
+        ProgramAnalysis a = analyze(dsl);
         assertNull(issue(a, "unresolved-ref"),
                 "outer binder \"a\" must survive the inner @Each scope pop: " + a.issues());
     }
@@ -396,7 +303,7 @@ class SemanticValidationTest {
     @Test
     void binderVisibleInsideReferencedStatementTemplate() {
         String dsl = "cell = Header(\"C\", v)\nroot = Header(\"T\", @Render(\"v\", cell))";
-        ProgramAnalysis a = analyze(dsl, ValidationMode.FINAL);
+        ProgramAnalysis a = analyze(dsl);
         assertNull(issue(a, "unresolved-ref"),
                 "binder \"v\" must remain visible inside the referenced statement's template: " + a.issues());
     }
@@ -409,8 +316,8 @@ class SemanticValidationTest {
         ProgramAnalyzer analyzer = new ProgramAnalyzer(defaultCat);
 
         // Tier 1: Action step called without leading '@'
-        ProgramAnalysis tier1 = analyzer.analyze(OpenuiParser.parse("root = Set($count, 1)", ParseMode.FINAL),
-                ValidationMode.FINAL);
+        ProgramAnalysis tier1 = analyzer
+                .analyze(OpenuiParser.parse("root = Set($count, 1)", ParseMode.FINAL), null, Set.of());
         ValidationIssue i1 = issue(tier1, "unknown-component");
         assertNotNull(i1);
         assertEquals("Unknown component \"Set\" — not found in catalog or builtins", i1.message());
@@ -418,9 +325,9 @@ class SemanticValidationTest {
         assertTrue(RepairHints.isRootCauseHint(i1.hint()));
 
         // Tier 2: capabilityGaps alias (both @GroupBy and @ObjectFromEntries)
-        ProgramAnalysis tier2 = analyzer.analyze(OpenuiParser
-                .parse("grouped = @GroupBy(data.items, \"model\")\nroot = Stack([grouped])", ParseMode.FINAL),
-                ValidationMode.FINAL, "Stack", Set.of("data"));
+        ProgramAnalysis tier2 = analyzer.analyze(
+                OpenuiParser.parse("grouped = @GroupBy(data.items, \"model\")\nroot = Stack([grouped])", ParseMode.FINAL),
+                "Stack", Set.of("data"));
         ValidationIssue i2 = issue(tier2, "unknown-component");
         assertNotNull(i2);
         assertEquals("Unknown component \"GroupBy\" — not found in catalog or builtins", i2.message(),
@@ -430,8 +337,8 @@ class SemanticValidationTest {
         assertTrue(RepairHints.isRootCauseHint(i2.hint()), "tier-2 hint must be a root-cause hint");
 
         // Tier 3: ordinary unknown component name
-        ProgramAnalysis tier3 = analyzer.analyze(OpenuiParser.parse("root = ChartCard(\"T\")", ParseMode.FINAL),
-                ValidationMode.FINAL);
+        ProgramAnalysis tier3 = analyzer
+                .analyze(OpenuiParser.parse("root = ChartCard(\"T\")", ParseMode.FINAL), null, Set.of());
         ValidationIssue i3 = issue(tier3, "unknown-component");
         assertNotNull(i3);
         assertEquals("Unknown component \"ChartCard\" — not found in catalog or builtins", i3.message());
@@ -447,7 +354,7 @@ class SemanticValidationTest {
         // Statement `grouped` has both a JS arrow function syntax error (`=>`) AND `@GroupBy(...)`.
         Program program = OpenuiParser
                 .parse("grouped = @GroupBy(data.items, item => item.model)\nroot = Stack([grouped])", ParseMode.FINAL);
-        ProgramAnalysis analysis = analyzer.analyze(program, ValidationMode.FINAL, "Stack", Set.of("data"));
+        ProgramAnalysis analysis = analyzer.analyze(program, "Stack", Set.of("data"));
         List<ValidationIssue> actionable = ValidationIssueReducer.actionable(analysis.issues());
 
         assertTrue(

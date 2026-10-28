@@ -13,7 +13,6 @@ import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -139,7 +138,7 @@ class CompositeRequirementValidationTest {
                 base.componentGroups(), base.tools(), base.examples(), base.additionalRules(), base.builtins(),
                 base.capabilityGaps());
         return DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder().dsl(dsl).contract(contract)
-                .dataModel(Map.of()).mode(ValidationMode.FINAL).build());
+                .dataModel(Map.of()).build());
     }
 
     private static void assertValid(String dsl) {
@@ -158,7 +157,7 @@ class CompositeRequirementValidationTest {
     private static ValidationResult validate(String dsl, Map<String, Object> dataModel) {
         GenerationContract contract = GenerationContractLoader.loadDefault();
         return DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder().dsl(dsl).contract(contract)
-                .dataModel(dataModel).mode(ValidationMode.FINAL).build());
+                .dataModel(dataModel).build());
     }
 
     private static ValidationIssue issue(ValidationResult result, String code) {

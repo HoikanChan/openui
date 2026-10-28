@@ -6,7 +6,6 @@ package com.huawei.cloudsop.genui.core.validation.semantic;
 
 import com.huawei.cloudsop.genui.core.contract.CapabilityGapSpec;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
-import com.huawei.cloudsop.genui.core.validation.parser.Builtins;
 
 import java.util.List;
 import java.util.Set;
@@ -61,7 +60,7 @@ public final class RepairHints {
      */
     public static String unresolvedRefHint(String name) {
         // 契约 builtin 或 Action 步骤名均需 @ 前缀调用——两档提示一致。
-        if (BuiltinCatalog.getDefault().isBuiltin(name) || Builtins.isActionName(name)) {
+        if (BuiltinCatalog.getDefault().isBuiltin(name) || BuiltinCatalog.isActionName(name)) {
             return DID_YOU_MEAN_PREFIX + name + "\"? openui-lang builtins must be called with a leading '@'";
         }
         if (JS_GLOBAL_NAMES.contains(name)) {
@@ -106,7 +105,7 @@ public final class RepairHints {
             List<CapabilityGapSpec> capabilityGaps) {
         String normalized = CapabilityGapSpec.normalizeAlias(name);
         BuiltinCatalog effectiveBuiltins = builtins == null ? BuiltinCatalog.getDefault() : builtins;
-        if (effectiveBuiltins.isBuiltin(normalized) || Builtins.isActionName(normalized)) {
+        if (effectiveBuiltins.isBuiltin(normalized) || BuiltinCatalog.isActionName(normalized)) {
             return DID_YOU_MEAN_PREFIX + normalized + "\"? openui-lang builtins must be called with a leading '@'";
         }
         CapabilityGapSpec gap = findCapabilityGapByAlias(normalized, capabilityGaps);

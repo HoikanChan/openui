@@ -46,19 +46,7 @@ public final class ExpressionParser {
      *            待解析的 token 流
      */
     public ExpressionParser(List<Token> tokens) {
-        this(tokens, null);
-    }
-
-    /**
-     * 构造一个携带语句 id 的解析器，便于诊断信息归属到具体语句。
-     *
-     * @param tokens
-     *            待解析的 token 流
-     * @param statementId
-     *            所属语句 id，或 {@code null}
-     */
-    public ExpressionParser(List<Token> tokens, String statementId) {
-        this(tokens, statementId, BuiltinCatalog.getDefault());
+        this(tokens, null, BuiltinCatalog.getDefault());
     }
 
     /**
@@ -387,26 +375,7 @@ public final class ExpressionParser {
         Token opener = adv(); // skip '{'
         List<AstNode.Obj.Entry> entries = new ArrayList<>();
         while (cur().type() != TokenType.R_BRACE && cur().type() != TokenType.EOF) {
-            Token kt = cur();
-            String key = switch (kt.type()) {
-                case IDENT, STR, TYPE -> {
-                    adv();
-                    yield kt.text();
-                }
-                case NUM -> {
-                    adv();
-                    yield numberText(kt);
-                }
-                case STATE_VAR -> {
-                    adv();
-                    String v = kt.text();
-                    yield v.startsWith("$") ? v.substring(1) : v;
-                }
-                default -> {
-                    adv();
-                    yield "?";
-                }
-            };
+            String key = readFieldName();
             eatOptional(TokenType.COLON);
             entries.add(new AstNode.Obj.Entry(key, parseExpr(0)));
             if (cur().type() == TokenType.COMMA) {

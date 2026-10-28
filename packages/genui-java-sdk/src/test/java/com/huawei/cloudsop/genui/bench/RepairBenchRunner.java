@@ -6,6 +6,7 @@ package com.huawei.cloudsop.genui.bench;
 
 import com.huawei.cloudsop.genui.core.GenerationSdk;
 import com.huawei.cloudsop.genui.core.Json;
+import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerationResult;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerator;
@@ -20,7 +21,6 @@ import com.huawei.cloudsop.genui.core.llm.transport.LlmTransportException;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -32,6 +32,7 @@ import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.parser.Statement;
 import com.huawei.cloudsop.genui.core.validation.repair.RepairPromptBuilder;
 import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
+import com.huawei.cloudsop.genui.core.validation.semantic.LazyBuiltinBinders;
 import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalysis;
 import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalyzer;
 import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
@@ -42,7 +43,10 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -164,7 +168,7 @@ final class RepairBenchRunner {
         ValidationResult v0 = DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder()
                 .dsl(benchCase.dsl()).contract(benchCase.contract())
                 .rootName(benchCase.contract().root() == null ? "root" : benchCase.contract().root())
-                .externalRefs(externalRefs).dataModel(benchCase.dataModel()).mode(ValidationMode.FINAL).build());
+                .externalRefs(externalRefs).dataModel(benchCase.dataModel()).build());
         List<String> initialCodes = actionableCodes(v0);
 
         if (v0.status() != ValidationStatus.INVALID) {
@@ -263,8 +267,7 @@ final class RepairBenchRunner {
                 lastValidated == null ? List.of() : actionableCodes(lastValidated.validationResult()));
         line.put("finalDsl", finalDsl);
         line.put("capabilityNoticePresent", dslInspect.capabilityNoticePresent());
-        line.put("remainingCapabilityGapAliases", dslInspect.reachableGapAliases());
-        line.put("unreachedCapabilityGapAliases", dslInspect.unreachedGapAliases());
+        line.put("remainingCapabilityGapAliases", dslInspect.remainingGapAliases());
         line.put("consecutiveUnmatchedUnknownComponents", consecutiveUnmatched);
         line.put("durationMs", System.currentTimeMillis() - started);
         emit(Json.stringify(line));
@@ -330,56 +333,176 @@ final class RepairBenchRunner {
                 .anyMatch(i -> "unknown-component".equals(i.code()) && RepairHints.isCapabilityGapHint(i.hint()));
     }
 
-    private record CapabilityDslInspect(boolean capabilityNoticePresent, List<String> reachableGapAliases,
-            List<String> unreachedGapAliases) {
+    private record CapabilityDslInspect(boolean capabilityNoticePresent, List<String> remainingGapAliases) {
     }
 
+    /**
+     * 检查修复后最终 DSL 的能力边界落点：可达语句中 {@code capabilityNotice} 是否按模板声明，以及仍调用了哪些能力缺口别名。
+     */
     private static CapabilityDslInspect inspectFinalDsl(String dsl, GenerationContract contract,
             Set<String> externalRefs) {
         if (dsl == null || dsl.isBlank() || contract == null) {
-            return new CapabilityDslInspect(false, List.of(), List.of());
+            return new CapabilityDslInspect(false, List.of());
         }
         BuiltinCatalog builtins = BuiltinCatalog.fromContract(contract);
         Program program = OpenuiParser.parse(dsl, ParseMode.FINAL, builtins);
         Map<String, Statement> stmts = program.currentById();
         if (stmts.isEmpty()) {
-            return new CapabilityDslInspect(false, List.of(), List.of());
+            return new CapabilityDslInspect(false, List.of());
         }
         String rootName = contract.root() == null ? "root" : contract.root();
         ProgramAnalysis analysis = new ProgramAnalyzer(ContractCatalog.from(contract), builtins).analyze(program,
-                ValidationMode.FINAL, rootName, externalRefs);
-        Set<String> unreached = Set.copyOf(analysis.orphaned());
+                rootName, externalRefs);
+        Set<String> reachable = reachableStatementIds(stmts, analysis.entryId(), builtins);
 
         Statement noticeStmt = stmts.get("capabilityNotice");
-        boolean noticeDefined = noticeStmt instanceof Statement.Value val && val.expr() instanceof AstNode.Comp comp
+        boolean noticeDeclared = noticeStmt instanceof Statement.Value val && val.expr() instanceof AstNode.Comp comp
                 && "TextCallout".equals(comp.name());
-        boolean capabilityNoticePresent = noticeDefined && !unreached.contains("capabilityNotice");
+        boolean capabilityNoticePresent = noticeDeclared && reachable.contains("capabilityNotice");
 
-        Set<String> reachableAliases = new TreeSet<>();
-        Set<String> unreachedAliases = new TreeSet<>();
+        Set<String> remainingAliases = new TreeSet<>();
         for (Map.Entry<String, Statement> entry : stmts.entrySet()) {
-            AstNode expr = exprOf(entry.getValue());
-            Set<String> target = unreached.contains(entry.getKey()) ? unreachedAliases : reachableAliases;
-            collectGapAliases(expr, contract, target);
+            if (reachable.contains(entry.getKey())) {
+                collectGapAliases(entry.getValue().expr(), contract, remainingAliases);
+            }
         }
-        return new CapabilityDslInspect(capabilityNoticePresent, List.copyOf(reachableAliases),
-                List.copyOf(unreachedAliases));
+        return new CapabilityDslInspect(capabilityNoticePresent, List.copyOf(remainingAliases));
     }
 
-    private static AstNode exprOf(Statement stmt) {
-        if (stmt instanceof Statement.Value v) {
-            return v.expr();
+    /** 从语义分析选定的入口语句出发，沿语句间的引用求可达语句 id 集合（不含孤立语句）。 */
+    private static Set<String> reachableStatementIds(Map<String, Statement> stmts, String entryId,
+            BuiltinCatalog builtins) {
+        Set<String> reachable = new HashSet<>();
+        if (entryId == null || !stmts.containsKey(entryId)) {
+            return reachable;
         }
-        if (stmt instanceof Statement.State s) {
-            return s.init();
+        Deque<Set<String>> scopeFrames = new ArrayDeque<>();
+        Deque<String> pending = new ArrayDeque<>();
+        pending.add(entryId);
+        reachable.add(entryId);
+        while (!pending.isEmpty()) {
+            String statementId = pending.poll();
+            Statement statement = stmts.get(statementId);
+            // 被引用的 Query/Mutation 声明在物化时按运行时值处理，不展开其表达式（与原可达语义一致）。
+            if (!statementId.equals(entryId)
+                    && (statement instanceof Statement.Query || statement instanceof Statement.Mutation)) {
+                continue;
+            }
+            Set<String> refs = new LinkedHashSet<>();
+            collectRefs(statement.expr(), refs, scopeFrames, builtins);
+            for (String ref : refs) {
+                if (stmts.containsKey(ref) && reachable.add(ref)) {
+                    pending.add(ref);
+                }
+            }
         }
-        if (stmt instanceof Statement.Query q) {
-            return q.expr();
+        return reachable;
+    }
+
+    private static void collectRefs(AstNode node, Set<String> out, Deque<Set<String>> scopeFrames,
+            BuiltinCatalog builtins) {
+        if (node == null) {
+            return;
         }
-        if (stmt instanceof Statement.Mutation m) {
-            return m.expr();
+        if (node instanceof AstNode.Ref ref) {
+            if (!inScope(scopeFrames, ref.n())) {
+                out.add(ref.n());
+            }
+            return;
         }
-        return null;
+        if (node instanceof AstNode.Comp comp) {
+            collectCompRefs(comp, out, scopeFrames, builtins);
+            return;
+        }
+        if (node instanceof AstNode.Arr arr) {
+            for (AstNode el : arr.els()) {
+                collectRefs(el, out, scopeFrames, builtins);
+            }
+            return;
+        }
+        if (node instanceof AstNode.Obj obj) {
+            for (AstNode.Obj.Entry e : obj.entries()) {
+                collectRefs(e.value(), out, scopeFrames, builtins);
+            }
+            return;
+        }
+        if (node instanceof AstNode.UnaryOp u) {
+            collectRefs(u.operand(), out, scopeFrames, builtins);
+            return;
+        }
+        if (node instanceof AstNode.BinOp b) {
+            collectRefs(b.left(), out, scopeFrames, builtins);
+            collectRefs(b.right(), out, scopeFrames, builtins);
+            return;
+        }
+        if (node instanceof AstNode.Ternary t) {
+            collectRefs(t.cond(), out, scopeFrames, builtins);
+            collectRefs(t.then(), out, scopeFrames, builtins);
+            collectRefs(t.otherwise(), out, scopeFrames, builtins);
+            return;
+        }
+        if (node instanceof AstNode.Member m) {
+            collectRefs(m.obj(), out, scopeFrames, builtins);
+            return;
+        }
+        if (node instanceof AstNode.Index idx) {
+            collectRefs(idx.obj(), out, scopeFrames, builtins);
+            collectRefs(idx.index(), out, scopeFrames, builtins);
+            return;
+        }
+        if (node instanceof AstNode.Assign a) {
+            collectRefs(a.value(), out, scopeFrames, builtins);
+        }
+    }
+
+    /** 惰性 builtin（{@code @Each}/{@code @Render}）的 binder 只作用于 body，body 内同名引用不算语句引用。 */
+    private static void collectCompRefs(AstNode.Comp comp, Set<String> out, Deque<Set<String>> scopeFrames,
+            BuiltinCatalog builtins) {
+        List<Integer> binderIndexes = builtins.isBuiltin(comp.name())
+                ? LazyBuiltinBinders.binderIndexes(comp, builtins) : List.of();
+        if (binderIndexes.isEmpty()) {
+            for (AstNode arg : comp.args()) {
+                collectRefs(arg, out, scopeFrames, builtins);
+            }
+            return;
+        }
+        BuiltinSpec spec = builtins.spec(comp.name());
+        Set<String> binders = new LinkedHashSet<>();
+        for (int index : binderIndexes) {
+            String binderName = LazyBuiltinBinders.binderName(spec, comp, index);
+            if (binderName == null) {
+                binders = null;
+                break;
+            }
+            binders.add(binderName);
+        }
+        if (binders == null) {
+            for (AstNode arg : comp.args()) {
+                collectRefs(arg, out, scopeFrames, builtins);
+            }
+            return;
+        }
+        int bodyIndex = LazyBuiltinBinders.bodyIndex(spec, comp);
+        for (int i = 0; i < comp.args().size(); i++) {
+            if (i != bodyIndex && !binderIndexes.contains(i)) {
+                collectRefs(comp.args().get(i), out, scopeFrames, builtins);
+            }
+        }
+        scopeFrames.push(binders);
+        try {
+            collectRefs(comp.args().get(bodyIndex), out, scopeFrames, builtins);
+        } finally {
+            scopeFrames.pop();
+        }
+    }
+
+    private static boolean inScope(Deque<Set<String>> scopeFrames, String name) {
+        for (Set<String> frame : scopeFrames) {
+            if (frame.contains(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void collectGapAliases(AstNode node, GenerationContract contract, Set<String> out) {
@@ -621,8 +744,6 @@ final class RepairBenchRunner {
 
         private int casesWithRemainingGapCalls;
 
-        private int casesWithUnreachedGapCalls;
-
         private int consecutiveUnmatchedCases;
 
         private int consecutiveUnmatchedTotal;
@@ -651,13 +772,8 @@ final class RepairBenchRunner {
                     }
                 }
             }
-            if (dslInspect != null) {
-                if (!dslInspect.reachableGapAliases().isEmpty()) {
-                    casesWithRemainingGapCalls++;
-                }
-                if (!dslInspect.unreachedGapAliases().isEmpty()) {
-                    casesWithUnreachedGapCalls++;
-                }
+            if (dslInspect != null && !dslInspect.remainingGapAliases().isEmpty()) {
+                casesWithRemainingGapCalls++;
             }
             if (consecutiveUnmatched != null && !consecutiveUnmatched.isEmpty()) {
                 consecutiveUnmatchedCases++;
@@ -728,7 +844,6 @@ final class RepairBenchRunner {
             capabilityBoundary.put("capabilityNoticeRate",
                     capabilityGapRepaired == 0 ? null : (double) capabilityNoticeCount / capabilityGapRepaired);
             capabilityBoundary.put("casesWithRemainingGapCalls", casesWithRemainingGapCalls);
-            capabilityBoundary.put("casesWithUnreachedGapCalls", casesWithUnreachedGapCalls);
             capabilityBoundary.put("consecutiveUnmatchedUnknownComponentCases", consecutiveUnmatchedCases);
             capabilityBoundary.put("consecutiveUnmatchedUnknownComponentCount", consecutiveUnmatchedTotal);
             line.put("capabilityBoundary", capabilityBoundary);

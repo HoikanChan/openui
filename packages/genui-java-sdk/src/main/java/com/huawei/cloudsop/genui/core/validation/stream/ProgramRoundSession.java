@@ -6,11 +6,8 @@ package com.huawei.cloudsop.genui.core.validation.stream;
 
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.validation.OpenuiLangValidator;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
-import com.huawei.cloudsop.genui.core.validation.parser.OpenuiLexer;
-import com.huawei.cloudsop.genui.core.validation.parser.StatementSplitter;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,12 +19,13 @@ import java.util.Set;
  * 一轮模型输出的程序状态与轮末统一校验(#56;对应父 Spec #54 的 Program State &amp; Validation 模块)。
  *
  * <p>
- * <b>职责。</b>增量接收模型输出,{@link StatementBoundaryScanner} 以语法完整性识别完整语句后,按语句 id 维护 <b>同名 last-wins</b>
- * 的当前程序(新名称追加,同名覆盖,不支持删除)。轮结束({@link #onRoundEnd()})时对 <b>当前有效定义</b>——而非原始全文——执行<b>一次</b> FINAL
+ * <b>职责。</b>增量接收模型输出({@link #onDelta(String)} 只缓存原始文本),读取当前程序时由 {@link #currentDefinitions()}
+ * 按需驱动 {@link StatementBoundaryScanner} 以语法完整性识别已完成语句,再按语句 id 维护 <b>同名 last-wins</b>
+ * 的当前程序(新名称追加,同名覆盖,不支持删除)。轮结束({@link #onRoundEnd()})时先 drain 自动闭合尾部,再对 <b>当前有效定义</b>——而非原始全文——执行<b>一次</b> FINAL
  * 统一校验(语法、引用、组件与算子契约、参数、数据路径、 静态类型、页面完整性),并返回 {@link RoundEndResult}(原始输出、当前定义、诊断、耗时、契约版本)。
  *
  * <p>
- * <b>轮内不做校验。</b>后置定义不提前报错;轮结束仍缺失的引用按错误处理。同一份输出任意分片、跨行传输,当前程序 与校验结论一致——每条完整语句只解析一次(不逐片段重放全部历史)。
+ * <b>轮内不做校验。</b>后置定义不提前报错;轮结束仍缺失的引用按错误处理。同一份输出任意分片、跨行传输,当前程序 与校验结论一致——扫描器未因新增量而重复暴露语句(脏标记),语句 id 直接复用切分结果,不对语句文本二次分词。
  *
  * <p>
  * <b>历史定义。</b>被覆盖的语句不进入当前程序,其历史错误(语法/语义/类型)不再产生当前错误;原始输出保留在 {@link #rawOutput()} 供排查。语法错误语句的 id
@@ -84,7 +82,7 @@ public final class ProgramRoundSession {
      * 开始新一轮模型输出(#58):重置语句边界扫描器与本轮计时,<b>保留</b>跨轮的同名 last-wins 当前程序。
      *
      * <p>
-     * 修复请求是独立的模型输出,不得与上一轮半句拼接:新请求从空缓冲区开始,上一轮未完成的尾部已由 {@link #onRoundEnd()} / {@link #drainToCurrentDefinitions()} 处理。
+     * 修复请求是独立的模型输出,不得与上一轮半句拼接:新请求从空缓冲区开始,上一轮未完成的尾部已由 {@link #onRoundEnd()} 处理。
      */
     public synchronized void beginRound() {
         scanner.reset();
@@ -110,15 +108,13 @@ public final class ProgramRoundSession {
     }
 
     /**
-     * 送入一段模型原始输出增量。语句以语法完整性为准识别;识别出的完整语句按 id 覆盖或追加进当前程序。
+     * 送入一段模型原始输出增量。仅缓存文本,不触发扫描;已完成语句在读取当前程序(或轮末 drain)时按需识别。
      *
      * @param delta
      *            增量文本,可为 {@code null}
      */
     public synchronized void onDelta(String delta) {
-        for (String statement : scanner.onDelta(delta)) {
-            apply(statement);
-        }
+        scanner.onDelta(delta);
     }
 
     /**
@@ -127,12 +123,10 @@ public final class ProgramRoundSession {
      * @return 轮末结果与记录
      */
     public synchronized RoundEndResult onRoundEnd() {
-        for (String statement : scanner.drainAtEnd()) {
-            apply(statement);
-        }
-        String definitions = currentDefinitions();
+        applyAll(scanner.drainAtEnd());
+        String definitions = definitionsText();
         ValidationResult result = validator.validate(ValidationRequest.builder().dsl(definitions).contract(contract)
-                .rootName(rootName).externalRefs(externalRefs).dataModel(dataModel).mode(ValidationMode.FINAL).build());
+                .rootName(rootName).externalRefs(externalRefs).dataModel(dataModel).build());
         long durationMs = (System.nanoTime() - startNanos) / 1_000_000;
         return new RoundEndResult(rawOutput(), definitions, result, durationMs, contractVersion, null);
     }
@@ -140,22 +134,14 @@ public final class ProgramRoundSession {
     /**
      * 获取当前有效定义——按首次出现顺序拼接的同名 last-wins 语句文本。
      *
+     * <p>
+     * 读取时按需扫描缓冲区中已经完成的语句(轮中最后一条待定尾部仍搁置);无新增量时直接返回已有结果。
+     *
      * @return 当前有效定义文本;空程序返回空字符串
      */
     public synchronized String currentDefinitions() {
-        return String.join("\n", currentStatements.values());
-    }
-
-    /**
-     * 尽力而为地刷出待定尾部并返回当前有效定义,<b>不</b>执行轮末校验。供流中途失败等不可信内容场景使用:返回已 累计内容的当前程序形态,但不产生校验结论或轮记录。
-     *
-     * @return 刷出待定尾部后的当前有效定义文本
-     */
-    public synchronized String drainToCurrentDefinitions() {
-        for (String statement : scanner.drainAtEnd()) {
-            apply(statement);
-        }
-        return currentDefinitions();
+        applyAll(scanner.scanCompleted());
+        return definitionsText();
     }
 
     /**
@@ -167,18 +153,14 @@ public final class ProgramRoundSession {
         return scanner.rawBuffer();
     }
 
-    /** 提取一条完整语句的 id(splitter 级,语法容错:表达式解析失败也能拿到 id),并按 last-wins 放入当前程序。 */
-    private void apply(String statement) {
-        String id = statementIdOf(statement);
-        if (id == null) {
-            return; // 连 id 形状都不具备的行(splitter 已跳过);不进入当前程序
-        }
-        currentStatements.put(id, statement);
+    private String definitionsText() {
+        return String.join("\n", currentStatements.values());
     }
 
-    /** 用既有 lexer + splitter 提取语句 id(复用 parser,不引入第二套识别规则)。 */
-    private static String statementIdOf(String statement) {
-        List<StatementSplitter.RawStmt> stmts = StatementSplitter.split(OpenuiLexer.tokenize(statement));
-        return stmts.isEmpty() ? null : stmts.get(0).id();
+    /** 按 last-wins 把扫描出的完整语句放入当前程序(语句 id 直接复用切分器的结果)。 */
+    private void applyAll(List<StatementBoundaryScanner.CompletedStatement> statements) {
+        for (StatementBoundaryScanner.CompletedStatement statement : statements) {
+            currentStatements.put(statement.id(), statement.text());
+        }
     }
 }

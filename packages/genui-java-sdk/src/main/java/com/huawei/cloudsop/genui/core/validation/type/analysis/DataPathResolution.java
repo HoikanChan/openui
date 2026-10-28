@@ -34,7 +34,11 @@ public sealed interface DataPathResolution permits DataPathResolution.Resolved, 
     record Evidence(int present, int missing, int nulls, int total, boolean plucked) {
     }
 
-    record Resolved(String path, Type type, Evidence evidence) implements DataPathResolution {
+    /**
+     * @param observedValue
+     *            首次遍历得到的快照值;数组字段投影路径不保留(与旧快照查值语义一致),无观察值时可为 null
+     */
+    record Resolved(String path, Type type, Evidence evidence, Object observedValue) implements DataPathResolution {
     }
 
     record Missing(String path, String hint) implements DataPathResolution {

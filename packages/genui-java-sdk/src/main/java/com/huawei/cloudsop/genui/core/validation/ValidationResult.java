@@ -10,7 +10,7 @@ import java.util.List;
  * 单次 DSL 校验调用的结果。
  *
  * <p>
- * 从校验逻辑构造结果时，请使用静态工厂方法（{@link #valid}、{@link #invalid}、{@link #partial}），而非规范构造方法。
+ * 从校验逻辑构造结果时，请使用静态工厂方法（{@link #valid}、{@link #invalid}），而非规范构造方法。
  *
  * @param status
  *            校验状态
@@ -97,21 +97,5 @@ public record ValidationResult(ValidationStatus status, String normalizedDsl, Li
      */
     public static ValidationResult invalid(List<ValidationIssue> issues, ValidationMetadata metadata) {
         return new ValidationResult(ValidationStatus.INVALID, null, issues, metadata);
-    }
-
-    /**
-     * 构建一个 {@link ValidationStatus#PARTIAL} 结果（流式模式）。
-     *
-     * @param normalizedDsl
-     *            归一化后的 DSL 文本
-     * @param issues
-     *            发现的问题列表
-     * @param metadata
-     *            校验元数据
-     * @return 部分有效结果
-     */
-    public static ValidationResult partial(String normalizedDsl, List<ValidationIssue> issues,
-            ValidationMetadata metadata) {
-        return new ValidationResult(ValidationStatus.PARTIAL, normalizedDsl, issues, metadata);
     }
 }

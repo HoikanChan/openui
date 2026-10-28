@@ -15,14 +15,12 @@ import java.util.Map;
  *            语句数量
  * @param rootName
  *            DSL 中发现的根组件名，或 {@code null}
- * @param mode
- *            本次结果所用的校验模式
  * @param extra
  *            任意扩展数据；不会为 {@code null}，且不可变
  *
  * @since 2026
  */
-public record ValidationMetadata(int statementCount, String rootName, ValidationMode mode, Map<String, String> extra) {
+public record ValidationMetadata(int statementCount, String rootName, Map<String, String> extra) {
 
     /**
      * 紧凑构造方法，将 {@code extra} 归一化为不可变映射。

@@ -26,16 +26,4 @@ public record SourceSpan(int line, int column, int startOffset, int endOffset) {
 
     /** 未知范围（所有字段均为 {@code -1}）。 */
     public static final SourceSpan UNKNOWN = new SourceSpan(-1, -1, -1, -1);
-
-    /**
-     * 计算该范围的字符长度。
-     *
-     * @return 字符长度；若任一偏移量未知则返回 {@code -1}
-     */
-    public int length() {
-        if (startOffset < 0 || endOffset < 0) {
-            return -1;
-        }
-        return endOffset - startOffset;
-    }
 }

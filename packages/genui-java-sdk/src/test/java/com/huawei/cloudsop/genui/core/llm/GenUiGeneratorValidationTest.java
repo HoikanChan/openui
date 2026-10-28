@@ -5,7 +5,6 @@
 package com.huawei.cloudsop.genui.core.llm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -20,7 +19,6 @@ import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 import com.huawei.cloudsop.genui.core.validation.OpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationMetadata;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
@@ -173,7 +171,7 @@ class GenUiGeneratorValidationTest {
         OpenuiLangValidator alwaysInvalid = request -> ValidationResult.invalid(
                 List.of(new ValidationIssue("stub-error", ValidationSeverity.ERROR, "test", "stub always-invalid", null,
                         null, null, -1, -1, null, false)),
-                new ValidationMetadata(1, "root", ValidationMode.FINAL, null));
+                new ValidationMetadata(1, "root", null));
 
         GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport,
                 GenUiValidationConfig.finalOnly(), alwaysInvalid)
@@ -190,7 +188,7 @@ class GenUiGeneratorValidationTest {
         String dsl = "root = TotallyFakeComponent()";
         FakeTransport transport = FakeTransport.stream(streamOf(dsl));
         OpenuiLangValidator alwaysValid = request -> ValidationResult.valid(dsl, List.of(),
-                new ValidationMetadata(1, "root", ValidationMode.FINAL, null));
+                new ValidationMetadata(1, "root", null));
 
         GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport,
                 GenUiValidationConfig.finalOnly(), alwaysValid)
@@ -221,7 +219,6 @@ class GenUiGeneratorValidationTest {
         ValidationRequest req = capturedRequest.get();
         assertNotNull(req, "validator must have been called");
         assertNotNull(req.contract(), "validator must receive a non-null merged contract");
-        assertEquals(ValidationMode.FINAL, req.mode(), "mode must be FINAL at round end");
         assertEquals(Map.of("total", 3), req.dataModel(), "validator must receive the Render Data Model");
         assertTrue(req.contract().components().containsKey("Stack"),
                 "merged contract must include Stack from base contract");
@@ -286,7 +283,7 @@ class GenUiGeneratorValidationTest {
     void defaultValidatorNullDslReturnsMissingRoot() {
         // A null DSL string → preprocessor returns empty → root-missing ERROR → INVALID.
         DefaultOpenuiLangValidator v = new DefaultOpenuiLangValidator();
-        ValidationResult result = v.validate(ValidationRequest.builder().dsl("").mode(ValidationMode.FINAL).build());
+        ValidationResult result = v.validate(ValidationRequest.builder().dsl("").build());
         assertEquals(ValidationStatus.INVALID, result.status());
         assertTrue(result.issues().stream().anyMatch(i -> "root-missing".equals(i.code())),
                 "empty DSL must produce root-missing issue");
@@ -298,28 +295,11 @@ class GenUiGeneratorValidationTest {
         // unknown-component — there is no contract-less "syntax-only" validation mode.
         DefaultOpenuiLangValidator v = new DefaultOpenuiLangValidator();
         ValidationResult result = v
-                .validate(ValidationRequest.builder().dsl("root = AnyComponent()").mode(ValidationMode.FINAL).build());
+                .validate(ValidationRequest.builder().dsl("root = AnyComponent()").build());
         // ProgramAnalyzer with empty catalog flags AnyComponent as unknown → INVALID
         assertEquals(ValidationStatus.INVALID, result.status());
         assertTrue(result.issues().stream().anyMatch(i -> "unknown-component".equals(i.code())),
                 "AnyComponent not in empty catalog must produce unknown-component issue");
-    }
-
-    @Test
-    void defaultValidatorStreamingWithWarningIsPartial() {
-        // In STREAMING mode, ProgramAnalyzer downgrades unresolved-ref from ERROR (FINAL) to WARNING
-        // (retryable, since the ref may resolve once more of the stream arrives). A WARNING-only,
-        // non-empty issue list in STREAMING mode maps to ValidationStatus.PARTIAL (see
-        // DefaultOpenuiLangValidator#validate). Round-end validation always uses FINAL mode, so PARTIAL
-        // is unreachable through the generator — call the validator directly in STREAMING mode instead.
-        // 'item' is a Ref, not a Comp, so this exercises unresolved-ref only (no unknown-component).
-        DefaultOpenuiLangValidator v = new DefaultOpenuiLangValidator();
-        ValidationResult result = v
-                .validate(ValidationRequest.builder().dsl("root = item").mode(ValidationMode.STREAMING).build());
-
-        assertFalse(result.hasBlockingIssues(), "unresolved ref in STREAMING is non-blocking WARNING");
-        assertEquals(ValidationStatus.PARTIAL, result.status(),
-                "non-blocking warning in STREAMING mode must yield PARTIAL, got: " + result.issues());
     }
 
     // ── Fake transport (mirrors GenUiGeneratorTest.FakeTransport) ─────────────

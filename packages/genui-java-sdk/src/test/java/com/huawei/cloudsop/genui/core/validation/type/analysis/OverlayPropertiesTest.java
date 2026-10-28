@@ -60,8 +60,7 @@ class OverlayPropertiesTest {
                 merged.putAll(right);
                 Fact inferred = ops.overlay(List.of(SnapshotFacts.typeOfValue(left, null, 0),
                         SnapshotFacts.typeOfValue(right, null, 0)));
-                assertEquals(Relations.Outcome.PROVEN,
-                        Relations.proveIncluded(SnapshotFacts.typeOfValue(merged, null, 0).type(), inferred.type()));
+                assertTrue(Relations.proveIncluded(SnapshotFacts.typeOfValue(merged, null, 0).type(), inferred.type()));
                 assertTrue(inferred.evidence().isEmpty(), "old operand observations must not survive replacement");
             }
         }

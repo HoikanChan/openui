@@ -11,7 +11,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.huawei.cloudsop.genui.bench.RepairCasePack.RepairCase;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationRequest;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -67,7 +66,7 @@ class RepairCorpusSequenceRulesTest {
         return DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder().dsl(benchCase.dsl())
                 .contract(benchCase.contract())
                 .rootName(benchCase.contract().root() == null ? "root" : benchCase.contract().root())
-                .externalRefs(Set.of("data")).dataModel(benchCase.dataModel()).mode(ValidationMode.FINAL).build());
+                .externalRefs(Set.of("data")).dataModel(benchCase.dataModel()).build());
     }
 
     private static List<String> codeAtPath(ValidationResult result) {

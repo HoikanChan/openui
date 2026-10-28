@@ -11,8 +11,116 @@
   <name>OpenUI Java Aggregator</name>
   <description>Aggregator-only build for the Java Generation SDK and the eval CLI.</description>
 
+  <properties>
+    <checkstyle.plugin.version>3.6.0</checkstyle.plugin.version>
+    <checkstyle.version>10.21.2</checkstyle.version>
+    <spotbugs.plugin.version>4.8.6.6</spotbugs.plugin.version>
+    <findsecbugs.version>1.13.0</findsecbugs.version>
+    <fmt.plugin.version>2.25</fmt.plugin.version>
+    <!-- 子模块覆盖为 ${project.basedir}/../../config -->
+    <lint.config.dir>${project.basedir}/config</lint.config.dir>
+  </properties>
+
   <modules>
     <module>packages/genui-java-sdk</module>
     <module>packages/genui-eval-cli</module>
   </modules>
+
+  <!--
+    插件统一放在父 POM，子模块通过 <parent> 继承。
+    格式以 fmt-maven-plugin（AOSP）为唯一标准；原 Spotless（Eclipse 120 列）已移除。
+  -->
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>${checkstyle.plugin.version}</version>
+        <executions>
+          <execution>
+            <id>checkstyle-validation</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <configuration>
+              <failOnViolation>true</failOnViolation>
+            </configuration>
+          </execution>
+        </executions>
+        <configuration>
+          <!-- 提到插件级，使手动 checkstyle:check 与 verify 判定的告警级别一致 -->
+          <violationSeverity>warning</violationSeverity>
+          <configLocation>${lint.config.dir}/checkstyle/checkstyle.xml</configLocation>
+          <suppressionsLocation>${lint.config.dir}/checkstyle/suppressions.xml</suppressionsLocation>
+          <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
+          <consoleOutput>true</consoleOutput>
+          <failsOnError>false</failsOnError>
+          <inputEncoding>UTF-8</inputEncoding>
+          <sourceDirectories>
+            <sourceDirectory>${project.build.sourceDirectory}</sourceDirectory>
+          </sourceDirectories>
+        </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>${checkstyle.version}</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <version>${spotbugs.plugin.version}</version>
+        <executions>
+          <execution>
+            <id>spotbugs-check</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <effort>Max</effort>
+          <threshold>Low</threshold>
+          <failOnError>true</failOnError>
+          <xmlOutput>true</xmlOutput>
+          <includeTests>false</includeTests>
+          <includeFilterFile>${lint.config.dir}/spotbugs/spotbugs-include.xml</includeFilterFile>
+          <excludeFilterFile>${lint.config.dir}/spotbugs/spotbugs-exclude.xml</excludeFilterFile>
+          <plugins>
+            <plugin>
+              <groupId>com.h3xstream.findsecbugs</groupId>
+              <artifactId>findsecbugs-plugin</artifactId>
+              <version>${findsecbugs.version}</version>
+            </plugin>
+          </plugins>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>com.spotify.fmt</groupId>
+        <artifactId>fmt-maven-plugin</artifactId>
+        <version>${fmt.plugin.version}</version>
+        <configuration>
+          <style>AOSP</style>
+          <filesToExclude>
+            **/generated-sources/**/*.java
+          </filesToExclude>
+        </configuration>
+        <executions>
+          <execution>
+            <id>fmt-check</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>

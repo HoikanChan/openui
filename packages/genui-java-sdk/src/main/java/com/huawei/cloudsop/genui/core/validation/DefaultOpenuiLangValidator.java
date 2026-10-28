@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.Objects;
 
 /**
- * Java 原生校验器:从同一不可变快照执行语法、语义及 FINAL 类型分析。
+ * Java 原生校验器:从同一不可变快照执行语法、语义及类型分析。
  *
  * <p>
  * 无 Render Data Model 时仍检查静态可知部分;数据依赖部分的未证明结论进入 metadata。
@@ -45,21 +45,15 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
         String normalizedDsl = snapshot.normalizedDsl();
         var issues = new ArrayList<>(analysis.issues());
         java.util.Map<String, String> extra = new java.util.LinkedHashMap<>();
-        if (snapshot.mode() == ValidationMode.FINAL) {
-            TypeAnalysis.Result typeResult = TypeAnalysis.analyze(snapshot.program(), snapshot.catalog(),
-                    snapshot.builtins(), snapshot.dataModel(), analysis.entryId(), analysisBudget);
-            issues.addAll(typeResult.issues());
-            extra.putAll(typeResult.coverage().metadataSummary());
-        }
+        TypeAnalysis.Result typeResult = TypeAnalysis.analyze(snapshot.program(), snapshot.catalog(),
+                snapshot.builtins(), snapshot.dataModel(), analysis.entryId(), analysisBudget);
+        issues.addAll(typeResult.issues());
+        extra.putAll(typeResult.coverage().metadataSummary());
         boolean hasError = issues.stream().anyMatch(i -> i.severity() == ValidationSeverity.ERROR);
-        ValidationMetadata metadata = new ValidationMetadata(analysis.statementCount(), analysis.entryId(),
-                snapshot.mode(), extra);
+        ValidationMetadata metadata = new ValidationMetadata(analysis.statementCount(), analysis.entryId(), extra);
 
         if (hasError) {
             return ValidationResult.invalid(issues, metadata);
-        }
-        if (snapshot.mode() == ValidationMode.STREAMING && !issues.isEmpty()) {
-            return ValidationResult.partial(normalizedDsl, issues, metadata);
         }
         return ValidationResult.valid(normalizedDsl, issues, metadata);
     }

@@ -13,7 +13,7 @@ import java.util.List;
  * <p>
  * 对应 {@code packages/lang-core/src/parser/statements.ts} 中的 {@code split()}：语句以深度为 0 的换行符
  * 分隔；括号/圆括号/花括号内部或多行三元表达式内部的换行符不会造成分割。接受 {@link TokenType#IDENT}、 {@link TokenType#TYPE} 与 {@link TokenType#STATE_VAR}
- * 作为标识符。没有 {@code =} 或没有标识符的行会被跳过 （在 {@link OpenuiParser} 中作为诊断信息暴露）。
+ * 作为标识符。没有 {@code =} 或没有标识符的行会被跳过并形成语法诊断。
  *
  * <p>
  * Java 扩展：每个 {@link RawStmt} 都携带一个基于其 token 推导出的 {@link SourceSpan}（行/列/偏移范围）， 用于诊断信息。
@@ -26,12 +26,10 @@ public final class StatementSplitter {
     }
 
     /**
-     * 一条原始（尚未做表达式解析）语句：左侧标识符、其 token 类型、右侧表达式 token 列表，以及整条语句的源码位置。
+     * 一条原始（尚未做表达式解析）语句：左侧标识符、右侧表达式 token 列表，以及整条语句的源码位置。
      *
      * @param id
      *            标识符
-     * @param idTokenType
-     *            标识符的 token 类型
      * @param tokens
      *            右侧表达式 token 列表
      * @param span
@@ -39,7 +37,7 @@ public final class StatementSplitter {
      *
      * @since 2026
      */
-    public record RawStmt(String id, TokenType idTokenType, List<Token> tokens, SourceSpan span) {
+    public record RawStmt(String id, List<Token> tokens, SourceSpan span) {
 
         /**
          * 紧凑构造方法，将 token 列表归一化为不可变列表。
@@ -50,50 +48,23 @@ public final class StatementSplitter {
     }
 
     /**
-     * 一行原始输入被拒绝的原因（用于向上游发出诊断信息）。
-     *
-     * @since 2026
-     */
-    public enum SkipReason {
-        /** 该行以无法作为语句标识符的 token 开头。 */
-        INVALID_STATEMENT,
-        /** 标识符后面没有跟着 {@code =}。 */
-        MISSING_ASSIGNMENT
-    }
-
-    /**
-     * 一行被跳过（格式错误）的语句：起始位置及原因。
-     *
-     * @param reason
-     *            被跳过的原因
-     * @param idText
-     *            起始处的原始文本
-     * @param span
-     *            源码位置范围
-     *
-     * @since 2026
-     */
-    public record SkippedLine(SkipReason reason, String idText, SourceSpan span) {
-    }
-
-    /**
-     * {@link #splitDetailed} 的输出：有效语句加被跳过的行。
+     * {@link #splitDetailed} 的输出：有效语句加被跳过行的诊断。
      *
      * @param statements
      *            有效语句列表
-     * @param skipped
-     *            被跳过的行列表
+     * @param diagnostics
+     *            被跳过行产生的诊断列表
      *
      * @since 2026
      */
-    public record SplitResult(List<RawStmt> statements, List<SkippedLine> skipped) {
+    public record SplitResult(List<RawStmt> statements, List<ParseDiagnostic> diagnostics) {
 
         /**
          * 紧凑构造方法，将各列表归一化为不可变列表。
          */
         public SplitResult {
             statements = statements == null ? List.of() : List.copyOf(statements);
-            skipped = skipped == null ? List.of() : List.copyOf(skipped);
+            diagnostics = diagnostics == null ? List.of() : List.copyOf(diagnostics);
         }
     }
 
@@ -109,15 +80,15 @@ public final class StatementSplitter {
     }
 
     /**
-     * 带结构化跳过信息的切分，供解析器发出诊断。
+     * 带诊断的切分，供解析器使用。
      *
      * @param tokens
      *            输入 token 流
-     * @return 切分结果，含有效语句与被跳过的行
+     * @return 切分结果，含有效语句与被跳过行的诊断
      */
     public static SplitResult splitDetailed(List<Token> tokens) {
         List<RawStmt> stmts = new ArrayList<>();
-        List<SkippedLine> skipped = new ArrayList<>();
+        List<ParseDiagnostic> diagnostics = new ArrayList<>();
         int pos = 0;
         int n = tokens.size();
 
@@ -134,7 +105,8 @@ public final class StatementSplitter {
             TokenType tt = idTok.type();
             if (tt != TokenType.IDENT && tt != TokenType.TYPE && tt != TokenType.STATE_VAR) {
                 SourceSpan span = spanOf(idTok, idTok);
-                skipped.add(new SkippedLine(SkipReason.INVALID_STATEMENT, idText(idTok), span));
+                diagnostics.add(ParseDiagnostic.at(ParseErrorCode.INVALID_STATEMENT,
+                        "Line does not start a valid statement", idText(idTok), span));
                 pos = skipToLineEnd(tokens, pos);
                 continue;
             }
@@ -143,7 +115,8 @@ public final class StatementSplitter {
 
             // Must be followed by `=`.
             if (pos >= n || tokens.get(pos).type() != TokenType.EQUALS) {
-                skipped.add(new SkippedLine(SkipReason.MISSING_ASSIGNMENT, id, spanOf(idTok, idTok)));
+                diagnostics.add(ParseDiagnostic.at(ParseErrorCode.MISSING_ASSIGNMENT,
+                        "Statement '" + id + "' is missing '='", id, spanOf(idTok, idTok)));
                 pos = skipToLineEnd(tokens, pos);
                 continue;
             }
@@ -187,11 +160,11 @@ public final class StatementSplitter {
 
             if (!expr.isEmpty()) {
                 Token last = expr.get(expr.size() - 1);
-                stmts.add(new RawStmt(id, tt, expr, spanOf(idTok, last)));
+                stmts.add(new RawStmt(id, expr, spanOf(idTok, last)));
             }
         }
 
-        return new SplitResult(stmts, skipped);
+        return new SplitResult(stmts, diagnostics);
     }
 
     private static int skipToLineEnd(List<Token> tokens, int pos) {

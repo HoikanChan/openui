@@ -24,10 +24,8 @@ import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 import com.huawei.cloudsop.genui.core.validation.OpenuiLangValidator;
-import com.huawei.cloudsop.genui.core.validation.RepairPolicyKind;
 import com.huawei.cloudsop.genui.core.validation.ValidationConfigMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationMetadata;
-import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiPreprocessor;
@@ -193,7 +191,7 @@ public final class GenUiGenerator {
     /** Build the next repair request from the shared loop inputs and the latest merged program. */
     private String repairBody(RepairLoop loop, RoundEndResult current) {
         List<ChatMessage> messages = RepairPromptBuilder.build(loop.originalSystemPrompt(),
-                userContext(loop.request()), loop.merged(), current, history(loop.rounds()), loop.dataContext());
+                userContext(loop.request()), loop.merged(), current, history(loop.rounds()));
         return buildBodyFromMessages(messages);
     }
 
@@ -206,7 +204,7 @@ public final class GenUiGenerator {
     /** Inputs for the stream incremental-repair loop. */
     private record RepairLoop(String originalSystemPrompt, UiGenerationRequest request,
             ProgramRoundSession roundSession, List<RoundEndResult> rounds, GenerationContract merged,
-            String dataContext, GenerationSession budget, RepairLoopState state) {
+            GenerationSession budget, RepairLoopState state) {
     }
 
     private static List<RoundEndResult> history(List<RoundEndResult> rounds) {
@@ -269,7 +267,7 @@ public final class GenUiGenerator {
                 meta == null || meta.extra() == null ? Map.of() : meta.extra());
         extra.put("repaired", "true");
         ValidationMetadata newMeta = new ValidationMetadata(meta == null ? 0 : meta.statementCount(),
-                meta == null ? null : meta.rootName(), meta == null ? ValidationMode.FINAL : meta.mode(), extra);
+                meta == null ? null : meta.rootName(), extra);
         return ValidationResult.valid(result.normalizedDsl(), result.issues(), newMeta);
     }
 
@@ -370,10 +368,10 @@ public final class GenUiGenerator {
             }
 
             RoundEndResult current = completeRound(roundSession, rounds, state);
-            boolean incremental = validationConfig.repairPolicy() == RepairPolicyKind.INCREMENTAL_REPAIR;
+            boolean incremental = validationConfig.validationMode() == ValidationConfigMode.INCREMENTAL;
             if (current.validationResult().status() == ValidationStatus.INVALID && incremental) {
                 RepairLoop loop = new RepairLoop(requestBody.systemPrompt(), effectiveRequest,
-                        roundSession, rounds, merged, requestBody.dataContext(), budget, state);
+                        roundSession, rounds, merged, budget, state);
                 current = runIncrementalStream(loop, current, sink);
             }
 
@@ -443,11 +441,10 @@ public final class GenUiGenerator {
         GenUIPromptAssemblyResult assembly = sdk.assemblePrompt(promptRequest);
         String systemPrompt = systemPromptOverride == null ? assembly.prompt() : systemPromptOverride;
         List<ChatMessage> messages = List.of(ChatMessage.system(systemPrompt), ChatMessage.user(userMessage(request)));
-        return new RequestBody(ChatCompletionRequest.of(config, null, messages, stream).toJson(), systemPrompt,
-                assembly.dataContext());
+        return new RequestBody(ChatCompletionRequest.of(config, null, messages, stream).toJson(), systemPrompt);
     }
 
-    private record RequestBody(String json, String systemPrompt, String dataContext) {
+    private record RequestBody(String json, String systemPrompt) {
     }
 
     /** 每轮创建的轮末校验会话:使用当前请求生效契约 + 完整 Render Data Model,无第二份能力白名单。 */

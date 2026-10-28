@@ -5,7 +5,6 @@
 package com.huawei.cloudsop.genui.core.validation.parser;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * openui-lang 表达式中可能出现的每一种值。
@@ -17,55 +16,26 @@ import java.util.Map;
  * @since 2026
  */
 public sealed interface AstNode permits AstNode.Comp, AstNode.Str, AstNode.Num, AstNode.Bool, AstNode.Null, AstNode.Arr,
-        AstNode.Obj, AstNode.Ref, AstNode.Ph, AstNode.StateRef, AstNode.RuntimeRef, AstNode.BinOp, AstNode.UnaryOp,
-        AstNode.Ternary, AstNode.Member, AstNode.Index, AstNode.Assign {
+        AstNode.Obj, AstNode.Ref, AstNode.StateRef, AstNode.BinOp, AstNode.UnaryOp, AstNode.Ternary, AstNode.Member,
+        AstNode.Index, AstNode.Assign {
 
     /**
-     * 由解析器之外解析确定的运行时引用种类。
-     *
-     * @since 2026
-     */
-    enum RefType {
-        /** 查询引用。 */
-        QUERY,
-        /** 变更引用。 */
-        MUTATION,
-        /** 数据引用。 */
-        DATA
-    }
-
-    /**
-     * 组件调用：{@code Header("Hello", "Subtitle")}。{@code mappedProps} 由后续的“位置参数转具名参数”映射 填充（不属于解析器职责），解析器产出时始终为空。
+     * 组件调用：{@code Header("Hello", "Subtitle")}。
      *
      * @param name
      *            组件名
      * @param args
      *            位置参数列表
-     * @param mappedProps
-     *            具名参数映射，解析阶段始终为空
      *
      * @since 2026
      */
-    record Comp(String name, List<AstNode> args, Map<String, AstNode> mappedProps) implements AstNode {
+    record Comp(String name, List<AstNode> args) implements AstNode {
 
         /**
-         * 紧凑构造方法，将各集合归一化为不可变集合。
+         * 紧凑构造方法，将参数列表归一化为不可变列表。
          */
         public Comp {
             args = args == null ? List.of() : List.copyOf(args);
-            mappedProps = mappedProps == null ? Map.of() : Map.copyOf(mappedProps);
-        }
-
-        /**
-         * 无具名参数的便捷构造方法（解析器的常规输出形态）。
-         *
-         * @param name
-         *            组件名
-         * @param args
-         *            位置参数列表
-         */
-        public Comp(String name, List<AstNode> args) {
-            this(name, args, Map.of());
         }
     }
 
@@ -171,17 +141,6 @@ public sealed interface AstNode permits AstNode.Comp, AstNode.Str, AstNode.Num, 
     }
 
     /**
-     * 无法解析的引用占位符。
-     *
-     * @param n
-     *            原始引用名
-     *
-     * @since 2026
-     */
-    record Ph(String n) implements AstNode {
-    }
-
-    /**
      * 响应式状态变量引用：{@code $count}（{@code n} 包含前导 $）。
      *
      * @param n
@@ -190,19 +149,6 @@ public sealed interface AstNode permits AstNode.Comp, AstNode.Str, AstNode.Num, 
      * @since 2026
      */
     record StateRef(String n) implements AstNode {
-    }
-
-    /**
-     * 运行时解析的引用（Query/Mutation/data 结果）。
-     *
-     * @param n
-     *            引用名
-     * @param refType
-     *            引用种类
-     *
-     * @since 2026
-     */
-    record RuntimeRef(String n, RefType refType) implements AstNode {
     }
 
     /**

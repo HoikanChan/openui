@@ -110,7 +110,7 @@ class ObjectEnumerationTypeOpsTest {
         reference.forEach((key, value) -> {
             Type concrete = entry(key, value instanceof Number ? number : string);
             assertTrue(alternatives.stream()
-                    .anyMatch(branch -> Relations.proveIncluded(concrete, branch) == Relations.Outcome.PROVEN));
+                    .anyMatch(branch -> Relations.proveIncluded(concrete, branch)));
         });
     }
 

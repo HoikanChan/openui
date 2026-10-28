@@ -73,7 +73,7 @@ class BuiltinBinderLayoutTest {
                 .validate(com.huawei.cloudsop.genui.core.validation.ValidationRequest.builder()
                         .dsl("root = Stack(@Each(TextContent(row.id), data.rows, row))").contract(contract)
                         .dataModel(Map.of("rows", List.of(Map.of("id", "a"))))
-                        .mode(com.huawei.cloudsop.genui.core.validation.ValidationMode.FINAL).build());
+                        .build());
         assertEquals(com.huawei.cloudsop.genui.core.validation.ValidationStatus.VALID, result.status(),
                 () -> String.valueOf(result.issues()));
     }
@@ -129,7 +129,7 @@ class BuiltinBinderLayoutTest {
         var result = com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator.INSTANCE
                 .validate(com.huawei.cloudsop.genui.core.validation.ValidationRequest.builder()
                         .dsl("root = Stack(@Each([1], row, TextContent(@Round(\"bad\"))))").contract(contract)
-                        .dataModel(Map.of()).mode(com.huawei.cloudsop.genui.core.validation.ValidationMode.FINAL)
+                        .dataModel(Map.of())
                         .build());
         assertEquals(com.huawei.cloudsop.genui.core.validation.ValidationStatus.INVALID, result.status());
         assertTrue(result.issues().stream().anyMatch(

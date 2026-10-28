@@ -22,47 +22,11 @@ import java.util.concurrent.Executors;
 
 class ValidationSnapshotTest {
     @Test
-    void readsNestedDataOnceBeforeAnalyzingTheProgram() {
-        Map<String, Object> row = new LinkedHashMap<>(Map.of("name", "Ada")) {
-            @Override
-            public Object get(Object key) {
-                Object value = super.get(key);
-                put("name", 42);
-                return value;
-            }
-        };
-        ValidationResult result = validate("root = Stack([CardHeader(data.row.name), CardHeader(data.row.name)])",
-                Map.of("row", row), null, ValidationMode.FINAL);
-
-        assertEquals(ValidationStatus.VALID, result.status(), () -> result.issues().toString());
-        assertEquals("Ada", row.entrySet().iterator().next().getValue());
-    }
-
-    @Test
-    void fixesNestedListsAndPreservesNullValues() {
-        Map<String, Object> row = new LinkedHashMap<>(Map.of("name", "Ada"));
-        row.put("optional", null);
-        List<Object> rows = new ArrayList<>(List.of(row)) {
-            @Override
-            public Object get(int index) {
-                Object value = super.get(index);
-                row.put("name", 42);
-                return value;
-            }
-        };
-        ValidationResult result = validate("root = CardHeader(data.rows[0].name)", Map.of("rows", rows), null,
-                ValidationMode.FINAL);
-        assertEquals(ValidationStatus.VALID, result.status(), () -> result.issues().toString());
-        assertEquals("Ada", row.get("name"));
-        assertTrue(row.containsKey("optional"));
-    }
-
-    @Test
     void typesOnlyDefinitionsReachableFromTheSelectedEntry() {
         String dsl = "page = CardHeader(data.row.name)\nother = CardHeader(data.row.missing)";
         Map<String, Object> data = Map.of("row", Map.of("name", "Ada"));
-        ValidationResult root = validate(dsl, data, "page", ValidationMode.FINAL);
-        ValidationResult other = validate(dsl, data, "other", ValidationMode.FINAL);
+        ValidationResult root = validate(dsl, data, "page");
+        ValidationResult other = validate(dsl, data, "other");
 
         assertEquals(ValidationStatus.VALID, root.status(), () -> root.issues().toString());
         assertEquals("page", root.metadata().rootName());
@@ -85,7 +49,7 @@ class ValidationSnapshotTest {
         GenerationContract contract = contract(title);
         ValidationResult result = DefaultOpenuiLangValidator.INSTANCE
                 .validate(ValidationRequest.builder().dsl("root = Header(data.name)").contract(contract)
-                        .dataModel(Map.of("name", "Ada")).mode(ValidationMode.FINAL).build());
+                        .dataModel(Map.of("name", "Ada")).build());
 
         assertEquals(ValidationStatus.VALID, result.status(), () -> result.issues().toString());
         assertEquals("string", title.entrySet().iterator().next().getValue());
@@ -97,7 +61,7 @@ class ValidationSnapshotTest {
         GenerationContract contract = contract(title);
         Map<String, Object> row = new LinkedHashMap<>(Map.of("name", "Ada"));
         ValidationRequest request = ValidationRequest.builder().dsl("root = Header(data.row.name)").contract(contract)
-                .dataModel(Map.of("row", row)).mode(ValidationMode.FINAL).build();
+                .dataModel(Map.of("row", row)).build();
         assertEquals(ValidationStatus.VALID, DefaultOpenuiLangValidator.INSTANCE.validate(request).status());
         row.put("name", 42);
         assertEquals(ValidationStatus.INVALID, DefaultOpenuiLangValidator.INSTANCE.validate(request).status());
@@ -105,14 +69,14 @@ class ValidationSnapshotTest {
         assertEquals(ValidationStatus.VALID, DefaultOpenuiLangValidator.INSTANCE.validate(request).status());
 
         ValidationRequest changed = ValidationRequest.builder().dsl("root = Header(data.row.missing)")
-                .contract(contract).dataModel(request.dataModel()).mode(ValidationMode.FINAL).build();
+                .contract(contract).dataModel(request.dataModel()).build();
         assertTrue(DefaultOpenuiLangValidator.INSTANCE.validate(changed).issues().stream()
                 .anyMatch(issue -> issue.code().equals("type-data-path-missing")));
         ValidationRequest external = ValidationRequest.builder().dsl("root = Header(host)").contract(contract)
-                .externalRefs(Set.of("host")).mode(ValidationMode.FINAL).build();
+                .externalRefs(Set.of("host")).build();
         assertEquals(ValidationStatus.VALID, DefaultOpenuiLangValidator.INSTANCE.validate(external).status());
         assertEquals(ValidationStatus.INVALID, DefaultOpenuiLangValidator.INSTANCE.validate(
-                ValidationRequest.builder().dsl(external.dsl()).contract(contract).mode(ValidationMode.FINAL).build())
+                ValidationRequest.builder().dsl(external.dsl()).contract(contract).build())
                 .status());
     }
 
@@ -122,7 +86,7 @@ class ValidationSnapshotTest {
         for (int i = 0; i < 40; i++) {
             boolean valid = i % 2 == 0;
             calls.add(() -> validate("root = CardHeader(data.row.name)",
-                    Map.of("row", Map.of("name", valid ? "Ada" : 42)), null, ValidationMode.FINAL));
+                    Map.of("row", Map.of("name", valid ? "Ada" : 42)), null));
         }
         try (var executor = Executors.newFixedThreadPool(4)) {
             var results = executor.invokeAll(calls);
@@ -142,7 +106,7 @@ class ValidationSnapshotTest {
                 List.of(), List.of(), List.of(),
                 List.of(new BuiltinSpec("Identity", "", "", false, params, new TypeExpr.Base("string"))), List.of());
         ValidationRequest request = ValidationRequest.builder().dsl("root = Header(@Identity(data.name))")
-                .contract(contract).dataModel(Map.of("name", "Ada")).mode(ValidationMode.FINAL).build();
+                .contract(contract).dataModel(Map.of("name", "Ada")).build();
         ValidationResult invalid = DefaultOpenuiLangValidator.INSTANCE.validate(request);
         assertTrue(invalid.issues().stream().anyMatch(issue -> issue.code().equals("builtin-argument-type-mismatch")));
         assertFalse(invalid.issues().stream().anyMatch(issue -> issue.code().equals("unknown-component")));
@@ -151,17 +115,12 @@ class ValidationSnapshotTest {
     }
 
     @Test
-    void keepsLastDefinitionAndStreamingTypePolicy() {
+    void keepsLastDefinitionForFinalValidation() {
         Map<String, Object> data = Map.of("row", Map.of("name", "Ada"));
         assertEquals(ValidationStatus.VALID,
-                validate("root = CardHeader(data.row.missing)\n" + "root = CardHeader(data.row.name)", data, null,
-                        ValidationMode.FINAL).status());
-        ValidationResult streaming = validate("root = CardHeader(data.row.missing)", data, null,
-                ValidationMode.STREAMING);
-        assertEquals(ValidationStatus.VALID, streaming.status());
-        assertFalse(streaming.issues().stream().anyMatch(issue -> issue.code().startsWith("type-")));
+                validate("root = CardHeader(data.row.missing)\n" + "root = CardHeader(data.row.name)", data, null).status());
         assertEquals(ValidationStatus.INVALID,
-                validate("root = CardHeader(data.row.missing)", data, null, ValidationMode.FINAL).status());
+                validate("root = CardHeader(data.row.missing)", data, null).status());
     }
 
     @Test
@@ -171,7 +130,7 @@ class ValidationSnapshotTest {
         ValidationSnapshot snapshot = ValidationSnapshot
                 .build(ValidationRequest.builder().dsl("root = Stack(@Each(data.rows, row, TextContent(row.id)))")
                         .contract(GenerationContractLoader.loadDefault())
-                        .dataModel(Map.of("rows", List.of(Map.of("id", "a")))).mode(ValidationMode.FINAL).build());
+                        .dataModel(Map.of("rows", List.of(Map.of("id", "a")))).build());
 
         BuiltinSpec each = snapshot.builtins().spec("Each");
         assertEquals(0, each.inputIndex());
@@ -192,9 +151,9 @@ class ValidationSnapshotTest {
                 List.of(), List.of(), List.of(), List.of());
     }
 
-    private ValidationResult validate(String dsl, Map<String, Object> data, String rootName, ValidationMode mode) {
+    private ValidationResult validate(String dsl, Map<String, Object> data, String rootName) {
         return DefaultOpenuiLangValidator.INSTANCE
                 .validate(ValidationRequest.builder().dsl(dsl).contract(GenerationContractLoader.loadDefault())
-                        .dataModel(data).rootName(rootName).mode(mode).build());
+                        .dataModel(data).rootName(rootName).build());
     }
 }
