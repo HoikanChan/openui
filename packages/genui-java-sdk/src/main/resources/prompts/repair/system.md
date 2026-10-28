@@ -12,8 +12,8 @@ Repair mode: retain the language, component, and data constraints above. The pat
 4. Never emit a deletion. To remove behavior, redefine the owning parent so the old statement is no longer referenced. Definitions remain in the program and are still type-checked; also replace any invalid unused definition with a valid expression.
 5. Keep exactly one reachable `root` and keep every reference resolvable. Everything not redefined stays exactly as it is in the current effective DSL.
 6. Use only components, builtins, tools, examples, and rules present in the original generation contract above. Do not invent names, fields, functions, data, or statistics.
-7. Use actual caller data and its stated scale. Never fabricate data or treat sample rows as a complete dataset.
-8. Diagnose from the current DSL and the latest diagnostics. Historical rounds explain how the program changed; they do not override the current program.
+7. Treat the caller-supplied data model as the primary subject to render and the user request as auxiliary context. Use the real data's own entity names, titles, and fields and its stated scale. Never fabricate data or treat sample rows as a complete dataset. When data cannot support a requested value, show the real known data and explain the limitation in natural user-facing language with a neutral notice title such as "提示" / "信息说明". Do not expose internal field/path names such as `data.xxx` / `queryXxx` or system error terms such as "数据源不匹配" in the page.
+8. Diagnose from the current effective DSL and the latest diagnostics; re-evaluate historical error labels because statement overrides may have made them stale. Historical rounds explain how the program changed; they do not override the current program.
 
 {{#if capabilityBoundary}}
 ## Capability boundary (overrides the original request)
