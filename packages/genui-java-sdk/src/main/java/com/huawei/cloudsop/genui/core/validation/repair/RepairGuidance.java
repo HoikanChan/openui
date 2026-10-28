@@ -9,14 +9,16 @@ import com.huawei.cloudsop.genui.core.validation.ValidationIssueReducer;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
 import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
- * 增量修复提示词中“按诊断选取的专项指导”的唯一维护点。
+ * 增量修复专项指导的诊断路由；完整文案在 {@code prompts/repair/system.md} 中维护。
  *
  * <p>
- * 本类刻意与提示词装配分离：新增一种校验错误时只在这里补一条规则，{@link IncrementalRepairPromptBuilder} 不需要改动。选择只看<em>当前</em>诊断的
+ * 本类刻意与提示词装配分离：新增一种校验错误时只在这里补一条规则，{@link RepairPromptBuilder} 不需要改动。选择只看<em>当前</em>诊断的
  * {@code code}/{@code source}/{@code hint}，从不读取历史轮次的错误标签——同一语句在 last-wins 覆盖后，旧标签可能已经失效。
  *
  * <p>
@@ -26,6 +28,20 @@ import java.util.List;
  */
 public final class RepairGuidance {
 
+    private static final List<String> GUIDANCE_FLAGS = List.of(
+            "needsSyntaxGuidance",
+            "needsMissingAtGuidance",
+            "needsCapabilityGuidance",
+            "needsUnknownComponentGuidance",
+            "needsReferenceGuidance",
+            "needsSignatureGuidance",
+            "needsRootGuidance",
+            "needsDataReferenceGuidance",
+            "needsTableRowShapeGuidance",
+            "needsTableColumnGuidance",
+            "needsTypesGuidance",
+            "needsFallbackGuidance");
+
     private static final String SYNTAX = "syntax";
     private static final String REFERENCE = "reference";
 
@@ -33,13 +49,13 @@ public final class RepairGuidance {
     }
 
     /**
-     * 根据当前诊断选取去重后的专项修复指导（保持首次出现顺序）。
+     * 根据当前诊断选取去重后的专项修复指导开关（输出顺序由模板决定）。
      *
      * @param issues
      *            当前轮末诊断；内部按 {@link ValidationIssueReducer#actionable(List)} 过滤派生噪声
-     * @return 指导文案列表；无阻塞诊断时为空列表
+     * @return 指导开关；无阻塞诊断时全部为 false
      */
-    public static List<String> forIssues(List<ValidationIssue> issues) {
+    public static Map<String, Boolean> forIssues(List<ValidationIssue> issues) {
         LinkedHashSet<String> selected = new LinkedHashSet<>();
         for (ValidationIssue issue : ValidationIssueReducer.actionable(issues)) {
             if (issue == null || issue.severity() != ValidationSeverity.ERROR) {
@@ -47,7 +63,12 @@ public final class RepairGuidance {
             }
             select(selected, issue);
         }
-        return List.copyOf(selected);
+        Map<String, Boolean> flags = new LinkedHashMap<>();
+        for (String name : GUIDANCE_FLAGS) {
+            flags.put(name, selected.contains(name));
+        }
+        flags.put("hasGuidance", !selected.isEmpty());
+        return flags;
     }
 
     private static void select(LinkedHashSet<String> selected, ValidationIssue issue) {
@@ -56,115 +77,59 @@ public final class RepairGuidance {
         String hint = issue.hint();
 
         if (SYNTAX.equals(source) || code.startsWith("syntax-")) {
-            selected.add("Rewrite the whole diagnosed statement instead of patching one token. Keep one complete "
-                    + "`name = Expression` per statement.");
-            selected.add("Arguments are positional: write `Name(value1, value2)`, not `Name(arg: value)`. "
-                    + "Keep `key: value` only inside object literals `{...}`. Balance every `(`, `[`, `{`, "
-                    + "and string quote.");
-            selected.add("Arrow functions, template strings, and JavaScript statements are not openui-lang. "
-                    + "Use double-quoted strings with `+` concatenation and `@Each`/`@Render` templates.");
+            selected.add("needsSyntaxGuidance");
             return;
         }
 
         if (code.startsWith("unknown-component")) {
             if (RepairHints.isMissingAtHint(hint)) {
-                selected.add("Builtins and action steps require a leading `@`: rewrite the diagnosed call as "
-                        + "`@Name(...)` matching the current contract signature.");
+                selected.add("needsMissingAtGuidance");
                 return;
             }
             if (RepairHints.isCapabilityGapHint(hint)) {
-                selected.add("Follow `## Capability boundary (overrides the original request)` above: stop trying to "
-                        + "implement or approximate the unsupported operation, redefine every diagnosed statement id "
-                        + "with a valid expression, display the real data using the fallback, and make "
-                        + "`capabilityNotice` the first child of `root`.");
+                selected.add("needsCapabilityGuidance");
                 return;
             }
-            selected.add("Use only components listed in the current full contract. Copy the exact component name "
-                    + "and positional argument order from its signature; a capitalized call is a component, "
-                    + "not a builtin.");
+            selected.add("needsUnknownComponentGuidance");
             return;
         }
 
         if ("unresolved-ref".equals(code) || REFERENCE.equals(source)) {
-            selected.add("Classify the unresolved name from its syntax: `@name(...)` is a builtin call, "
-                    + "`Name(...)` is a component call, and a bare identifier is a statement reference. "
-                    + "Only builtins take a leading `@`.");
-            selected.add("If the name is a builtin or action step, add the leading `@`. If it is a statement, "
-                    + "define it with that exact id or correct the reference. JavaScript globals are unavailable; "
-                    + "replace them with contract builtins. Never invent an external reference, tool, or field.");
+            selected.add("needsReferenceGuidance");
             return;
         }
 
         if (code.startsWith("builtin-") || "excess-args".equals(code) || "missing-required".equals(code)
                 || "null-required".equals(code) || "invalid-prop".equals(code) || "empty-component-slot".equals(code)
                 || "component-slot-type-mismatch".equals(code)) {
-            selected.add("Match the current contract signature exactly: argument count, positional order, and "
-                    + "parameter kind. Binder arguments are double-quoted names and are only in scope inside "
-                    + "that builtin's template expression.");
+            selected.add("needsSignatureGuidance");
             return;
         }
 
         if ("root-missing".equals(code) || "root-not-renderable".equals(code)) {
-            selected.add("Keep exactly one reachable `root` statement whose expression is a renderable component "
-                    + "call. Redefine `root` if needed; do not delete it.");
+            selected.add("needsRootGuidance");
             return;
         }
 
         if (code.startsWith("type-data-")) {
-            selected.add("`data.<path>` must exist in the caller-supplied data context. Do not invent fields, "
-                    + "invent rows, or traverse a field that is not described there.");
-            selected.add("Do not derive counts, sums, averages, or other statistics from sample rows as if they "
-                    + "were the full dataset. Use @builtins over actual data references; if the value cannot be "
-                    + "known, render the real known data and state the limitation in the page.");
-            selected.add("Treat the caller-supplied data model as the primary content to render and the user "
-                    + "request as auxiliary context: rebind the diagnosed data reference to the real dataset in "
-                    + "`data`, update the `CardHeader` title/subtitle and `Table` columns (or `Descriptions`) to "
-                    + "match the real dataset's own entity name and fields (never mislabeling it as the requested "
-                    + "entity or topic), and include a `TextCallout` in the card/root with a neutral user-facing "
-                    + "title (e.g., \"提示\" / \"信息说明\", never \"数据源不匹配\" or system error terms) to state "
-                    + "what information is unavailable and what is shown instead, without exposing internal field "
-                    + "or path names (such as `data.xxx` or `queryXxx`). (If using `DescField(label, value, span?)`, "
-                    + "pass `@Switch(...)` directly as `value`; `{cell: @Render(...)}` is only for `Col`.)");
+            selected.add("needsDataReferenceGuidance");
             return;
         }
 
         if ("type-table-row-shape-mismatch".equals(code)) {
-            selected.add("@Each returns one result per input; an array-valued template therefore produces an array "
-                    + "of arrays. Trace the AST-related upstream definitions and fix the data shape to flat object "
-                    + "rows (using @Flatten when declared in the current contract). Preserve Table columns that "
-                    + "already match those rows; do not replace data processing with hand-written result values.");
+            selected.add("needsTableRowShapeGuidance");
         }
 
         if ("type-table-column-missing".equals(code)) {
-            selected.add("Treat the caller-supplied data model as the primary content to render and the user "
-                    + "request as auxiliary context: if the requested metric or attribute is absent from `data`, "
-                    + "remove the missing column from `Table([cols...], rows)` and keep only `Col` columns whose "
-                    + "fields genuinely match their column titles (or if the table used placeholder column names "
-                    + "like `metricName`/`filteredValue`, replace them with `Col` columns for the actual row fields). "
-                    + "Update `CardHeader`, `@Filter`, and `@Sort` to match the real metrics shown.");
-            selected.add("Never bind a column title to a semantically different row field (for example, never bind "
-                    + "\"发送丢包数\" to `recv_drop_pkts_cnt_filter` or \"CPU 利用率\" to `mem_usage`), and never "
-                    + "use `ExtraCol` to work around a missing row field with a fabricated constant (such as `0`, "
-                    + "`\"-\"`, or `\"无\"`), an unrelated field, or `row.<missingField>`. State what attribute is "
-                    + "unavailable in a `TextCallout` with a neutral user-facing title (e.g., \"提示\" / "
-                    + "\"信息说明\", never \"数据源\" or \"数据源不匹配\") and natural language without exposing "
-                    + "internal field/path names (such as `cpu_usage`, `send_drop_pkts_cnt`, or `patchFileVersion`); "
-                    + "if an existing `TextContent` or `TextCallout` in the DSL exposes raw field names, redefine "
-                    + "it (`TextContent(text, size?)` takes one text string; `TextCallout(variant, title, description)` takes three).");
+            selected.add("needsTableColumnGuidance");
             return;
         }
 
         if (code.startsWith("type-")) {
-            selected.add("Match the declared prop, operator, chart, and table types. If a value's type cannot be "
-                    + "proven from the available data, do not assert a definite mismatch; render real data and "
-                    + "state the limitation in the page.");
-            selected.add("Never fabricate data or statistics to satisfy a type. Change the expression to derive "
-                    + "from actual references, or show the real available value.");
+            selected.add("needsTypesGuidance");
             return;
         }
 
-        selected.add("Fix the diagnosed expression or its related upstream/downstream definitions as needed, and "
-                + "preserve unrelated correct definitions. Keep all references resolvable and do not invent names, "
-                + "data, or functions.");
+        selected.add("needsFallbackGuidance");
     }
 }

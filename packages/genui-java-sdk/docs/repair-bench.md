@@ -121,7 +121,7 @@ repair-cases/
 - **顶部汇总**：模型、尝试预算、超时、总案例数、已修复 / 仍无效 / 仅校验无效 / 未复现 / 错误 / 超时、主口径与副口径、issue 分桶表;状态过滤条按案例数着色
 - **每案例卡片**：原始意图、数据模型、根因、初始 DSL、修复轮次
 - **修复轮次**：每轮可展开看该轮**累积后的完整 DSL**、原始模型输出、轮末诊断（issue code / message / hint / 关联语句）;默认只展开最后一轮
-- **反思 Prompt**：按 `IncrementalRepairPromptBuilder` 的段落结构逐段重建（标注为"重建",因为原始 prompt 不落盘）
+- **反思 Prompt**：按 `RepairPromptBuilder` 的段落结构逐段重建（标注为"重建",因为原始 prompt 不落盘）
 - **最终态**：最后一次校验通过的 DSL,以及与上一轮的逐行 diff
 - **降级不展示**：修复失败时 `outputDsl` 是 Markdown 兜底页,报告不嵌入它;只展示 `finalDsl`（最后一次真实校验的 DSL）
 

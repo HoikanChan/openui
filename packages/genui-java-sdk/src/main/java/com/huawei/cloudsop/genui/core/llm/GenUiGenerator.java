@@ -31,7 +31,7 @@ import com.huawei.cloudsop.genui.core.validation.ValidationMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiPreprocessor;
-import com.huawei.cloudsop.genui.core.validation.repair.IncrementalRepairPromptBuilder;
+import com.huawei.cloudsop.genui.core.validation.repair.RepairPromptBuilder;
 import com.huawei.cloudsop.genui.core.validation.stream.ProgramRoundSession;
 import com.huawei.cloudsop.genui.core.validation.stream.RoundEndResult;
 
@@ -170,13 +170,13 @@ public final class GenUiGenerator {
     /**
      * 流式修复轮循环:构建增量提示词、重置轮状态、执行一次模型请求、合并并校验;通过或预算耗尽后返回。
      */
-    private RoundEndResult runIncrementalRepair(IncrementalRepairLoop loop, RoundEndResult current,
+    private RoundEndResult runRepair(RepairLoop loop, RoundEndResult current,
             RepairRoundExecutor executor) throws LlmTransportException {
         int attempts = 0;
         int limit = validationConfig.maxIncrementalAttempts();
         while ((attempts == 0 || !loop.budget().expiredNow()) && (limit == 0 || attempts < limit)) {
             attempts++;
-            String body = incrementalRepairBody(loop, current);
+            String body = repairBody(loop, current);
             String previousOutput = loop.roundSession().rawOutput();
             loop.state().beginInFlight();
             loop.roundSession().beginRound();
@@ -191,9 +191,9 @@ public final class GenUiGenerator {
     }
 
     /** Build the next repair request from the shared loop inputs and the latest merged program. */
-    private String incrementalRepairBody(IncrementalRepairLoop loop, RoundEndResult current) {
-        List<ChatMessage> messages = IncrementalRepairPromptBuilder.build(loop.originalSystemPrompt(),
-                userMessage(loop.request()), loop.merged(), current, history(loop.rounds()), loop.dataContext());
+    private String repairBody(RepairLoop loop, RoundEndResult current) {
+        List<ChatMessage> messages = RepairPromptBuilder.build(loop.originalSystemPrompt(),
+                userContext(loop.request()), loop.merged(), current, history(loop.rounds()), loop.dataContext());
         return buildBodyFromMessages(messages);
     }
 
@@ -204,7 +204,7 @@ public final class GenUiGenerator {
     }
 
     /** Inputs for the stream incremental-repair loop. */
-    private record IncrementalRepairLoop(String originalSystemPrompt, UiGenerationRequest request,
+    private record RepairLoop(String originalSystemPrompt, UiGenerationRequest request,
             ProgramRoundSession roundSession, List<RoundEndResult> rounds, GenerationContract merged,
             String dataContext, GenerationSession budget, RepairLoopState state) {
     }
@@ -372,7 +372,7 @@ public final class GenUiGenerator {
             RoundEndResult current = completeRound(roundSession, rounds, state);
             boolean incremental = validationConfig.repairPolicy() == RepairPolicyKind.INCREMENTAL_REPAIR;
             if (current.validationResult().status() == ValidationStatus.INVALID && incremental) {
-                IncrementalRepairLoop loop = new IncrementalRepairLoop(requestBody.systemPrompt(), effectiveRequest,
+                RepairLoop loop = new RepairLoop(requestBody.systemPrompt(), effectiveRequest,
                         roundSession, rounds, merged, requestBody.dataContext(), budget, state);
                 current = runIncrementalStream(loop, current, sink);
             }
@@ -408,9 +408,9 @@ public final class GenUiGenerator {
     }
 
     /** 流式增量修复:每轮只转发模型输出的覆盖/新增语句,并合并进同一当前程序。 */
-    private RoundEndResult runIncrementalStream(IncrementalRepairLoop loop, RoundEndResult current,
+    private RoundEndResult runIncrementalStream(RepairLoop loop, RoundEndResult current,
             Consumer<RenderStreamEnvelope> sink) throws LlmTransportException {
-        return runIncrementalRepair(loop, current, (body, previousOutput) -> {
+        return runRepair(loop, current, (body, previousOutput) -> {
             // The frontend consumes one appended DSL stream, while each model request has its own
             // parser buffer. Complete the previous request's tail using the same existing auto-close
             // rule as round-end validation, then separate it from the next request with a newline.
@@ -493,6 +493,10 @@ public final class GenUiGenerator {
     }
 
     private String userMessage(UiGenerationRequest request) {
+        return userContext(request) + " /no_think";
+    }
+
+    private String userContext(UiGenerationRequest request) {
         StringBuilder message = new StringBuilder();
         if (request.userInput() != null) {
             message.append(request.userInput());
@@ -503,7 +507,6 @@ public final class GenUiGenerator {
             message.append("## Request Context\n```json\n").append(Json.stringifyPretty(request.request()))
                     .append("\n```");
         }
-        message.append(" /no_think");
         return message.toString();
     }
 }

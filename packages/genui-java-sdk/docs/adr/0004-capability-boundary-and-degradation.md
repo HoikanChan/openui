@@ -87,7 +87,7 @@ three tiers:
 
 ### D6 — Incremental repair `## Capability boundary (overrides the original request)` section
 
-When `IncrementalRepairPromptBuilder` detects any `unknown-component` error
+When `RepairPromptBuilder` detects any `unknown-component` error
 matching a `CapabilityGapSpec` alias, it injects a top-level
 `## Capability boundary (overrides the original request)` section before
 `## Incremental repair rules (fixed)`, and marks the original user request in
@@ -120,7 +120,7 @@ observability.
 - `CapabilityGapSpec.NOTICE_STATEMENT_TEMPLATE` and
   `CapabilityGapSpec#noticeStatement()` are the single source of truth for the
   `capabilityNotice = TextCallout(...)` snippet across `PromptAssembler`,
-  `RepairHints`, and `IncrementalRepairPromptBuilder`.
+  `RepairHints`, and `RepairPromptBuilder`.
 - `repair-bench` reports per-case `capabilityNoticePresent`,
   `remainingCapabilityGapAliases`, `unreachedCapabilityGapAliases`, and
   `consecutiveUnmatchedUnknownComponents`, plus a top-level

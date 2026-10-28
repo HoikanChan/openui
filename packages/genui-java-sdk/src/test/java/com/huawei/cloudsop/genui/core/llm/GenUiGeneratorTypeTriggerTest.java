@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
-import com.huawei.cloudsop.genui.core.validation.repair.IncrementalRepairPromptBuilder;
+import com.huawei.cloudsop.genui.core.validation.repair.RepairPromptBuilder;
 
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +26,7 @@ import java.util.Map;
  */
 class GenUiGeneratorTypeTriggerTest {
 
-    private static final String REPAIR_MARKER = IncrementalRepairPromptBuilder.INCREMENTAL_REPAIR_MARKER;
+    private static final String REPAIR_MARKER = RepairPromptBuilder.INCREMENTAL_REPAIR_MARKER;
 
     private static String frame(String content) {
         return "data: {\"choices\":[{\"delta\":{\"content\":" + Json.stringify(content) + "}}]}\n\n";
@@ -48,8 +48,8 @@ class GenUiGeneratorTypeTriggerTest {
     // ── 确定类型错误 → 消费修复调用 ──────────────────────────────────────────
 
     @Test
-    void determinateTypeErrorIsConsumedByIncrementalRepair() {
-        GenUiGeneratorIncrementalRepairTest.ScriptedTransport transport = GenUiGeneratorIncrementalRepairTest.ScriptedTransport
+    void determinateTypeErrorIsConsumedByRepair() {
+        GenUiGeneratorRepairTest.ScriptedTransport transport = GenUiGeneratorRepairTest.ScriptedTransport
                 .streams(frame("root = TextContent(data.missing.value)") + "data: [DONE]\n\n",
                         frame("root = Stack([])") + "data: [DONE]\n\n");
 
@@ -70,7 +70,7 @@ class GenUiGeneratorTypeTriggerTest {
 
     @Test
     void unprovenOnlyResultDoesNotTriggerRepair() {
-        GenUiGeneratorIncrementalRepairTest.ScriptedTransport transport = GenUiGeneratorIncrementalRepairTest.ScriptedTransport
+        GenUiGeneratorRepairTest.ScriptedTransport transport = GenUiGeneratorRepairTest.ScriptedTransport
                 .streams(frame(unprovenOnlyDsl()) + "data: [DONE]\n\n");
 
         GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
@@ -89,7 +89,7 @@ class GenUiGeneratorTypeTriggerTest {
 
     @Test
     void streamingEntryPointAlsoTreatsUnprovenAsNonBlocking() {
-        GenUiGeneratorIncrementalRepairTest.ScriptedTransport transport = GenUiGeneratorIncrementalRepairTest.ScriptedTransport
+        GenUiGeneratorRepairTest.ScriptedTransport transport = GenUiGeneratorRepairTest.ScriptedTransport
                 .streams(frame(unprovenOnlyDsl()) + "data: [DONE]\n\n");
 
         GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)

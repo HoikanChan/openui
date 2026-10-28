@@ -34,13 +34,24 @@ class RepairGuidanceTest {
                 hint, false);
     }
 
+    private static List<String> renderGuidance(List<ValidationIssue> issues) {
+        var round = new com.huawei.cloudsop.genui.core.validation.stream.RoundEndResult("", "",
+                com.huawei.cloudsop.genui.core.validation.ValidationResult.invalid(
+                        issues == null ? List.of() : issues, null), 0L, null, null);
+        String system = RepairPromptBuilder.build(null, null, null, round).get(0).content();
+        String heading = "## Diagnostic-selected guidance\n";
+        int start = system.indexOf(heading);
+        return start < 0 ? List.of() : system.substring(start + heading.length()).lines()
+                .filter(line -> line.startsWith("- ")).map(line -> line.substring(2)).toList();
+    }
+
     private static String joined(List<String> lines) {
         return String.join("\n", lines);
     }
 
     @Test
     void syntaxIssueSelectsSyntaxGuidanceOnly() {
-        String guidance = joined(RepairGuidance.forIssues(List.of(error("syntax-unclosed-bracket", "syntax"))));
+        String guidance = joined(renderGuidance(List.of(error("syntax-unclosed-bracket", "syntax"))));
         assertTrue(guidance.contains("Rewrite the whole diagnosed statement"));
         assertTrue(guidance.contains("Arguments are positional"));
         assertFalse(guidance.contains("data.<path>"));
@@ -49,7 +60,7 @@ class RepairGuidanceTest {
 
     @Test
     void unresolvedRefSelectsCallClassificationGuidance() {
-        String guidance = joined(RepairGuidance.forIssues(List.of(error("unresolved-ref", "reference"))));
+        String guidance = joined(renderGuidance(List.of(error("unresolved-ref", "reference"))));
         assertTrue(guidance.contains("`@name(...)` is a builtin call"));
         assertTrue(guidance.contains("bare identifier is a statement reference"));
         assertTrue(guidance.contains("add the leading `@`"));
@@ -57,7 +68,7 @@ class RepairGuidanceTest {
 
     @Test
     void dataIssueSelectsNoSampleAsFullDataGuidance() {
-        String guidance = joined(RepairGuidance.forIssues(List.of(error("type-data-path-missing", "type"))));
+        String guidance = joined(renderGuidance(List.of(error("type-data-path-missing", "type"))));
         assertTrue(guidance.contains("`data.<path>` must exist"));
         assertTrue(guidance.contains("sample rows as if they were the full dataset"));
         assertTrue(guidance.contains("state the limitation in the page"));
@@ -68,7 +79,7 @@ class RepairGuidanceTest {
 
     @Test
     void tableColumnMissingSelectsDataFirstAndNoExtraColWorkaroundGuidance() {
-        String guidance = joined(RepairGuidance.forIssues(List.of(error("type-table-column-missing", "type"))));
+        String guidance = joined(renderGuidance(List.of(error("type-table-column-missing", "type"))));
         assertTrue(guidance.contains("caller-supplied data model as the primary content"));
         assertTrue(guidance.contains("never use `ExtraCol` to work around a missing row field"));
         assertTrue(guidance.contains("without exposing internal field/path names"));
@@ -77,8 +88,8 @@ class RepairGuidanceTest {
 
     @Test
     void unknownComponentSelectsContractSignatureGuidance() {
-        String guidance = joined(RepairGuidance.forIssues(List.of(error("unknown-component", "contract"))));
-        assertTrue(guidance.contains("only components listed in the current full contract"));
+        String guidance = joined(renderGuidance(List.of(error("unknown-component", "contract"))));
+        assertTrue(guidance.contains("only components listed in the original generation contract"));
         assertTrue(guidance.contains("positional argument order"));
     }
 
@@ -87,7 +98,7 @@ class RepairGuidanceTest {
         String hint = RepairHints.unknownComponentHint("GroupBy",
                 GenerationContractLoader.loadDefault().capabilityGaps());
         String guidance = joined(
-                RepairGuidance.forIssues(List.of(errorWithHint("unknown-component", "contract", "GroupBy", hint))));
+                renderGuidance(List.of(errorWithHint("unknown-component", "contract", "GroupBy", hint))));
         assertTrue(guidance.contains("Capability boundary (overrides the original request)"),
                 "tier-2 unknown-component must select capability boundary guidance: " + guidance);
         assertTrue(guidance.contains("capabilityNotice"), "guidance must mention capabilityNotice: " + guidance);
@@ -99,21 +110,20 @@ class RepairGuidanceTest {
     void unknownComponentTier1MissingAtSelectsLeadingAtGuidance() {
         String hint = RepairHints.unknownComponentHint("Set", GenerationContractLoader.loadDefault().capabilityGaps());
         String guidance = joined(
-                RepairGuidance.forIssues(List.of(errorWithHint("unknown-component", "contract", "Set", hint))));
+                renderGuidance(List.of(errorWithHint("unknown-component", "contract", "Set", hint))));
         assertTrue(guidance.contains("leading `@`"), "tier-1 unknown-component must select leading @ guidance");
         assertFalse(guidance.contains("Copy the exact component name and positional argument order"));
     }
 
     @Test
     void rootIssueSelectsSingleReachableRootGuidance() {
-        String guidance = joined(RepairGuidance.forIssues(List.of(error("root-not-renderable", "root"))));
+        String guidance = joined(renderGuidance(List.of(error("root-not-renderable", "root"))));
         assertTrue(guidance.contains("exactly one reachable `root`"));
     }
 
     @Test
     void duplicateCategoriesAreDeduplicated() {
-        List<String> guidance = RepairGuidance
-                .forIssues(List.of(error("syntax-a", "syntax"), error("syntax-b", "syntax")));
+        List<String> guidance = renderGuidance(List.of(error("syntax-a", "syntax"), error("syntax-b", "syntax")));
         assertEquals(3, guidance.size(), "syntax category rendered once");
     }
 
@@ -121,7 +131,7 @@ class RepairGuidanceTest {
     void warningsAndNullsProduceNoGuidance() {
         ValidationIssue warning = new ValidationIssue("soft-warn", ValidationSeverity.WARNING, "x", "message", null,
                 null, null, -1, -1, null, true);
-        assertTrue(RepairGuidance.forIssues(List.of(warning)).isEmpty());
-        assertTrue(RepairGuidance.forIssues(null).isEmpty());
+        assertTrue(renderGuidance(List.of(warning)).isEmpty());
+        assertTrue(renderGuidance(null).isEmpty());
     }
 }

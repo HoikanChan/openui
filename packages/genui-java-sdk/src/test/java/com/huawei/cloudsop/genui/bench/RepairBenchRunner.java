@@ -30,7 +30,7 @@ import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
 import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.parser.Statement;
-import com.huawei.cloudsop.genui.core.validation.repair.IncrementalRepairPromptBuilder;
+import com.huawei.cloudsop.genui.core.validation.repair.RepairPromptBuilder;
 import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
 import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalysis;
 import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalyzer;
@@ -567,7 +567,7 @@ final class RepairBenchRunner {
                     }
                 }
                 String text = system.toString();
-                if (text.contains(IncrementalRepairPromptBuilder.INCREMENTAL_REPAIR_MARKER)) {
+                if (text.contains(RepairPromptBuilder.INCREMENTAL_REPAIR_MARKER)) {
                     return RequestKind.REPAIR;
                 }
                 if (text.contains(MARKDOWN_SYSTEM_HINT)) {
