@@ -25,16 +25,17 @@ public final class GenerationContractLoader {
     private static final String DEFAULT_RESOURCE = "openui/base-contract.json";
     private static final Set<String> ALLOWED_GAP_KINDS = Set.of("data", "component");
 
-    private GenerationContractLoader() {
-    }
+    private GenerationContractLoader() {}
 
     public static GenerationContract loadDefault() {
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
-        if (loader == null)
+        if (loader == null) {
             loader = GenerationContractLoader.class.getClassLoader();
+        }
         try (InputStream input = loader.getResourceAsStream(DEFAULT_RESOURCE)) {
             if (input == null) {
-                throw new GenerationSdkException("Default base contract resource not found: " + DEFAULT_RESOURCE);
+                throw new GenerationSdkException(
+                        "Default base contract resource not found: " + DEFAULT_RESOURCE);
             }
             return fromJson(new String(input.readAllBytes(), StandardCharsets.UTF_8));
         } catch (IOException error) {
@@ -45,10 +46,15 @@ public final class GenerationContractLoader {
     public static GenerationContract fromJson(String json) {
         // Contract indexes must retain their exact decimal value until load-time validation.
         try {
-            return fromMap(Json.asObject(com.alibaba.fastjson2.JSON.parse(json,
-                    com.alibaba.fastjson2.JSONReader.Feature.UseBigDecimalForDoubles,
-                    com.alibaba.fastjson2.JSONReader.Feature.UseBigDecimalForFloats,
-                    com.alibaba.fastjson2.JSONReader.Feature.DisableSingleQuote), "GenerationContract"));
+            return fromMap(
+                    Json.asObject(
+                            com.alibaba.fastjson2.JSON.parse(
+                                    json,
+                                    com.alibaba.fastjson2.JSONReader.Feature
+                                            .UseBigDecimalForDoubles,
+                                    com.alibaba.fastjson2.JSONReader.Feature.UseBigDecimalForFloats,
+                                    com.alibaba.fastjson2.JSONReader.Feature.DisableSingleQuote),
+                            "GenerationContract"));
         } catch (com.alibaba.fastjson2.JSONException error) {
             throw new GenerationSdkException("Invalid JSON: " + error.getMessage(), error);
         }
@@ -59,30 +65,46 @@ public final class GenerationContractLoader {
         List<BuiltinSpec> builtins = builtins(map.get("builtins"));
         List<CapabilityGapSpec> capabilityGaps = capabilityGaps(map.get("capabilityGaps"));
         validateCapabilityGaps(capabilityGaps, components.keySet(), builtins, "contract");
-        return new GenerationContract(string(map.get("contractVersion")), string(map.get("root")), components,
-                componentGroups(map.get("componentGroups")), tools(map.get("tools")), strings(map.get("examples")),
-                strings(map.get("additionalRules")), builtins, capabilityGaps);
+        return new GenerationContract(
+                string(map.get("contractVersion")),
+                string(map.get("root")),
+                components,
+                componentGroups(map.get("componentGroups")),
+                tools(map.get("tools")),
+                strings(map.get("examples")),
+                strings(map.get("additionalRules")),
+                builtins,
+                capabilityGaps);
     }
 
     static List<CapabilityGapSpec> capabilityGaps(Object value) {
         ArrayList<CapabilityGapSpec> result = new ArrayList<>();
-        if (value == null)
+        if (value == null) {
             return result;
+        }
         for (Object item : Json.asList(value, "capabilityGaps")) {
             Map<String, Object> entry = Json.asObject(item, "capabilityGap");
-            result.add(new CapabilityGapSpec(string(entry.get("id")), string(entry.get("kind")),
-                    string(entry.get("name")), strings(entry.get("aliases")), strings(entry.get("phrases")),
-                    string(entry.get("fallback"))));
+            result.add(
+                    new CapabilityGapSpec(
+                            string(entry.get("id")),
+                            string(entry.get("kind")),
+                            string(entry.get("name")),
+                            strings(entry.get("aliases")),
+                            strings(entry.get("phrases")),
+                            string(entry.get("fallback"))));
         }
         return result;
     }
 
     /**
-     * Fail-fast validation for capabilityGaps: checks required fields, kind ("data" | "component"), duplicate ids, and
-     * alias collisions against components, builtins, or other capability gaps.
+     * Fail-fast validation for capabilityGaps: checks required fields, kind ("data" | "component"),
+     * duplicate ids, and alias collisions against components, builtins, or other capability gaps.
      */
-    public static void validateCapabilityGaps(List<CapabilityGapSpec> gaps, Set<String> componentNames,
-            List<BuiltinSpec> builtins, String scope) {
+    public static void validateCapabilityGaps(
+            List<CapabilityGapSpec> gaps,
+            Set<String> componentNames,
+            List<BuiltinSpec> builtins,
+            String scope) {
         if (gaps == null || gaps.isEmpty()) {
             return;
         }
@@ -98,23 +120,33 @@ public final class GenerationContractLoader {
         Map<String, String> seenAliases = new LinkedHashMap<>();
         for (CapabilityGapSpec gap : gaps) {
             if (gap == null) {
-                throw new GenerationSdkException("capabilityGap entry must not be null in " + scope);
+                throw new GenerationSdkException(
+                        "capabilityGap entry must not be null in " + scope);
             }
             if (gap.id() == null || gap.id().isBlank()) {
                 throw new GenerationSdkException("capabilityGap entry is missing 'id' in " + scope);
             }
             if (!seenIds.add(gap.id())) {
-                throw new GenerationSdkException("duplicate capabilityGap id in " + scope + ": " + gap.id());
+                throw new GenerationSdkException(
+                        "duplicate capabilityGap id in " + scope + ": " + gap.id());
             }
             if (gap.kind() == null || !ALLOWED_GAP_KINDS.contains(gap.kind())) {
-                throw new GenerationSdkException("capabilityGap '" + gap.id() + "' in " + scope + " has invalid kind '"
-                        + gap.kind() + "' (expected 'data' or 'component')");
+                throw new GenerationSdkException(
+                        "capabilityGap '"
+                                + gap.id()
+                                + "' in "
+                                + scope
+                                + " has invalid kind '"
+                                + gap.kind()
+                                + "' (expected 'data' or 'component')");
             }
             if (gap.name() == null || gap.name().isBlank()) {
-                throw new GenerationSdkException("capabilityGap '" + gap.id() + "' is missing 'name' in " + scope);
+                throw new GenerationSdkException(
+                        "capabilityGap '" + gap.id() + "' is missing 'name' in " + scope);
             }
             if (gap.fallback() == null || gap.fallback().isBlank()) {
-                throw new GenerationSdkException("capabilityGap '" + gap.id() + "' is missing 'fallback' in " + scope);
+                throw new GenerationSdkException(
+                        "capabilityGap '" + gap.id() + "' is missing 'fallback' in " + scope);
             }
             for (String rawAlias : gap.aliases()) {
                 String alias = CapabilityGapSpec.normalizeAlias(rawAlias);
@@ -123,17 +155,34 @@ public final class GenerationContractLoader {
                             "capabilityGap '" + gap.id() + "' contains a blank alias in " + scope);
                 }
                 if (componentNames != null && componentNames.contains(alias)) {
-                    throw new GenerationSdkException("capabilityGap '" + gap.id() + "' alias '" + alias
-                            + "' collides with existing component in " + scope);
+                    throw new GenerationSdkException(
+                            "capabilityGap '"
+                                    + gap.id()
+                                    + "' alias '"
+                                    + alias
+                                    + "' collides with existing component in "
+                                    + scope);
                 }
                 if (builtinNames.contains(alias)) {
-                    throw new GenerationSdkException("capabilityGap '" + gap.id() + "' alias '" + alias
-                            + "' collides with existing builtin in " + scope);
+                    throw new GenerationSdkException(
+                            "capabilityGap '"
+                                    + gap.id()
+                                    + "' alias '"
+                                    + alias
+                                    + "' collides with existing builtin in "
+                                    + scope);
                 }
                 String previousGap = seenAliases.put(alias, gap.id());
                 if (previousGap != null && !previousGap.equals(gap.id())) {
-                    throw new GenerationSdkException("capabilityGap '" + gap.id() + "' alias '" + alias
-                            + "' collides with capabilityGap '" + previousGap + "' in " + scope);
+                    throw new GenerationSdkException(
+                            "capabilityGap '"
+                                    + gap.id()
+                                    + "' alias '"
+                                    + alias
+                                    + "' collides with capabilityGap '"
+                                    + previousGap
+                                    + "' in "
+                                    + scope);
                 }
             }
             for (String phrase : gap.phrases()) {
@@ -147,8 +196,9 @@ public final class GenerationContractLoader {
 
     private static List<BuiltinSpec> builtins(Object value) {
         ArrayList<BuiltinSpec> result = new ArrayList<>();
-        if (value == null)
+        if (value == null) {
             return result;
+        }
         java.util.Set<String> seenNames = new java.util.HashSet<>();
         for (Object item : Json.asList(value, "builtins")) {
             Map<String, Object> entry = Json.asObject(item, "builtin");
@@ -177,12 +227,20 @@ public final class GenerationContractLoader {
             } else if (seenPlainOptional) {
                 // binder 参数豁免：其 optional 语义是"该作用域绑定可省略"（Render 的 2/3 参双形式），
                 // 后随的 template 仍是必填。
-                throw new GenerationSdkException("builtin '" + name + "': required parameter '" + param.name()
-                        + "' must not follow an optional parameter");
+                throw new GenerationSdkException(
+                        "builtin '"
+                                + name
+                                + "': required parameter '"
+                                + param.name()
+                                + "' must not follow an optional parameter");
             }
             if (param.variadic() && i != params.size() - 1) {
                 throw new GenerationSdkException(
-                        "builtin '" + name + "': variadic parameter '" + param.name() + "' must be the last parameter");
+                        "builtin '"
+                                + name
+                                + "': variadic parameter '"
+                                + param.name()
+                                + "' must be the last parameter");
             }
         }
         TypeExpr returnType = null;
@@ -195,7 +253,9 @@ public final class GenerationContractLoader {
         TypeRule typeRule = null;
         Object typeRuleRaw = entry.get("typeRule");
         if (typeRuleRaw != null) {
-            typeRule = RuleCompiler.compile(name, Json.asObject(typeRuleRaw, "typeRule of builtin " + name));
+            typeRule =
+                    RuleCompiler.compile(
+                            name, Json.asObject(typeRuleRaw, "typeRule of builtin " + name));
         }
         // 元素输入来源必须显式声明: binder builtin 缺省 input 视为漏声明并在加载期失败;
         // 显式 null 才表示"没有元素来源"(如 Render)。否则缺字段会静默退化成 MISSING_CONTEXT,
@@ -204,20 +264,34 @@ public final class GenerationContractLoader {
         boolean inputDeclared = entry.containsKey("input");
         Object inputRaw = entry.get("input");
         if (hasBinders && !inputDeclared) {
-            throw new GenerationSdkException("builtin '" + name
-                    + "': binder builtin must declare 'input' (use null only when it has no element source)");
+            throw new GenerationSdkException(
+                    "builtin '"
+                            + name
+                            + "': binder builtin must declare 'input' (use null only when it has no element source)");
         }
         int inputIndex = -1;
         if (inputRaw != null) {
             int raw = exactIndex(inputRaw, name, "input");
             if (raw < 0 || raw >= params.size()) {
-                throw new GenerationSdkException("builtin '" + name + "': 'input' index " + raw
-                        + " is out of range for " + params.size() + " parameter(s)");
+                throw new GenerationSdkException(
+                        "builtin '"
+                                + name
+                                + "': 'input' index "
+                                + raw
+                                + " is out of range for "
+                                + params.size()
+                                + " parameter(s)");
             }
             inputIndex = (int) raw;
             if (params.get(inputIndex).binder()) {
-                throw new GenerationSdkException("builtin '" + name + "': 'input' must not point to binder parameter '"
-                        + name + "." + params.get(inputIndex).name() + "'");
+                throw new GenerationSdkException(
+                        "builtin '"
+                                + name
+                                + "': 'input' must not point to binder parameter '"
+                                + name
+                                + "."
+                                + params.get(inputIndex).name()
+                                + "'");
             }
             if (params.stream().noneMatch(BuiltinSpec.ParamSpec::binder)) {
                 throw new GenerationSdkException(
@@ -228,24 +302,36 @@ public final class GenerationContractLoader {
             // (含具体元素类型的数组)却拒绝声明来源,等于用 null 绕过元素级检查,加载期直接拒绝。
             for (BuiltinSpec.ParamSpec param : params) {
                 if (param.typeExpr() instanceof TypeExpr.ArrayOf) {
-                    throw new GenerationSdkException("builtin '" + name + "': parameter '" + param.name()
-                            + "' declares an element array, so 'input' must name its source index (not null)");
+                    throw new GenerationSdkException(
+                            "builtin '"
+                                    + name
+                                    + "': parameter '"
+                                    + param.name()
+                                    + "' declares an element array, so 'input' must name its source index (not null)");
                 }
             }
         }
-        return new BuiltinSpec(name, string(entry.get("signature")), string(entry.get("description")),
-                Boolean.TRUE.equals(entry.get("templateBuiltin")), params, returnType, typeRule, inputIndex,
+        return new BuiltinSpec(
+                name,
+                string(entry.get("signature")),
+                string(entry.get("description")),
+                Boolean.TRUE.equals(entry.get("templateBuiltin")),
+                params,
+                returnType,
+                typeRule,
+                inputIndex,
                 callForms(entry.get("callForms"), params, inputIndex, name));
     }
 
-    private static List<BuiltinSpec.CallForm> callForms(Object raw, List<BuiltinSpec.ParamSpec> params, int input,
-            String name) {
+    private static List<BuiltinSpec.CallForm> callForms(
+            Object raw, List<BuiltinSpec.ParamSpec> params, int input, String name) {
         boolean hasBinders = params.stream().anyMatch(BuiltinSpec.ParamSpec::binder);
         if (!hasBinders && raw == null) {
             return List.of();
         }
         if (!hasBinders || raw == null) {
-            throw new GenerationSdkException("builtin '" + name + "': binder callForms must be declared");
+            throw new GenerationSdkException(
+                    "builtin '" + name + "': binder callForms must be declared");
         }
         List<BuiltinSpec.CallForm> forms = new ArrayList<>();
         Set<Integer> arities = new LinkedHashSet<>();
@@ -254,22 +340,32 @@ public final class GenerationContractLoader {
             Map<String, Object> form = Json.asObject(item, "callForm");
             int arity = exactIndex(form.get("arity"), name, "arity");
             int body = exactIndex(form.get("body"), name, "body");
-            if (arity < min || arity > params.size() || !arities.add(arity) || body < 0 || body >= arity) {
-                throw new GenerationSdkException("builtin '" + name + "': invalid or ambiguous callForms body/arity");
+            if (arity < min
+                    || arity > params.size()
+                    || !arities.add(arity)
+                    || body < 0
+                    || body >= arity) {
+                throw new GenerationSdkException(
+                        "builtin '" + name + "': invalid or ambiguous callForms body/arity");
             }
             List<Integer> binders = new ArrayList<>();
             for (Object binder : Json.asList(form.get("binders"), "callForm.binders")) {
                 int index = exactIndex(binder, name, "binder");
-                if (index < 0 || index >= arity || index == body || !params.get(index).binder()
+                if (index < 0
+                        || index >= arity
+                        || index == body
+                        || !params.get(index).binder()
                         || binders.contains(index)) {
-                    throw new GenerationSdkException("builtin '" + name + "': invalid callForms binder index");
+                    throw new GenerationSdkException(
+                            "builtin '" + name + "': invalid callForms binder index");
                 }
                 binders.add(index);
             }
             for (int index = 0; index < params.size(); index++) {
                 BuiltinSpec.ParamSpec param = params.get(index);
                 if (param.binder() && !param.optional() && !binders.contains(index)) {
-                    throw new GenerationSdkException("builtin '" + name + "': callForms omits required binder");
+                    throw new GenerationSdkException(
+                            "builtin '" + name + "': callForms omits required binder");
                 }
             }
             if (binders.isEmpty() || input >= arity || input == body) {
@@ -280,7 +376,8 @@ public final class GenerationContractLoader {
         }
         for (int arity = min; arity <= params.size(); arity++) {
             if (!arities.contains(arity)) {
-                throw new GenerationSdkException("builtin '" + name + "': callForms missing arity " + arity);
+                throw new GenerationSdkException(
+                        "builtin '" + name + "': callForms missing arity " + arity);
             }
         }
         return List.copyOf(forms);
@@ -295,7 +392,12 @@ public final class GenerationContractLoader {
             // Reject fractions and overflow without a floating-point conversion.
         }
         throw new GenerationSdkException(
-                "builtin '" + name + "': '" + field + "' must be an integral parameter index, got " + value);
+                "builtin '"
+                        + name
+                        + "': '"
+                        + field
+                        + "' must be an integral parameter index, got "
+                        + value);
     }
 
     private static List<BuiltinSpec.ParamSpec> builtinParams(Object value, String builtinName) {
@@ -311,23 +413,34 @@ public final class GenerationContractLoader {
                 throw new GenerationSdkException(
                         "builtin '" + builtinName + "': param entry requires 'name' and 'type'");
             }
-            result.add(new BuiltinSpec.ParamSpec(name, type, TypeExprParser.parse(type, builtinName + "." + name),
-                    Boolean.TRUE.equals(param.get("optional")), Boolean.TRUE.equals(param.get("variadic")),
-                    Boolean.TRUE.equals(param.get("binder")), nameSyntax(param, builtinName, name)));
+            result.add(
+                    new BuiltinSpec.ParamSpec(
+                            name,
+                            type,
+                            TypeExprParser.parse(type, builtinName + "." + name),
+                            Boolean.TRUE.equals(param.get("optional")),
+                            Boolean.TRUE.equals(param.get("variadic")),
+                            Boolean.TRUE.equals(param.get("binder")),
+                            nameSyntax(param, builtinName, name)));
         }
         return result;
     }
 
     /** binder 名语法:仅 binder 参数可声明;声明值经枚举校验(未知值加载期失败);缺省按双形态(与既有行为一致)。 */
-    private static String nameSyntax(Map<String, Object> param, String builtinName, String paramName) {
+    private static String nameSyntax(
+            Map<String, Object> param, String builtinName, String paramName) {
         Object raw = param.get("nameSyntax");
         boolean binder = Boolean.TRUE.equals(param.get("binder"));
         if (raw == null) {
             return binder ? "string-or-identifier" : null;
         }
         if (!binder) {
-            throw new GenerationSdkException("builtin '" + builtinName + "': non-binder parameter '" + paramName
-                    + "' must not declare nameSyntax");
+            throw new GenerationSdkException(
+                    "builtin '"
+                            + builtinName
+                            + "': non-binder parameter '"
+                            + paramName
+                            + "' must not declare nameSyntax");
         }
         String value = string(raw);
         BuiltinSpec.NameSyntax.fromContract(value);
@@ -335,32 +448,49 @@ public final class GenerationContractLoader {
     }
 
     /** returnType 里的 {@code T} 必须能在某个参数类型中解出绑定；param(n) 引用必须在参数表范围内。 */
-    private static void requireBoundTypeVars(List<BuiltinSpec.ParamSpec> params, TypeExpr returnType,
-            String builtinName) {
+    private static void requireBoundTypeVars(
+            List<BuiltinSpec.ParamSpec> params, TypeExpr returnType, String builtinName) {
         boolean paramsBindT = params.stream().anyMatch(param -> containsTypeVar(param.typeExpr()));
         if (returnType != null && !paramsBindT && containsTypeVar(returnType)) {
             throw new GenerationSdkException(
-                    "builtin '" + builtinName + "': returnType references T but no parameter type binds it");
+                    "builtin '"
+                            + builtinName
+                            + "': returnType references T but no parameter type binds it");
         }
         int paramCount = params.size();
-        visit(returnType, typeExpr -> {
-            if (typeExpr instanceof TypeExpr.ParamRef ref && (ref.index() < 0 || ref.index() >= paramCount)) {
-                throw new GenerationSdkException("builtin '" + builtinName + "': param(" + ref.index()
-                        + ") is out of range for " + paramCount + " parameter(s)");
-            }
-        });
+        visit(
+                returnType,
+                typeExpr -> {
+                    if (typeExpr instanceof TypeExpr.ParamRef ref
+                            && (ref.index() < 0 || ref.index() >= paramCount)) {
+                        throw new GenerationSdkException(
+                                "builtin '"
+                                        + builtinName
+                                        + "': param("
+                                        + ref.index()
+                                        + ") is out of range for "
+                                        + paramCount
+                                        + " parameter(s)");
+                    }
+                });
     }
 
     private static boolean containsTypeVar(TypeExpr type) {
-        return type != null && (type instanceof TypeExpr.TypeVar
-                || (type instanceof TypeExpr.ArrayOf arrayOf && containsTypeVar(arrayOf.element()))
-                || (type instanceof TypeExpr.RecordOf record && containsTypeVar(record.value()))
-                || (type instanceof TypeExpr.ObjectLiteral literal
-                        && literal.fields().stream().anyMatch(field -> containsTypeVar(field.type())))
-                || (type instanceof TypeExpr.UnionOf union
-                        && union.alternatives().stream().anyMatch(GenerationContractLoader::containsTypeVar))
-                || (type instanceof TypeExpr.Conditional conditional
-                        && (containsTypeVar(conditional.whenArray()) || containsTypeVar(conditional.otherwise()))));
+        return type != null
+                && (type instanceof TypeExpr.TypeVar
+                        || (type instanceof TypeExpr.ArrayOf arrayOf
+                                && containsTypeVar(arrayOf.element()))
+                        || (type instanceof TypeExpr.RecordOf record
+                                && containsTypeVar(record.value()))
+                        || (type instanceof TypeExpr.ObjectLiteral literal
+                                && literal.fields().stream()
+                                        .anyMatch(field -> containsTypeVar(field.type())))
+                        || (type instanceof TypeExpr.UnionOf union
+                                && union.alternatives().stream()
+                                        .anyMatch(GenerationContractLoader::containsTypeVar))
+                        || (type instanceof TypeExpr.Conditional conditional
+                                && (containsTypeVar(conditional.whenArray())
+                                        || containsTypeVar(conditional.otherwise()))));
     }
 
     private interface Visitor {
@@ -392,15 +522,20 @@ public final class GenerationContractLoader {
 
     static Map<String, ComponentPromptSpec> componentMap(Object value) {
         LinkedHashMap<String, ComponentPromptSpec> result = new LinkedHashMap<>();
-        if (value == null)
+        if (value == null) {
             return result;
+        }
         for (Map.Entry<String, Object> entry : Json.asObject(value, "components").entrySet()) {
-            Map<String, Object> component = Json.asObject(entry.getValue(), "component " + entry.getKey());
-            result.put(entry.getKey(),
+            Map<String, Object> component =
+                    Json.asObject(entry.getValue(), "component " + entry.getKey());
+            result.put(
+                    entry.getKey(),
                     component.containsKey("propsSchema")
-                            ? new ComponentPromptSpec(string(component.get("description")),
+                            ? new ComponentPromptSpec(
+                                    string(component.get("description")),
                                     Json.asObject(component.get("propsSchema"), "propsSchema"))
-                            : new ComponentPromptSpec(string(component.get("signature")),
+                            : new ComponentPromptSpec(
+                                    string(component.get("signature")),
                                     string(component.get("description"))));
         }
         return result;
@@ -408,50 +543,62 @@ public final class GenerationContractLoader {
 
     static List<ComponentGroup> componentGroups(Object value) {
         ArrayList<ComponentGroup> result = new ArrayList<>();
-        if (value == null)
+        if (value == null) {
             return result;
+        }
         for (Object item : Json.asList(value, "componentGroups")) {
             Map<String, Object> group = Json.asObject(item, "componentGroup");
-            result.add(new ComponentGroup(string(group.get("name")), strings(group.get("components")),
-                    strings(group.get("notes"))));
+            result.add(
+                    new ComponentGroup(
+                            string(group.get("name")),
+                            strings(group.get("components")),
+                            strings(group.get("notes"))));
         }
         return result;
     }
 
     private static List<ToolSpec> tools(Object value) {
         ArrayList<ToolSpec> result = new ArrayList<>();
-        if (value == null)
+        if (value == null) {
             return result;
+        }
         for (Object item : Json.asList(value, "tools")) {
             if (item instanceof String name) {
                 result.add(new ToolSpec(name, null, Map.of(), Map.of(), null));
                 continue;
             }
             Map<String, Object> tool = Json.asObject(item, "tool");
-            result.add(new ToolSpec(string(tool.get("name")), string(tool.get("description")),
-                    objectOrEmpty(tool.get("inputSchema")), objectOrEmpty(tool.get("outputSchema")),
-                    annotations(tool.get("annotations"))));
+            result.add(
+                    new ToolSpec(
+                            string(tool.get("name")),
+                            string(tool.get("description")),
+                            objectOrEmpty(tool.get("inputSchema")),
+                            objectOrEmpty(tool.get("outputSchema")),
+                            annotations(tool.get("annotations"))));
         }
         return result;
     }
 
     private static ToolAnnotations annotations(Object value) {
-        if (value == null)
+        if (value == null) {
             return null;
+        }
         Map<String, Object> map = Json.asObject(value, "tool annotations");
         return new ToolAnnotations(bool(map.get("readOnlyHint")), bool(map.get("destructiveHint")));
     }
 
     private static Map<String, Object> objectOrEmpty(Object value) {
-        if (value == null)
+        if (value == null) {
             return Map.of();
+        }
         return Json.asObject(value, "schema");
     }
 
     static List<String> strings(Object value) {
         ArrayList<String> result = new ArrayList<>();
-        if (value == null)
+        if (value == null) {
             return result;
+        }
         for (Object item : Json.asList(value, "string list")) {
             result.add(string(item));
         }

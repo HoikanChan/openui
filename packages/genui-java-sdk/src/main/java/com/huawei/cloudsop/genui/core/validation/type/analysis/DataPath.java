@@ -15,11 +15,14 @@ public record DataPath(List<Segment> segments, String source) {
     }
 
     public static DataPath parse(String source) {
-        if (source == null || !(source.equals("data") || source.startsWith("data.") || source.startsWith("data["))) {
+        if (source == null
+                || !(source.equals("data")
+                        || source.startsWith("data.")
+                        || source.startsWith("data["))) {
             throw new IllegalArgumentException("Data path must start with data: " + source);
         }
         List<Segment> segments = new ArrayList<>();
-        int index = 4;
+        int index = "data".length();
         while (index < source.length()) {
             char marker = source.charAt(index);
             if (marker == '.') {
@@ -46,13 +49,15 @@ public record DataPath(List<Segment> segments, String source) {
                     try {
                         segments.add(new Index(Integer.parseInt(token)));
                     } catch (NumberFormatException error) {
-                        throw new IllegalArgumentException("Only literal data indexes are supported: " + source, error);
+                        throw new IllegalArgumentException(
+                                "Only literal data indexes are supported: " + source, error);
                     }
                 }
                 index = close + 1;
                 continue;
             }
-            throw new IllegalArgumentException("Unexpected data path token at " + index + ": " + source);
+            throw new IllegalArgumentException(
+                    "Unexpected data path token at " + index + ": " + source);
         }
         return new DataPath(segments, source);
     }
@@ -61,12 +66,9 @@ public record DataPath(List<Segment> segments, String source) {
         return Character.isLetterOrDigit(value) || value == '_' || value == '$' || value == '-';
     }
 
-    public sealed interface Segment permits Key, Index {
-    }
+    public sealed interface Segment permits Key, Index {}
 
-    public record Key(String name) implements Segment {
-    }
+    public record Key(String name) implements Segment {}
 
-    public record Index(int value) implements Segment {
-    }
+    public record Index(int value) implements Segment {}
 }

@@ -126,8 +126,12 @@ class ShapeWalkerTest {
             row.put("token", "value-" + i);
             rows.add(row);
         }
-        CharacterizationConfig cfg = CharacterizationConfig.builder().sampleRows(3).enumMaxDistinct(50)
-                .enumMaxRatio(0.5).build();
+        CharacterizationConfig cfg =
+                CharacterizationConfig.builder()
+                        .sampleRows(3)
+                        .enumMaxDistinct(50)
+                        .enumMaxRatio(0.5)
+                        .build();
 
         Characterized result = ShapeWalker.walk(rows, cfg, 0);
 
@@ -140,8 +144,11 @@ class ShapeWalkerTest {
 
     @Test
     void stringArrayIsTreatedAsOneEnumColumn() {
-        List<Object> rows = new ArrayList<>(
-                List.of("red", "green", "blue", "red", "green", "blue", "red", "green", "blue", "red"));
+        List<Object> rows =
+                new ArrayList<>(
+                        List.of(
+                                "red", "green", "blue", "red", "green", "blue", "red", "green",
+                                "blue", "red"));
         CharacterizationConfig cfg = CharacterizationConfig.builder().sampleRows(2).build();
 
         Characterized result = ShapeWalker.walk(rows, cfg, 0);
@@ -155,8 +162,7 @@ class ShapeWalkerTest {
     @Test
     void numberArrayIsASeriesWithNoDownsamplingOfShape() {
         List<Object> rows = new ArrayList<>();
-        for (int i = 0; i < 100; i++)
-            rows.add((long) i);
+        for (int i = 0; i < 100; i++) rows.add((long) i);
         CharacterizationConfig cfg = CharacterizationConfig.builder().sampleRows(3).build();
 
         Characterized result = ShapeWalker.walk(rows, cfg, 0);

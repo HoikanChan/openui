@@ -10,5 +10,9 @@ package com.huawei.cloudsop.genui.core.prompt.characterize;
  * @since 2026
  */
 public enum ScalarType {
-    STRING, NUMBER, BOOLEAN, NULL, UNKNOWN
+    STRING,
+    NUMBER,
+    BOOLEAN,
+    NULL,
+    UNKNOWN
 }

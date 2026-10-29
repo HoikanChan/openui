@@ -38,14 +38,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 class GenUiGeneratorTest {
     @Test
     void generatesWithRegisteredExtensionAndExtractsOpenuiBlock() {
-        FakeTransport transport = FakeTransport.sync(
-                "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"```openui\\nroot = Stack([])\\n```\"}}]}");
-        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .register(extension());
+        FakeTransport transport =
+                FakeTransport.sync(
+                        "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"```openui\\nroot = Stack([])\\n```\"}}]}");
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                        .register(extension());
 
         Map<String, Object> response = orderedMap("alarms", List.of(orderedMap("id", 7)));
-        GenUiGenerationResult result = generator.generate(UiGenerationRequest.builder().extensionId("alarm")
-                .userInput("show alarms").response(response).suggestion("Prefer alarm cards").toolCalls(true).build());
+        GenUiGenerationResult result =
+                generator.generate(
+                        UiGenerationRequest.builder()
+                                .extensionId("alarm")
+                                .userInput("show alarms")
+                                .response(response)
+                                .suggestion("Prefer alarm cards")
+                                .toolCalls(true)
+                                .build());
 
         assertEquals("root = Stack([])", result.dsl());
         assertEquals(response, result.dataModel());
@@ -67,11 +76,13 @@ class GenUiGeneratorTest {
 
     @Test
     void syncWithoutResponseReturnsEmptyDataModel() {
-        FakeTransport transport = FakeTransport
-                .sync("{\"choices\":[{\"message\":{\"content\":\"root = Stack([])\"}}]}");
+        FakeTransport transport =
+                FakeTransport.sync(
+                        "{\"choices\":[{\"message\":{\"content\":\"root = Stack([])\"}}]}");
 
-        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .generate(UiGenerationRequest.builder().userInput("base").build());
+        GenUiGenerationResult result =
+                GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                        .generate(UiGenerationRequest.builder().userInput("base").build());
 
         assertEquals("root = Stack([])", result.dsl());
         assertTrue(result.dataModel().isEmpty());
@@ -80,22 +91,30 @@ class GenUiGeneratorTest {
     @Test
     void syncThrowsOnTransportErrorWithoutMarkdownFallback() {
         FakeTransport transport = FakeTransport.failing();
-        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport);
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport);
 
-        assertThrows(GenerationSdkException.class,
+        assertThrows(
+                GenerationSdkException.class,
                 () -> generator.generate(UiGenerationRequest.builder().userInput("base").build()));
 
-        assertEquals(1, transport.postCalls.get(), "sync failure must not issue a Markdown fallback request");
+        assertEquals(
+                1,
+                transport.postCalls.get(),
+                "sync failure must not issue a Markdown fallback request");
         assertEquals(0, transport.streamCalls.get());
     }
 
     @Test
     void unregisteredExtensionFallsBackToBaseContract() {
-        FakeTransport transport = FakeTransport
-                .sync("{\"choices\":[{\"message\":{\"content\":\"root = Stack([])\"}}]}");
-        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport);
+        FakeTransport transport =
+                FakeTransport.sync(
+                        "{\"choices\":[{\"message\":{\"content\":\"root = Stack([])\"}}]}");
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport);
 
-        generator.generate(UiGenerationRequest.builder().extensionId("missing").userInput("base").build());
+        generator.generate(
+                UiGenerationRequest.builder().extensionId("missing").userInput("base").build());
 
         Map<String, Object> body = Json.asObject(Json.parse(transport.lastBody), "request");
         List<Object> messages = Json.asList(body.get("messages"), "messages");
@@ -106,11 +125,20 @@ class GenUiGeneratorTest {
 
     @Test
     void withCustomSdkUsesInjectedBaseContract() {
-        FakeTransport transport = FakeTransport
-                .sync("{\"choices\":[{\"message\":{\"content\":\"root = Panel([])\"}}]}");
-        GenerationContract contract = new GenerationContract("custom@1.0.0", "Panel",
-                Map.of("Panel", new ComponentPromptSpec("Panel(title: string)", "Custom panel")), List.of(), List.of(),
-                List.of(), List.of());
+        FakeTransport transport =
+                FakeTransport.sync(
+                        "{\"choices\":[{\"message\":{\"content\":\"root = Panel([])\"}}]}");
+        GenerationContract contract =
+                new GenerationContract(
+                        "custom@1.0.0",
+                        "Panel",
+                        Map.of(
+                                "Panel",
+                                new ComponentPromptSpec("Panel(title: string)", "Custom panel")),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of());
         GenerationSdk sdk = GenerationSdk.builder().baseContract(contract).build();
 
         GenUiGenerator.withTransport(sdk, GenUiLlmConfig.defaults(), transport)
@@ -125,14 +153,20 @@ class GenUiGeneratorTest {
 
     @Test
     void streamEmitsDataModelThenDslThenDone() {
-        FakeTransport transport = FakeTransport.stream(frame("```openui\n"), frame("root = Stack([])\n```"),
-                SseFrames.done());
+        FakeTransport transport =
+                FakeTransport.stream(
+                        frame("```openui\n"), frame("root = Stack([])\n```"), SseFrames.done());
         ArrayList<RenderStreamEnvelope> envelopes = new ArrayList<>();
         Map<String, Object> response = orderedMap("alarms", List.of());
 
-        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .generateStream(UiGenerationRequest.builder().userInput("stream").response(response).build(),
-                        envelopes::add);
+        GenUiGenerationResult result =
+                GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                        .generateStream(
+                                UiGenerationRequest.builder()
+                                        .userInput("stream")
+                                        .response(response)
+                                        .build(),
+                                envelopes::add);
 
         // 首帧 dataModel
         RenderStreamEnvelope first = envelopes.get(0);
@@ -169,7 +203,8 @@ class GenUiGeneratorTest {
         ArrayList<RenderStreamEnvelope> envelopes = new ArrayList<>();
 
         GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .generateStream(UiGenerationRequest.builder().userInput("stream").build(), envelopes::add);
+                .generateStream(
+                        UiGenerationRequest.builder().userInput("stream").build(), envelopes::add);
 
         RenderStreamEnvelope first = envelopes.get(0);
         assertEquals(RenderStreamEnvelope.TYPE_DATA_MODEL, first.type());
@@ -178,12 +213,16 @@ class GenUiGeneratorTest {
 
     @Test
     void streamFailureEmitsErrorThenDoneAndReturnsAccumulated() {
-        FakeTransport transport = FakeTransport.streamThenFail(frame("```openui\nroot = Stack([])\n```"));
+        FakeTransport transport =
+                FakeTransport.streamThenFail(frame("```openui\nroot = Stack([])\n```"));
         ArrayList<RenderStreamEnvelope> envelopes = new ArrayList<>();
 
         // 不向调用方抛出该流中异常
-        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .generateStream(UiGenerationRequest.builder().userInput("stream").build(), envelopes::add);
+        GenUiGenerationResult result =
+                GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                        .generateStream(
+                                UiGenerationRequest.builder().userInput("stream").build(),
+                                envelopes::add);
 
         // 末尾是 error 后接 done,且中间不再有其它帧插入(error 紧邻 done)
         RenderStreamEnvelope error = envelopes.get(envelopes.size() - 2);
@@ -216,29 +255,44 @@ class GenUiGeneratorTest {
 
     @Test
     void legalDslFollowedByErrorDiscardsLateOutputAndHandsOffOnce() {
-        assertSseFailure(frame("root = Stack([])") + "data: {\"error\":{\"message\":\"upstream failed\"}}\n\n"
-                + frame("late invalid DSL") + SseFrames.done());
+        assertSseFailure(
+                frame("root = Stack([])")
+                        + "data: {\"error\":{\"message\":\"upstream failed\"}}\n\n"
+                        + frame("late invalid DSL")
+                        + SseFrames.done());
     }
 
     @Test
     void normalStopAndDoneFinishSuccessfullyAndDiscardLateOutput() {
-        for (String ending : List.of("data: {\"choices\":[{\"finish_reason\":\"stop\"}]}\n\n", SseFrames.done())) {
+        for (String ending :
+                List.of(
+                        "data: {\"choices\":[{\"finish_reason\":\"stop\"}]}\n\n",
+                        SseFrames.done())) {
             ArrayList<RenderStreamEnvelope> events = new ArrayList<>();
             AtomicInteger handoffs = new AtomicInteger();
-            GenUiGenerationResult result = GenUiGenerator
-                    .withTransport(GenUiLlmConfig.defaults(),
-                            FakeTransport.stream(frame("root = Stack([])") + ending + frame("late invalid DSL")
-                                    + "data: {\"error\":{\"message\":\"late error\"}}\n\n"))
-                    .generateStream(UiGenerationRequest.builder().userInput("stream").build(), events::add,
-                            (original, reason, sink) -> {
-                                handoffs.incrementAndGet();
-                                return new GenUiGenerationResult("unexpected Markdown", original.response());
-                            });
+            GenUiGenerationResult result =
+                    GenUiGenerator.withTransport(
+                                    GenUiLlmConfig.defaults(),
+                                    FakeTransport.stream(
+                                            frame("root = Stack([])")
+                                                    + ending
+                                                    + frame("late invalid DSL")
+                                                    + "data: {\"error\":{\"message\":\"late error\"}}\n\n"))
+                            .generateStream(
+                                    UiGenerationRequest.builder().userInput("stream").build(),
+                                    events::add,
+                                    (original, reason, sink) -> {
+                                        handoffs.incrementAndGet();
+                                        return new GenUiGenerationResult(
+                                                "unexpected Markdown", original.response());
+                                    });
 
             assertEquals(GenerationEndReason.CHECK_PASSED, result.endReason());
             assertEquals("root = Stack([])", result.dsl());
             assertEquals(0, handoffs.get());
-            assertEquals(List.of("dataModel", "dsl", "done"), events.stream().map(RenderStreamEnvelope::type).toList());
+            assertEquals(
+                    List.of("dataModel", "dsl", "done"),
+                    events.stream().map(RenderStreamEnvelope::type).toList());
             assertSeqStrictlyIncreasing(events);
         }
     }
@@ -246,19 +300,24 @@ class GenUiGeneratorTest {
     private static void assertSseFailure(String stream) {
         AtomicInteger handoffs = new AtomicInteger();
         ArrayList<RenderStreamEnvelope> events = new ArrayList<>();
-        GenUiGenerationResult result = GenUiGenerator
-                .withTransport(GenUiLlmConfig.defaults(), FakeTransport.stream(stream))
-                .generateStream(UiGenerationRequest.builder().userInput("stream").build(), events::add,
-                        (original, reason, sink) -> {
-                            assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, reason);
-                            handoffs.incrementAndGet();
-                            sink.accept(RenderStreamEnvelope.dsl(0, "Markdown page"));
-                            return new GenUiGenerationResult("Markdown page", original.response());
-                        });
+        GenUiGenerationResult result =
+                GenUiGenerator.withTransport(
+                                GenUiLlmConfig.defaults(), FakeTransport.stream(stream))
+                        .generateStream(
+                                UiGenerationRequest.builder().userInput("stream").build(),
+                                events::add,
+                                (original, reason, sink) -> {
+                                    assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, reason);
+                                    handoffs.incrementAndGet();
+                                    sink.accept(RenderStreamEnvelope.dsl(0, "Markdown page"));
+                                    return new GenUiGenerationResult(
+                                            "Markdown page", original.response());
+                                });
 
         assertEquals(GenerationEndReason.MODEL_REQUEST_FAILED, result.endReason());
         assertEquals(1, handoffs.get());
-        assertEquals(List.of("dataModel", "dsl", "replace", "dsl", "done"),
+        assertEquals(
+                List.of("dataModel", "dsl", "replace", "dsl", "done"),
                 events.stream().map(RenderStreamEnvelope::type).toList());
         assertEquals("root = Stack([])", events.get(1).content());
         assertEquals("Markdown page", events.get(3).content());
@@ -270,19 +329,32 @@ class GenUiGeneratorTest {
         for (int i = 1; i < envelopes.size(); i++) {
             int previous = envelopes.get(i - 1).seq();
             int current = envelopes.get(i).seq();
-            assertTrue(current > previous, "seq must strictly increase: index " + (i - 1) + " seq=" + previous
-                    + " -> index " + i + " seq=" + current);
+            assertTrue(
+                    current > previous,
+                    "seq must strictly increase: index "
+                            + (i - 1)
+                            + " seq="
+                            + previous
+                            + " -> index "
+                            + i
+                            + " seq="
+                            + current);
         }
     }
 
     @Test
     void usesConfiguredModelAndRequestContext() {
-        FakeTransport transport = FakeTransport
-                .sync("{\"choices\":[{\"message\":{\"content\":\"root = Stack([])\"}}]}");
+        FakeTransport transport =
+                FakeTransport.sync(
+                        "{\"choices\":[{\"message\":{\"content\":\"root = Stack([])\"}}]}");
         GenUiLlmConfig config = GenUiLlmConfig.builder().defaultModel("custom-model").build();
 
-        GenUiGenerator.withTransport(config, transport).generate(UiGenerationRequest.builder().userInput("build")
-                .request(orderedMap("title", "Alarm overview")).build());
+        GenUiGenerator.withTransport(config, transport)
+                .generate(
+                        UiGenerationRequest.builder()
+                                .userInput("build")
+                                .request(orderedMap("title", "Alarm overview"))
+                                .build());
 
         Map<String, Object> body = Json.asObject(Json.parse(transport.lastBody), "request");
         assertEquals("custom-model", body.get("model"));
@@ -293,25 +365,36 @@ class GenUiGeneratorTest {
 
     @Test
     void createDoesNotExposeSdkOrTransport() {
-        assertNotNull(GenUiGenerator.create(GenUiLlmConfig.builder().endpoint("http://localhost/chat").build()));
+        assertNotNull(
+                GenUiGenerator.create(
+                        GenUiLlmConfig.builder().endpoint("http://localhost/chat").build()));
         assertThrows(IllegalArgumentException.class, GenUiGenerator::create);
     }
 
     @Test
     void registerIsChainable() {
-        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), FakeTransport.sync("{}"));
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), FakeTransport.sync("{}"));
         assertSame(generator, generator.register(extension()));
     }
 
     private static String frame(String content) {
-        return "data: {\"choices\":[{\"delta\":{\"content\":" + Json.stringify(content) + "}}]}\n\n";
+        return "data: {\"choices\":[{\"delta\":{\"content\":"
+                + Json.stringify(content)
+                + "}}]}\n\n";
     }
 
     private static GenUIExtension extension() {
-        return new GenUIExtension("alarm", "v1",
-                Map.of("AlarmCard", new ComponentPromptSpec("AlarmCard(title: string)", "Alarm card")),
-                List.of(new ComponentGroup("Alarm", List.of("AlarmCard"), List.of())), List.of(tool("lookupAlarm")),
-                List.of("root = Stack([AlarmCard(title: \"A\")])"), List.of("Use AlarmCard for alarms"));
+        return new GenUIExtension(
+                "alarm",
+                "v1",
+                Map.of(
+                        "AlarmCard",
+                        new ComponentPromptSpec("AlarmCard(title: string)", "Alarm card")),
+                List.of(new ComponentGroup("Alarm", List.of("AlarmCard"), List.of())),
+                List.of(tool("lookupAlarm")),
+                List.of("root = Stack([AlarmCard(title: \"A\")])"),
+                List.of("Use AlarmCard for alarms"));
     }
 
     private static ToolSpec tool(String name) {
@@ -325,8 +408,7 @@ class GenUiGeneratorTest {
     }
 
     private static final class FakeTransport
-            implements
-                com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
+            implements com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
         private final String response;
         private final String stream;
         private final boolean fail;
@@ -362,8 +444,7 @@ class GenUiGeneratorTest {
         public String post(String body) throws LlmTransportException {
             postCalls.incrementAndGet();
             lastBody = body;
-            if (fail)
-                throw new LlmTransportException("boom");
+            if (fail) throw new LlmTransportException("boom");
             return response;
         }
 
@@ -371,8 +452,7 @@ class GenUiGeneratorTest {
         public InputStream postStream(String body) throws LlmTransportException {
             streamCalls.incrementAndGet();
             lastBody = body;
-            if (fail)
-                throw new LlmTransportException("boom");
+            if (fail) throw new LlmTransportException("boom");
             InputStream frames = new ByteArrayInputStream(stream.getBytes(StandardCharsets.UTF_8));
             return failMidStream ? new FrameThenFailStream(frames) : frames;
         }
@@ -389,16 +469,14 @@ class GenUiGeneratorTest {
         @Override
         public int read() throws IOException {
             int value = delegate.read();
-            if (value == -1)
-                throw new IOException("connection dropped");
+            if (value == -1) throw new IOException("connection dropped");
             return value;
         }
 
         @Override
         public int read(byte[] buffer, int off, int len) throws IOException {
             int read = delegate.read(buffer, off, len);
-            if (read == -1)
-                throw new IOException("connection dropped");
+            if (read == -1) throw new IOException("connection dropped");
             return read;
         }
     }

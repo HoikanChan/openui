@@ -6,4 +6,54 @@
   <!-- 生成代码与构建产物不检查 -->
   <suppress files="[\\/]target[\\/]" checks=".*"/>
   <suppress files="[\\/]generated-sources[\\/]" checks=".*"/>
+
+  <!--
+    以下为按行豁免的结构性告警。共同理由：这些方法承载 openui-lang 的词法/语法/类型规则，
+    分支数量由语言文法本身决定；拆分会把一张规则表切碎成多段跳转，反而更难对照规范审查，
+    也容易在重构中改变判定顺序。等规则稳定后再按真实收益拆分。
+
+    行号随代码改动会漂移：若某行不再命中，该豁免自然失效；若方法被挪走，需要同步更新行号。
+  -->
+
+  <!-- 契约加载：按 JSON 节点类型分派的解析器 -->
+  <suppress files="GenerationContractLoader\.java" checks="CyclomaticComplexity" lines="103,211,326"/>
+
+  <!-- 类型表达式：相等性与语法解析 -->
+  <suppress files="TypeExprEquals\.java" checks="CyclomaticComplexity" lines="21"/>
+  <suppress files="TypeExprParser\.java" checks="CyclomaticComplexity" lines="61"/>
+
+  <!-- 生成与提示词装配 -->
+  <suppress files="GenUiGenerator\.java" checks="CyclomaticComplexity" lines="424"/>
+  <suppress files="PromptAssembler\.java" checks="CyclomaticComplexity" lines="52,205"/>
+  <suppress files="PromptRenderer\.java" checks="CyclomaticComplexity" lines="161"/>
+  <suppress files="RuleCompiler\.java" checks="CyclomaticComplexity" lines="155"/>
+  <suppress files="RepairGuidance\.java" checks="CyclomaticComplexity" lines="66"/>
+
+  <!-- 词法/表达式解析 -->
+  <suppress files="OpenuiLexer\.java" checks="CyclomaticComplexity" lines="35,419"/>
+  <suppress files="OpenuiLexer\.java" checks="MethodLength" lines="35"/>
+  <suppress files="ExpressionParser\.java" checks="CyclomaticComplexity" lines="149,246"/>
+  <suppress files="OpenuiPreprocessor\.java" checks="CyclomaticComplexity" lines="128"/>
+  <suppress files="StatementSplitter\.java" checks="CyclomaticComplexity" lines="73"/>
+
+  <!-- 类型分析核心：AnalysisSession 是语义分析的主循环 -->
+  <suppress files="AnalysisSession\.java" checks="CyclomaticComplexity" lines="272,999,1262,1457"/>
+  <suppress files="AnalysisSession\.java" checks="FileLength" lines="1"/>
+  <suppress files="AnalysisSession\.java" checks="ClassDataAbstractionCoupling" lines="48"/>
+  <suppress files="Checks\.java" checks="CyclomaticComplexity" lines="59,270,543,627,720"/>
+  <suppress files="DataPath\.java" checks="CyclomaticComplexity" lines="17"/>
+  <suppress files="DataPathResolver\.java" checks="CyclomaticComplexity" lines="94"/>
+  <suppress files="Relations\.java" checks="CyclomaticComplexity" lines="36,119"/>
+  <suppress files="SchemaCompiler\.java" checks="CyclomaticComplexity" lines="52"/>
+  <suppress files="TypeOps\.java" checks="CyclomaticComplexity" lines="372"/>
+
+  <!--
+    长参数列表：契约 record 的规范构造器/工厂直接镜像 base-contract.json 字段，
+    再包一层参数对象只会增加一层无名字段映射。
+  -->
+  <suppress files="BuiltinSpec\.java" checks="ParameterNumber" lines="53"/>
+  <suppress files="GenerationContract\.java" checks="ParameterNumber" lines="42"/>
+  <suppress files="UiGenerationRequest\.java" checks="ParameterNumber" lines="69,128"/>
+  <suppress files="ProgramAnalyzer\.java" checks="ParameterNumber" lines="553,566"/>
+  <suppress files="AnalysisSession\.java" checks="ParameterNumber" lines="786,948,1518"/>
 </suppressions>

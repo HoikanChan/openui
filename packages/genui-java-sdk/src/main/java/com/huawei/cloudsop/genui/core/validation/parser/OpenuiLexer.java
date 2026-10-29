@@ -10,25 +10,26 @@ import java.util.List;
 /**
  * openui-lang 的手写词法分析器。
  *
- * <p>
- * 精确对应 {@code packages/lang-core/src/parser/lexer.ts} 的分词规则（字符串转义、数字格式、{@code $state}、 {@code @builtin}、帕斯卡命名的
- * {@link TokenType#TYPE} 与小写的 {@link TokenType#IDENT}、双字符运算符 {@code == != >= <= && || ??}）。
+ * <p>精确对应 {@code packages/lang-core/src/parser/lexer.ts} 的分词规则（字符串转义、数字格式、{@code $state}、
+ * {@code @builtin}、帕斯卡命名的 {@link TokenType#TYPE} 与小写的 {@link TokenType#IDENT}、双字符运算符 {@code == !=
+ * >= <= && || ??}）。
  *
- * <p>
- * Java 扩展：每个 {@link Token} 都携带从 1 开始的行/列以及从 0 开始的偏移/长度，供下游阶段附加诊断信息。 换行符是有意义的 token（语句分隔符）。
+ * <p>Java 扩展：每个 {@link Token} 都携带从 1 开始的行/列以及从 0 开始的偏移/长度，供下游阶段附加诊断信息。 换行符是有意义的 token（语句分隔符）。
  *
  * @since 2026
  */
 public final class OpenuiLexer {
+    /** A unicode escape is {@code u} followed by exactly four hex digits. */
+    private static final int UNICODE_HEX_DIGITS = 4;
 
-    private OpenuiLexer() {
-    }
+    private static final int HEX_RADIX = 16;
+
+    private OpenuiLexer() {}
 
     /**
      * 将源字符串分词为以 {@link TokenType#EOF} 结尾的扁平 token 列表。
      *
-     * @param src
-     *            待分词的源字符串
+     * @param src 待分词的源字符串
      * @return token 列表，末尾为 EOF token
      */
     public static List<Token> tokenize(String src) {
@@ -40,7 +41,8 @@ public final class OpenuiLexer {
 
         while (i < n) {
             // Skip horizontal whitespace (not newlines — they are significant).
-            while (i < n && (src.charAt(i) == ' ' || src.charAt(i) == '\t' || src.charAt(i) == '\r')) {
+            while (i < n
+                    && (src.charAt(i) == ' ' || src.charAt(i) == '\t' || src.charAt(i) == '\r')) {
                 i++;
                 col++;
             }
@@ -232,7 +234,9 @@ public final class OpenuiLexer {
                     }
                 }
                 int len = i - start;
-                tokens.add(Token.ofText(TokenType.STR, sb.toString(), startLine, startCol, startOff, len));
+                tokens.add(
+                        Token.ofText(
+                                TokenType.STR, sb.toString(), startLine, startCol, startOff, len));
                 col += len;
                 continue;
             }
@@ -292,7 +296,13 @@ public final class OpenuiLexer {
                 }
                 int len = i - start;
                 tokens.add(
-                        Token.ofText(TokenType.STATE_VAR, src.substring(start, i), startLine, startCol, startOff, len));
+                        Token.ofText(
+                                TokenType.STATE_VAR,
+                                src.substring(start, i),
+                                startLine,
+                                startCol,
+                                startOff,
+                                len));
                 col += len;
                 continue;
             }
@@ -306,9 +316,15 @@ public final class OpenuiLexer {
                 String word = src.substring(start, i);
                 int len = i - start;
                 switch (word) {
-                    case "true" -> tokens.add(Token.of(TokenType.TRUE, startLine, startCol, startOff, len));
-                    case "false" -> tokens.add(Token.of(TokenType.FALSE, startLine, startCol, startOff, len));
-                    case "null" -> tokens.add(Token.of(TokenType.NULL, startLine, startCol, startOff, len));
+                    case "true" ->
+                            tokens.add(
+                                    Token.of(TokenType.TRUE, startLine, startCol, startOff, len));
+                    case "false" ->
+                            tokens.add(
+                                    Token.of(TokenType.FALSE, startLine, startCol, startOff, len));
+                    case "null" ->
+                            tokens.add(
+                                    Token.of(TokenType.NULL, startLine, startCol, startOff, len));
                     default -> {
                         TokenType kind = (c >= 'A' && c <= 'Z') ? TokenType.TYPE : TokenType.IDENT;
                         tokens.add(Token.ofText(kind, word, startLine, startCol, startOff, len));
@@ -326,8 +342,14 @@ public final class OpenuiLexer {
                     i++;
                 }
                 int len = i - startOff;
-                tokens.add(Token.ofText(TokenType.BUILTIN_CALL, src.substring(start, i), startLine, startCol, startOff,
-                        len));
+                tokens.add(
+                        Token.ofText(
+                                TokenType.BUILTIN_CALL,
+                                src.substring(start, i),
+                                startLine,
+                                startCol,
+                                startOff,
+                                len));
                 col += len;
                 continue;
             }
@@ -373,15 +395,26 @@ public final class OpenuiLexer {
 
     private static boolean isValueToken(TokenType t) {
         return switch (t) {
-            case NUM, STR, IDENT, TYPE, R_PAREN, R_BRACK, TRUE, FALSE, NULL, STATE_VAR, BUILTIN_CALL -> true;
+            case NUM,
+                            STR,
+                            IDENT,
+                            TYPE,
+                            R_PAREN,
+                            R_BRACK,
+                            TRUE,
+                            FALSE,
+                            NULL,
+                            STATE_VAR,
+                            BUILTIN_CALL ->
+                    true;
             default -> false;
         };
     }
 
     /**
-     * Decode a double-quoted raw literal (including surrounding quotes) into its runtime string, mirroring the TS path
-     * that delegates to {@code JSON.parse}. On malformed escapes it falls back to stripping the surrounding quotes
-     * (parity with the TS catch branch).
+     * Decode a double-quoted raw literal (including surrounding quotes) into its runtime string,
+     * mirroring the TS path that delegates to {@code JSON.parse}. On malformed escapes it falls
+     * back to stripping the surrounding quotes (parity with the TS catch branch).
      */
     private static String decodeDoubleQuoted(String raw) {
         if (raw.length() < 2) {
@@ -411,12 +444,13 @@ public final class OpenuiLexer {
                     case 'b' -> sb.append('\b');
                     case 'f' -> sb.append('\f');
                     case 'u' -> {
-                        if (i + 4 >= body.length() + 1 || i + 5 > body.length()) {
+                        if (i + UNICODE_HEX_DIGITS >= body.length() + 1
+                                || i + UNICODE_HEX_DIGITS + 1 > body.length()) {
                             throw new IllegalArgumentException("bad unicode escape");
                         }
-                        String hex = body.substring(i + 1, i + 5);
-                        sb.append((char) Integer.parseInt(hex, 16));
-                        i += 4;
+                        String hex = body.substring(i + 1, i + 1 + UNICODE_HEX_DIGITS);
+                        sb.append((char) Integer.parseInt(hex, HEX_RADIX));
+                        i += UNICODE_HEX_DIGITS;
                     }
                     default -> throw new IllegalArgumentException("bad escape \\" + esc);
                 }

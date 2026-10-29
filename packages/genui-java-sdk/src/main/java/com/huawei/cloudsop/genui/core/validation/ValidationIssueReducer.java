@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.validation;
 
 import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
@@ -12,17 +16,16 @@ import java.util.Set;
 /** Produces a stable, low-noise issue view while preserving complete raw validator diagnostics. */
 public final class ValidationIssueReducer {
 
-    private static final Set<String> ROOT_TAIL_CODES = Set.of("root-missing", "root-not-renderable");
+    private static final Set<String> ROOT_TAIL_CODES =
+            Set.of("root-missing", "root-not-renderable");
 
-    private ValidationIssueReducer() {
-    }
+    private ValidationIssueReducer() {}
 
     /**
      * Return the actionable subset of {@code rawIssues} in original order.
      *
-     * <p>
-     * The result is immutable. This operation never invents diagnostics and never changes validation status; callers
-     * that need parser parity should continue using the raw issue list.
+     * <p>The result is immutable. This operation never invents diagnostics and never changes
+     * validation status; callers that need parser parity should continue using the raw issue list.
      */
     public static List<ValidationIssue> actionable(List<ValidationIssue> rawIssues) {
         if (rawIssues == null || rawIssues.isEmpty()) {
@@ -50,8 +53,12 @@ public final class ValidationIssueReducer {
             kept.add(issue);
         }
 
-        boolean hasExplainingError = kept.stream().anyMatch(
-                issue -> issue.severity() == ValidationSeverity.ERROR && !ROOT_TAIL_CODES.contains(issue.code()));
+        boolean hasExplainingError =
+                kept.stream()
+                        .anyMatch(
+                                issue ->
+                                        issue.severity() == ValidationSeverity.ERROR
+                                                && !ROOT_TAIL_CODES.contains(issue.code()));
         if (hasExplainingError) {
             kept.removeIf(issue -> ROOT_TAIL_CODES.contains(issue.code()));
         }
@@ -78,27 +85,35 @@ public final class ValidationIssueReducer {
         return locations;
     }
 
-    private static boolean isRedundantSyntaxError(ValidationIssue issue,
-            Map<String, ValidationIssue> firstSyntaxError) {
-        return isBlockingSyntaxIssue(issue) && issue.statementId() != null
+    private static boolean isRedundantSyntaxError(
+            ValidationIssue issue, Map<String, ValidationIssue> firstSyntaxError) {
+        return isBlockingSyntaxIssue(issue)
+                && issue.statementId() != null
                 && !issue.equals(firstSyntaxError.get(issue.statementId()));
     }
 
-    private static boolean isDerivedFromSyntaxFailure(ValidationIssue issue, Set<String> syntaxBrokenStatements) {
-        if (issue.severity() != ValidationSeverity.ERROR || "syntax".equals(issue.source())
-                || issue.statementId() == null || !syntaxBrokenStatements.contains(issue.statementId())) {
+    private static boolean isDerivedFromSyntaxFailure(
+            ValidationIssue issue, Set<String> syntaxBrokenStatements) {
+        if (issue.severity() != ValidationSeverity.ERROR
+                || "syntax".equals(issue.source())
+                || issue.statementId() == null
+                || !syntaxBrokenStatements.contains(issue.statementId())) {
             return false;
         }
         return !(("unresolved-ref".equals(issue.code()) || "unknown-component".equals(issue.code()))
                 && RepairHints.isRootCauseHint(issue.hint()));
     }
 
-    private static boolean isGenericTableRowMismatch(ValidationIssue issue, Set<IssueLocation> specificLocations) {
-        return "type-prop-mismatch".equals(issue.code()) && specificLocations.contains(IssueLocation.of(issue));
+    private static boolean isGenericTableRowMismatch(
+            ValidationIssue issue, Set<IssueLocation> specificLocations) {
+        return "type-prop-mismatch".equals(issue.code())
+                && specificLocations.contains(IssueLocation.of(issue));
     }
 
     private static boolean isBlockingSyntaxIssue(ValidationIssue issue) {
-        return issue != null && issue.severity() == ValidationSeverity.ERROR && "syntax".equals(issue.source());
+        return issue != null
+                && issue.severity() == ValidationSeverity.ERROR
+                && "syntax".equals(issue.source());
     }
 
     private record IssueLocation(String statementId, String component, String path) {

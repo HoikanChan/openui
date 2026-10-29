@@ -26,10 +26,25 @@ class RuleCompilerTest {
 
     @Test
     void compilesDeclaredRuleIntoFinitePlan() {
-        TypeRule rule = RuleCompiler.compile("Demo",
-                Map.of("typeRulesVersion", 1, "arity", Map.of("min", 2, "max", "unbounded"), "parameters",
-                        List.of(Map.of("name", "objects", "rest", true, "accept", "object")), "result",
-                        Map.of("op", "record.overlay", "operands", List.of(Map.of("argumentsFrom", 0)))));
+        TypeRule rule =
+                RuleCompiler.compile(
+                        "Demo",
+                        Map.of(
+                                "typeRulesVersion",
+                                1,
+                                "arity",
+                                Map.of("min", 2, "max", "unbounded"),
+                                "parameters",
+                                List.of(
+                                        Map.of(
+                                                "name", "objects", "rest", true, "accept",
+                                                "object")),
+                                "result",
+                                Map.of(
+                                        "op",
+                                        "record.overlay",
+                                        "operands",
+                                        List.of(Map.of("argumentsFrom", 0)))));
 
         assertEquals(2, rule.arity().min());
         assertTrue(rule.arity().max().isEmpty());
@@ -42,54 +57,113 @@ class RuleCompilerTest {
 
     @Test
     void rejectsUnknownOperationAtLoadTime() {
-        RuleCompilationException error = assertThrows(RuleCompilationException.class,
-                () -> RuleCompiler.compile("Demo", baseRule(Map.of("op", "script.run", "operands", List.of()))));
+        RuleCompilationException error =
+                assertThrows(
+                        RuleCompilationException.class,
+                        () ->
+                                RuleCompiler.compile(
+                                        "Demo",
+                                        baseRule(
+                                                Map.of(
+                                                        "op",
+                                                        "script.run",
+                                                        "operands",
+                                                        List.of()))));
         assertTrue(error.getMessage().contains("script.run"), error.getMessage());
     }
 
     @Test
     void rejectsUnknownTypeTagAtLoadTime() {
-        assertThrows(RuleCompilationException.class,
+        assertThrows(
+                RuleCompilationException.class,
                 () -> RuleCompiler.compile("Demo", baseRule(Map.of("type", "integer"))));
     }
 
     @Test
     void rejectsOutOfRangeArgumentReferenceAtLoadTime() {
-        RuleCompilationException error = assertThrows(RuleCompilationException.class,
-                () -> RuleCompiler.compile("Demo", baseRule(Map.of("argument", 3))));
+        RuleCompilationException error =
+                assertThrows(
+                        RuleCompilationException.class,
+                        () -> RuleCompiler.compile("Demo", baseRule(Map.of("argument", 3))));
         assertTrue(error.getMessage().contains("out of range"), error.getMessage());
     }
 
     @Test
     void rejectsIllegalArityAtLoadTime() {
-        assertThrows(RuleCompilationException.class,
-                () -> RuleCompiler.compile("Demo", Map.of("typeRulesVersion", 1, "arity", Map.of("min", 3, "max", 2),
-                        "parameters", List.of(Map.of("name", "x")), "result", Map.of("type", "number"))));
+        assertThrows(
+                RuleCompilationException.class,
+                () ->
+                        RuleCompiler.compile(
+                                "Demo",
+                                Map.of(
+                                        "typeRulesVersion",
+                                        1,
+                                        "arity",
+                                        Map.of("min", 3, "max", 2),
+                                        "parameters",
+                                        List.of(Map.of("name", "x")),
+                                        "result",
+                                        Map.of("type", "number"))));
     }
 
     @Test
     void rejectsUnsupportedVersionAtLoadTime() {
-        assertThrows(RuleCompilationException.class,
-                () -> RuleCompiler.compile("Demo", Map.of("typeRulesVersion", 99, "arity", Map.of("min", 1),
-                        "parameters", List.of(Map.of("name", "x")), "result", Map.of("type", "number"))));
+        assertThrows(
+                RuleCompilationException.class,
+                () ->
+                        RuleCompiler.compile(
+                                "Demo",
+                                Map.of(
+                                        "typeRulesVersion",
+                                        99,
+                                        "arity",
+                                        Map.of("min", 1),
+                                        "parameters",
+                                        List.of(Map.of("name", "x")),
+                                        "result",
+                                        Map.of("type", "number"))));
     }
 
     @Test
     void rejectsRestParameterInNonFinalPosition() {
-        assertThrows(RuleCompilationException.class,
-                () -> RuleCompiler.compile("Demo",
-                        Map.of("typeRulesVersion", 1, "arity", Map.of("min", 1), "parameters",
-                                List.of(Map.of("name", "xs", "rest", true), Map.of("name", "y")), "result",
-                                Map.of("type", "number"))));
+        assertThrows(
+                RuleCompilationException.class,
+                () ->
+                        RuleCompiler.compile(
+                                "Demo",
+                                Map.of(
+                                        "typeRulesVersion",
+                                        1,
+                                        "arity",
+                                        Map.of("min", 1),
+                                        "parameters",
+                                        List.of(
+                                                Map.of("name", "xs", "rest", true),
+                                                Map.of("name", "y")),
+                                        "result",
+                                        Map.of("type", "number"))));
     }
 
     @Test
     void rejectsArgumentsFromOnNonRestParameter() {
-        assertThrows(RuleCompilationException.class,
-                () -> RuleCompiler.compile("Demo",
-                        Map.of("typeRulesVersion", 1, "arity", Map.of("min", 1), "parameters",
-                                List.of(Map.of("name", "x"), Map.of("name", "y")), "result",
-                                Map.of("op", "record.overlay", "operands", List.of(Map.of("argumentsFrom", 0))))));
+        assertThrows(
+                RuleCompilationException.class,
+                () ->
+                        RuleCompiler.compile(
+                                "Demo",
+                                Map.of(
+                                        "typeRulesVersion",
+                                        1,
+                                        "arity",
+                                        Map.of("min", 1),
+                                        "parameters",
+                                        List.of(Map.of("name", "x"), Map.of("name", "y")),
+                                        "result",
+                                        Map.of(
+                                                "op",
+                                                "record.overlay",
+                                                "operands",
+                                                List.of(Map.of("argumentsFrom", 0))))));
     }
 
     @Test
@@ -97,17 +171,33 @@ class RuleCompilerTest {
         GenerationContract contract = GenerationContractLoader.loadDefault();
         long withRules = contract.builtins().stream().filter(b -> b.typeRule() != null).count();
         // 迁移基数：#81 的 15 个普通 builtin；后续各票只增不减（#86 加入 Flatten/First/Last，#85 加入对象枚举）。
-        assertTrue(withRules >= 15, "expected the migrated builtin rules to stay compiled, got " + withRules);
-        for (String name : List.of("Sort", "Filter", "Flatten", "First", "Last", "ObjectKeys", "ObjectValues",
-                "ObjectEntries")) {
-            assertNotNull(contract.builtins().stream().filter(b -> name.equals(b.name())).findFirst().orElseThrow()
-                    .typeRule(), name + " must carry a compiled structured rule");
+        assertTrue(
+                withRules >= 15,
+                "expected the migrated builtin rules to stay compiled, got " + withRules);
+        for (String name :
+                List.of(
+                        "Sort",
+                        "Filter",
+                        "Flatten",
+                        "First",
+                        "Last",
+                        "ObjectKeys",
+                        "ObjectValues",
+                        "ObjectEntries")) {
+            assertNotNull(
+                    contract.builtins().stream()
+                            .filter(b -> name.equals(b.name()))
+                            .findFirst()
+                            .orElseThrow()
+                            .typeRule(),
+                    name + " must carry a compiled structured rule");
         }
     }
 
     @Test
     void contractLoaderFailsFastOnUnknownOp() {
-        String json = """
+        String json =
+                """
                 {"contractVersion":"test","root":"x","components":{},"builtins":[{
                   "name":"Bogus","signature":"Bogus(x)","description":"d","templateBuiltin":false,
                   "params":[{"name":"x","type":"any"}],"returnType":"number",
@@ -118,7 +208,14 @@ class RuleCompilerTest {
     }
 
     private static Map<String, Object> baseRule(Map<String, Object> result) {
-        return Map.of("typeRulesVersion", 1, "arity", Map.of("min", 1), "parameters", List.of(Map.of("name", "x")),
-                "result", result);
+        return Map.of(
+                "typeRulesVersion",
+                1,
+                "arity",
+                Map.of("min", 1),
+                "parameters",
+                List.of(Map.of("name", "x")),
+                "result",
+                result);
     }
 }

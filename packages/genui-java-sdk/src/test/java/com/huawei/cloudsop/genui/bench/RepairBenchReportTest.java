@@ -27,8 +27,7 @@ import java.util.Map;
  */
 class RepairBenchReportTest {
 
-    @TempDir
-    Path temp;
+    @TempDir Path temp;
 
     @Test
     void writesSelfContainedReportAndOmitsMarkdownFallback() throws Exception {
@@ -36,8 +35,11 @@ class RepairBenchReportTest {
         writeCase(cases.resolve("case-01"), "CASE-1", "按设备类型统计", "root = Stack([])");
         writeCase(cases.resolve("case-02"), "CASE-2", "展示光模块指标", "root = Stack([table])");
 
-        List<String> lines = List.of(Json.stringify(caseLine("CASE-1", "still-invalid")),
-                Json.stringify(caseLine("CASE-2", "repaired")), Json.stringify(summary()));
+        List<String> lines =
+                List.of(
+                        Json.stringify(caseLine("CASE-1", "still-invalid")),
+                        Json.stringify(caseLine("CASE-2", "repaired")),
+                        Json.stringify(summary()));
         Path html = temp.resolve("out/run.html");
 
         RepairBenchReport.write(lines, cases, html, "run.jsonl");
@@ -47,13 +49,18 @@ class RepairBenchReportTest {
         assertTrue(page.contains("<html lang=\"zh-CN\">"));
         assertTrue(page.contains("原始意图"));
         assertTrue(page.contains("反思 Prompt"));
-        assertFalse(page.contains("__DATA__") || page.contains("__JS__") || page.contains("__CSS__"));
-        assertFalse(page.contains("Incremental repair did not produce a valid page"),
+        assertFalse(
+                page.contains("__DATA__") || page.contains("__JS__") || page.contains("__CSS__"));
+        assertFalse(
+                page.contains("Incremental repair did not produce a valid page"),
                 "Markdown fallback must never be embedded");
-        assertFalse(page.contains("http://") || page.contains("https://"), "report must stay offline");
+        assertFalse(
+                page.contains("http://") || page.contains("https://"), "report must stay offline");
 
-        String json = page.substring(page.indexOf("id=\"bench-data\">") + "id=\"bench-data\">".length(),
-                page.indexOf("</script>", page.indexOf("id=\"bench-data\">")));
+        String json =
+                page.substring(
+                        page.indexOf("id=\"bench-data\">") + "id=\"bench-data\">".length(),
+                        page.indexOf("</script>", page.indexOf("id=\"bench-data\">")));
         Map<String, Object> payload = Json.asObject(Json.parse(json), "payload");
         List<Object> casesOut = Json.asList(payload.get("cases"), "cases");
         assertEquals(2, casesOut.size());
@@ -77,22 +84,27 @@ class RepairBenchReportTest {
         line.put("durationMs", 120L);
         line.put("endReason", "repaired".equals(status) ? "CHECK_PASSED" : "VALIDATION_FAILED");
         line.put("markdownFallback", !"repaired".equals(status));
-        line.put("outputDsl",
+        line.put(
+                "outputDsl",
                 "repaired".equals(status)
                         ? "root = Stack([table])"
                         : "root = Stack([MarkDownRenderer(\"Incremental repair did not produce a valid page.\")])");
         line.put("finalDsl", "root = Stack([])");
-        line.put("finalIssueCodes", "repaired".equals(status) ? List.of() : List.of("unknown-component"));
+        line.put(
+                "finalIssueCodes",
+                "repaired".equals(status) ? List.of() : List.of("unknown-component"));
         LinkedHashMap<String, Object> round = new LinkedHashMap<>();
         round.put("rawOutput", "root = Stack([])");
         round.put("currentDefinitions", "root = Stack([])");
         round.put("durationMs", 120L);
         round.put("endReason", "VALIDATION_FAILED");
         round.put("status", "INVALID");
-        round.put("issues",
-                List.of("ValidationIssue[code=unknown-component, severity=ERROR, source=semantic, "
-                        + "message=Unknown component \"Nope\", statementId=root, component=Nope, path=null, line=2, "
-                        + "column=1, hint=use a known component, retryable=true]"));
+        round.put(
+                "issues",
+                List.of(
+                        "ValidationIssue[code=unknown-component, severity=ERROR, source=semantic, "
+                                + "message=Unknown component \"Nope\", statementId=root, component=Nope, path=null, line=2, "
+                                + "column=1, hint=use a known component, retryable=true]"));
         line.put("rounds", List.of(round));
         return line;
     }
@@ -110,17 +122,29 @@ class RepairBenchReportTest {
         line.put("endToEndRate", Map.of("success", 1, "denominator", 2));
         line.put("secondaryRate", Map.of("success", 1, "denominator", 2));
         line.put("sessionBudgetSeconds", 20L);
-        line.put("issueBuckets", Map.of("unknown-component", Map.of("cases", 2, "repaired", 1, "still-invalid", 1)));
+        line.put(
+                "issueBuckets",
+                Map.of("unknown-component", Map.of("cases", 2, "repaired", 1, "still-invalid", 1)));
         line.put("durationMs", 999L);
         return line;
     }
 
     private static void writeCase(Path dir, String id, String intent, String dsl) throws Exception {
         Files.createDirectories(dir);
-        Files.writeString(dir.resolve("case.json"),
-                Json.stringify(Map.of("id", id, "originalIntent", intent, "dataModel",
-                        Map.of("title", "示例", "rows", List.of(Map.of("name", "A"))), "rootCause", "误用 @GroupBy",
-                        "source", Map.of("file", "case.md", "run", "run-1"))),
+        Files.writeString(
+                dir.resolve("case.json"),
+                Json.stringify(
+                        Map.of(
+                                "id",
+                                id,
+                                "originalIntent",
+                                intent,
+                                "dataModel",
+                                Map.of("title", "示例", "rows", List.of(Map.of("name", "A"))),
+                                "rootCause",
+                                "误用 @GroupBy",
+                                "source",
+                                Map.of("file", "case.md", "run", "run-1"))),
                 StandardCharsets.UTF_8);
         Files.writeString(dir.resolve("dsl.txt"), dsl, StandardCharsets.UTF_8);
     }

@@ -42,29 +42,21 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * A/B benchmark driver for Generated DSL Validation.
  *
- * <p>
- * Reads react-ui-dsl benchmark fixtures (meta.prompt + data), generates DSL through
- * {@link GenUiGenerator#generateStream} against an OpenAI-compatible endpoint, and writes per-fixture DSL outputs plus
- * timing/call metrics. Two arms:
+ * <p>Reads react-ui-dsl benchmark fixtures (meta.prompt + data), generates DSL through {@link
+ * GenUiGenerator#generateStream} against an OpenAI-compatible endpoint, and writes per-fixture DSL
+ * outputs plus timing/call metrics. Two arms:
  *
  * <ul>
- * <li>{@code off} — {@link GenUiValidationConfig#disabled()}: raw delta streaming, no validation.</li>
- * <li>{@code on} — {@link GenUiValidationConfig#finalOnly()}: live forwarding + end-of-round unified check.</li>
+ *   <li>{@code off} — {@link GenUiValidationConfig#disabled()}: raw delta streaming, no validation.
+ *   <li>{@code on} — {@link GenUiValidationConfig#finalOnly()}: live forwarding + end-of-round
+ *       unified check.
  * </ul>
  *
- * <p>
- * Usage: {@code java ... ValidationBenchmarkDriver --fixtures
- *
-<dir>
- *  --out
- *
-<dir>
- *  --arm off|on --env <.env path>
- * [--only id1,id2] [--concurrency 3] [--capture-body <file>]}
+ * <p>Usage: {@code java ... ValidationBenchmarkDriver --fixtures <dir> --out <dir> --arm off|on
+ * --env <.env path> [--only id1,id2] [--concurrency 3] [--capture-body <file>]}
  */
 public final class ValidationBenchmarkDriver {
-    private ValidationBenchmarkDriver() {
-    }
+    private ValidationBenchmarkDriver() {}
 
     // ── OpenAI-compatible transport ──────────────────────────────────────────
 
@@ -80,22 +72,30 @@ public final class ValidationBenchmarkDriver {
         OpenAiHttpTransport(String baseUrl, String apiKey, String httpsProxy) {
             this.url = baseUrl.replaceAll("/+$", "") + "/chat/completions";
             this.apiKey = apiKey;
-            HttpClient.Builder builder = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30));
+            HttpClient.Builder builder =
+                    HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30));
             if (httpsProxy != null && !httpsProxy.isBlank()) {
                 URI proxy = URI.create(httpsProxy);
-                builder.proxy(ProxySelector.of(new InetSocketAddress(proxy.getHost(), proxy.getPort())));
+                builder.proxy(
+                        ProxySelector.of(new InetSocketAddress(proxy.getHost(), proxy.getPort())));
             }
             this.client = builder.build();
         }
 
         @Override
-        public com.huawei.cloudsop.genui.core.llm.transport.LlmCall newCall(String body, boolean stream) {
+        public com.huawei.cloudsop.genui.core.llm.transport.LlmCall newCall(
+                String body, boolean stream) {
             calls.incrementAndGet();
             firstBody.compareAndSet(null, body);
             bodies.add(body);
-            var config = GenUiLlmConfig.builder().endpoint(url).putHeader("Authorization", "Bearer " + apiKey).build();
-            return new com.huawei.cloudsop.genui.core.llm.transport.HttpClientLlmTransport(config, client).newCall(body,
-                    stream);
+            var config =
+                    GenUiLlmConfig.builder()
+                            .endpoint(url)
+                            .putHeader("Authorization", "Bearer " + apiKey)
+                            .build();
+            return new com.huawei.cloudsop.genui.core.llm.transport.HttpClientLlmTransport(
+                            config, client)
+                    .newCall(body, stream);
         }
 
         @Override
@@ -112,19 +112,27 @@ public final class ValidationBenchmarkDriver {
             calls.incrementAndGet();
             firstBody.compareAndSet(null, body);
             bodies.add(body);
-            HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(600))
-                    .header("Content-Type", "application/json").header("Accept", "text/event-stream")
-                    .header("Authorization", "Bearer " + apiKey)
-                    .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8)).build();
+            HttpRequest request =
+                    HttpRequest.newBuilder(URI.create(url))
+                            .timeout(Duration.ofSeconds(600))
+                            .header("Content-Type", "application/json")
+                            .header("Accept", "text/event-stream")
+                            .header("Authorization", "Bearer " + apiKey)
+                            .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                            .build();
             try {
-                HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+                HttpResponse<InputStream> response =
+                        client.send(request, HttpResponse.BodyHandlers.ofInputStream());
                 if (response.statusCode() != 200) {
                     String detail;
                     try (InputStream err = response.body()) {
                         detail = new String(err.readAllBytes(), StandardCharsets.UTF_8);
                     }
                     throw new LlmTransportException(
-                            "LLM request failed, status " + response.statusCode() + ": " + truncate(detail, 500));
+                            "LLM request failed, status "
+                                    + response.statusCode()
+                                    + ": "
+                                    + truncate(detail, 500));
                 }
                 return response.body();
             } catch (IOException | InterruptedException e) {
@@ -138,20 +146,25 @@ public final class ValidationBenchmarkDriver {
 
     // ── Fixture model ────────────────────────────────────────────────────────
 
-    record Fixture(String id, String prompt, Map<String, Object> data, String skipReason) {
-    }
+    record Fixture(String id, String prompt, Map<String, Object> data, String skipReason) {}
 
     @SuppressWarnings("unchecked")
     static Fixture loadFixture(Path file) throws IOException {
         String id = file.getFileName().toString().replaceFirst("\\.json$", "");
-        Map<String, Object> envelope = Json.asObject(Json.parse(Files.readString(file, StandardCharsets.UTF_8)),
-                "fixture " + id);
+        Map<String, Object> envelope =
+                Json.asObject(
+                        Json.parse(Files.readString(file, StandardCharsets.UTF_8)),
+                        "fixture " + id);
         Map<String, Object> meta = Json.asObject(envelope.get("meta"), "meta of " + id);
         String prompt = (String) meta.get("prompt");
         Object data = envelope.get("data");
         if (!(data instanceof Map)) {
-            return new Fixture(id, prompt, null,
-                    "top-level data is " + (data == null ? "null" : data.getClass().getSimpleName())
+            return new Fixture(
+                    id,
+                    prompt,
+                    null,
+                    "top-level data is "
+                            + (data == null ? "null" : data.getClass().getSimpleName())
                             + "; Java SDK data model requires an object");
         }
         return new Fixture(id, prompt, (Map<String, Object>) data, null);
@@ -159,8 +172,15 @@ public final class ValidationBenchmarkDriver {
 
     // ── Per-fixture run ──────────────────────────────────────────────────────
 
-    static Map<String, Object> runFixture(Fixture fixture, String arm, GenUiLlmConfig llmConfig, String baseUrl,
-            String apiKey, String proxy, Path outDir, Path captureBody) {
+    static Map<String, Object> runFixture(
+            Fixture fixture,
+            String arm,
+            GenUiLlmConfig llmConfig,
+            String baseUrl,
+            String apiKey,
+            String proxy,
+            Path outDir,
+            Path captureBody) {
         LinkedHashMap<String, Object> metric = new LinkedHashMap<>();
         metric.put("id", fixture.id());
         metric.put("arm", arm);
@@ -171,34 +191,47 @@ public final class ValidationBenchmarkDriver {
         }
 
         OpenAiHttpTransport transport = new OpenAiHttpTransport(baseUrl, apiKey, proxy);
-        GenUiValidationConfig validationConfig = "on".equals(arm)
-                ? GenUiValidationConfig.finalOnly()
-                : GenUiValidationConfig.disabled();
-        GenUiGenerator generator = GenUiGenerator.withTransport(llmConfig, transport, validationConfig, null);
+        GenUiValidationConfig validationConfig =
+                "on".equals(arm)
+                        ? GenUiValidationConfig.finalOnly()
+                        : GenUiValidationConfig.disabled();
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(llmConfig, transport, validationConfig, null);
 
-        UiGenerationRequest request = UiGenerationRequest.builder().userInput(fixture.prompt()).response(fixture.data())
-                .build();
+        UiGenerationRequest request =
+                UiGenerationRequest.builder()
+                        .userInput(fixture.prompt())
+                        .response(fixture.data())
+                        .build();
 
         List<String> errorFrames = new ArrayList<>();
         long[] firstDslNanos = {-1};
         long start = System.nanoTime();
         try {
-            GenUiGenerationResult result = generator.generateStream(request, envelope -> {
-                if (RenderStreamEnvelope.TYPE_DSL.equals(envelope.type()) && firstDslNanos[0] < 0) {
-                    firstDslNanos[0] = System.nanoTime();
-                }
-                if (RenderStreamEnvelope.TYPE_ERROR.equals(envelope.type())) {
-                    errorFrames.add(String.valueOf(envelope.content()));
-                }
-            });
+            GenUiGenerationResult result =
+                    generator.generateStream(
+                            request,
+                            envelope -> {
+                                if (RenderStreamEnvelope.TYPE_DSL.equals(envelope.type())
+                                        && firstDslNanos[0] < 0) {
+                                    firstDslNanos[0] = System.nanoTime();
+                                }
+                                if (RenderStreamEnvelope.TYPE_ERROR.equals(envelope.type())) {
+                                    errorFrames.add(String.valueOf(envelope.content()));
+                                }
+                            });
             long durationMs = (System.nanoTime() - start) / 1_000_000;
 
             String dsl = result.dsl() == null ? "" : result.dsl();
             Files.writeString(outDir.resolve(fixture.id() + ".dsl"), dsl, StandardCharsets.UTF_8);
 
-            metric.put("status", result.validationStatus() == null ? "NONE" : result.validationStatus().name());
+            metric.put(
+                    "status",
+                    result.validationStatus() == null ? "NONE" : result.validationStatus().name());
             metric.put("durationMs", durationMs);
-            metric.put("firstDslMs", firstDslNanos[0] < 0 ? null : (firstDslNanos[0] - start) / 1_000_000);
+            metric.put(
+                    "firstDslMs",
+                    firstDslNanos[0] < 0 ? null : (firstDslNanos[0] - start) / 1_000_000);
             metric.put("llmCalls", transport.calls.get());
             metric.put("reasks", Math.max(0, transport.calls.get() - 1));
             metric.put("dslChars", dsl.length());
@@ -224,11 +257,12 @@ public final class ValidationBenchmarkDriver {
     }
 
     /**
-     * When a fixture needed more than one LLM call (i.e. reask fired), persist every request body so the erroneous DSL,
-     * the reask instructions, and the full prompts can be inspected afterwards.
+     * When a fixture needed more than one LLM call (i.e. reask fired), persist every request body
+     * so the erroneous DSL, the reask instructions, and the full prompts can be inspected
+     * afterwards.
      */
-    private static void writeCallLog(Fixture fixture, OpenAiHttpTransport transport, List<String> errorFrames,
-            Path outDir) {
+    private static void writeCallLog(
+            Fixture fixture, OpenAiHttpTransport transport, List<String> errorFrames, Path outDir) {
         if (transport.bodies.size() <= 1) {
             return;
         }
@@ -248,7 +282,9 @@ public final class ValidationBenchmarkDriver {
                 calls.add(call);
             }
             log.put("calls", calls);
-            Files.writeString(outDir.resolve(fixture.id() + ".llm-calls.json"), Json.stringifyPretty(log),
+            Files.writeString(
+                    outDir.resolve(fixture.id() + ".llm-calls.json"),
+                    Json.stringifyPretty(log),
                     StandardCharsets.UTF_8);
         } catch (RuntimeException | IOException ignored) {
             // forensic log is best-effort; never fail the benchmark run for it
@@ -272,11 +308,16 @@ public final class ValidationBenchmarkDriver {
         String proxy = env.get("HTTPS_PROXY");
         int concurrency = Integer.parseInt(opts.getOrDefault("concurrency", "3"));
         Set<String> only = opts.containsKey("only") ? Set.of(opts.get("only").split(",")) : null;
-        Path captureBody = opts.containsKey("capture-body") ? Path.of(opts.get("capture-body")) : null;
+        Path captureBody =
+                opts.containsKey("capture-body") ? Path.of(opts.get("capture-body")) : null;
 
         double temperature = Double.parseDouble(opts.getOrDefault("temperature", "0"));
-        GenUiLlmConfig llmConfig = GenUiLlmConfig.builder().defaultModel(model).temperature(temperature)
-                .enableThinking(false).build();
+        GenUiLlmConfig llmConfig =
+                GenUiLlmConfig.builder()
+                        .defaultModel(model)
+                        .temperature(temperature)
+                        .enableThinking(false)
+                        .build();
 
         List<Fixture> fixtures = new ArrayList<>();
         try (var files = Files.list(fixturesDir)) {
@@ -289,8 +330,9 @@ public final class ValidationBenchmarkDriver {
         }
         Files.createDirectories(outDir);
 
-        System.out.printf("arm=%s model=%s temp=%s fixtures=%d concurrency=%d%n", arm, model, temperature,
-                fixtures.size(), concurrency);
+        System.out.printf(
+                "arm=%s model=%s temp=%s fixtures=%d concurrency=%d%n",
+                arm, model, temperature, fixtures.size(), concurrency);
         Instant startedAt = Instant.now();
         long wallStart = System.nanoTime();
 
@@ -299,15 +341,30 @@ public final class ValidationBenchmarkDriver {
         try {
             List<Future<Map<String, Object>>> futures = new ArrayList<>();
             for (Fixture fixture : fixtures) {
-                futures.add(pool.submit(() -> {
-                    Map<String, Object> m = runFixture(fixture, arm, llmConfig, baseUrl, apiKey, proxy, outDir,
-                            captureBody);
-                    synchronized (System.out) {
-                        System.out.printf("  [%s] %s status=%s duration=%sms calls=%s%n", arm, fixture.id(),
-                                m.get("status"), m.getOrDefault("durationMs", "-"), m.getOrDefault("llmCalls", "-"));
-                    }
-                    return m;
-                }));
+                futures.add(
+                        pool.submit(
+                                () -> {
+                                    Map<String, Object> m =
+                                            runFixture(
+                                                    fixture,
+                                                    arm,
+                                                    llmConfig,
+                                                    baseUrl,
+                                                    apiKey,
+                                                    proxy,
+                                                    outDir,
+                                                    captureBody);
+                                    synchronized (System.out) {
+                                        System.out.printf(
+                                                "  [%s] %s status=%s duration=%sms calls=%s%n",
+                                                arm,
+                                                fixture.id(),
+                                                m.get("status"),
+                                                m.getOrDefault("durationMs", "-"),
+                                                m.getOrDefault("llmCalls", "-"));
+                                    }
+                                    return m;
+                                }));
             }
             for (Future<Map<String, Object>> future : futures) {
                 metrics.add(future.get());
@@ -335,7 +392,8 @@ public final class ValidationBenchmarkDriver {
         for (int i = 0; i < args.length; i++) {
             if (args[i].startsWith("--")) {
                 String key = args[i].substring(2);
-                String value = i + 1 < args.length && !args[i + 1].startsWith("--") ? args[++i] : "true";
+                String value =
+                        i + 1 < args.length && !args[i + 1].startsWith("--") ? args[++i] : "true";
                 opts.put(key, value);
             }
         }
@@ -354,8 +412,9 @@ public final class ValidationBenchmarkDriver {
                 continue;
             }
             String value = trimmed.substring(sep + 1).trim();
-            if (value.length() >= 2 && (value.startsWith("\"") && value.endsWith("\"")
-                    || value.startsWith("'") && value.endsWith("'"))) {
+            if (value.length() >= 2
+                    && (value.startsWith("\"") && value.endsWith("\"")
+                            || value.startsWith("'") && value.endsWith("'"))) {
                 value = value.substring(1, value.length() - 1);
             }
             env.put(trimmed.substring(0, sep).trim(), value);

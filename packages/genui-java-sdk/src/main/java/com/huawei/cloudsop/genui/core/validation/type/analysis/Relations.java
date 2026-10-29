@@ -1,30 +1,28 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
 
 /**
  * 类型关系集中判定(#77 第 6 节)。
  *
- * <p>
- * 分开三个问题:类型同一性直接用 {@code equals}(类型构造即归一化);{@link #proveIncluded} 回答“能否证明 A 的
- * 全部值被 B 接受”——未成功不等于当前值出错,调用方不得把未证明直接转成用户错误;{@link #proveDisjoint} 回答
- * “能否证明两者没有共同值”。
+ * <p>分开三个问题:类型同一性直接用 {@code equals}(类型构造即归一化);{@link #proveIncluded} 回答“能否证明 A 的 全部值被 B
+ * 接受”——未成功不等于当前值出错,调用方不得把未证明直接转成用户错误;{@link #proveDisjoint} 回答 “能否证明两者没有共同值”。
  *
  * @since 2026
  */
 public final class Relations {
 
-    private Relations() {
-    }
+    private Relations() {}
 
     /**
      * 证明 A 的全部可能值都被 B 接受(γ(A) ⊆ γ(B))。
      *
-     * <p>
-     * 证明失败不区分“确有不兼容”与“精度不足”,由检查层结合证据定夺。
+     * <p>证明失败不区分“确有不兼容”与“精度不足”,由检查层结合证据定夺。
      *
-     * <p>
-     * 规则要点:Unknown 只被 Unknown 接受;Never 被任何类型接受;StringLiterals ⊆ string 标量;字面值集合按子集
-     * 判定;联合要求源联合全部分支被目标接受、目标联合允许任一分支;RecordType 按字段与额外约束结构判定;
-     * Component 按名义;Template 只接受 Template。
+     * <p>规则要点:Unknown 只被 Unknown 接受;Never 被任何类型接受;StringLiterals ⊆ string 标量;字面值集合按子集
+     * 判定;联合要求源联合全部分支被目标接受、目标联合允许任一分支;RecordType 按字段与额外约束结构判定; Component 按名义;Template 只接受 Template。
      */
     public static boolean proveIncluded(Type source, Type target) {
         return included(source, target);
@@ -36,7 +34,9 @@ public final class Relations {
     }
 
     private static boolean included(Type source, Type target) {
-        if (source.equals(target) || source instanceof Type.Never || target instanceof Type.Unknown) {
+        if (source.equals(target)
+                || source instanceof Type.Never
+                || target instanceof Type.Unknown) {
             return true;
         }
         if (source instanceof Type.Unknown) {
@@ -52,11 +52,13 @@ public final class Relations {
             return includedIntoUnion(source, target);
         }
         if (source instanceof Type.Scalar scalar) {
-            return target instanceof Type.Scalar targetScalar && scalar.kind() == targetScalar.kind()
+            return target instanceof Type.Scalar targetScalar
+                            && scalar.kind() == targetScalar.kind()
                     || includedIntoUnion(source, target);
         }
         if (source instanceof Type.Union union) {
-            return union.alternatives().stream().allMatch(alternative -> included(alternative, target));
+            return union.alternatives().stream()
+                    .allMatch(alternative -> included(alternative, target));
         }
         if (source instanceof Type.Sequence sequence) {
             if (target instanceof Type.Sequence targetSequence) {
@@ -83,13 +85,11 @@ public final class Relations {
 
     private static boolean includedIntoUnion(Type source, Type target) {
         return target instanceof Type.Union union
-                && union.alternatives().stream().anyMatch(alternative -> included(source, alternative));
+                && union.alternatives().stream()
+                        .anyMatch(alternative -> included(source, alternative));
     }
 
-    /**
-     * 结构对象包含:目标每个必有字段,源必须必有且值被包含;源必有/可有字段若目标没有对应字段,须被目标
-     * extra 接受;源 extra 与目标 extra 逐层判定。
-     */
+    /** 结构对象包含:目标每个必有字段,源必须必有且值被包含;源必有/可有字段若目标没有对应字段,须被目标 extra 接受;源 extra 与目标 extra 逐层判定。 */
     private static boolean recordIncluded(Type.RecordType source, Type.RecordType target) {
         for (var entry : target.fields().entrySet()) {
             Type.Field targetField = entry.getValue();
@@ -124,10 +124,12 @@ public final class Relations {
             return false;
         }
         if (left instanceof Type.Union union) {
-            return union.alternatives().stream().allMatch(alternative -> disjoint(alternative, right));
+            return union.alternatives().stream()
+                    .allMatch(alternative -> disjoint(alternative, right));
         }
         if (right instanceof Type.Union union) {
-            return union.alternatives().stream().allMatch(alternative -> disjoint(left, alternative));
+            return union.alternatives().stream()
+                    .allMatch(alternative -> disjoint(left, alternative));
         }
         if (left instanceof Type.StringLiterals literals) {
             if (right instanceof Type.StringLiterals rightLiterals) {
@@ -142,7 +144,8 @@ public final class Relations {
             return disjoint(right, left);
         }
         if (left instanceof Type.Scalar scalar) {
-            return !(right instanceof Type.Scalar rightScalar) || scalar.kind() != rightScalar.kind();
+            return !(right instanceof Type.Scalar rightScalar)
+                    || scalar.kind() != rightScalar.kind();
         }
         if (right instanceof Type.Scalar) {
             return true;
@@ -165,7 +168,8 @@ public final class Relations {
             Type.RecordType b = (Type.RecordType) right;
             for (var entry : a.fields().entrySet()) {
                 Type.Field bField = b.fields().get(entry.getKey());
-                if (bField != null && entry.getValue().presence() == Type.Presence.REQUIRED
+                if (bField != null
+                        && entry.getValue().presence() == Type.Presence.REQUIRED
                         && bField.presence() == Type.Presence.REQUIRED
                         && disjoint(entry.getValue().type(), bField.type())) {
                     return true;
@@ -173,7 +177,8 @@ public final class Relations {
             }
             return false;
         }
-        if (left instanceof Type.Component leftComponent && right instanceof Type.Component rightComponent) {
+        if (left instanceof Type.Component leftComponent
+                && right instanceof Type.Component rightComponent) {
             // 组件按名义:不同名即互斥。
             return !leftComponent.name().equals(rightComponent.name());
         }

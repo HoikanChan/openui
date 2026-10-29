@@ -53,6 +53,9 @@ dist
 typings
 target/
 
+# spotbugs-maven-plugin 会把过滤器复制到模块目录
+/packages/*/config/
+
 # Logs
 *storybook.log
 

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.postprocess;
 
 /**
@@ -7,14 +11,12 @@ package com.huawei.cloudsop.genui.core.postprocess;
  */
 public final class DslEscapes {
 
-    private DslEscapes() {
-    }
+    private DslEscapes() {}
 
     /**
      * 转义字符串中的反斜杠和双引号，使其可安全嵌入DSL字符串字面量。
      *
-     * @param s
-     *            原始字符串
+     * @param s 原始字符串
      * @return 转义后的字符串
      */
     public static String escapeString(String s) {

@@ -21,22 +21,22 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 /**
  * 对已解析的 {@link Program} 针对 {@link ContractCatalog} 做语义分析。
  *
- * <p>
- * 对应 TS 侧 {@code parser.ts#buildResult} + {@code materialize.ts} 实现的流水线：
+ * <p>对应 TS 侧 {@code parser.ts#buildResult} + {@code materialize.ts} 实现的流水线：
  *
  * <ol>
- * <li>构建符号表，对重复 id 采用<b>后者覆盖</b>语义 —— 解析器刻意将重复 id 的语句保留为有序列表（语法层面）； 我们在此处去重，对应 TS 侧 {@code stmtMap}（一个
- * {@code Map.set}）。
- * <li>通过 {@link #pickEntryId} 选择根节点（与 {@code pickEntryId} 完全一致）。
- * <li>从根节点递归物化，产出合约问题（unknown-component、inline-reserved、missing/null-required、 excess-args、invalid-prop），并跟踪未解析引用
- * （通过 {@code visited} 环检测）。
- * <li>应用结构性规则（root-missing / root-not-renderable / unresolved-ref），并将解析器的语法诊断 折叠进问题列表。
+ *   <li>构建符号表，对重复 id 采用<b>后者覆盖</b>语义 —— 解析器刻意将重复 id 的语句保留为有序列表（语法层面）； 我们在此处去重，对应 TS 侧 {@code
+ *       stmtMap}（一个 {@code Map.set}）。
+ *   <li>通过 {@link #pickEntryId} 选择根节点（与 {@code pickEntryId} 完全一致）。
+ *   <li>从根节点递归物化，产出合约问题（unknown-component、inline-reserved、missing/null-required、
+ *       excess-args、invalid-prop），并跟踪未解析引用 （通过 {@code visited} 环检测）。
+ *   <li>应用结构性规则（root-missing / root-not-renderable / unresolved-ref），并将解析器的语法诊断 折叠进问题列表。
  * </ol>
  *
  * @since 2026
@@ -57,8 +57,7 @@ public final class ProgramAnalyzer {
     /**
      * 构造语义分析器（builtin 词表取 SDK 默认契约派生集）。
      *
-     * @param catalog
-     *            用于合约校验的组件目录
+     * @param catalog 用于合约校验的组件目录
      */
     public ProgramAnalyzer(ContractCatalog catalog) {
         this(catalog, BuiltinCatalog.getDefault());
@@ -67,10 +66,8 @@ public final class ProgramAnalyzer {
     /**
      * 构造语义分析器。
      *
-     * @param catalog
-     *            用于合约校验的组件目录
-     * @param builtins
-     *            builtin 函数词表（从契约派生）
+     * @param catalog 用于合约校验的组件目录
+     * @param builtins builtin 函数词表（从契约派生）
      */
     public ProgramAnalyzer(ContractCatalog catalog, BuiltinCatalog builtins) {
         this.catalog = catalog;
@@ -80,12 +77,9 @@ public final class ProgramAnalyzer {
     /**
      * 针对目录分析 {@code program}。
      *
-     * @param program
-     *            已解析的程序
-     * @param rootName
-     *            可选的首选根节点名（组件名或语句 id）
-     * @param externalRefs
-     *            在运行时解析（数据结果）因而不算未解析的名称集合
+     * @param program 已解析的程序
+     * @param rootName 可选的首选根节点名（组件名或语句 id）
+     * @param externalRefs 在运行时解析（数据结果）因而不算未解析的名称集合
      * @return 语义分析结果
      */
     public ProgramAnalysis analyze(Program program, String rootName, Set<String> externalRefs) {
@@ -121,7 +115,8 @@ public final class ProgramAnalyzer {
 
         // ── Structural rules ─────────────────────────────────────────────────────
         if (!rootResolved) {
-            // Distinguish "entry produced nothing renderable" (root-not-renderable) from truly absent.
+            // Distinguish "entry produced nothing renderable" (root-not-renderable) from truly
+            // absent.
             // entryNode is always present here (stmtMap non-empty); if it isn't a component that
             // materialized to an element, it's not renderable.
             emitRootNotRenderable(issues, entryId, materialized);
@@ -129,26 +124,39 @@ public final class ProgramAnalyzer {
         for (UnresolvedRef ref : ctx.unresolved) {
             String refStmtId = ref.statementId() != null ? ref.statementId() : entryId;
             SourceSpan refSpan = spanOf(stmtMap.get(refStmtId));
-            issues.add(new ValidationIssue("unresolved-ref", ValidationSeverity.ERROR, SOURCE_REFERENCE,
-                    "unresolved reference \"" + ref.name() + "\"", refStmtId, null, null, refSpan.line(),
-                    refSpan.column(), RepairHints.unresolvedRefHint(ref.name()), false));
+            issues.add(
+                    new ValidationIssue(
+                            "unresolved-ref",
+                            ValidationSeverity.ERROR,
+                            SOURCE_REFERENCE,
+                            "unresolved reference \"" + ref.name() + "\"",
+                            refStmtId,
+                            null,
+                            null,
+                            refSpan.line(),
+                            refSpan.column(),
+                            RepairHints.unresolvedRefHint(ref.name()),
+                            false));
         }
 
-        return new ProgramAnalysis(issues, entryId, rootResolved,
-                ctx.unresolved.stream().map(UnresolvedRef::name)
+        return new ProgramAnalysis(
+                issues,
+                entryId,
+                rootResolved,
+                ctx.unresolved.stream()
+                        .map(UnresolvedRef::name)
                         .collect(java.util.stream.Collectors.toCollection(ArrayList::new)),
                 stmtMap.size());
     }
 
     /**
      * An unresolved reference plus the id of the statement whose expression used it (the walk's
-     * {@code currentStatementId} at the moment of resolution failure), so the emitted issue can point at the
-     * referencing statement instead of the entry/root statement.
+     * {@code currentStatementId} at the moment of resolution failure), so the emitted issue can
+     * point at the referencing statement instead of the entry/root statement.
      *
      * @since 2026
      */
-    private record UnresolvedRef(String name, String statementId) {
-    }
+    private record UnresolvedRef(String name, String statementId) {}
 
     /** Statement start span, or {@link SourceSpan#UNKNOWN} when the statement is not in the map. */
     private static SourceSpan spanOf(Statement s) {
@@ -159,7 +167,10 @@ public final class ProgramAnalyzer {
     // Root selection — mirrors pickEntryId EXACTLY.
     // ───────────────────────────────────────────────────────────────────────────
 
-    private String pickEntryId(Map<String, Statement> stmtMap, List<Statement> typedStmts, String firstId,
+    private String pickEntryId(
+            Map<String, Statement> stmtMap,
+            List<Statement> typedStmts,
+            String firstId,
             String rootName) {
         if (stmtMap.containsKey(DEFAULT_ROOT_STATEMENT_ID)) {
             return DEFAULT_ROOT_STATEMENT_ID;
@@ -170,7 +181,8 @@ public final class ProgramAnalyzer {
 
         if (rootName != null) {
             for (Statement s : typedStmts) {
-                if (isComponentStatement(s) && ((Statement.Value) s).expr() instanceof AstNode.Comp comp
+                if (isComponentStatement(s)
+                        && ((Statement.Value) s).expr() instanceof AstNode.Comp comp
                         && comp.name().equals(rootName)) {
                     return s.id();
                 }
@@ -204,8 +216,7 @@ public final class ProgramAnalyzer {
      *
      * @since 2026
      */
-    private record ElementValue(String typeName) {
-    }
+    private record ElementValue(String typeName) {}
 
     private static final class WalkCtx {
         final Map<String, AstNode> syms;
@@ -214,12 +225,15 @@ public final class ProgramAnalyzer {
 
         final List<UnresolvedRef> unresolved = new ArrayList<>();
         final Set<String> visited = new HashSet<>();
+
         /**
-         * Stack of lazy-builtin binder scopes (mirrors materialize.ts scopedRefs). Each frame holds the binder names of
-         * one enclosing {@code @Each}/{@code @Render} call and lives only while that call's template args are walked.
-         * The stack stays live across named-statement resolution, matching TS expr-mode scopedRefs propagation.
+         * Stack of lazy-builtin binder scopes (mirrors materialize.ts scopedRefs). Each frame holds
+         * the binder names of one enclosing {@code @Each}/{@code @Render} call and lives only while
+         * that call's template args are walked. The stack stays live across named-statement
+         * resolution, matching TS expr-mode scopedRefs propagation.
          */
         final Deque<Set<String>> scopeFrames = new ArrayDeque<>();
+
         String currentStatementId;
 
         boolean inScope(String name) {
@@ -279,7 +293,8 @@ public final class ProgramAnalyzer {
             return materializeComp(comp, ctx);
         }
         // Runtime-expression nodes (BinOp, Ternary, Member, StateRef, ...): walk children
-        // for nested refs/components but produce no plain value (treated as dynamic → non-null marker).
+        // for nested refs/components but produce no plain value (treated as dynamic → non-null
+        // marker).
         walkExpr(node, ctx);
         return DYNAMIC;
     }
@@ -301,19 +316,36 @@ public final class ProgramAnalyzer {
 
         if (BuiltinCatalog.isReservedCall(name)) {
             // Inline Query/Mutation used as a value → definitively invalid.
-            emit(ctx, "inline-reserved", ValidationSeverity.ERROR, "contract", name, "",
-                    name + "() must be declared as a top-level statement, not used inline as a value",
-                    ctx.currentStatementId, false);
+            emit(
+                    ctx,
+                    "inline-reserved",
+                    ValidationSeverity.ERROR,
+                    "contract",
+                    name,
+                    "",
+                    name
+                            + "() must be declared as a top-level statement, not used inline as a value",
+                    ctx.currentStatementId,
+                    false);
             return null;
         }
 
         ComponentDef def = catalog == null ? null : catalog.get(name);
         if (def == null) {
-            String hint = RepairHints.unknownComponentHint(name, builtins,
-                    catalog == null ? List.of() : catalog.capabilityGaps());
-            emit(ctx, "unknown-component", ValidationSeverity.ERROR, "contract", name, "",
-                    "Unknown component \"" + name + "\" — not found in catalog or builtins", ctx.currentStatementId,
-                    hint, false);
+            String hint =
+                    RepairHints.unknownComponentHint(
+                            name, builtins, catalog == null ? List.of() : catalog.capabilityGaps());
+            emit(
+                    ctx,
+                    "unknown-component",
+                    ValidationSeverity.ERROR,
+                    "contract",
+                    name,
+                    "",
+                    "Unknown component \"" + name + "\" — not found in catalog or builtins",
+                    ctx.currentStatementId,
+                    hint,
+                    false);
             // Still walk args so nested unresolved refs / unknown components are reported.
             for (AstNode a : comp.args()) {
                 walkExpr(a, ctx);
@@ -327,8 +359,8 @@ public final class ProgramAnalyzer {
             argValues.add(materializeValue(a, ctx));
         }
 
-        ComponentContractValidator validator = new ComponentContractValidator(ValidationSeverity.ERROR, false,
-                ctx.issues);
+        ComponentContractValidator validator =
+                new ComponentContractValidator(ValidationSeverity.ERROR, false, ctx.issues);
         boolean renderable = validator.validate(name, def, argValues, ctx.currentStatementId);
         if (!renderable) {
             return null; // missing/null required → dropped (TS returns null)
@@ -337,10 +369,11 @@ public final class ProgramAnalyzer {
     }
 
     /**
-     * Mirrors {@code materialize.ts#materializeLazyBuiltin}: for {@code @Each(array, varName, template)} and
-     * {@code @Render(binder..., template)}, push the binder names onto the scope stack ONLY while the non-binder args
-     * are walked (binder args themselves are never resolved as refs). Returns {@code false} when the call introduces no
-     * binder scope — e.g. too few args or a non-literal binder — so the caller falls back to the generic builtin walk.
+     * Mirrors {@code materialize.ts#materializeLazyBuiltin}: for {@code @Each(array, varName,
+     * template)} and {@code @Render(binder..., template)}, push the binder names onto the scope
+     * stack ONLY while the non-binder args are walked (binder args themselves are never resolved as
+     * refs). Returns {@code false} when the call introduces no binder scope — e.g. too few args or
+     * a non-literal binder — so the caller falls back to the generic builtin walk.
      */
     private boolean walkLazyBuiltin(AstNode.Comp comp, WalkCtx ctx) {
         List<Integer> binderIndexes = LazyBuiltinBinders.binderIndexes(comp, builtins);
@@ -465,33 +498,94 @@ public final class ProgramAnalyzer {
 
     private void foldParserDiagnostics(Program program, List<ValidationIssue> issues) {
         for (ParseDiagnostic d : program.diagnostics()) {
-            issues.add(new ValidationIssue("syntax-" + d.code().name().toLowerCase().replace('_', '-'),
-                    ValidationSeverity.ERROR, SOURCE_SYNTAX, d.message(), d.statementId(), null, null, d.line(),
-                    d.column(), null, false));
+            issues.add(
+                    new ValidationIssue(
+                            "syntax-" + d.code().name().toLowerCase(Locale.ROOT).replace('_', '-'),
+                            ValidationSeverity.ERROR,
+                            SOURCE_SYNTAX,
+                            d.message(),
+                            d.statementId(),
+                            null,
+                            null,
+                            d.line(),
+                            d.column(),
+                            null,
+                            false));
         }
     }
 
     private void emitRootMissing(List<ValidationIssue> issues, String detail) {
-        issues.add(new ValidationIssue("root-missing", ValidationSeverity.ERROR, SOURCE_ROOT,
-                "no renderable root component (" + detail + ")", null, null, null, -1, -1,
-                "the program must contain at least one renderable component as its entry", false));
+        issues.add(
+                new ValidationIssue(
+                        "root-missing",
+                        ValidationSeverity.ERROR,
+                        SOURCE_ROOT,
+                        "no renderable root component (" + detail + ")",
+                        null,
+                        null,
+                        null,
+                        -1,
+                        -1,
+                        "the program must contain at least one renderable component as its entry",
+                        false));
     }
 
-    private void emitRootNotRenderable(List<ValidationIssue> issues, String entryId, Object materialized) {
+    private void emitRootNotRenderable(
+            List<ValidationIssue> issues, String entryId, Object materialized) {
         // materialized is null (dropped/unknown/missing-required) or a non-element value.
-        issues.add(new ValidationIssue("root-not-renderable", ValidationSeverity.ERROR, SOURCE_ROOT,
-                "root statement \"" + entryId + "\" did not resolve to a renderable component", entryId, null, null, -1,
-                -1, "the entry statement must be a valid catalog component", false));
+        issues.add(
+                new ValidationIssue(
+                        "root-not-renderable",
+                        ValidationSeverity.ERROR,
+                        SOURCE_ROOT,
+                        "root statement \""
+                                + entryId
+                                + "\" did not resolve to a renderable component",
+                        entryId,
+                        null,
+                        null,
+                        -1,
+                        -1,
+                        "the entry statement must be a valid catalog component",
+                        false));
     }
 
-    private void emit(WalkCtx ctx, String code, ValidationSeverity severity, String source, String component,
-            String path, String message, String statementId, boolean retryable) {
+    private void emit(
+            WalkCtx ctx,
+            String code,
+            ValidationSeverity severity,
+            String source,
+            String component,
+            String path,
+            String message,
+            String statementId,
+            boolean retryable) {
         emit(ctx, code, severity, source, component, path, message, statementId, null, retryable);
     }
 
-    private void emit(WalkCtx ctx, String code, ValidationSeverity severity, String source, String component,
-            String path, String message, String statementId, String hint, boolean retryable) {
-        ctx.issues.add(new ValidationIssue(code, severity, source, message, statementId, component, path, -1, -1, hint,
-                retryable));
+    private void emit(
+            WalkCtx ctx,
+            String code,
+            ValidationSeverity severity,
+            String source,
+            String component,
+            String path,
+            String message,
+            String statementId,
+            String hint,
+            boolean retryable) {
+        ctx.issues.add(
+                new ValidationIssue(
+                        code,
+                        severity,
+                        source,
+                        message,
+                        statementId,
+                        component,
+                        path,
+                        -1,
+                        -1,
+                        hint,
+                        retryable));
     }
 }

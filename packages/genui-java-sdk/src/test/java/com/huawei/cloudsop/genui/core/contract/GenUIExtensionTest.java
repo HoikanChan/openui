@@ -14,8 +14,9 @@ import java.util.Map;
 class GenUIExtensionTest {
     @Test
     void exposesExtensionContractType() {
-        GenUIExtension extension = new GenUIExtension("extension-a", "v1", Map.of(), List.of(), List.of(), List.of(),
-                List.of());
+        GenUIExtension extension =
+                new GenUIExtension(
+                        "extension-a", "v1", Map.of(), List.of(), List.of(), List.of(), List.of());
 
         assertEquals("extension-a", extension.extensionId());
     }

@@ -36,8 +36,14 @@ import java.util.Map;
 class EvalCliMainTest {
     @Test
     void parsesGenerateArgs() {
-        EvalCliMain.CliArgs args = EvalCliMain.CliArgs
-                .parse(new String[]{"generate", "--base-contract=c.json", "--jobs=jobs.json", "--concurrency=3"});
+        EvalCliMain.CliArgs args =
+                EvalCliMain.CliArgs.parse(
+                        new String[] {
+                            "generate",
+                            "--base-contract=c.json",
+                            "--jobs=jobs.json",
+                            "--concurrency=3"
+                        });
         assertEquals("generate", args.command());
         assertEquals("c.json", args.baseContractPath());
         assertEquals("jobs.json", args.jobsPath());
@@ -46,33 +52,50 @@ class EvalCliMainTest {
 
     @Test
     void printPromptAcceptsFlagStyleCommand() {
-        EvalCliMain.CliArgs args = EvalCliMain.CliArgs.parse(new String[]{"--print-prompt", "--base-contract=c.json"});
+        EvalCliMain.CliArgs args =
+                EvalCliMain.CliArgs.parse(
+                        new String[] {"--print-prompt", "--base-contract=c.json"});
         assertEquals("print-prompt", args.command());
     }
 
     @Test
     void rejectsMissingBaseContract() {
-        assertThrows(EvalCliMain.CliUsageException.class,
-                () -> EvalCliMain.CliArgs.parse(new String[]{"generate", "--jobs=jobs.json"}));
+        assertThrows(
+                EvalCliMain.CliUsageException.class,
+                () -> EvalCliMain.CliArgs.parse(new String[] {"generate", "--jobs=jobs.json"}));
     }
 
     @Test
     void rejectsGenerateWithoutJobs() {
-        assertThrows(EvalCliMain.CliUsageException.class,
-                () -> EvalCliMain.CliArgs.parse(new String[]{"generate", "--base-contract=c.json"}));
+        assertThrows(
+                EvalCliMain.CliUsageException.class,
+                () ->
+                        EvalCliMain.CliArgs.parse(
+                                new String[] {"generate", "--base-contract=c.json"}));
     }
 
     @Test
     void rejectsUnknownCommandAndBadConcurrency() {
-        assertThrows(EvalCliMain.CliUsageException.class, () -> EvalCliMain.CliArgs.parse(new String[]{"serve"}));
-        assertThrows(EvalCliMain.CliUsageException.class, () -> EvalCliMain.CliArgs
-                .parse(new String[]{"generate", "--base-contract=c.json", "--jobs=j.json", "--concurrency=0"}));
+        assertThrows(
+                EvalCliMain.CliUsageException.class,
+                () -> EvalCliMain.CliArgs.parse(new String[] {"serve"}));
+        assertThrows(
+                EvalCliMain.CliUsageException.class,
+                () ->
+                        EvalCliMain.CliArgs.parse(
+                                new String[] {
+                                    "generate",
+                                    "--base-contract=c.json",
+                                    "--jobs=j.json",
+                                    "--concurrency=0"
+                                }));
     }
 
     @Test
     void parsesJobsJson() {
-        List<EvalCliMain.GenerationJob> jobs = EvalCliMain.GenerationJob
-                .parseAll("[{\"id\":\"a\",\"userInput\":\"show table\",\"dataModel\":{\"rows\":[]}},{\"id\":\"b\"}]");
+        List<EvalCliMain.GenerationJob> jobs =
+                EvalCliMain.GenerationJob.parseAll(
+                        "[{\"id\":\"a\",\"userInput\":\"show table\",\"dataModel\":{\"rows\":[]}},{\"id\":\"b\"}]");
         assertEquals(2, jobs.size());
         assertEquals("a", jobs.get(0).id());
         assertEquals("show table", jobs.get(0).userInput());
@@ -83,7 +106,8 @@ class EvalCliMainTest {
 
     @Test
     void rejectsJobWithoutId() {
-        assertThrows(EvalCliMain.CliUsageException.class,
+        assertThrows(
+                EvalCliMain.CliUsageException.class,
                 () -> EvalCliMain.GenerationJob.parseAll("[{\"userInput\":\"x\"}]"));
     }
 
@@ -96,14 +120,20 @@ class EvalCliMainTest {
 
     @Test
     void jobRunnerEmitsOkAndErrorLines() throws Exception {
-        // Eval regen uses raw generation with validation disabled (same as EvalCliMain); JobRunner still rejects
+        // Eval regen uses raw generation with validation disabled (same as EvalCliMain); JobRunner
+        // still rejects
         // Markdown fallbacks by endReason.
-        GenUiGenerator generator = GenUiGenerator.withTransport(sdk(),
-                GenUiLlmConfig.builder().defaultModel("test-model").temperature(0).build(), new FlakyTransport(),
-                GenUiValidationConfig.disabled(), null);
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(
+                        sdk(),
+                        GenUiLlmConfig.builder().defaultModel("test-model").temperature(0).build(),
+                        new FlakyTransport(),
+                        GenUiValidationConfig.disabled(),
+                        null);
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        List<EvalCliMain.GenerationJob> jobs = EvalCliMain.GenerationJob
-                .parseAll("[{\"id\":\"ok-case\",\"userInput\":\"u\"},{\"id\":\"fail-case\",\"userInput\":\"boom\"}]");
+        List<EvalCliMain.GenerationJob> jobs =
+                EvalCliMain.GenerationJob.parseAll(
+                        "[{\"id\":\"ok-case\",\"userInput\":\"u\"},{\"id\":\"fail-case\",\"userInput\":\"boom\"}]");
 
         JobRunner.runAll(jobs, 2, generator, new PrintStream(buffer, true, StandardCharsets.UTF_8));
 
@@ -121,25 +151,54 @@ class EvalCliMainTest {
 
     @Test
     void markdownFallbackIsNotReportedAsDslSuccess() {
-        GenUiGenerationResult fallback = new GenUiGenerationResult("root = Stack([MarkDownRenderer(\"# page\")])",
-                Map.of(), null, null, GenerationEndReason.TIMEOUT, List.of());
+        GenUiGenerationResult fallback =
+                new GenUiGenerationResult(
+                        "root = Stack([MarkDownRenderer(\"# page\")])",
+                        Map.of(),
+                        null,
+                        null,
+                        GenerationEndReason.TIMEOUT,
+                        List.of());
         String failure = JobRunner.dslFailure(fallback);
-        assertTrue(failure != null && failure.contains("TIMEOUT"),
+        assertTrue(
+                failure != null && failure.contains("TIMEOUT"),
                 "Markdown fallback must be an error and keep the end reason: " + failure);
 
-        GenUiGenerationResult checked = new GenUiGenerationResult("root = Stack([])", Map.of(), ValidationStatus.VALID,
-                null, GenerationEndReason.CHECK_PASSED, List.of());
+        GenUiGenerationResult checked =
+                new GenUiGenerationResult(
+                        "root = Stack([])",
+                        Map.of(),
+                        ValidationStatus.VALID,
+                        null,
+                        GenerationEndReason.CHECK_PASSED,
+                        List.of());
         assertNull(JobRunner.dslFailure(checked), "validated DSL is ok");
 
-        GenUiGenerationResult unchecked = new GenUiGenerationResult("root = Stack([])", Map.of(), null, null,
-                GenerationEndReason.UNCHECKED, List.of());
-        assertNull(JobRunner.dslFailure(unchecked), "explicitly disabled validation keeps raw DSL usable");
+        GenUiGenerationResult unchecked =
+                new GenUiGenerationResult(
+                        "root = Stack([])",
+                        Map.of(),
+                        null,
+                        null,
+                        GenerationEndReason.UNCHECKED,
+                        List.of());
+        assertNull(
+                JobRunner.dslFailure(unchecked),
+                "explicitly disabled validation keeps raw DSL usable");
     }
 
     private static GenerationSdk sdk() {
-        GenerationContract contract = new GenerationContract("test@1.0.0", "Stack",
-                Map.of("Stack", new ComponentPromptSpec("Stack(children)", "Layout container")), List.of(), List.of(),
-                List.of(), List.of());
+        GenerationContract contract =
+                new GenerationContract(
+                        "test@1.0.0",
+                        "Stack",
+                        Map.of(
+                                "Stack",
+                                new ComponentPromptSpec("Stack(children)", "Layout container")),
+                        List.of(),
+                        List.of(),
+                        List.of(),
+                        List.of());
         return GenerationSdk.builder().baseContract(contract).build();
     }
 
@@ -149,11 +208,12 @@ class EvalCliMainTest {
         public LlmCall newCall(String body, boolean stream) {
             return new LlmCall() {
                 private boolean cancelled;
+
                 public synchronized InputStream execute() throws LlmTransportException {
-                    if (cancelled)
-                        throw new LlmTransportException("cancelled");
+                    if (cancelled) throw new LlmTransportException("cancelled");
                     return new ByteArrayInputStream(post(body).getBytes(StandardCharsets.UTF_8));
                 }
+
                 public synchronized void cancel() {
                     cancelled = true;
                 }

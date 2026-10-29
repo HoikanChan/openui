@@ -7,14 +7,19 @@ package com.huawei.cloudsop.genui.core.prompt.characterize;
 /**
  * Immutable tuning knobs for the {@link ShapeWalker} / {@link Characterizer} pipeline.
  *
- * <p>
- * All fields are defaulted; use {@link #defaults()} for the out-of-the-box configuration or {@link #builder()} to
- * override a subset of fields.
+ * <p>All fields are defaulted; use {@link #defaults()} for the out-of-the-box configuration or
+ * {@link #builder()} to override a subset of fields.
  *
  * @since 2026
  */
-public record CharacterizationConfig(boolean enabled, int triggerBytes, int sampleRows, int maxStringLen,
-        int enumMaxDistinct, double enumMaxRatio, int deepScanLimit) {
+public record CharacterizationConfig(
+        boolean enabled,
+        int triggerBytes,
+        int sampleRows,
+        int maxStringLen,
+        int enumMaxDistinct,
+        double enumMaxRatio,
+        int deepScanLimit) {
 
     private static final boolean DEFAULT_ENABLED = true;
     private static final int DEFAULT_TRIGGER_BYTES = 2048;
@@ -41,8 +46,7 @@ public record CharacterizationConfig(boolean enabled, int triggerBytes, int samp
         private double enumMaxRatio = DEFAULT_ENUM_MAX_RATIO;
         private int deepScanLimit = DEFAULT_DEEP_SCAN_LIMIT;
 
-        private Builder() {
-        }
+        private Builder() {}
 
         public Builder enabled(boolean enabled) {
             this.enabled = enabled;
@@ -80,8 +84,14 @@ public record CharacterizationConfig(boolean enabled, int triggerBytes, int samp
         }
 
         public CharacterizationConfig build() {
-            return new CharacterizationConfig(enabled, triggerBytes, sampleRows, maxStringLen, enumMaxDistinct,
-                    enumMaxRatio, deepScanLimit);
+            return new CharacterizationConfig(
+                    enabled,
+                    triggerBytes,
+                    sampleRows,
+                    maxStringLen,
+                    enumMaxDistinct,
+                    enumMaxRatio,
+                    deepScanLimit);
         }
     }
 }

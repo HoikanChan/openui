@@ -26,18 +26,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * #56 轮末统一校验会话。断言:增量喂入按同名 last-wins 维护当前程序,轮结束后仅在当前有效定义上做一次 FINAL 校验,并记录原始输出、当前定义、诊断、耗时与契约版本。
- */
+/** #56 轮末统一校验会话。断言:增量喂入按同名 last-wins 维护当前程序,轮结束后仅在当前有效定义上做一次 FINAL 校验,并记录原始输出、当前定义、诊断、耗时与契约版本。 */
 class ProgramRoundSessionTest {
 
     private static GenerationContract baseContract() {
         return GenerationContractLoader.loadDefault();
     }
 
-    private static ProgramRoundSession session(GenerationContract contract, Set<String> externalRefs,
-            Map<String, Object> dataModel) {
-        return new ProgramRoundSession(new DefaultOpenuiLangValidator(), contract, contract.root(), externalRefs,
+    private static ProgramRoundSession session(
+            GenerationContract contract, Set<String> externalRefs, Map<String, Object> dataModel) {
+        return new ProgramRoundSession(
+                new DefaultOpenuiLangValidator(),
+                contract,
+                contract.root(),
+                externalRefs,
                 dataModel);
     }
 
@@ -52,8 +54,14 @@ class ProgramRoundSessionTest {
 
         RoundEndResult round = s.onRoundEnd();
 
-        assertEquals("root = Stack([CardHeader(\"A\")])", round.currentDefinitions(), "同名语句以最新定义为准,旧语句不进当前程序");
-        assertEquals(ValidationStatus.VALID, round.validationResult().status(), "旧定义的 unknown-component 不得继续产生当前错误");
+        assertEquals(
+                "root = Stack([CardHeader(\"A\")])",
+                round.currentDefinitions(),
+                "同名语句以最新定义为准,旧语句不进当前程序");
+        assertEquals(
+                ValidationStatus.VALID,
+                round.validationResult().status(),
+                "旧定义的 unknown-component 不得继续产生当前错误");
         assertTrue(round.durationMs() >= 0);
         assertEquals(baseContract().contractVersion(), round.contractVersion());
         assertNull(round.endReason(), "正常完成的轮末检查不记录退出原因");
@@ -88,14 +96,21 @@ class ProgramRoundSessionTest {
         ProgramRoundSession s = session(baseContract(), Set.of(), null);
         s.onDelta("keep = TextContent(\"k\")\nlate = Stack([");
         RoundEndResult first = s.onRoundEnd();
-        assertTrue(first.currentDefinitions().contains("late = Stack([])"), "late fragment is drained at round end");
+        assertTrue(
+                first.currentDefinitions().contains("late = Stack([])"),
+                "late fragment is drained at round end");
 
         s.beginRound();
         s.onDelta("root = Stack([keep])\n");
         RoundEndResult second = s.onRoundEnd();
 
-        assertEquals("root = Stack([keep])\n", second.rawOutput(), "a new request starts from an empty raw buffer");
-        assertEquals("keep = TextContent(\"k\")\nlate = Stack([])\nroot = Stack([keep])", second.currentDefinitions(),
+        assertEquals(
+                "root = Stack([keep])\n",
+                second.rawOutput(),
+                "a new request starts from an empty raw buffer");
+        assertEquals(
+                "keep = TextContent(\"k\")\nlate = Stack([])\nroot = Stack([keep])",
+                second.currentDefinitions(),
                 "prior program survives, while the new request's statements are parsed independently");
     }
 
@@ -107,7 +122,10 @@ class ProgramRoundSessionTest {
         s.onDelta("row = CardHeader(\"R\")\n");
 
         RoundEndResult round = s.onRoundEnd();
-        assertEquals(ValidationStatus.VALID, round.validationResult().status(), "轮内后置定义在轮末统一校验时已生效,不因前向引用报错");
+        assertEquals(
+                ValidationStatus.VALID,
+                round.validationResult().status(),
+                "轮内后置定义在轮末统一校验时已生效,不因前向引用报错");
     }
 
     @Test
@@ -119,7 +137,10 @@ class ProgramRoundSessionTest {
         assertEquals(ValidationStatus.INVALID, round.validationResult().status());
         assertTrue(
                 round.validationResult().issues().stream()
-                        .anyMatch(i -> "unresolved-ref".equals(i.code()) && i.severity() == ValidationSeverity.ERROR),
+                        .anyMatch(
+                                i ->
+                                        "unresolved-ref".equals(i.code())
+                                                && i.severity() == ValidationSeverity.ERROR),
                 "轮结束仍缺失的引用按错误处理,而不是可重试警告");
     }
 
@@ -131,14 +152,23 @@ class ProgramRoundSessionTest {
         ProgramRoundSession whole = session(baseContract(), Set.of("data"), Map.of("name", "dev"));
         whole.onDelta(dsl);
 
-        ProgramRoundSession chopped = session(baseContract(), Set.of("data"), Map.of("name", "dev"));
-        for (String piece : new String[]{"root = St", "ack([CardHea", "der(\"A\")])\nrow = Card", "Header(data.",
-                "name)\n"}) {
+        ProgramRoundSession chopped =
+                session(baseContract(), Set.of("data"), Map.of("name", "dev"));
+        for (String piece :
+                new String[] {
+                    "root = St",
+                    "ack([CardHea",
+                    "der(\"A\")])\nrow = Card",
+                    "Header(data.",
+                    "name)\n"
+                }) {
             chopped.onDelta(piece);
         }
 
         assertEquals(whole.currentDefinitions(), chopped.currentDefinitions());
-        assertEquals(whole.onRoundEnd().validationResult().status(), chopped.onRoundEnd().validationResult().status());
+        assertEquals(
+                whole.onRoundEnd().validationResult().status(),
+                chopped.onRoundEnd().validationResult().status());
     }
 
     // ── 校验请求透传:dataModel / externalRefs / contract ────────────────────
@@ -146,11 +176,20 @@ class ProgramRoundSessionTest {
     @Test
     void roundEndValidationReceivesCurrentDefinitionsContractAndDataModel() {
         AtomicReference<ValidationRequest> captured = new AtomicReference<>();
-        ProgramRoundSession s = new ProgramRoundSession(request -> {
-            captured.set(request);
-            return ValidationResult.valid(request.dsl(), List.of(),
-                    new com.huawei.cloudsop.genui.core.validation.ValidationMetadata(1, "root", null));
-        }, baseContract(), "Stack", Set.of("data"), Map.of("name", "dev"));
+        ProgramRoundSession s =
+                new ProgramRoundSession(
+                        request -> {
+                            captured.set(request);
+                            return ValidationResult.valid(
+                                    request.dsl(),
+                                    List.of(),
+                                    new com.huawei.cloudsop.genui.core.validation
+                                            .ValidationMetadata(1, "root", null));
+                        },
+                        baseContract(),
+                        "Stack",
+                        Set.of("data"),
+                        Map.of("name", "dev"));
         s.onDelta("root = Stack([])\n");
         s.onRoundEnd();
 
@@ -172,7 +211,9 @@ class ProgramRoundSessionTest {
         without.onDelta("root = Stack([TextContent(data.name)])\n");
         RoundEndResult round = without.onRoundEnd();
         assertEquals(ValidationStatus.INVALID, round.validationResult().status());
-        assertTrue(round.validationResult().issues().stream().anyMatch(i -> "unresolved-ref".equals(i.code())));
+        assertTrue(
+                round.validationResult().issues().stream()
+                        .anyMatch(i -> "unresolved-ref".equals(i.code())));
     }
 
     // ── Each/Render 作用域规则保持 ──────────────────────────────────────────
@@ -188,7 +229,9 @@ class ProgramRoundSessionTest {
         s.onDelta("root = Stack([rowEach])\n");
 
         RoundEndResult round = s.onRoundEnd();
-        assertEquals(ValidationStatus.VALID, round.validationResult().status(),
+        assertEquals(
+                ValidationStatus.VALID,
+                round.validationResult().status(),
                 "Each binder 在覆盖后的模板内作用域不变: " + round.validationResult().issues());
         assertFalse(round.currentDefinitions().contains("rowEach = item.label"), "被覆盖的错误定义不进当前程序");
     }
@@ -203,8 +246,13 @@ class ProgramRoundSessionTest {
         s.onDelta("root = Stack([tpl])\n");
 
         RoundEndResult round = s.onRoundEnd();
-        assertEquals(ValidationStatus.INVALID, round.validationResult().status(), "被覆盖模板的 binder 不得在新定义中继续可见");
-        assertTrue(round.validationResult().issues().stream().anyMatch(i -> "unresolved-ref".equals(i.code())),
+        assertEquals(
+                ValidationStatus.INVALID,
+                round.validationResult().status(),
+                "被覆盖模板的 binder 不得在新定义中继续可见");
+        assertTrue(
+                round.validationResult().issues().stream()
+                        .anyMatch(i -> "unresolved-ref".equals(i.code())),
                 "expect unresolved-ref for item: " + round.validationResult().issues());
     }
 
@@ -217,8 +265,11 @@ class ProgramRoundSessionTest {
         s.onDelta("root = Table([Col(\"N\", field: \"name\")], data.rows)\n");
 
         RoundEndResult round = s.onRoundEnd();
-        ValidationIssue syntax = round.validationResult().issues().stream().filter(i -> i.code().startsWith("syntax-"))
-                .findFirst().orElse(null);
+        ValidationIssue syntax =
+                round.validationResult().issues().stream()
+                        .filter(i -> i.code().startsWith("syntax-"))
+                        .findFirst()
+                        .orElse(null);
         assertNotNull(syntax, "语法错误必须在轮末统一校验中报告: " + round.validationResult().issues());
     }
 
@@ -231,7 +282,9 @@ class ProgramRoundSessionTest {
         s.onDelta("root = Stack([CardHeader(\"ok\")])\n");
 
         RoundEndResult round = s.onRoundEnd();
-        assertEquals(ValidationStatus.VALID, round.validationResult().status(),
+        assertEquals(
+                ValidationStatus.VALID,
+                round.validationResult().status(),
                 "被覆盖语句的历史错误不得继续产生当前错误: " + round.validationResult().issues());
         assertFalse(round.currentDefinitions().contains("Bogus"));
         assertFalse(round.currentDefinitions().contains("field:"));

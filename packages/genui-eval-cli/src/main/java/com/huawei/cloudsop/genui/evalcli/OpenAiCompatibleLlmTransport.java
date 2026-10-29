@@ -26,6 +26,14 @@ public final class OpenAiCompatibleLlmTransport implements LlmTransport {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(15);
     private static final Duration REQUEST_TIMEOUT = Duration.ofMinutes(10);
 
+    /** Status codes are grouped in families of 100 (2xx = success). */
+    private static final int HTTP_STATUS_CLASS_DIVISOR = 100;
+
+    private static final int DEFAULT_PROXY_PORT = 80;
+
+    /** 错误响应体只用于日志,截断到这个长度即可。 */
+    private static final int ERROR_BODY_LIMIT = 4096;
+
     private final String chatCompletionsUrl;
     private final String apiKey;
     private final HttpClient httpClient;
@@ -48,11 +56,16 @@ public final class OpenAiCompatibleLlmTransport implements LlmTransport {
     }
 
     @Override
-    public com.huawei.cloudsop.genui.core.llm.transport.LlmCall newCall(String body, boolean stream) {
-        var config = com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig.builder().endpoint(chatCompletionsUrl)
-                .putHeader("Authorization", "Bearer " + apiKey).build();
-        return new com.huawei.cloudsop.genui.core.llm.transport.HttpClientLlmTransport(config, httpClient).newCall(body,
-                stream);
+    public com.huawei.cloudsop.genui.core.llm.transport.LlmCall newCall(
+            String body, boolean stream) {
+        var config =
+                com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig.builder()
+                        .endpoint(chatCompletionsUrl)
+                        .putHeader("Authorization", "Bearer " + apiKey)
+                        .build();
+        return new com.huawei.cloudsop.genui.core.llm.transport.HttpClientLlmTransport(
+                        config, httpClient)
+                .newCall(body, stream);
     }
 
     @Override
@@ -70,16 +83,28 @@ public final class OpenAiCompatibleLlmTransport implements LlmTransport {
         return send(body, "text/event-stream").body();
     }
 
-    private HttpResponse<InputStream> send(String body, String accept) throws LlmTransportException {
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(chatCompletionsUrl)).timeout(REQUEST_TIMEOUT)
-                .header("Authorization", "Bearer " + apiKey).header("Content-Type", "application/json")
-                .header("Accept", accept)
-                .POST(HttpRequest.BodyPublishers.ofString(body == null ? "" : body, StandardCharsets.UTF_8)).build();
+    private HttpResponse<InputStream> send(String body, String accept)
+            throws LlmTransportException {
+        HttpRequest request =
+                HttpRequest.newBuilder()
+                        .uri(URI.create(chatCompletionsUrl))
+                        .timeout(REQUEST_TIMEOUT)
+                        .header("Authorization", "Bearer " + apiKey)
+                        .header("Content-Type", "application/json")
+                        .header("Accept", accept)
+                        .POST(
+                                HttpRequest.BodyPublishers.ofString(
+                                        body == null ? "" : body, StandardCharsets.UTF_8))
+                        .build();
         try {
-            HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            if (response.statusCode() / 100 != 2) {
+            HttpResponse<InputStream> response =
+                    httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            if (response.statusCode() / HTTP_STATUS_CLASS_DIVISOR != 2) {
                 throw new LlmTransportException(
-                        "LLM HTTP " + response.statusCode() + ": " + readErrorBody(response.body()));
+                        "LLM HTTP "
+                                + response.statusCode()
+                                + ": "
+                                + readErrorBody(response.body()));
             }
             return response;
         } catch (IOException error) {
@@ -106,7 +131,7 @@ public final class OpenAiCompatibleLlmTransport implements LlmTransport {
         if (uri.getHost() == null) {
             throw new IllegalArgumentException("Invalid HTTPS_PROXY: " + httpsProxy);
         }
-        int port = uri.getPort() > 0 ? uri.getPort() : 80;
+        int port = uri.getPort() > 0 ? uri.getPort() : DEFAULT_PROXY_PORT;
         return ProxySelector.of(new InetSocketAddress(uri.getHost(), port));
     }
 
@@ -115,7 +140,7 @@ public final class OpenAiCompatibleLlmTransport implements LlmTransport {
             return "(empty body)";
         }
         try (InputStream stream = body) {
-            byte[] bytes = stream.readNBytes(4096);
+            byte[] bytes = stream.readNBytes(ERROR_BODY_LIMIT);
             return new String(bytes, StandardCharsets.UTF_8);
         } catch (IOException error) {
             return "(unreadable body: " + error.getMessage() + ")";

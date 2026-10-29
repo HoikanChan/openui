@@ -71,8 +71,7 @@ public final class GenUiLlmConfig {
         private boolean jsonObjectResponse;
         private final LinkedHashMap<String, String> extraHeaders = new LinkedHashMap<>();
 
-        private Builder() {
-        }
+        private Builder() {}
 
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;

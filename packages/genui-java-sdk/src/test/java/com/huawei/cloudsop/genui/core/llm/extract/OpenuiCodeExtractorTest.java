@@ -11,7 +11,8 @@ import org.junit.jupiter.api.Test;
 class OpenuiCodeExtractorTest {
     @Test
     void extractsOpenuiBlockFirst() {
-        String raw = """
+        String raw =
+                """
                 prose
                 ```openui
                   root = Stack([])
@@ -23,7 +24,8 @@ class OpenuiCodeExtractorTest {
 
     @Test
     void extractsOpenuiLangBlock() {
-        String raw = """
+        String raw =
+                """
                 ```openui-lang
                 root = Stack([table])
                 ```
@@ -34,7 +36,8 @@ class OpenuiCodeExtractorTest {
 
     @Test
     void prefersTextBlockOverStackHeuristic() {
-        String raw = """
+        String raw =
+                """
                 ```js
                 root = Stack([fromJs])
                 ```
@@ -48,7 +51,8 @@ class OpenuiCodeExtractorTest {
 
     @Test
     void fallsBackToStackHeuristicInAnyCodeBlock() {
-        String raw = """
+        String raw =
+                """
                 ```json
                 {"ok":true}
                 ```

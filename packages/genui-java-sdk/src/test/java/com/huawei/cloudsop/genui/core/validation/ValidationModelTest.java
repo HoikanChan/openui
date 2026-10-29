@@ -26,8 +26,19 @@ class ValidationModelTest {
 
     @Test
     void issueRecordHoldsRequiredFields() {
-        ValidationIssue issue = new ValidationIssue("SYNTAX_001", ValidationSeverity.ERROR, "syntax",
-                "Unexpected token", null, null, null, -1, -1, null, false);
+        ValidationIssue issue =
+                new ValidationIssue(
+                        "SYNTAX_001",
+                        ValidationSeverity.ERROR,
+                        "syntax",
+                        "Unexpected token",
+                        null,
+                        null,
+                        null,
+                        -1,
+                        -1,
+                        null,
+                        false);
 
         assertEquals("SYNTAX_001", issue.code());
         assertEquals(ValidationSeverity.ERROR, issue.severity());
@@ -44,8 +55,19 @@ class ValidationModelTest {
 
     @Test
     void issueRecordAcceptsOptionalFields() {
-        ValidationIssue issue = new ValidationIssue("CONTRACT_002", ValidationSeverity.WARNING, "contract",
-                "Unknown component", "stmt-1", "MyButton", "root.children[0]", 10, 5, "Did you mean 'Button'?", true);
+        ValidationIssue issue =
+                new ValidationIssue(
+                        "CONTRACT_002",
+                        ValidationSeverity.WARNING,
+                        "contract",
+                        "Unknown component",
+                        "stmt-1",
+                        "MyButton",
+                        "root.children[0]",
+                        10,
+                        5,
+                        "Did you mean 'Button'?",
+                        true);
 
         assertEquals("stmt-1", issue.statementId());
         assertEquals("MyButton", issue.component());
@@ -102,20 +124,33 @@ class ValidationModelTest {
     @Test
     void resultIssuesListIsImmutable() {
         ValidationMetadata meta = new ValidationMetadata(0, null, null);
-        ValidationResult result = new ValidationResult(ValidationStatus.INVALID, null, new ArrayList<>(), meta);
+        ValidationResult result =
+                new ValidationResult(ValidationStatus.INVALID, null, new ArrayList<>(), meta);
 
         assertThrows(UnsupportedOperationException.class, () -> result.issues().add(null));
     }
 
     @Test
     void resultIssuesIsDefensivelyCopied() {
-        ValidationIssue issue = new ValidationIssue("C1", ValidationSeverity.ERROR, "syntax", "msg", null, null, null,
-                -1, -1, null, false);
+        ValidationIssue issue =
+                new ValidationIssue(
+                        "C1",
+                        ValidationSeverity.ERROR,
+                        "syntax",
+                        "msg",
+                        null,
+                        null,
+                        null,
+                        -1,
+                        -1,
+                        null,
+                        false);
         List<ValidationIssue> mutable = new ArrayList<>();
         mutable.add(issue);
 
         ValidationMetadata meta = new ValidationMetadata(1, null, null);
-        ValidationResult result = new ValidationResult(ValidationStatus.INVALID, null, mutable, meta);
+        ValidationResult result =
+                new ValidationResult(ValidationStatus.INVALID, null, mutable, meta);
 
         mutable.add(issue);
 
@@ -124,12 +159,35 @@ class ValidationModelTest {
 
     @Test
     void resultExposesActionableIssuesWithoutChangingRawIssues() {
-        ValidationIssue generic = new ValidationIssue("type-prop-mismatch", ValidationSeverity.ERROR, "type", "generic",
-                "table", "Table", "/rows", 1, 1, null, false);
-        ValidationIssue specific = new ValidationIssue("type-table-row-shape-mismatch", ValidationSeverity.ERROR,
-                "type", "specific", "table", "Table", "/rows", 1, 1, null, false);
-        ValidationResult result = ValidationResult.invalid(List.of(generic, specific),
-                new ValidationMetadata(1, "table", null));
+        ValidationIssue generic =
+                new ValidationIssue(
+                        "type-prop-mismatch",
+                        ValidationSeverity.ERROR,
+                        "type",
+                        "generic",
+                        "table",
+                        "Table",
+                        "/rows",
+                        1,
+                        1,
+                        null,
+                        false);
+        ValidationIssue specific =
+                new ValidationIssue(
+                        "type-table-row-shape-mismatch",
+                        ValidationSeverity.ERROR,
+                        "type",
+                        "specific",
+                        "table",
+                        "Table",
+                        "/rows",
+                        1,
+                        1,
+                        null,
+                        false);
+        ValidationResult result =
+                ValidationResult.invalid(
+                        List.of(generic, specific), new ValidationMetadata(1, "table", null));
 
         assertEquals(List.of(generic, specific), result.issues());
         assertEquals(List.of(specific), result.actionableIssues());
@@ -148,8 +206,19 @@ class ValidationModelTest {
 
     @Test
     void resultInvalidFactorySetsStatusAndConvenienceMethods() {
-        ValidationIssue blockingIssue = new ValidationIssue("S1", ValidationSeverity.ERROR, "syntax", "Bad", null, null,
-                null, -1, -1, null, false);
+        ValidationIssue blockingIssue =
+                new ValidationIssue(
+                        "S1",
+                        ValidationSeverity.ERROR,
+                        "syntax",
+                        "Bad",
+                        null,
+                        null,
+                        null,
+                        -1,
+                        -1,
+                        null,
+                        false);
         ValidationMetadata meta = new ValidationMetadata(0, null, null);
         ValidationResult result = ValidationResult.invalid(List.of(blockingIssue), meta);
 
@@ -161,10 +230,22 @@ class ValidationModelTest {
 
     @Test
     void hasBlockingIssuesReturnsTrueOnlyForErrorSeverity() {
-        ValidationIssue warnIssue = new ValidationIssue("W1", ValidationSeverity.WARNING, "contract", "warn", null,
-                null, null, -1, -1, null, false);
+        ValidationIssue warnIssue =
+                new ValidationIssue(
+                        "W1",
+                        ValidationSeverity.WARNING,
+                        "contract",
+                        "warn",
+                        null,
+                        null,
+                        null,
+                        -1,
+                        -1,
+                        null,
+                        false);
         ValidationMetadata meta = new ValidationMetadata(0, null, null);
-        ValidationResult warnResult = new ValidationResult(ValidationStatus.VALID, null, List.of(warnIssue), meta);
+        ValidationResult warnResult =
+                new ValidationResult(ValidationStatus.VALID, null, List.of(warnIssue), meta);
 
         assertFalse(warnResult.hasBlockingIssues());
     }
@@ -175,8 +256,7 @@ class ValidationModelTest {
 
     @Test
     void requestBuilderNormalizesNullExternalRefsToEmpty() {
-        ValidationRequest request = ValidationRequest.builder().dsl("root = Box([])")
-                .build();
+        ValidationRequest request = ValidationRequest.builder().dsl("root = Box([])").build();
 
         assertNotNull(request.externalRefs());
         assertTrue(request.externalRefs().isEmpty());
@@ -184,24 +264,27 @@ class ValidationModelTest {
 
     @Test
     void requestBuilderPreservesExternalRefs() {
-        ValidationRequest request = ValidationRequest.builder().dsl("root = Box([])")
-                .externalRefs(Set.of("TypeA", "TypeB")).build();
+        ValidationRequest request =
+                ValidationRequest.builder()
+                        .dsl("root = Box([])")
+                        .externalRefs(Set.of("TypeA", "TypeB"))
+                        .build();
 
         assertEquals(Set.of("TypeA", "TypeB"), request.externalRefs());
     }
 
     @Test
     void requestExternalRefsIsImmutable() {
-        ValidationRequest request = ValidationRequest.builder().dsl("root = Box([])")
-                .externalRefs(Set.of("T")).build();
+        ValidationRequest request =
+                ValidationRequest.builder().dsl("root = Box([])").externalRefs(Set.of("T")).build();
 
         assertThrows(UnsupportedOperationException.class, () -> request.externalRefs().add("X"));
     }
 
     @Test
     void requestBuilderAcceptsOptionalFields() {
-        ValidationRequest request = ValidationRequest.builder().dsl("root = Stack([])")
-                .rootName("MyRoot").build();
+        ValidationRequest request =
+                ValidationRequest.builder().dsl("root = Stack([])").rootName("MyRoot").build();
 
         assertEquals("MyRoot", request.rootName());
         assertNull(request.contract());
@@ -210,11 +293,15 @@ class ValidationModelTest {
 
     @Test
     void requestBuilderPreservesImmutableRenderDataModel() {
-        ValidationRequest request = ValidationRequest.builder().dsl("root = Stack([])")
-                .dataModel(java.util.Map.of("total", 3)).build();
+        ValidationRequest request =
+                ValidationRequest.builder()
+                        .dsl("root = Stack([])")
+                        .dataModel(java.util.Map.of("total", 3))
+                        .build();
 
         assertEquals(java.util.Map.of("total", 3), request.dataModel());
-        assertThrows(UnsupportedOperationException.class, () -> request.dataModel().put("other", 4));
+        assertThrows(
+                UnsupportedOperationException.class, () -> request.dataModel().put("other", 4));
     }
 
     // -----------------------------------------------------------------------
@@ -243,11 +330,23 @@ class ValidationModelTest {
 
     @Test
     void validationIssueSerializesAndDeserializesViaFastjson2() {
-        ValidationIssue original = new ValidationIssue("REF_001", ValidationSeverity.INFO, "reference", "Ref resolved",
-                "s-1", "Box", "root", 3, 7, "hint text", false);
+        ValidationIssue original =
+                new ValidationIssue(
+                        "REF_001",
+                        ValidationSeverity.INFO,
+                        "reference",
+                        "Ref resolved",
+                        "s-1",
+                        "Box",
+                        "root",
+                        3,
+                        7,
+                        "hint text",
+                        false);
 
         String json = com.alibaba.fastjson2.JSON.toJSONString(original);
-        ValidationIssue deserialized = com.alibaba.fastjson2.JSON.parseObject(json, ValidationIssue.class);
+        ValidationIssue deserialized =
+                com.alibaba.fastjson2.JSON.parseObject(json, ValidationIssue.class);
 
         assertEquals(original.code(), deserialized.code());
         assertEquals(original.severity(), deserialized.severity());
@@ -264,13 +363,25 @@ class ValidationModelTest {
 
     @Test
     void validationResultSerializesAndDeserializesViaFastjson2() {
-        ValidationIssue issue = new ValidationIssue("S1", ValidationSeverity.ERROR, "syntax", "Bad token", null, null,
-                null, 1, 1, null, true);
+        ValidationIssue issue =
+                new ValidationIssue(
+                        "S1",
+                        ValidationSeverity.ERROR,
+                        "syntax",
+                        "Bad token",
+                        null,
+                        null,
+                        null,
+                        1,
+                        1,
+                        null,
+                        true);
         ValidationMetadata meta = new ValidationMetadata(2, "Root", Map.of("traceId", "abc"));
         ValidationResult original = ValidationResult.invalid(List.of(issue), meta);
 
         String json = com.alibaba.fastjson2.JSON.toJSONString(original);
-        ValidationResult deserialized = com.alibaba.fastjson2.JSON.parseObject(json, ValidationResult.class);
+        ValidationResult deserialized =
+                com.alibaba.fastjson2.JSON.parseObject(json, ValidationResult.class);
 
         assertEquals(original.status(), deserialized.status());
         assertNull(deserialized.normalizedDsl());

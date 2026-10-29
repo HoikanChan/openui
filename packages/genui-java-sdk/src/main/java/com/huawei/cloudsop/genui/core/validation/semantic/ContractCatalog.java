@@ -17,14 +17,12 @@ import java.util.Map;
 /**
  * 从合并后的 {@link GenerationContract} 派生出的组件目录。
  *
- * <p>
- * 对应 {@code materialize.ts} 通过 {@code ctx.cat} 查询的 TS 侧 {@code ParamMap} （{@code Map<name, {params:
- * ParamDef[]}>}）。对每个组件，本类提取有序位置参数（按 {@code propsSchema.properties} 的插入顺序）、哪些是必填（来自 {@code propsSchema.required}）、每个参数
- * 声明的默认值，以及用于嵌套属性校验的原始 per-param schema 片段。
+ * <p>对应 {@code materialize.ts} 通过 {@code ctx.cat} 查询的 TS 侧 {@code ParamMap} （{@code Map<name,
+ * {params: ParamDef[]}>}）。对每个组件，本类提取有序位置参数（按 {@code propsSchema.properties} 的插入顺序）、哪些是必填（来自 {@code
+ * propsSchema.required}）、每个参数 声明的默认值，以及用于嵌套属性校验的原始 per-param schema 片段。
  *
- * <p>
- * 仅签名组件（携带 {@code x-openui-signature} 但没有 {@code properties}）会被记录，使存在性检查得以通过， 但参数列表为空且
- * {@code signatureOnly=true}，以便遍历器跳过属性级规则。
+ * <p>仅签名组件（携带 {@code x-openui-signature} 但没有 {@code properties}）会被记录，使存在性检查得以通过， 但参数列表为空且 {@code
+ * signatureOnly=true}，以便遍历器跳过属性级规则。
  *
  * @since 2026
  */
@@ -35,7 +33,8 @@ public final class ContractCatalog {
     private final Map<String, ComponentDef> byName;
     private final List<CapabilityGapSpec> capabilityGaps;
 
-    private ContractCatalog(Map<String, ComponentDef> byName, List<CapabilityGapSpec> capabilityGaps) {
+    private ContractCatalog(
+            Map<String, ComponentDef> byName, List<CapabilityGapSpec> capabilityGaps) {
         this.byName = byName;
         this.capabilityGaps = capabilityGaps == null ? List.of() : List.copyOf(capabilityGaps);
     }
@@ -43,8 +42,7 @@ public final class ContractCatalog {
     /**
      * 从合并后的生成合约构建目录。
      *
-     * @param contract
-     *            合并后的生成合约，可为 {@code null}（此时得到空目录）
+     * @param contract 合并后的生成合约，可为 {@code null}（此时得到空目录）
      * @return 组件目录
      */
     public static ContractCatalog from(GenerationContract contract) {
@@ -70,8 +68,7 @@ public final class ContractCatalog {
     /**
      * 获取 {@code name} 对应的组件定义。
      *
-     * @param name
-     *            组件名
+     * @param name 组件名
      * @return 组件定义，不是目录组件时为 {@code null}
      */
     public ComponentDef get(String name) {

@@ -7,14 +7,14 @@ package com.huawei.cloudsop.genui.core.prompt.characterize;
 import java.util.Map;
 
 /**
- * Renders an inferred {@link ShapeNode} schema tree to a TypeScript-type string, rooted at the name {@code data} so the
- * rendered type reinforces the {@code data.<field>} reference path used elsewhere in the prompt.
+ * Renders an inferred {@link ShapeNode} schema tree to a TypeScript-type string, rooted at the name
+ * {@code data} so the rendered type reinforces the {@code data.<field>} reference path used
+ * elsewhere in the prompt.
  *
  * @since 2026
  */
 public final class TsTypeRenderer {
-    private TsTypeRenderer() {
-    }
+    private TsTypeRenderer() {}
 
     public static String render(ShapeNode root, int sampleRows) {
         StringBuilder out = new StringBuilder();
@@ -32,29 +32,37 @@ public final class TsTypeRenderer {
         }
     }
 
-    private static void renderObject(ObjectShape object, int sampleRows, int depth, StringBuilder out) {
+    private static void renderObject(
+            ObjectShape object, int sampleRows, int depth, StringBuilder out) {
         out.append("{\n");
         String indent = "  ".repeat(depth + 1);
         for (Map.Entry<String, FieldShape> entry : object.fields().entrySet()) {
             FieldShape field = entry.getValue();
             out.append(indent).append(entry.getKey());
-            if (field.optional())
+            if (field.optional()) {
                 out.append('?');
+            }
             out.append(": ");
             renderNode(field.node(), sampleRows, depth + 1, out);
-            if (field.nullable())
+            if (field.nullable()) {
                 out.append(" | null");
+            }
             out.append('\n');
         }
         out.append("  ".repeat(depth)).append('}');
     }
 
-    private static void renderArray(ArrayShape array, int sampleRows, int depth, StringBuilder out) {
+    private static void renderArray(
+            ArrayShape array, int sampleRows, int depth, StringBuilder out) {
         renderNode(array.element(), sampleRows, depth, out);
         out.append("[]");
         if (array.truncated()) {
             long shown = Math.min(sampleRows, array.count());
-            out.append("  // ").append(array.count()).append(" items (showing ").append(shown).append(')');
+            out.append("  // ")
+                    .append(array.count())
+                    .append(" items (showing ")
+                    .append(shown)
+                    .append(')');
         }
     }
 
@@ -72,8 +80,9 @@ public final class TsTypeRenderer {
         StringBuilder out = new StringBuilder();
         boolean first = true;
         for (String value : domain) {
-            if (!first)
+            if (!first) {
                 out.append(" | ");
+            }
             first = false;
             out.append('"').append(escape(value)).append('"');
         }
@@ -84,8 +93,9 @@ public final class TsTypeRenderer {
         StringBuilder out = new StringBuilder(value.length());
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);
-            if (c == '\\' || c == '"')
+            if (c == '\\' || c == '"') {
                 out.append('\\');
+            }
             out.append(c);
         }
         return out.toString();

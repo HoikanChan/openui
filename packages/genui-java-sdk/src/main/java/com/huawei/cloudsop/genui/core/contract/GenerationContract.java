@@ -9,13 +9,23 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public record GenerationContract(String contractVersion, String root, Map<String, ComponentPromptSpec> components,
-        List<ComponentGroup> componentGroups, List<ToolSpec> tools, List<String> examples, List<String> additionalRules,
-        List<BuiltinSpec> builtins, List<CapabilityGapSpec> capabilityGaps) {
+public record GenerationContract(
+        String contractVersion,
+        String root,
+        Map<String, ComponentPromptSpec> components,
+        List<ComponentGroup> componentGroups,
+        List<ToolSpec> tools,
+        List<String> examples,
+        List<String> additionalRules,
+        List<BuiltinSpec> builtins,
+        List<CapabilityGapSpec> capabilityGaps) {
     public GenerationContract {
         // Preserve insertion order — component order is significant for prompt byte-alignment,
         // so use an order-preserving unmodifiable LinkedHashMap (NOT Map.copyOf, which reorders).
-        components = components == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(components));
+        components =
+                components == null
+                        ? Map.of()
+                        : Collections.unmodifiableMap(new LinkedHashMap<>(components));
         componentGroups = componentGroups == null ? List.of() : List.copyOf(componentGroups);
         tools = tools == null ? List.of() : List.copyOf(tools);
         examples = examples == null ? List.of() : List.copyOf(examples);
@@ -25,23 +35,52 @@ public record GenerationContract(String contractVersion, String root, Map<String
     }
 
     /**
-     * Test/legacy convenience constructor for contracts assembled without {@code capabilityGaps} (defaults to empty).
-     * Production code must use the canonical 9-argument constructor so {@code capabilityGaps} are never dropped.
+     * Test/legacy convenience constructor for contracts assembled without {@code capabilityGaps}
+     * (defaults to empty). Production code must use the canonical 9-argument constructor so {@code
+     * capabilityGaps} are never dropped.
      */
-    public GenerationContract(String contractVersion, String root, Map<String, ComponentPromptSpec> components,
-            List<ComponentGroup> componentGroups, List<ToolSpec> tools, List<String> examples,
-            List<String> additionalRules, List<BuiltinSpec> builtins) {
-        this(contractVersion, root, components, componentGroups, tools, examples, additionalRules, builtins, List.of());
+    public GenerationContract(
+            String contractVersion,
+            String root,
+            Map<String, ComponentPromptSpec> components,
+            List<ComponentGroup> componentGroups,
+            List<ToolSpec> tools,
+            List<String> examples,
+            List<String> additionalRules,
+            List<BuiltinSpec> builtins) {
+        this(
+                contractVersion,
+                root,
+                components,
+                componentGroups,
+                tools,
+                examples,
+                additionalRules,
+                builtins,
+                List.of());
     }
 
     /**
-     * Test/legacy convenience constructor for contracts assembled without {@code builtins} or {@code capabilityGaps}.
-     * Production code must use the canonical 9-argument constructor.
+     * Test/legacy convenience constructor for contracts assembled without {@code builtins} or
+     * {@code capabilityGaps}. Production code must use the canonical 9-argument constructor.
      */
-    public GenerationContract(String contractVersion, String root, Map<String, ComponentPromptSpec> components,
-            List<ComponentGroup> componentGroups, List<ToolSpec> tools, List<String> examples,
+    public GenerationContract(
+            String contractVersion,
+            String root,
+            Map<String, ComponentPromptSpec> components,
+            List<ComponentGroup> componentGroups,
+            List<ToolSpec> tools,
+            List<String> examples,
             List<String> additionalRules) {
-        this(contractVersion, root, components, componentGroups, tools, examples, additionalRules, List.of(),
+        this(
+                contractVersion,
+                root,
+                components,
+                componentGroups,
+                tools,
+                examples,
+                additionalRules,
+                List.of(),
                 List.of());
     }
 }

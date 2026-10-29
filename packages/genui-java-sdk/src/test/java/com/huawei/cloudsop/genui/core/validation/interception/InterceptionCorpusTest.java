@@ -43,29 +43,52 @@ class InterceptionCorpusTest {
 
     private static final String ROOT = "interception-corpus/";
     private static final String MANIFEST = ROOT + "manifest.json";
-    private static final Set<String> REQUIRED_BAD_CLASSES = Set.of("unknown-component", "missing-required",
-            "null-required", "excess-args", "invalid-prop", "inline-reserved", "syntax", "root-missing",
-            "unresolved-ref", "js-method-call", "js-global", "js-syntax-construct", "builtin-misuse", "prose-chatter",
-            "known-miss");
+    private static final Set<String> REQUIRED_BAD_CLASSES =
+            Set.of(
+                    "unknown-component",
+                    "missing-required",
+                    "null-required",
+                    "excess-args",
+                    "invalid-prop",
+                    "inline-reserved",
+                    "syntax",
+                    "root-missing",
+                    "unresolved-ref",
+                    "js-method-call",
+                    "js-global",
+                    "js-syntax-construct",
+                    "builtin-misuse",
+                    "prose-chatter",
+                    "known-miss");
 
     @Test
     void corpusMeetsBriefMinimums() {
         List<Map<String, Object>> cases = cases();
-        long validControls = cases.stream().filter(c -> "valid-control".equals(str(c.get("expectedClass")))).count();
+        long validControls =
+                cases.stream()
+                        .filter(c -> "valid-control".equals(str(c.get("expectedClass"))))
+                        .count();
         assertTrue(validControls >= 12, "expected at least 12 valid controls");
 
-        Map<String, Long> byClass = cases.stream().filter(c -> !"valid-control".equals(str(c.get("expectedClass"))))
-                .collect(Collectors.groupingBy(c -> str(c.get("expectedClass")), LinkedHashMap::new,
-                        Collectors.counting()));
+        Map<String, Long> byClass =
+                cases.stream()
+                        .filter(c -> !"valid-control".equals(str(c.get("expectedClass"))))
+                        .collect(
+                                Collectors.groupingBy(
+                                        c -> str(c.get("expectedClass")),
+                                        LinkedHashMap::new,
+                                        Collectors.counting()));
         for (String requiredClass : REQUIRED_BAD_CLASSES) {
-            assertTrue(byClass.getOrDefault(requiredClass, 0L) >= 3,
+            assertTrue(
+                    byClass.getOrDefault(requiredClass, 0L) >= 3,
                     "expected at least 3 bad cases for " + requiredClass + ", got " + byClass);
         }
     }
 
     @TestFactory
     Stream<DynamicTest> validatorMatchesMeasuredManifest() {
-        return cases().stream().map(c -> DynamicTest.dynamicTest(str(c.get("id")), () -> assertCase(c)));
+        return cases().stream()
+                .map(c -> DynamicTest.dynamicTest(str(c.get("id")), () -> assertCase(c)));
     }
 
     private static void assertCase(Map<String, Object> testCase) {
@@ -76,23 +99,32 @@ class InterceptionCorpusTest {
         String expectedOutcome = str(testCase.get("expectedOutcome"));
 
         if ("valid".equals(expectedOutcome)) {
-            assertEquals(ValidationStatus.VALID, result.status(), "[" + id + "] " + describe(result));
-            assertTrue(result.issues().stream().noneMatch(i -> i.severity().name().equals("ERROR")),
+            assertEquals(
+                    ValidationStatus.VALID, result.status(), "[" + id + "] " + describe(result));
+            assertTrue(
+                    result.issues().stream().noneMatch(i -> i.severity().name().equals("ERROR")),
                     "[" + id + "] valid control had blocking issues: " + describe(result));
             return;
         }
 
         if ("intercepted".equals(expectedOutcome)) {
-            assertEquals(ValidationStatus.INVALID, result.status(), "[" + id + "] " + describe(result));
-            assertTrue(actualCodes.containsAll(expectedCodes),
+            assertEquals(
+                    ValidationStatus.INVALID, result.status(), "[" + id + "] " + describe(result));
+            assertTrue(
+                    actualCodes.containsAll(expectedCodes),
                     "[" + id + "] expected codes " + expectedCodes + ", got " + describe(result));
             return;
         }
 
         if ("missed".equals(expectedOutcome)) {
-            assertFalse(actualCodes.containsAll(expectedCodes),
-                    "[" + id + "] manifest pins a miss, but validator now reports expected codes " + expectedCodes
-                            + ": " + describe(result));
+            assertFalse(
+                    actualCodes.containsAll(expectedCodes),
+                    "["
+                            + id
+                            + "] manifest pins a miss, but validator now reports expected codes "
+                            + expectedCodes
+                            + ": "
+                            + describe(result));
             return;
         }
 
@@ -104,28 +136,45 @@ class InterceptionCorpusTest {
         String dsl = read(ROOT + str(testCase.get("dslFile")));
         GenerationContract contract = loadContract(str(testCase.get("contractFile")));
         Set<String> externalRefs = new LinkedHashSet<>(strings(manifest.get("externalRefs")));
-        return DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder().dsl(dsl).contract(contract)
-                .rootName(str(manifest.get("rootName"))).externalRefs(externalRefs)
-                .build());
+        return DefaultOpenuiLangValidator.INSTANCE.validate(
+                ValidationRequest.builder()
+                        .dsl(dsl)
+                        .contract(contract)
+                        .rootName(str(manifest.get("rootName")))
+                        .externalRefs(externalRefs)
+                        .build());
     }
 
     static GenerationContract loadContract(String contractFile) {
         if ("openui/base-contract.json".equals(contractFile)) {
             return GenerationContractLoader.loadDefault();
         }
-        Map<String, Object> raw = Json.asObject(Json.parse(read(ROOT + contractFile)), contractFile);
-        Map<String, Object> components = Json.asObject(raw.get("components"), contractFile + ".components");
+        Map<String, Object> raw =
+                Json.asObject(Json.parse(read(ROOT + contractFile)), contractFile);
+        Map<String, Object> components =
+                Json.asObject(raw.get("components"), contractFile + ".components");
         LinkedHashMap<String, ComponentPromptSpec> specs = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : components.entrySet()) {
-            specs.put(entry.getKey(), new ComponentPromptSpec("interception corpus component",
-                    Json.asObject(entry.getValue(), "propsSchema for " + entry.getKey())));
+            specs.put(
+                    entry.getKey(),
+                    new ComponentPromptSpec(
+                            "interception corpus component",
+                            Json.asObject(entry.getValue(), "propsSchema for " + entry.getKey())));
         }
-        return new GenerationContract(str(raw.get("contractVersion")), str(raw.get("root")), specs, List.of(),
-                List.of(), List.of(), List.of());
+        return new GenerationContract(
+                str(raw.get("contractVersion")),
+                str(raw.get("root")),
+                specs,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of());
     }
 
     static List<Map<String, Object>> cases() {
-        return Json.asList(manifest().get("cases"), "cases").stream().map(item -> Json.asObject(item, "case")).toList();
+        return Json.asList(manifest().get("cases"), "cases").stream()
+                .map(item -> Json.asObject(item, "case"))
+                .toList();
     }
 
     static Map<String, Object> manifest() {
@@ -154,7 +203,19 @@ class InterceptionCorpusTest {
     }
 
     private static String describe(ValidationResult result) {
-        return result.issues().stream().map(issue -> issue.code() + "@" + issue.source() + "#" + issue.statementId()
-                + "(" + issue.component() + issue.path() + ")").collect(Collectors.toList()).toString();
+        return result.issues().stream()
+                .map(
+                        issue ->
+                                issue.code()
+                                        + "@"
+                                        + issue.source()
+                                        + "#"
+                                        + issue.statementId()
+                                        + "("
+                                        + issue.component()
+                                        + issue.path()
+                                        + ")")
+                .collect(Collectors.toList())
+                .toString();
     }
 }

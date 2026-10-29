@@ -26,9 +26,8 @@ import java.util.Set;
 /**
  * 真实修复语料使用 SDK 默认契约的 sequence 规则回归。
  *
- * <p>
- * Flatten/First/Last 的结构传播来自默认契约的 typeRule，检查真实缺失列仍被发现，存在的 metricValue 列不被误报。
- * 语料目录按仓库根定位，因此不依赖 mvn 的启动目录。
+ * <p>Flatten/First/Last 的结构传播来自默认契约的 typeRule，检查真实缺失列仍被发现，存在的 metricValue 列不被误报。 语料目录按仓库根定位，因此不依赖
+ * mvn 的启动目录。
  *
  * @since 2026
  */
@@ -40,14 +39,18 @@ class RepairCorpusSequenceRulesTest {
      * case-04 的真实诊断：neName 路径缺失 + 三个列在已证明的行形状中缺失（metricValue 每行都有；laneId 只有部分行有，
      * 按"任意一行带该字段即满足"的列存在性口径不再算缺失）。
      */
-    private static final List<String> CASE_04_EXPECTED = List.of(
-            "type-data-path-missing@data.queryOpticalModuleMetrics[0].neName",
-            "type-table-column-missing@/columns/metricName", "type-table-column-missing@/columns/filteredValue",
-            "type-table-column-missing@/columns/effcnt");
+    private static final List<String> CASE_04_EXPECTED =
+            List.of(
+                    "type-data-path-missing@data.queryOpticalModuleMetrics[0].neName",
+                    "type-table-column-missing@/columns/metricName",
+                    "type-table-column-missing@/columns/filteredValue",
+                    "type-table-column-missing@/columns/effcnt");
 
     /** case-05 的真实诊断：两个缺失列（laneId 只有部分行有，按列存在性新口径不再算缺失）。 */
-    private static final List<String> CASE_05_EXPECTED = List.of("type-table-column-missing@/columns/metricName",
-            "type-table-column-missing@/columns/opt_uniq_id");
+    private static final List<String> CASE_05_EXPECTED =
+            List.of(
+                    "type-table-column-missing@/columns/metricName",
+                    "type-table-column-missing@/columns/opt_uniq_id");
 
     /** 定位仓库根：从 CWD 向上第一个含 {@code .git} 的目录（与 RepairBenchCli 同规约）。 */
     private static Path repoRoot() {
@@ -58,15 +61,24 @@ class RepairCorpusSequenceRulesTest {
             }
             current = current.getParent();
         }
-        throw new IllegalStateException("cannot locate repository root (no .git ancestor of "
-                + System.getProperty("user.dir") + ")");
+        throw new IllegalStateException(
+                "cannot locate repository root (no .git ancestor of "
+                        + System.getProperty("user.dir")
+                        + ")");
     }
 
     private static ValidationResult validate(RepairCase benchCase) {
-        return DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder().dsl(benchCase.dsl())
-                .contract(benchCase.contract())
-                .rootName(benchCase.contract().root() == null ? "root" : benchCase.contract().root())
-                .externalRefs(Set.of("data")).dataModel(benchCase.dataModel()).build());
+        return DefaultOpenuiLangValidator.INSTANCE.validate(
+                ValidationRequest.builder()
+                        .dsl(benchCase.dsl())
+                        .contract(benchCase.contract())
+                        .rootName(
+                                benchCase.contract().root() == null
+                                        ? "root"
+                                        : benchCase.contract().root())
+                        .externalRefs(Set.of("data"))
+                        .dataModel(benchCase.dataModel())
+                        .build());
     }
 
     private static List<String> codeAtPath(ValidationResult result) {
@@ -84,15 +96,24 @@ class RepairCorpusSequenceRulesTest {
 
         List<RepairCase> loaded = RepairCasePack.load(corpus, null);
         for (String dirName : CASE_DIRS) {
-            RepairCase benchCase = loaded.stream().filter(c -> c.dirName().equals(dirName)).findFirst()
-                    .orElseThrow(() -> new AssertionError("corpus case missing: " + dirName));
+            RepairCase benchCase =
+                    loaded.stream()
+                            .filter(c -> c.dirName().equals(dirName))
+                            .findFirst()
+                            .orElseThrow(
+                                    () -> new AssertionError("corpus case missing: " + dirName));
             ValidationResult result = validate(benchCase);
             List<String> diagnostics = codeAtPath(result);
 
-            assertEquals(ValidationStatus.INVALID, result.status(), dirName + " must still reproduce");
-            assertFalse(diagnostics.contains("type-table-column-missing@/columns/metricValue"),
-                    dirName + " reports metricValue as missing although every row has it: " + diagnostics);
-            List<String> expected = dirName.startsWith("case-04_") ? CASE_04_EXPECTED : CASE_05_EXPECTED;
+            assertEquals(
+                    ValidationStatus.INVALID, result.status(), dirName + " must still reproduce");
+            assertFalse(
+                    diagnostics.contains("type-table-column-missing@/columns/metricValue"),
+                    dirName
+                            + " reports metricValue as missing although every row has it: "
+                            + diagnostics);
+            List<String> expected =
+                    dirName.startsWith("case-04_") ? CASE_04_EXPECTED : CASE_05_EXPECTED;
             assertEquals(expected, diagnostics, dirName + " genuine diagnostics changed");
         }
     }

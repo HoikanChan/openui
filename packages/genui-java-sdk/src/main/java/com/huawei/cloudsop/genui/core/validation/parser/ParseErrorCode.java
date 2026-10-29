@@ -7,9 +7,8 @@ package com.huawei.cloudsop.genui.core.validation.parser;
 /**
  * 机器可读的解析器语法错误码。
  *
- * <p>
- * 这些编码对应 TS 流水线暴露的诊断<em>类别</em>（参见 {@code enrich-errors.ts}/{@code types.ts}），而非精确的错误 文案。后续章节会将其映射为
- * {@code ValidationIssue} 编码。
+ * <p>这些编码对应 TS 流水线暴露的诊断<em>类别</em>（参见 {@code enrich-errors.ts}/{@code types.ts}），而非精确的错误
+ * 文案。后续章节会将其映射为 {@code ValidationIssue} 编码。
  *
  * @since 2026
  */

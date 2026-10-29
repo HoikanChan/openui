@@ -10,13 +10,11 @@ import java.util.List;
 /**
  * openui-lang 的 Pratt（自顶向下算符优先级）表达式解析器。
  *
- * <p>
- * 对应 {@code packages/lang-core/src/parser/expressions.ts} 中的 {@code parseExpression()}：优先级层级、
+ * <p>对应 {@code packages/lang-core/src/parser/expressions.ts} 中的 {@code parseExpression()}：优先级层级、
  * 运算符处理、组件/内置函数调用、数组/对象、引用、成员/索引访问、一元、二元、空值合并与三元表达式均保持一致。
  *
- * <p>
- * 与 TS 版本不同的是，本解析器会额外<em>收集</em>结构化的 {@link ParseDiagnostic}（未闭合括号、意外 token）， 而不是静默吞掉它们，同时保留相同的容错 AST
- * 输出，使后续语句仍可继续解析。诊断信息在 {@link #parse()} 之后通过 {@link #diagnostics()} 读取。
+ * <p>与 TS 版本不同的是，本解析器会额外<em>收集</em>结构化的 {@link ParseDiagnostic}（未闭合括号、意外 token），
+ * 而不是静默吞掉它们，同时保留相同的容错 AST 输出，使后续语句仍可继续解析。诊断信息在 {@link #parse()} 之后通过 {@link #diagnostics()} 读取。
  *
  * @since 2026
  */
@@ -42,8 +40,7 @@ public final class ExpressionParser {
     /**
      * 构造一个不带语句 id 的解析器（诊断信息不携带所属语句）。
      *
-     * @param tokens
-     *            待解析的 token 流
+     * @param tokens 待解析的 token 流
      */
     public ExpressionParser(List<Token> tokens) {
         this(tokens, null, BuiltinCatalog.getDefault());
@@ -52,12 +49,9 @@ public final class ExpressionParser {
     /**
      * 构造一个携带语句 id 与 builtin 词表的解析器。
      *
-     * @param tokens
-     *            待解析的 token 流
-     * @param statementId
-     *            所属语句 id，或 {@code null}
-     * @param builtins
-     *            builtin 函数词表（从契约派生）
+     * @param tokens 待解析的 token 流
+     * @param statementId 所属语句 id，或 {@code null}
+     * @param builtins builtin 函数词表（从契约派生）
      */
     public ExpressionParser(List<Token> tokens, String statementId, BuiltinCatalog builtins) {
         this.tokens = tokens;
@@ -108,8 +102,16 @@ public final class ExpressionParser {
         if (cur().type() == kind) {
             pos++;
         } else {
-            diagnostics.add(ParseDiagnostic.at(code, "Unclosed " + what, statementId, new SourceSpan(opener.line(),
-                    opener.column(), opener.offset(), opener.offset() + Math.max(0, opener.length()))));
+            diagnostics.add(
+                    ParseDiagnostic.at(
+                            code,
+                            "Unclosed " + what,
+                            statementId,
+                            new SourceSpan(
+                                    opener.line(),
+                                    opener.column(),
+                                    opener.offset(),
+                                    opener.offset() + Math.max(0, opener.length()))));
         }
     }
 
@@ -186,7 +188,8 @@ public final class ExpressionParser {
             case TYPE -> {
                 String name = tok.text();
                 // Builtins require @-prefix; only Action is exempt.
-                if (peek(1).type() == TokenType.L_PAREN && (!builtins.isBuiltin(name) || "Action".equals(name))) {
+                if (peek(1).type() == TokenType.L_PAREN
+                        && (!builtins.isBuiltin(name) || "Action".equals(name))) {
                     return parseComp(name);
                 }
                 adv();
@@ -219,11 +222,19 @@ public final class ExpressionParser {
                 return inner;
             }
             default -> {
-                // Unknown token — record a diagnostic, skip it, and return Null (tolerant, matches TS).
+                // Unknown token — record a diagnostic, skip it, and return Null (tolerant, matches
+                // TS).
                 if (tok.type() != TokenType.EOF) {
-                    diagnostics.add(ParseDiagnostic.at(ParseErrorCode.UNEXPECTED_TOKEN,
-                            "Unexpected token " + tok.type(), statementId, new SourceSpan(tok.line(), tok.column(),
-                                    tok.offset(), tok.offset() + Math.max(0, tok.length()))));
+                    diagnostics.add(
+                            ParseDiagnostic.at(
+                                    ParseErrorCode.UNEXPECTED_TOKEN,
+                                    "Unexpected token " + tok.type(),
+                                    statementId,
+                                    new SourceSpan(
+                                            tok.line(),
+                                            tok.column(),
+                                            tok.offset(),
+                                            tok.offset() + Math.max(0, tok.length()))));
                 }
                 adv();
                 return new AstNode.Null();
@@ -318,11 +329,7 @@ public final class ExpressionParser {
     private String readFieldName() {
         Token f = cur();
         switch (f.type()) {
-            case IDENT, TYPE -> {
-                adv();
-                return f.text();
-            }
-            case STR -> {
+            case IDENT, TYPE, STR -> {
                 adv();
                 return f.text();
             }

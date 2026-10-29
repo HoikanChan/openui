@@ -16,8 +16,9 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 public final class SseDeltaParser {
-    private SseDeltaParser() {
-    }
+    private static final int READ_BUFFER_SIZE = 1024;
+
+    private SseDeltaParser() {}
 
     public static String parse(InputStream sseStream, Consumer<String> sink) throws IOException {
         Objects.requireNonNull(sseStream, "sseStream must not be null");
@@ -26,7 +27,7 @@ public final class SseDeltaParser {
         StringBuilder pending = new StringBuilder();
         StringBuilder accumulated = new StringBuilder();
         try (InputStreamReader reader = new InputStreamReader(sseStream, StandardCharsets.UTF_8)) {
-            char[] buffer = new char[1024];
+            char[] buffer = new char[READ_BUFFER_SIZE];
             int read;
             while ((read = reader.read(buffer)) != -1) {
                 pending.append(buffer, 0, read);
@@ -45,7 +46,8 @@ public final class SseDeltaParser {
         throw new IOException("SSE stream ended without stop or [DONE]");
     }
 
-    private static void drainCompleteFrames(StringBuilder pending, StringBuilder accumulated, Consumer<String> sink)
+    private static void drainCompleteFrames(
+            StringBuilder pending, StringBuilder accumulated, Consumer<String> sink)
             throws IOException {
         int boundary;
         while ((boundary = frameBoundary(pending)) >= 0) {
@@ -59,21 +61,25 @@ public final class SseDeltaParser {
     private static int frameBoundary(StringBuilder text) {
         int lf = text.indexOf("\n\n");
         int crlf = text.indexOf("\r\n\r\n");
-        if (lf < 0)
+        if (lf < 0) {
             return crlf;
-        if (crlf < 0)
+        }
+        if (crlf < 0) {
             return lf;
+        }
         return Math.min(lf, crlf);
     }
 
     private static int separatorLength(StringBuilder text, int boundary) {
-        return text.substring(boundary).startsWith("\r\n\r\n") ? 4 : 2;
+        return text.substring(boundary).startsWith("\r\n\r\n") ? "\r\n\r\n".length() : 2;
     }
 
-    private static void handleFrame(String frame, StringBuilder accumulated, Consumer<String> sink) throws IOException {
+    private static void handleFrame(String frame, StringBuilder accumulated, Consumer<String> sink)
+            throws IOException {
         String payload = dataPayload(frame);
-        if (payload != null && "[DONE]".equals(payload.trim()))
+        if (payload != null && "[DONE]".equals(payload.trim())) {
             throw new StreamEnd();
+        }
         if (payload == null || payload.isBlank()) {
             return;
         }
@@ -82,11 +88,13 @@ public final class SseDeltaParser {
         String finishReason;
         try {
             Map<String, Object> object = Json.asObject(Json.parse(payload), "SSE frame");
-            if (object.get("error") != null)
+            if (object.get("error") != null) {
                 throw new IOException("SSE upstream error frame");
+            }
             List<Object> choices = Json.asList(object.get("choices"), "choices");
-            if (choices.isEmpty())
+            if (choices.isEmpty()) {
                 return;
+            }
             Map<String, Object> first = Json.asObject(choices.getFirst(), "choice");
             Object reason = first.get("finish_reason");
             finishReason = reason instanceof String value ? value : null;
@@ -102,8 +110,9 @@ public final class SseDeltaParser {
             accumulated.append(content);
         }
         if (finishReason != null) {
-            if (!"stop".equals(finishReason))
+            if (!"stop".equals(finishReason)) {
                 throw new IOException("incomplete, finish_reason=" + finishReason);
+            }
             throw new StreamEnd();
         }
     }
@@ -117,13 +126,16 @@ public final class SseDeltaParser {
     private static String dataPayload(String frame) {
         StringBuilder payload = new StringBuilder();
         for (String line : frame.split("\\R")) {
-            if (!line.startsWith("data:"))
+            if (!line.startsWith("data:")) {
                 continue;
+            }
             String data = line.substring("data:".length());
-            if (data.startsWith(" "))
+            if (data.startsWith(" ")) {
                 data = data.substring(1);
-            if (!payload.isEmpty())
+            }
+            if (!payload.isEmpty()) {
                 payload.append('\n');
+            }
             payload.append(data);
         }
         return payload.isEmpty() ? null : payload.toString();

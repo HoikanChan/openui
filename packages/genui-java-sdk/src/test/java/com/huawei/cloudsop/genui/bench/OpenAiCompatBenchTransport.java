@@ -19,9 +19,9 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /**
- * OpenAI 兼容端点的 {@link LlmTransport}（bench 自持拷贝，与交付物 eval-cli 物理隔离）。JDK HttpClient，自持完整 URL（LLM_BASE_URL +
- * /chat/completions），HTTP 非 2xx 转 {@link LlmTransportException}。每请求 10 分钟超时 （覆盖到响应头到达；响应体读取阶段理论上仍可阻塞，MVP
- * 接受——transport-error 在输出中可见）。
+ * OpenAI 兼容端点的 {@link LlmTransport}（bench 自持拷贝，与交付物 eval-cli 物理隔离）。JDK HttpClient，自持完整
+ * URL（LLM_BASE_URL + /chat/completions），HTTP 非 2xx 转 {@link LlmTransportException}。每请求 10 分钟超时
+ * （覆盖到响应头到达；响应体读取阶段理论上仍可阻塞，MVP 接受——transport-error 在输出中可见）。
  *
  * @since 2026
  */
@@ -54,11 +54,16 @@ final class OpenAiCompatBenchTransport implements LlmTransport {
     }
 
     @Override
-    public com.huawei.cloudsop.genui.core.llm.transport.LlmCall newCall(String body, boolean stream) {
-        var config = com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig.builder().endpoint(chatCompletionsUrl)
-                .putHeader("Authorization", "Bearer " + apiKey).build();
-        return new com.huawei.cloudsop.genui.core.llm.transport.HttpClientLlmTransport(config, httpClient).newCall(body,
-                stream);
+    public com.huawei.cloudsop.genui.core.llm.transport.LlmCall newCall(
+            String body, boolean stream) {
+        var config =
+                com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig.builder()
+                        .endpoint(chatCompletionsUrl)
+                        .putHeader("Authorization", "Bearer " + apiKey)
+                        .build();
+        return new com.huawei.cloudsop.genui.core.llm.transport.HttpClientLlmTransport(
+                        config, httpClient)
+                .newCall(body, stream);
     }
 
     @Override
@@ -76,16 +81,28 @@ final class OpenAiCompatBenchTransport implements LlmTransport {
         return send(body, "text/event-stream").body();
     }
 
-    private HttpResponse<InputStream> send(String body, String accept) throws LlmTransportException {
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(chatCompletionsUrl)).timeout(REQUEST_TIMEOUT)
-                .header("Authorization", "Bearer " + apiKey).header("Content-Type", "application/json")
-                .header("Accept", accept)
-                .POST(HttpRequest.BodyPublishers.ofString(body == null ? "" : body, StandardCharsets.UTF_8)).build();
+    private HttpResponse<InputStream> send(String body, String accept)
+            throws LlmTransportException {
+        HttpRequest request =
+                HttpRequest.newBuilder()
+                        .uri(URI.create(chatCompletionsUrl))
+                        .timeout(REQUEST_TIMEOUT)
+                        .header("Authorization", "Bearer " + apiKey)
+                        .header("Content-Type", "application/json")
+                        .header("Accept", accept)
+                        .POST(
+                                HttpRequest.BodyPublishers.ofString(
+                                        body == null ? "" : body, StandardCharsets.UTF_8))
+                        .build();
         try {
-            HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            HttpResponse<InputStream> response =
+                    httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
             if (response.statusCode() / 100 != 2) {
                 throw new LlmTransportException(
-                        "LLM HTTP " + response.statusCode() + ": " + readErrorBody(response.body()));
+                        "LLM HTTP "
+                                + response.statusCode()
+                                + ": "
+                                + readErrorBody(response.body()));
             }
             return response;
         } catch (IOException error) {

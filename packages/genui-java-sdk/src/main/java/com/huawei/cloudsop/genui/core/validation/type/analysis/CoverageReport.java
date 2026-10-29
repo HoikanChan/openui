@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
 
 import java.util.Collections;
@@ -10,9 +14,8 @@ import java.util.Set;
 /**
  * 类型检查覆盖报告(#77 第 11.3 节):统计对象是稳定的检查要求,不是缓存访问次数或逐行展开的数量。
  *
- * <p>
- * {@code discovered = matched + mismatched + unproven};未完成遍历显式标记,不能以已发现检查的通过比例声称
- * 完整覆盖。简要计数进入 {@code ValidationMetadata.extra};完整结构留在内部报告。
+ * <p>{@code discovered = matched + mismatched + unproven};未完成遍历显式标记,不能以已发现检查的通过比例声称 完整覆盖。简要计数进入
+ * {@code ValidationMetadata.extra};完整结构留在内部报告。
  *
  * @since 2026
  */
@@ -115,12 +118,13 @@ public final class CoverageReport {
         Map<Fact.Loss, Long> reasons = unprovenReasons();
         if (!reasons.isEmpty()) {
             StringBuilder text = new StringBuilder();
-            reasons.forEach((reason, count) -> {
-                if (text.length() > 0) {
-                    text.append(',');
-                }
-                text.append(reason.name()).append('=').append(count);
-            });
+            reasons.forEach(
+                    (reason, count) -> {
+                        if (text.length() > 0) {
+                            text.append(',');
+                        }
+                        text.append(reason.name()).append('=').append(count);
+                    });
             summary.put("typeChecks.unprovenReasons", text.toString());
         }
         return summary;

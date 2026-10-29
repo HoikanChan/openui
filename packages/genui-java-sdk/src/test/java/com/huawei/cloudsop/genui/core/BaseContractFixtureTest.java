@@ -34,8 +34,12 @@ class BaseContractFixtureTest {
         assertEquals("Stack", contract.root());
         assertTrue(contract.components().containsKey("Stack"));
         assertFalse(contract.components().get("Stack").propsSchema().isEmpty());
-        assertTrue(contract.componentGroups().stream()
-                .anyMatch(group -> group.name().equals("Layout") && group.components().contains("Stack")));
+        assertTrue(
+                contract.componentGroups().stream()
+                        .anyMatch(
+                                group ->
+                                        group.name().equals("Layout")
+                                                && group.components().contains("Stack")));
         assertFalse(contract.additionalRules().isEmpty());
         assertFalse(contract.examples().isEmpty());
     }
@@ -50,10 +54,38 @@ class BaseContractFixtureTest {
             byName.put(spec.name(), spec);
         }
         // 29 条 name 全量在列（含补录的 FormatNumber/FormatPercent）。
-        assertEquals(java.util.Set.of("Count", "First", "Last", "Sum", "Avg", "Min", "Max", "Sort", "Filter", "Flatten",
-                "ObjectEntries", "ObjectKeys", "ObjectValues", "Round", "Abs", "Floor", "Ceil", "Number", "Switch",
-                "FormatDate", "FormatBytes", "FormatNumber", "FormatPercent", "FormatDuration", "MergeObject", "Join",
-                "String", "Each", "Render"), byName.keySet());
+        assertEquals(
+                java.util.Set.of(
+                        "Count",
+                        "First",
+                        "Last",
+                        "Sum",
+                        "Avg",
+                        "Min",
+                        "Max",
+                        "Sort",
+                        "Filter",
+                        "Flatten",
+                        "ObjectEntries",
+                        "ObjectKeys",
+                        "ObjectValues",
+                        "Round",
+                        "Abs",
+                        "Floor",
+                        "Ceil",
+                        "Number",
+                        "Switch",
+                        "FormatDate",
+                        "FormatBytes",
+                        "FormatNumber",
+                        "FormatPercent",
+                        "FormatDuration",
+                        "MergeObject",
+                        "Join",
+                        "String",
+                        "Each",
+                        "Render"),
+                byName.keySet());
         // Each/Render 不带 returnType（Java 兜底）；其余 27 条必须带。
         for (BuiltinSpec spec : contract.builtins()) {
             if ("Each".equals(spec.name()) || "Render".equals(spec.name())) {
@@ -104,7 +136,8 @@ class BaseContractFixtureTest {
         assertArity(byName, "String", 1, 1);
     }
 
-    private static void assertArity(Map<String, BuiltinSpec> byName, String name, int min, Integer max) {
+    private static void assertArity(
+            Map<String, BuiltinSpec> byName, String name, int min, Integer max) {
         BuiltinSpec spec = byName.get(name);
         assertTrue(spec != null, name + " missing from contract");
         assertEquals(min, spec.minArity(), name + " min arity");
@@ -124,51 +157,90 @@ class BaseContractFixtureTest {
 
     @Test
     void failsFastOnDuplicateBuiltinName() {
-        GenerationSdkException error = assertThrows(GenerationSdkException.class,
-                () -> GenerationContractLoader.fromJson("{\"builtins\":[" + builtinJson("A", "\"type\": \"any\"", null)
-                        + "," + builtinJson("A", "\"type\": \"any\"", null) + "]}"));
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                GenerationContractLoader.fromJson(
+                                        "{\"builtins\":["
+                                                + builtinJson("A", "\"type\": \"any\"", null)
+                                                + ","
+                                                + builtinJson("A", "\"type\": \"any\"", null)
+                                                + "]}"));
         assertTrue(error.getMessage().contains("duplicate builtin name"), error.getMessage());
     }
 
     @Test
     void failsFastOnRequiredParamAfterOptional() {
-        GenerationSdkException error = assertThrows(GenerationSdkException.class,
-                () -> GenerationContractLoader.fromJson("{\"builtins\":["
-                        + builtinJson("A",
-                                "\"type\": \"any\", \"optional\": true}, {\"name\": \"b\", \"type\": \"number\"", null)
-                        + "]}"));
-        assertTrue(error.getMessage().contains("must not follow an optional parameter"), error.getMessage());
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                GenerationContractLoader.fromJson(
+                                        "{\"builtins\":["
+                                                + builtinJson(
+                                                        "A",
+                                                        "\"type\": \"any\", \"optional\": true}, {\"name\": \"b\", \"type\": \"number\"",
+                                                        null)
+                                                + "]}"));
+        assertTrue(
+                error.getMessage().contains("must not follow an optional parameter"),
+                error.getMessage());
     }
 
     @Test
     void failsFastOnVariadicNotInLastPosition() {
-        GenerationSdkException error = assertThrows(GenerationSdkException.class,
-                () -> GenerationContractLoader.fromJson("{\"builtins\":["
-                        + builtinJson("A",
-                                "\"type\": \"any\", \"variadic\": true}, {\"name\": \"b\", \"type\": \"number\"", null)
-                        + "]}"));
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                GenerationContractLoader.fromJson(
+                                        "{\"builtins\":["
+                                                + builtinJson(
+                                                        "A",
+                                                        "\"type\": \"any\", \"variadic\": true}, {\"name\": \"b\", \"type\": \"number\"",
+                                                        null)
+                                                + "]}"));
         assertTrue(error.getMessage().contains("must be the last parameter"), error.getMessage());
     }
 
     @Test
     void failsFastOnBadTypeSyntax() {
-        GenerationSdkException error = assertThrows(GenerationSdkException.class, () -> GenerationContractLoader
-                .fromJson("{\"builtins\":[" + builtinJson("A", "\"type\": \"integer\"", null) + "]}"));
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                GenerationContractLoader.fromJson(
+                                        "{\"builtins\":["
+                                                + builtinJson("A", "\"type\": \"integer\"", null)
+                                                + "]}"));
         assertTrue(error.getMessage().contains("A.a"), error.getMessage());
         assertTrue(error.getMessage().contains("integer"), error.getMessage());
     }
 
     @Test
     void failsFastOnUnboundTypeVar() {
-        GenerationSdkException error = assertThrows(GenerationSdkException.class, () -> GenerationContractLoader
-                .fromJson("{\"builtins\":[" + builtinJson("A", "\"type\": \"any\"", "T") + "]}"));
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                GenerationContractLoader.fromJson(
+                                        "{\"builtins\":["
+                                                + builtinJson("A", "\"type\": \"any\"", "T")
+                                                + "]}"));
         assertTrue(error.getMessage().contains("no parameter type binds it"), error.getMessage());
     }
 
     @Test
     void failsFastOnOutOfRangeParamRef() {
-        GenerationSdkException error = assertThrows(GenerationSdkException.class, () -> GenerationContractLoader
-                .fromJson("{\"builtins\":[" + builtinJson("A", "\"type\": \"any\"", "param(2)") + "]}"));
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                GenerationContractLoader.fromJson(
+                                        "{\"builtins\":["
+                                                + builtinJson("A", "\"type\": \"any\"", "param(2)")
+                                                + "]}"));
         assertTrue(error.getMessage().contains("out of range"), error.getMessage());
     }
 
@@ -176,21 +248,26 @@ class BaseContractFixtureTest {
     void loadsDefaultCapabilityGapsFromBaseContract() {
         GenerationContract contract = GenerationContractLoader.loadDefault();
 
-        assertEquals(List.of("group-by", "top-n", "join"),
+        assertEquals(
+                List.of("group-by", "top-n", "join"),
                 contract.capabilityGaps().stream().map(CapabilityGapSpec::id).toList());
         CapabilityGapSpec groupBy = contract.capabilityGaps().get(0);
         assertEquals("data", groupBy.kind());
         assertEquals("分组展示", groupBy.name());
-        assertTrue(groupBy.aliases().containsAll(List.of("GroupBy", "Distinct", "ObjectFromEntries")));
+        assertTrue(
+                groupBy.aliases().containsAll(List.of("GroupBy", "Distinct", "ObjectFromEntries")));
         assertEquals(List.of("按X分组", "每个X下列出", "按X汇总", "去重"), groupBy.phrases());
         assertEquals("用一张 Table 展示全部行；用 @Sort 按分组字段排序，并把该字段放在第一列", groupBy.fallback());
     }
 
     @Test
     void failsFastWhenCapabilityGapAliasCollidesWithBuiltinOrComponent() {
-        GenerationSdkException builtinCollision = assertThrows(GenerationSdkException.class,
-                () -> GenerationContractLoader.fromJson(
-                        """
+        GenerationSdkException builtinCollision =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                GenerationContractLoader.fromJson(
+                                        """
                                 {
                                   "builtins": [
                                     {"name": "Join", "signature": "Join(a)", "description": "d", "params": [{"name": "a", "type": "any"}]}
@@ -202,9 +279,12 @@ class BaseContractFixtureTest {
                                 """));
         assertTrue(builtinCollision.getMessage().contains("Join"), builtinCollision.getMessage());
 
-        GenerationSdkException componentCollision = assertThrows(GenerationSdkException.class,
-                () -> GenerationContractLoader.fromJson(
-                        """
+        GenerationSdkException componentCollision =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                GenerationContractLoader.fromJson(
+                                        """
                                 {
                                   "components": {
                                     "Table": {"signature": "Table(cols, rows)", "description": "t"}
@@ -214,12 +294,17 @@ class BaseContractFixtureTest {
                                   ]
                                 }
                                 """));
-        assertTrue(componentCollision.getMessage().contains("Table"), componentCollision.getMessage());
+        assertTrue(
+                componentCollision.getMessage().contains("Table"), componentCollision.getMessage());
     }
 
     @Test
     void failsFastOnDuplicateCapabilityGapIdOrInvalidKind() {
-        assertThrows(GenerationSdkException.class, () -> GenerationContractLoader.fromJson("""
+        assertThrows(
+                GenerationSdkException.class,
+                () ->
+                        GenerationContractLoader.fromJson(
+                                """
                 {
                   "capabilityGaps": [
                     {"id": "g1", "kind": "data", "name": "A", "aliases": ["Foo"], "phrases": ["a"], "fallback": "f"},
@@ -228,7 +313,11 @@ class BaseContractFixtureTest {
                 }
                 """));
 
-        assertThrows(GenerationSdkException.class, () -> GenerationContractLoader.fromJson("""
+        assertThrows(
+                GenerationSdkException.class,
+                () ->
+                        GenerationContractLoader.fromJson(
+                                """
                 {
                   "capabilityGaps": [
                     {"id": "g1", "kind": "unknown", "name": "A", "aliases": ["Foo"], "phrases": ["a"], "fallback": "f"}
@@ -253,35 +342,55 @@ class BaseContractFixtureTest {
             BuiltinSpec fromDefault = find(defaults, name);
             assertEquals(fromDefault.signature(), fromExport.signature(), name + " signature");
             assertEquals(fromDefault.returnType(), fromExport.returnType(), name + " returnType");
-            assertTrue(fromExport.typeRule() != null, name + " must carry a compiled structured rule");
+            assertTrue(
+                    fromExport.typeRule() != null, name + " must carry a compiled structured rule");
             assertEquals(fromDefault.typeRule(), fromExport.typeRule(), name + " typeRule");
         }
 
         // 提示词中的 builtin 文本直接来自同一份加载结果:signature 与描述逐字一致。
-        String prompt = PromptAssembler.assemble(
-                new PromptAssembler.PromptInput(null, reloaded.root(), reloaded.components(),
-                        reloaded.componentGroups(), new DataModelSpec("Demo data", Map.of("value", 1)),
-                        reloaded.tools(), reloaded.examples(), reloaded.additionalRules(), null, null, null, null),
-                reloaded.builtins(), reloaded.capabilityGaps());
+        String prompt =
+                PromptAssembler.assemble(
+                        new PromptAssembler.PromptInput(
+                                null,
+                                reloaded.root(),
+                                reloaded.components(),
+                                reloaded.componentGroups(),
+                                new DataModelSpec("Demo data", Map.of("value", 1)),
+                                reloaded.tools(),
+                                reloaded.examples(),
+                                reloaded.additionalRules(),
+                                null,
+                                null,
+                                null,
+                                null),
+                        reloaded.builtins(),
+                        reloaded.capabilityGaps());
         for (String name : FORMATTING_BUILTINS) {
             BuiltinSpec spec = find(reloaded, name);
-            assertTrue(prompt.contains("@" + spec.signature() + " — " + spec.description()),
+            assertTrue(
+                    prompt.contains("@" + spec.signature() + " — " + spec.description()),
                     name + " prompt signature drifted from the loaded contract");
         }
     }
 
-    private static final List<String> FORMATTING_BUILTINS = List.of("FormatDate", "FormatBytes", "FormatNumber",
-            "FormatPercent", "FormatDuration");
+    private static final List<String> FORMATTING_BUILTINS =
+            List.of("FormatDate", "FormatBytes", "FormatNumber", "FormatPercent", "FormatDuration");
 
     private static BuiltinSpec find(GenerationContract contract, String name) {
-        return contract.builtins().stream().filter(spec -> name.equals(spec.name())).findFirst()
+        return contract.builtins().stream()
+                .filter(spec -> name.equals(spec.name()))
+                .findFirst()
                 .orElseThrow(() -> new AssertionError("builtin missing: " + name));
     }
 
     private static String builtinJson(String name, String firstParamTail, String returnType) {
         StringBuilder json = new StringBuilder();
-        json.append("{\"name\": \"").append(name).append("\", \"signature\": \"").append(name)
-                .append("(a)\", \"description\": \"d\", \"params\": [{\"name\": \"a\", ").append(firstParamTail)
+        json.append("{\"name\": \"")
+                .append(name)
+                .append("\", \"signature\": \"")
+                .append(name)
+                .append("(a)\", \"description\": \"d\", \"params\": [{\"name\": \"a\", ")
+                .append(firstParamTail)
                 .append("}]");
         if (returnType != null) {
             json.append(", \"returnType\": \"").append(returnType).append("\"");

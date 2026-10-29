@@ -8,8 +8,14 @@ import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
 
 import java.util.List;
 
-public record GenUIPromptRequest(String extensionId, DataModelSpec dataModel, List<String> extraRules, Boolean editMode,
-        Boolean inlineMode, Boolean toolCalls, Boolean bindings) {
+public record GenUIPromptRequest(
+        String extensionId,
+        DataModelSpec dataModel,
+        List<String> extraRules,
+        Boolean editMode,
+        Boolean inlineMode,
+        Boolean toolCalls,
+        Boolean bindings) {
     public GenUIPromptRequest {
         extraRules = extraRules == null ? List.of() : List.copyOf(extraRules);
     }

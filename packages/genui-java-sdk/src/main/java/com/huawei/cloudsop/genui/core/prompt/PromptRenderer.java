@@ -23,26 +23,29 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 /**
- * Minimal classpath prompt renderer with raw variable insertion, one-level conditions, and list blocks.
+ * Minimal classpath prompt renderer with raw variable insertion, one-level conditions, and list
+ * blocks.
  *
- * <p>
- * Supported syntax:
+ * <p>Supported syntax:
+ *
  * <ul>
- * <li>{@code {{name}}} inserts the raw, unescaped value once.</li>
- * <li>{@code {{#if flag}}...{{else}}...{{/if}}} renders one branch; {@code else} is optional and conditions may
- * nest. Conditions accept Boolean, nonblank text, nonempty collections/maps, or null (false).</li>
- * <li>{@code {{#for items}}...{{/for}}} repeats its body for each item; {@code items} must be a
- * {@code Collection<Map<String, ?>>}. A null or empty collection renders nothing. Blocks must not nest, but
- * {@code #if} may appear inside {@code #for} and {@code #for} may appear inside {@code #if}.</li>
+ *   <li>{@code {{name}}} inserts the raw, unescaped value once.
+ *   <li>{@code {{#if flag}}...{{else}}...{{/if}}} renders one branch; {@code else} is optional and
+ *       conditions may nest. Conditions accept Boolean, nonblank text, nonempty collections/maps,
+ *       or null (false).
+ *   <li>{@code {{#for items}}...{{/for}}} repeats its body for each item; {@code items} must be a
+ *       {@code Collection<Map<String, ?>>}. A null or empty collection renders nothing. Blocks must
+ *       not nest, but {@code #if} may appear inside {@code #for} and {@code #for} may appear inside
+ *       {@code #if}.
  * </ul>
  *
- * <p>
- * Inside a {@code #for} body variables and conditions resolve against the current item first and then the outer
- * model. Resources are decoded as strict UTF-8, line endings are normalized to {@code \n}, whitespace is preserved
- * exactly, and parsed templates are cached per resource. The whole template is parsed before any rendering starts, so
- * variables in an unselected branch or an empty loop are never required. Invalid syntax, missing resources, missing
- * or {@code null} variables, unsupported condition types, and unsupported loop values raise
- * {@link GenerationSdkException} with the resource and position or variable name.
+ * <p>Inside a {@code #for} body variables and conditions resolve against the current item first and
+ * then the outer model. Resources are decoded as strict UTF-8, line endings are normalized to
+ * {@code \n}, whitespace is preserved exactly, and parsed templates are cached per resource. The
+ * whole template is parsed before any rendering starts, so variables in an unselected branch or an
+ * empty loop are never required. Invalid syntax, missing resources, missing or {@code null}
+ * variables, unsupported condition types, and unsupported loop values raise {@link
+ * GenerationSdkException} with the resource and position or variable name.
  *
  * @since 2026
  */
@@ -51,17 +54,17 @@ public final class PromptRenderer {
 
     private static final Map<String, Template> CACHE = new ConcurrentHashMap<>();
 
-    private PromptRenderer() {
-    }
+    private PromptRenderer() {}
 
     /**
      * Renders a classpath prompt template.
      *
      * @param resource classpath resource name, for example {@code prompts/system.md}
-     * @param model variable values; branch conditions accept Boolean, text, collections/maps, or null
+     * @param model variable values; branch conditions accept Boolean, text, collections/maps, or
+     *     null
      * @return rendered text with LF line endings
-     * @throws GenerationSdkException if the resource is missing or not valid UTF-8, the template is invalid, or a
-     * required variable is missing, {@code null}, or has an unsupported type
+     * @throws GenerationSdkException if the resource is missing or not valid UTF-8, the template is
+     *     invalid, or a required variable is missing, {@code null}, or has an unsupported type
      */
     public static String render(String resource, Map<String, ?> model) {
         Objects.requireNonNull(resource, "resource");
@@ -82,7 +85,9 @@ public final class PromptRenderer {
         }
         if (loader == null) {
             throw new GenerationSdkException(
-                    "Cannot load prompt template resource '" + resource + "': no class loader available");
+                    "Cannot load prompt template resource '"
+                            + resource
+                            + "': no class loader available");
         }
         try (InputStream input = loader.getResourceAsStream(resource)) {
             if (input == null) {
@@ -90,18 +95,22 @@ public final class PromptRenderer {
             }
             return input.readAllBytes();
         } catch (IOException error) {
-            throw new GenerationSdkException("Failed to read prompt template resource: " + resource, error);
+            throw new GenerationSdkException(
+                    "Failed to read prompt template resource: " + resource, error);
         }
     }
 
     private static String decodeUtf8(String resource, byte[] bytes) {
-        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
-                .onMalformedInput(CodingErrorAction.REPORT)
-                .onUnmappableCharacter(CodingErrorAction.REPORT);
+        CharsetDecoder decoder =
+                StandardCharsets.UTF_8
+                        .newDecoder()
+                        .onMalformedInput(CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(CodingErrorAction.REPORT);
         try {
             return decoder.decode(ByteBuffer.wrap(bytes)).toString();
         } catch (CharacterCodingException error) {
-            throw new GenerationSdkException("Prompt template resource is not valid UTF-8: " + resource, error);
+            throw new GenerationSdkException(
+                    "Prompt template resource is not valid UTF-8: " + resource, error);
         }
     }
 
@@ -134,9 +143,11 @@ public final class PromptRenderer {
             if (lineEnd < 0) {
                 lineEnd = source.length();
             }
-            boolean standalone = tag.type() != TagType.VARIABLE && lineStart >= cursor
-                    && source.substring(lineStart, open).isBlank()
-                    && source.substring(close + 2, lineEnd).isBlank();
+            boolean standalone =
+                    tag.type() != TagType.VARIABLE
+                            && lineStart >= cursor
+                            && source.substring(lineStart, open).isBlank()
+                            && source.substring(close + 2, lineEnd).isBlank();
             int textEnd = standalone ? lineStart : open;
             if (textEnd > cursor) {
                 tokens.add(new TextToken(source.substring(cursor, textEnd)));
@@ -163,8 +174,10 @@ public final class PromptRenderer {
         if (content.equals("#if")) {
             throw error(resource, source, offset, "invalid #if condition \"" + content + "\"");
         }
-        if (content.startsWith("#if") && content.length() > 3 && Character.isWhitespace(content.charAt(3))) {
-            String condition = content.substring(3).trim();
+        if (content.startsWith("#if")
+                && content.length() > "#if".length()
+                && Character.isWhitespace(content.charAt("#if".length()))) {
+            String condition = content.substring("#if".length()).trim();
             if (!isIdentifier(condition)) {
                 throw error(resource, source, offset, "invalid #if condition \"" + content + "\"");
             }
@@ -173,8 +186,10 @@ public final class PromptRenderer {
         if (content.equals("#for")) {
             throw error(resource, source, offset, "invalid #for variable \"" + content + "\"");
         }
-        if (content.startsWith("#for") && content.length() > 4 && Character.isWhitespace(content.charAt(4))) {
-            String variable = content.substring(4).trim();
+        if (content.startsWith("#for")
+                && content.length() > "#for".length()
+                && Character.isWhitespace(content.charAt("#for".length()))) {
+            String variable = content.substring("#for".length()).trim();
             if (!isIdentifier(variable)) {
                 throw error(resource, source, offset, "invalid #for variable \"" + content + "\"");
             }
@@ -215,7 +230,10 @@ public final class PromptRenderer {
 
     private static String renderFor(ForNode block, RenderContext context) {
         if (!contains(context, block.name())) {
-            throw error(context.resource(), context.source(), block.offset(),
+            throw error(
+                    context.resource(),
+                    context.source(),
+                    block.offset(),
                     "missing variable '" + block.name() + "'");
         }
         Object candidate = lookup(context, block.name());
@@ -223,12 +241,19 @@ public final class PromptRenderer {
             return "";
         }
         if (!(candidate instanceof Collection<?> items)) {
-            throw error(context.resource(), context.source(), block.offset(),
-                    "#for '" + block.name() + "' must be a Collection but was " + typeName(candidate));
+            throw error(
+                    context.resource(),
+                    context.source(),
+                    block.offset(),
+                    "#for '"
+                            + block.name()
+                            + "' must be a Collection but was "
+                            + typeName(candidate));
         }
         StringBuilder out = new StringBuilder();
         for (Object item : items) {
-            out.append(renderNodes(block.body(), context.withItem(itemScope(block, context, item))));
+            out.append(
+                    renderNodes(block.body(), context.withItem(itemScope(block, context, item))));
         }
         return out.toString();
     }
@@ -236,13 +261,24 @@ public final class PromptRenderer {
     @SuppressWarnings("unchecked")
     private static Map<String, ?> itemScope(ForNode block, RenderContext context, Object item) {
         if (!(item instanceof Map<?, ?> entries)) {
-            throw error(context.resource(), context.source(), block.offset(),
-                    "item of #for '" + block.name() + "' must be Map<String, ?> but was " + typeName(item));
+            throw error(
+                    context.resource(),
+                    context.source(),
+                    block.offset(),
+                    "item of #for '"
+                            + block.name()
+                            + "' must be Map<String, ?> but was "
+                            + typeName(item));
         }
         for (Object key : entries.keySet()) {
             if (!(key instanceof String)) {
-                throw error(context.resource(), context.source(), block.offset(),
-                        "item of #for '" + block.name() + "' must be Map<String, ?> but had key of type "
+                throw error(
+                        context.resource(),
+                        context.source(),
+                        block.offset(),
+                        "item of #for '"
+                                + block.name()
+                                + "' must be Map<String, ?> but had key of type "
                                 + typeName(key));
             }
         }
@@ -251,18 +287,30 @@ public final class PromptRenderer {
 
     private static Object value(RenderContext context, int offset, String name) {
         if (!contains(context, name)) {
-            throw error(context.resource(), context.source(), offset, "missing variable '" + name + "'");
+            throw error(
+                    context.resource(),
+                    context.source(),
+                    offset,
+                    "missing variable '" + name + "'");
         }
         Object value = lookup(context, name);
         if (value == null) {
-            throw error(context.resource(), context.source(), offset, "variable '" + name + "' is null");
+            throw error(
+                    context.resource(),
+                    context.source(),
+                    offset,
+                    "variable '" + name + "' is null");
         }
         return value;
     }
 
     private static boolean condition(RenderContext context, int offset, String name) {
         if (!contains(context, name)) {
-            throw error(context.resource(), context.source(), offset, "missing variable '" + name + "'");
+            throw error(
+                    context.resource(),
+                    context.source(),
+                    offset,
+                    "missing variable '" + name + "'");
         }
         Object value = lookup(context, name);
         if (value == null) {
@@ -280,13 +328,19 @@ public final class PromptRenderer {
         if (value instanceof Map<?, ?> entries) {
             return !entries.isEmpty();
         }
-        throw error(context.resource(), context.source(), offset,
-                "condition '" + name + "' must be Boolean, text, Collection, or Map but was "
+        throw error(
+                context.resource(),
+                context.source(),
+                offset,
+                "condition '"
+                        + name
+                        + "' must be Boolean, text, Collection, or Map but was "
                         + value.getClass().getName());
     }
 
     private static boolean contains(RenderContext context, String name) {
-        return context.item() != null && context.item().containsKey(name) || context.model().containsKey(name);
+        return context.item() != null && context.item().containsKey(name)
+                || context.model().containsKey(name);
     }
 
     private static Object lookup(RenderContext context, String name) {
@@ -300,7 +354,8 @@ public final class PromptRenderer {
         return value == null ? "null" : value.getClass().getName();
     }
 
-    private static GenerationSdkException error(String resource, String source, int offset, String detail) {
+    private static GenerationSdkException error(
+            String resource, String source, int offset, String detail) {
         int line = 1;
         int column = 1;
         int limit = Math.min(offset, source.length());
@@ -313,41 +368,46 @@ public final class PromptRenderer {
             }
         }
         return new GenerationSdkException(
-                "Prompt template '" + resource + "' at line " + line + ", column " + column + ": " + detail);
+                "Prompt template '"
+                        + resource
+                        + "' at line "
+                        + line
+                        + ", column "
+                        + column
+                        + ": "
+                        + detail);
     }
 
-    private sealed interface Token permits TextToken, TagToken {
-    }
+    private sealed interface Token permits TextToken, TagToken {}
 
-    private record TextToken(String text) implements Token {
-    }
+    private record TextToken(String text) implements Token {}
 
-    private record TagToken(TagType type, String value, int offset) implements Token {
-    }
+    private record TagToken(TagType type, String value, int offset) implements Token {}
 
     private enum TagType {
-        VARIABLE, IF, ELSE, END_IF, FOR, END_FOR
+        VARIABLE,
+        IF,
+        ELSE,
+        END_IF,
+        FOR,
+        END_FOR
     }
 
-    private sealed interface Node permits TextNode, VariableNode, IfNode, ForNode {
-    }
+    private sealed interface Node permits TextNode, VariableNode, IfNode, ForNode {}
 
-    private record TextNode(String text) implements Node {
-    }
+    private record TextNode(String text) implements Node {}
 
-    private record VariableNode(String name, int offset) implements Node {
-    }
+    private record VariableNode(String name, int offset) implements Node {}
 
-    private record IfNode(String condition, int offset, List<Node> thenNodes, List<Node> elseNodes) implements Node {
-    }
+    private record IfNode(String condition, int offset, List<Node> thenNodes, List<Node> elseNodes)
+            implements Node {}
 
-    private record ForNode(String name, int offset, List<Node> body) implements Node {
-    }
+    private record ForNode(String name, int offset, List<Node> body) implements Node {}
 
-    private record Block(List<Node> nodes, TagToken terminator) {
-    }
+    private record Block(List<Node> nodes, TagToken terminator) {}
 
-    private record RenderContext(String resource, String source, Map<String, ?> model, Map<String, ?> item) {
+    private record RenderContext(
+            String resource, String source, Map<String, ?> model, Map<String, ?> item) {
         RenderContext withItem(Map<String, ?> scope) {
             return new RenderContext(resource, source, model, scope);
         }
@@ -382,16 +442,35 @@ public final class PromptRenderer {
                     case IF -> nodes.add(parseIf(tag, insideFor));
                     case FOR -> {
                         if (insideFor) {
-                            throw error(resource, source, tag.offset(), "nested #for blocks are not supported");
+                            throw error(
+                                    resource,
+                                    source,
+                                    tag.offset(),
+                                    "nested #for blocks are not supported");
                         }
                         nodes.add(parseFor(tag));
                     }
-                    case ELSE -> throw error(resource, source, tag.offset(),
-                            insideIf ? "duplicate {{else}}" : "{{else}} without an open {{#if}}");
-                    case END_IF -> throw error(resource, source, tag.offset(),
-                            "{{/if}} without an open {{#if}}");
-                    case END_FOR -> throw error(resource, source, tag.offset(),
-                            "{{/for}} without an open {{#for}}");
+                    case ELSE ->
+                            throw error(
+                                    resource,
+                                    source,
+                                    tag.offset(),
+                                    insideIf
+                                            ? "duplicate {{else}}"
+                                            : "{{else}} without an open {{#if}}");
+                    case END_IF ->
+                            throw error(
+                                    resource,
+                                    source,
+                                    tag.offset(),
+                                    "{{/if}} without an open {{#if}}");
+                    case END_FOR ->
+                            throw error(
+                                    resource,
+                                    source,
+                                    tag.offset(),
+                                    "{{/for}} without an open {{#for}}");
+                    default -> throw new IllegalStateException("unhandled tag type " + tag.type());
                 }
             }
             return new Block(nodes, null);
@@ -406,7 +485,8 @@ public final class PromptRenderer {
             if (thenBlock.terminator().type() == TagType.ELSE) {
                 Block elseBlock = parseUntil(Set.of(TagType.END_IF), true, insideFor);
                 if (elseBlock.terminator() == null) {
-                    throw error(resource, source, tag.offset(), "unclosed {{#if " + tag.value() + "}}");
+                    throw error(
+                            resource, source, tag.offset(), "unclosed {{#if " + tag.value() + "}}");
                 }
                 elseNodes = elseBlock.nodes();
             }
@@ -416,7 +496,8 @@ public final class PromptRenderer {
         private Node parseFor(TagToken tag) {
             Block body = parseUntil(Set.of(TagType.END_FOR), false, true);
             if (body.terminator() == null) {
-                throw error(resource, source, tag.offset(), "unclosed {{#for " + tag.value() + "}}");
+                throw error(
+                        resource, source, tag.offset(), "unclosed {{#for " + tag.value() + "}}");
             }
             return new ForNode(tag.value(), tag.offset(), body.nodes());
         }

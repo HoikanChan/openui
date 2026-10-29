@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
 
 import java.util.ArrayList;
@@ -9,23 +13,22 @@ import java.util.Set;
 /**
  * {@link Type} 的构造与归一化入口。
  *
- * <p>
- * 归一化规则(#77 第 5.1 节):
+ * <p>归一化规则(#77 第 5.1 节):
+ *
  * <ul>
- * <li>{@code union}:展平嵌套联合、删除 Never 分支、按结构去重;全 Never 收敛为 {@link Type.Never};含
- * Unknown 收敛为 {@link Type.Unknown}(已知分支的证据改由 {@link Fact} 的 evidence 承载,不进类型);只有一个可
- * 证明被其他分支包含的成员时删除;归一后单分支退化为该分支。
- * <li>{@code sequence}:Never 元素且允许零长度归一为确知空数组 {@code Sequence(never, 0, 0)};Never 元素且下界大于
- * 零归一为 {@link Type.Never}。
- * <li>数量区间非法(下界大于上界或负值)拒绝构造,不通过修改上下界修复。
+ *   <li>{@code union}:展平嵌套联合、删除 Never 分支、按结构去重;全 Never 收敛为 {@link Type.Never};含 Unknown 收敛为 {@link
+ *       Type.Unknown}(已知分支的证据改由 {@link Fact} 的 evidence 承载,不进类型);只有一个可
+ *       证明被其他分支包含的成员时删除;归一后单分支退化为该分支。
+ *   <li>{@code sequence}:Never 元素且允许零长度归一为确知空数组 {@code Sequence(never, 0, 0)};Never 元素且下界大于 零归一为
+ *       {@link Type.Never}。
+ *   <li>数量区间非法(下界大于上界或负值)拒绝构造,不通过修改上下界修复。
  * </ul>
  *
  * @since 2026
  */
 public final class Types {
 
-    private Types() {
-    }
+    private Types() {}
 
     /** 基础标量。 */
     public static Type scalar(Type.ScalarKind kind) {
@@ -34,12 +37,13 @@ public final class Types {
 
     /** 字符串字面值集合;空集合按契约归一为 {@link Type.Never}。 */
     public static Type stringLiterals(Set<String> values) {
-        return values == null || values.isEmpty() ? Type.Never.INSTANCE : new Type.StringLiterals(values);
+        return values == null || values.isEmpty()
+                ? Type.Never.INSTANCE
+                : new Type.StringLiterals(values);
     }
 
     /**
-     * 数组类型,执行 Never 元素归一规则:
-     * {@code Sequence(never, 0, max)} → {@code Sequence(never, 0, 0)}(确知空数组);
+     * 数组类型,执行 Never 元素归一规则: {@code Sequence(never, 0, max)} → {@code Sequence(never, 0, 0)}(确知空数组);
      * {@code Sequence(never, min>0, max)} → {@link Type.Never}。
      */
     public static Type sequence(Type element, long minLength, long maxLength) {
@@ -64,8 +68,8 @@ public final class Types {
 
     /** 结构对象;{@code extra} 为 null 时按关闭处理。 */
     public static Type record(Map<String, Type.Field> fields, Type.Extra extra) {
-        return new Type.RecordType(fields == null ? Map.of() : fields,
-                extra == null ? Type.Extra.closed() : extra);
+        return new Type.RecordType(
+                fields == null ? Map.of() : fields, extra == null ? Type.Extra.closed() : extra);
     }
 
     /** 开放结构对象:无已声明字段,额外字段任意。 */
@@ -73,10 +77,7 @@ public final class Types {
         return record(Map.of(), Type.Extra.open(Type.Unknown.INSTANCE));
     }
 
-    /**
-     * 精确联合:展平、去 Never、按结构去重;全 Never → Never;含 Unknown → Unknown;可被证明包含的成员删除;
-     * 结果按稳定结构键排序。
-     */
+    /** 精确联合:展平、去 Never、按结构去重;全 Never → Never;含 Unknown → Unknown;可被证明包含的成员删除; 结果按稳定结构键排序。 */
     public static Type union(List<? extends Type> alternatives) {
         if (alternatives == null || alternatives.isEmpty()) {
             return Type.Never.INSTANCE;
@@ -144,11 +145,15 @@ public final class Types {
             case Type.Sequence sequence -> {
                 key.append("4;");
                 appendStructuralKey(key, sequence.element());
-                key.append(sequence.minLength()).append(';').append(sequence.maxLength()).append(';');
+                key.append(sequence.minLength())
+                        .append(';')
+                        .append(sequence.maxLength())
+                        .append(';');
             }
             case Type.RecordType record -> {
                 key.append("5;");
-                List<Map.Entry<String, Type.Field>> fields = new ArrayList<>(record.fields().entrySet());
+                List<Map.Entry<String, Type.Field>> fields =
+                        new ArrayList<>(record.fields().entrySet());
                 fields.sort(Map.Entry.comparingByKey());
                 key.append(fields.size()).append(';');
                 for (Map.Entry<String, Type.Field> entry : fields) {

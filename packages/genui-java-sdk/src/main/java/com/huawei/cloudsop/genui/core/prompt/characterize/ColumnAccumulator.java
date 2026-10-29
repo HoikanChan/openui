@@ -9,14 +9,14 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Per-column accumulation state used while feature-scanning an object-array (table) during {@link ShapeWalker}'s Pass
- * B.
+ * Per-column accumulation state used while feature-scanning an object-array (table) during {@link
+ * ShapeWalker}'s Pass B.
  *
- * <p>
- * Tracks, across all observed rows: the set of {@link ScalarType}s seen, a capacity-bounded distinct-string set (stops
- * growing once it exceeds {@code enumMaxDistinct + 1}, at which point the column degrades to free-text {@code string}),
- * the occurrence count (rows where the key was present), and the null count (rows where the key was present but the
- * value was {@code null}). Missing-row tracking is exposed separately so the caller can derive {@code optional}.
+ * <p>Tracks, across all observed rows: the set of {@link ScalarType}s seen, a capacity-bounded
+ * distinct-string set (stops growing once it exceeds {@code enumMaxDistinct + 1}, at which point
+ * the column degrades to free-text {@code string}), the occurrence count (rows where the key was
+ * present), and the null count (rows where the key was present but the value was {@code null}).
+ * Missing-row tracking is exposed separately so the caller can derive {@code optional}.
  */
 final class ColumnAccumulator {
     private final int distinctCap;

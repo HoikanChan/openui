@@ -10,10 +10,16 @@ import java.util.Map;
 
 public record ComponentPromptSpec(String description, Map<String, Object> propsSchema) {
     public ComponentPromptSpec {
-        propsSchema = propsSchema == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(propsSchema));
+        propsSchema =
+                propsSchema == null
+                        ? Map.of()
+                        : Collections.unmodifiableMap(new LinkedHashMap<>(propsSchema));
     }
 
-    /** Legacy signature-based fixture/caller constructor while prompt goldens migrate to propsSchema. */
+    /**
+     * Legacy signature-based fixture/caller constructor while prompt goldens migrate to
+     * propsSchema.
+     */
     public ComponentPromptSpec(String signature, String description) {
         this(description, Map.of("x-openui-signature", signature));
     }

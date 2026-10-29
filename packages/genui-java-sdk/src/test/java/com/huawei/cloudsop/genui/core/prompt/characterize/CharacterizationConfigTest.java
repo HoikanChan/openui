@@ -38,8 +38,16 @@ class CharacterizationConfigTest {
 
     @Test
     void builderOverridesEveryField() {
-        CharacterizationConfig config = CharacterizationConfig.builder().enabled(false).triggerBytes(1).sampleRows(7)
-                .maxStringLen(10).enumMaxDistinct(5).enumMaxRatio(0.1).deepScanLimit(20).build();
+        CharacterizationConfig config =
+                CharacterizationConfig.builder()
+                        .enabled(false)
+                        .triggerBytes(1)
+                        .sampleRows(7)
+                        .maxStringLen(10)
+                        .enumMaxDistinct(5)
+                        .enumMaxRatio(0.1)
+                        .deepScanLimit(20)
+                        .build();
 
         assertEquals(false, config.enabled());
         assertEquals(1, config.triggerBytes());

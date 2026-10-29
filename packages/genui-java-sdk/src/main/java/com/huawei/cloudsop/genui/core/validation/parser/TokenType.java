@@ -7,8 +7,7 @@ package com.huawei.cloudsop.genui.core.validation.parser;
 /**
  * openui-lang 的 token 类型判别符。
  *
- * <p>
- * 对应 {@code packages/lang-core/src/parser/tokens.ts} 中的 TypeScript {@code const enum T}。序数顺序与 TS
+ * <p>对应 {@code packages/lang-core/src/parser/tokens.ts} 中的 TypeScript {@code const enum T}。序数顺序与 TS
  * 枚举保持一致，以便跨语言对齐测试数据能够一一对应。
  *
  * @since 2026

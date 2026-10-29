@@ -7,19 +7,13 @@ package com.huawei.cloudsop.genui.core.validation.parser;
 /**
  * 预处理后 DSL 文本中的一段源码位置范围。
  *
- * <p>
- * {@code line}/{@code column} 从 1 开始计数；{@code startOffset}/{@code endOffset} 是预处理后源文本中从 0 开始的 下标，{@code endOffset}
- * 不包含在范围内。任意字段为 {@code -1} 表示“未知”。
+ * <p>{@code line}/{@code column} 从 1 开始计数；{@code startOffset}/{@code endOffset} 是预处理后源文本中从 0 开始的
+ * 下标，{@code endOffset} 不包含在范围内。任意字段为 {@code -1} 表示“未知”。
  *
- * @param line
- *            起始行号，从 1 开始
- * @param column
- *            起始列号，从 1 开始
- * @param startOffset
- *            起始偏移量（从 0 开始，含）
- * @param endOffset
- *            结束偏移量（从 0 开始，不含）
- *
+ * @param line 起始行号，从 1 开始
+ * @param column 起始列号，从 1 开始
+ * @param startOffset 起始偏移量（从 0 开始，含）
+ * @param endOffset 结束偏移量（从 0 开始，不含）
  * @since 2026
  */
 public record SourceSpan(int line, int column, int startOffset, int endOffset) {

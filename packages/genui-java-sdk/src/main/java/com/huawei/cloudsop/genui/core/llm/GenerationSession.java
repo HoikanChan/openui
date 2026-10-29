@@ -19,10 +19,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-/** Per-invocation budget and output ownership; shared by all model calls including existing repairs. */
+/**
+ * Per-invocation budget and output ownership; shared by all model calls including existing repairs.
+ */
 final class GenerationSession implements LlmTransport {
-    record Outcome(GenUiGenerationResult result, GenerationEndReason failure) {
-    }
+    record Outcome(GenUiGenerationResult result, GenerationEndReason failure) {}
 
     private final LlmTransport delegate;
     private final GenerationTiming timing;
@@ -36,10 +37,17 @@ final class GenerationSession implements LlmTransport {
     private LlmCall active;
     private Thread worker;
     private int nextSeq = 1;
-    /** Snapshot of completed/interrupted rounds for an abnormal terminal (#58: timeout/model failure keeps rounds). */
+
+    /**
+     * Snapshot of completed/interrupted rounds for an abnormal terminal (#58: timeout/model failure
+     * keeps rounds).
+     */
     private volatile Supplier<GenUiGenerationResult> partialSnapshot;
 
-    GenerationSession(LlmTransport delegate, GenerationTiming timing, long started,
+    GenerationSession(
+            LlmTransport delegate,
+            GenerationTiming timing,
+            long started,
             Consumer<RenderStreamEnvelope> sink) {
         this.delegate = delegate;
         this.timing = timing;
@@ -48,28 +56,32 @@ final class GenerationSession implements LlmTransport {
     }
 
     Outcome run(Callable<GenUiGenerationResult> work) {
-        worker = Thread.ofVirtual().unstarted(() -> {
-            synchronized (lock) {
-                if (terminal)
-                    return;
-            }
-            try {
-                GenUiGenerationResult result = work.call();
-                synchronized (lock) {
-                    if (!terminal) {
-                        terminal = true;
-                        completion.complete(new Outcome(result, null));
-                    }
-                }
-            } catch (Throwable error) {
-                synchronized (lock) {
-                    if (!terminal) {
-                        terminal = true;
-                        completion.completeExceptionally(error);
-                    }
-                }
-            }
-        });
+        worker =
+                Thread.ofVirtual()
+                        .unstarted(
+                                () -> {
+                                    synchronized (lock) {
+                                        if (terminal) {
+                                            return;
+                                        }
+                                    }
+                                    try {
+                                        GenUiGenerationResult result = work.call();
+                                        synchronized (lock) {
+                                            if (!terminal) {
+                                                terminal = true;
+                                                completion.complete(new Outcome(result, null));
+                                            }
+                                        }
+                                    } catch (Throwable error) {
+                                        synchronized (lock) {
+                                            if (!terminal) {
+                                                terminal = true;
+                                                completion.completeExceptionally(error);
+                                            }
+                                        }
+                                    }
+                                });
         try {
             worker.start();
             Outcome outcome = completion.get();
@@ -83,27 +95,33 @@ final class GenerationSession implements LlmTransport {
             Thread.currentThread().interrupt();
             throw new GenerationSdkException("Generation interrupted", e);
         } catch (ExecutionException e) {
-            if (e.getCause() instanceof RuntimeException runtime)
+            if (e.getCause() instanceof RuntimeException runtime) {
                 throw runtime;
-            if (e.getCause() instanceof Error error)
+            }
+            if (e.getCause() instanceof Error error) {
                 throw error;
+            }
             throw new GenerationSdkException("Generation failed", e.getCause());
         }
     }
 
     void emit(RenderStreamEnvelope event) {
-        if (RenderStreamEnvelope.TYPE_DONE.equals(event.type()))
+        if (RenderStreamEnvelope.TYPE_DONE.equals(event.type())) {
             return;
-        if (RenderStreamEnvelope.TYPE_ERROR.equals(event.type()) && event.content() instanceof Map<?, ?> content
+        }
+        if (RenderStreamEnvelope.TYPE_ERROR.equals(event.type())
+                && event.content() instanceof Map<?, ?> content
                 && "LLM_STREAM_FAILED".equals(content.get("code"))) {
             fail(GenerationEndReason.MODEL_REQUEST_FAILED);
             return;
         }
         synchronized (outputLock) {
-            if (terminal || sink == null)
+            if (terminal || sink == null) {
                 return;
-            if (RenderStreamEnvelope.TYPE_DATA_MODEL.equals(event.type()))
-                return; // public entry sent seq=0
+            }
+            if (RenderStreamEnvelope.TYPE_DATA_MODEL.equals(event.type())) {
+                return;
+            } // public entry sent seq=0
             sink.accept(new RenderStreamEnvelope(event.type(), nextSeq++, event.content()));
         }
     }
@@ -122,8 +140,9 @@ final class GenerationSession implements LlmTransport {
     }
 
     /**
-     * Publish a live snapshot so an abnormal terminal (timeout or transport failure) can retain completed and
-     * interrupted round records (#58). The supplier must be cheap and must not emit to the sink.
+     * Publish a live snapshot so an abnormal terminal (timeout or transport failure) can retain
+     * completed and interrupted round records (#58). The supplier must be cheap and must not emit
+     * to the sink.
      */
     void partialSnapshot(Supplier<GenUiGenerationResult> supplier) {
         this.partialSnapshot = supplier;
@@ -135,8 +154,9 @@ final class GenerationSession implements LlmTransport {
     }
 
     /**
-     * End the whole session from the worker with a non-success reason (#58). Used when incremental repair stops while
-     * the current program is still invalid, so the public entry performs exactly one whole-page fallback.
+     * End the whole session from the worker with a non-success reason (#58). Used when incremental
+     * repair stops while the current program is still invalid, so the public entry performs exactly
+     * one whole-page fallback.
      */
     void terminate(GenerationEndReason reason) {
         fail(reason);
@@ -161,28 +181,33 @@ final class GenerationSession implements LlmTransport {
     private void fail(GenerationEndReason reason) {
         LlmCall cancel;
         synchronized (lock) {
-            if (terminal)
+            if (terminal) {
                 return;
+            }
             terminal = true;
             cancel = active;
             active = null;
         }
         try {
-            if (cancel != null)
+            if (cancel != null) {
                 cancel.cancel();
+            }
         } finally {
-            if (worker != null && worker != Thread.currentThread())
+            if (worker != null && worker != Thread.currentThread()) {
                 worker.interrupt();
+            }
             completion.complete(new Outcome(snapshotOrNull(), reason));
         }
     }
 
     private LlmCall open(String body, boolean stream) throws LlmTransportException {
         synchronized (lock) {
-            if (terminal)
+            if (terminal) {
                 throw new LlmTransportException("Generation ended");
-            if (active != null)
+            }
+            if (active != null) {
                 throw new IllegalStateException("Previous model request is still open");
+            }
             active = delegate.newCall(body, stream);
             return active;
         }
@@ -191,8 +216,9 @@ final class GenerationSession implements LlmTransport {
     private void release(LlmCall call) {
         call.close();
         synchronized (lock) {
-            if (active == call)
+            if (active == call) {
                 active = null;
+            }
         }
     }
 

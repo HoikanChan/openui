@@ -12,31 +12,41 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Host-provided global supplement to the base contract, merged once at {@code GenerationSdk} build time.
+ * Host-provided global supplement to the base contract, merged once at {@code GenerationSdk} build
+ * time.
  *
- * <p>
- * Merge semantics (applied by {@link #applyTo(GenerationContract)}):
+ * <p>Merge semantics (applied by {@link #applyTo(GenerationContract)}):
+ *
  * <ul>
- * <li>{@code components} — a component whose name already exists in the base contract REPLACES the base spec wholesale
- * (description and propsSchema together) while keeping its original position; new names are appended in supplement
- * order. Components are never merged field-by-field and never removed.</li>
- * <li>{@code componentGroups} — a group with a name already in the base contract is merged as the order-preserving
- * de-duplicated union of members (base members first) with notes appended; new groups are appended.</li>
- * <li>{@code examples} / {@code additionalRules} — appended after the base entries.</li>
- * <li>{@code capabilityGaps} — a gap whose {@code id} already exists in the base contract replaces the base gap in
- * place; new {@code id}s are appended in supplement order.</li>
- * <li>{@code contractVersion} / {@code root} / {@code tools} / {@code builtins} — never touched.</li>
+ *   <li>{@code components} — a component whose name already exists in the base contract REPLACES
+ *       the base spec wholesale (description and propsSchema together) while keeping its original
+ *       position; new names are appended in supplement order. Components are never merged
+ *       field-by-field and never removed.
+ *   <li>{@code componentGroups} — a group with a name already in the base contract is merged as the
+ *       order-preserving de-duplicated union of members (base members first) with notes appended;
+ *       new groups are appended.
+ *   <li>{@code examples} / {@code additionalRules} — appended after the base entries.
+ *   <li>{@code capabilityGaps} — a gap whose {@code id} already exists in the base contract
+ *       replaces the base gap in place; new {@code id}s are appended in supplement order.
+ *   <li>{@code contractVersion} / {@code root} / {@code tools} / {@code builtins} — never touched.
  * </ul>
  *
- * <p>
- * {@code GenUIBaseSupplementLoader} is the only supported construction path (a JSON document with the same shape as
- * base-contract.json restricted to the sections above). The canonical record constructor is public only because the
- * Java language requires it; direct instantiation is reserved for tests.
+ * <p>{@code GenUIBaseSupplementLoader} is the only supported construction path (a JSON document
+ * with the same shape as base-contract.json restricted to the sections above). The canonical record
+ * constructor is public only because the Java language requires it; direct instantiation is
+ * reserved for tests.
  */
-public record GenUIBaseSupplement(Map<String, ComponentPromptSpec> components, List<ComponentGroup> componentGroups,
-        List<String> examples, List<String> additionalRules, List<CapabilityGapSpec> capabilityGaps) {
+public record GenUIBaseSupplement(
+        Map<String, ComponentPromptSpec> components,
+        List<ComponentGroup> componentGroups,
+        List<String> examples,
+        List<String> additionalRules,
+        List<CapabilityGapSpec> capabilityGaps) {
     public GenUIBaseSupplement {
-        components = components == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(components));
+        components =
+                components == null
+                        ? Map.of()
+                        : Collections.unmodifiableMap(new LinkedHashMap<>(components));
         componentGroups = componentGroups == null ? List.of() : List.copyOf(componentGroups);
         examples = examples == null ? List.of() : List.copyOf(examples);
         additionalRules = additionalRules == null ? List.of() : List.copyOf(additionalRules);
@@ -44,19 +54,23 @@ public record GenUIBaseSupplement(Map<String, ComponentPromptSpec> components, L
     }
 
     /** Backwards-compatible constructor without capabilityGaps. */
-    public GenUIBaseSupplement(Map<String, ComponentPromptSpec> components, List<ComponentGroup> componentGroups,
-            List<String> examples, List<String> additionalRules) {
+    public GenUIBaseSupplement(
+            Map<String, ComponentPromptSpec> components,
+            List<ComponentGroup> componentGroups,
+            List<String> examples,
+            List<String> additionalRules) {
         this(components, componentGroups, examples, additionalRules, List.of());
     }
 
     /**
-     * Merges this supplement into {@code base}, producing the Effective Base Contract. See the class Javadoc for the
-     * per-section rules; {@code contractVersion}, {@code root}, {@code tools} and {@code builtins} are carried over
-     * from {@code base} untouched. Internal — called once by the {@code GenerationSdk} constructor; hosts never call
-     * this directly.
+     * Merges this supplement into {@code base}, producing the Effective Base Contract. See the
+     * class Javadoc for the per-section rules; {@code contractVersion}, {@code root}, {@code tools}
+     * and {@code builtins} are carried over from {@code base} untouched. Internal — called once by
+     * the {@code GenerationSdk} constructor; hosts never call this directly.
      */
     public GenerationContract applyTo(GenerationContract base) {
-        LinkedHashMap<String, ComponentPromptSpec> mergedComponents = new LinkedHashMap<>(base.components());
+        LinkedHashMap<String, ComponentPromptSpec> mergedComponents =
+                new LinkedHashMap<>(base.components());
         mergedComponents.putAll(components);
 
         ArrayList<ComponentGroup> mergedGroups = new ArrayList<>();
@@ -66,7 +80,8 @@ public record GenUIBaseSupplement(Map<String, ComponentPromptSpec> components, L
         }
         for (ComponentGroup baseGroup : base.componentGroups()) {
             ComponentGroup supplementGroup = supplementGroupsByName.remove(baseGroup.name());
-            mergedGroups.add(supplementGroup == null ? baseGroup : unionGroups(baseGroup, supplementGroup));
+            mergedGroups.add(
+                    supplementGroup == null ? baseGroup : unionGroups(baseGroup, supplementGroup));
         }
         mergedGroups.addAll(supplementGroupsByName.values());
 
@@ -83,8 +98,16 @@ public record GenUIBaseSupplement(Map<String, ComponentPromptSpec> components, L
             mergedGapsById.put(suppGap.id(), suppGap);
         }
 
-        return new GenerationContract(base.contractVersion(), base.root(), mergedComponents, mergedGroups, base.tools(),
-                mergedExamples, mergedRules, base.builtins(), new ArrayList<>(mergedGapsById.values()));
+        return new GenerationContract(
+                base.contractVersion(),
+                base.root(),
+                mergedComponents,
+                mergedGroups,
+                base.tools(),
+                mergedExamples,
+                mergedRules,
+                base.builtins(),
+                new ArrayList<>(mergedGapsById.values()));
     }
 
     /** Order-preserving de-duplicated union of members (left first), notes appended. */

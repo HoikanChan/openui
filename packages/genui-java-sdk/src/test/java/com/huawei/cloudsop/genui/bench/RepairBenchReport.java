@@ -27,45 +27,54 @@ import java.util.stream.Stream;
 /**
  * 把 repair-bench 的 JSONL 运行产物渲染成单文件 HTML 报告：数据内嵌、无外部资源，可直接离线打开。
  *
- * <p>
- * 输入是 {@link RepairBenchRunner} 已经写出的完整 JSONL（summary + case 行），原始意图/数据/DSL 则从 {@code --cases}
+ * <p>输入是 {@link RepairBenchRunner} 已经写出的完整 JSONL（summary + case 行），原始意图/数据/DSL 则从 {@code --cases}
  * 指向的案例目录读取。报告不修改运行结果，只做视图组装；Markdown 降级占位不会写入报告， 未修复案例展示最后一次校验的 DSL（{@code finalDsl}）。
  *
- * <p>
- * 模板与静态资源位于 {@code src/test/resources/bench-report/}，前端只消费预处理后的 payload，因此同一次运行 产出与历史报告结构一致。
+ * <p>模板与静态资源位于 {@code src/test/resources/bench-report/}，前端只消费预处理后的 payload，因此同一次运行 产出与历史报告结构一致。
  *
  * @since 2026
  */
 final class RepairBenchReport {
 
-    private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final DateTimeFormatter TIMESTAMP =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-    private static final Pattern ISSUE = Pattern.compile(
-            "^ValidationIssue\\[code=(.*?), severity=(.*?), source=(.*?), message=(.*?), statementId=(.*?), "
-                    + "component=(.*?), path=(.*?), line=(-?\\d+), column=(-?\\d+), hint=(.*?), retryable=(.*?)\\]$",
-            Pattern.DOTALL);
+    private static final Pattern ISSUE =
+            Pattern.compile(
+                    "^ValidationIssue\\[code=(.*?), severity=(.*?), source=(.*?), message=(.*?), statementId=(.*?), "
+                            + "component=(.*?), path=(.*?), line=(-?\\d+), column=(-?\\d+), hint=(.*?), retryable=(.*?)\\]$",
+                    Pattern.DOTALL);
 
-    private static final Map<String, Integer> STATUS_RANK = Map.of("error", 0, "timeout", 1, "transport-error", 2,
-            "still-invalid", 3, "invalid", 4, "not-reproduced", 5, "repaired", 6);
+    private static final Map<String, Integer> STATUS_RANK =
+            Map.of(
+                    "error",
+                    0,
+                    "timeout",
+                    1,
+                    "transport-error",
+                    2,
+                    "still-invalid",
+                    3,
+                    "invalid",
+                    4,
+                    "not-reproduced",
+                    5,
+                    "repaired",
+                    6);
 
-    private RepairBenchReport() {
-    }
+    private RepairBenchReport() {}
 
     /**
      * 生成报告。
      *
-     * @param jsonlLines
-     *            本次运行写出的全部 JSONL 行（summary 必定是最后一行）
-     * @param casesDir
-     *            案例包根目录；用于补回 originalIntent / dataModel / 原始 DSL
-     * @param outHtml
-     *            报告输出路径（父目录不存在时自动创建）
-     * @param sourceLabel
-     *            JSONL 数据源展示名，例如文件名或 {@code stdout}
-     * @throws IOException
-     *             读取案例或写入报告失败
+     * @param jsonlLines 本次运行写出的全部 JSONL 行（summary 必定是最后一行）
+     * @param casesDir 案例包根目录；用于补回 originalIntent / dataModel / 原始 DSL
+     * @param outHtml 报告输出路径（父目录不存在时自动创建）
+     * @param sourceLabel JSONL 数据源展示名，例如文件名或 {@code stdout}
+     * @throws IOException 读取案例或写入报告失败
      */
-    static void write(List<String> jsonlLines, Path casesDir, Path outHtml, String sourceLabel) throws IOException {
+    static void write(List<String> jsonlLines, Path casesDir, Path outHtml, String sourceLabel)
+            throws IOException {
         Objects.requireNonNull(jsonlLines, "jsonlLines");
         Objects.requireNonNull(outHtml, "outHtml");
 
@@ -92,9 +101,11 @@ final class RepairBenchReport {
         for (Map<String, Object> line : caseLines) {
             cases.add(toCase(line, metaById));
         }
-        cases.sort(Comparator
-                .comparingInt((Map<String, Object> item) -> STATUS_RANK.getOrDefault(str(item.get("status")), 9))
-                .thenComparing(item -> str(item.get("id"))));
+        cases.sort(
+                Comparator.comparingInt(
+                                (Map<String, Object> item) ->
+                                        STATUS_RANK.getOrDefault(str(item.get("status")), 9))
+                        .thenComparing(item -> str(item.get("id"))));
 
         LinkedHashMap<String, Object> meta = new LinkedHashMap<>(summary);
         meta.remove("type");
@@ -107,10 +118,12 @@ final class RepairBenchReport {
         payload.put("cases", cases);
 
         String model = str(summary.get("model"));
-        String html = resource("/bench-report/report.html").replace("__MODEL__", escapeHtml(model))
-                .replace("__CSS__", resource("/bench-report/report.css"))
-                .replace("__DATA__", escapeForScript(Json.stringify(payload)))
-                .replace("__JS__", resource("/bench-report/report.js"));
+        String html =
+                resource("/bench-report/report.html")
+                        .replace("__MODEL__", escapeHtml(model))
+                        .replace("__CSS__", resource("/bench-report/report.css"))
+                        .replace("__DATA__", escapeForScript(Json.stringify(payload)))
+                        .replace("__JS__", resource("/bench-report/report.js"));
 
         Path absolute = outHtml.toAbsolutePath();
         Path parent = absolute.getParent();
@@ -122,7 +135,8 @@ final class RepairBenchReport {
 
     // ── payload ─────────────────────────────────────────────────────────────
 
-    private static Map<String, Object> toCase(Map<String, Object> line, Map<String, CaseMeta> metaById) {
+    private static Map<String, Object> toCase(
+            Map<String, Object> line, Map<String, CaseMeta> metaById) {
         String id = str(line.get("caseId"));
         CaseMeta meta = metaById.get(id);
         String status = str(line.get("status"));
@@ -144,9 +158,14 @@ final class RepairBenchReport {
         item.put("durationMs", line.get("durationMs"));
         item.put("endReason", line.get("endReason"));
         item.put("markdownFallback", line.get("markdownFallback"));
-        item.put("capabilityNoticePresent", Boolean.TRUE.equals(line.get("capabilityNoticePresent")));
-        item.put("remainingCapabilityGapAliases", stringList(line.get("remainingCapabilityGapAliases")));
-        item.put("consecutiveUnmatchedUnknownComponents",
+        item.put(
+                "capabilityNoticePresent",
+                Boolean.TRUE.equals(line.get("capabilityNoticePresent")));
+        item.put(
+                "remainingCapabilityGapAliases",
+                stringList(line.get("remainingCapabilityGapAliases")));
+        item.put(
+                "consecutiveUnmatchedUnknownComponents",
                 stringList(line.get("consecutiveUnmatchedUnknownComponents")));
         item.put("error", line.get("error"));
 
@@ -254,9 +273,13 @@ final class RepairBenchReport {
 
     // ── case metadata ───────────────────────────────────────────────────────
 
-    private record CaseMeta(String dirName, String intent, Object dataModel, String rootCause,
-            Map<String, Object> source, String dsl) {
-    }
+    private record CaseMeta(
+            String dirName,
+            String intent,
+            Object dataModel,
+            String rootCause,
+            Map<String, Object> source,
+            String dsl) {}
 
     private static Map<String, CaseMeta> loadCaseMeta(Path casesDir) throws IOException {
         LinkedHashMap<String, CaseMeta> result = new LinkedHashMap<>();
@@ -274,7 +297,10 @@ final class RepairBenchReport {
             }
             Map<String, Object> json;
             try {
-                json = Json.asObject(Json.parse(Files.readString(caseJson, StandardCharsets.UTF_8)), "case.json");
+                json =
+                        Json.asObject(
+                                Json.parse(Files.readString(caseJson, StandardCharsets.UTF_8)),
+                                "case.json");
             } catch (RuntimeException error) {
                 continue;
             }
@@ -283,14 +309,23 @@ final class RepairBenchReport {
                 continue;
             }
             Path dslPath = dir.resolve("dsl.txt");
-            String dsl = Files.isRegularFile(dslPath)
-                    ? normText(Files.readString(dslPath, StandardCharsets.UTF_8))
-                    : "";
-            Map<String, Object> source = json.get("source") instanceof Map<?, ?> rawSource
-                    ? toStringMap(rawSource)
-                    : Map.of();
-            result.put(id, new CaseMeta(dir.getFileName().toString(), str(json.get("originalIntent")),
-                    json.get("dataModel"), str(json.get("rootCause")), source, dsl));
+            String dsl =
+                    Files.isRegularFile(dslPath)
+                            ? normText(Files.readString(dslPath, StandardCharsets.UTF_8))
+                            : "";
+            Map<String, Object> source =
+                    json.get("source") instanceof Map<?, ?> rawSource
+                            ? toStringMap(rawSource)
+                            : Map.of();
+            result.put(
+                    id,
+                    new CaseMeta(
+                            dir.getFileName().toString(),
+                            str(json.get("originalIntent")),
+                            json.get("dataModel"),
+                            str(json.get("rootCause")),
+                            source,
+                            dsl));
         }
         return result;
     }
@@ -312,13 +347,19 @@ final class RepairBenchReport {
     }
 
     private static String escapeForScript(String json) {
-        return json.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e").replace("\u2028", "\\u2028")
+        return json.replace("&", "\\u0026")
+                .replace("<", "\\u003c")
+                .replace(">", "\\u003e")
+                .replace("\u2028", "\\u2028")
                 .replace("\u2029", "\\u2029");
     }
 
     private static String escapeHtml(String text) {
-        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'",
-                "&#39;");
+        return text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     private static String clean(String value, String fallback) {

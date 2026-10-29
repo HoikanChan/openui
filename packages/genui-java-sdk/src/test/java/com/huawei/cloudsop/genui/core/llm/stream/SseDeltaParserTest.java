@@ -20,16 +20,15 @@ import java.util.List;
 class SseDeltaParserTest {
     @Test
     void rejectsTruncatedFinishEvenWithoutDelta() {
-        String stream = frame("partial") + "data: {\"choices\":[{\"finish_reason\":\"length\"}]}\n\n";
-        assertThrows(IOException.class, () -> SseDeltaParser.parse(input(stream), delta -> {
-        }));
+        String stream =
+                frame("partial") + "data: {\"choices\":[{\"finish_reason\":\"length\"}]}\n\n";
+        assertThrows(IOException.class, () -> SseDeltaParser.parse(input(stream), delta -> {}));
     }
 
     @Test
     void doneStopsConsumptionAndDiscardsQueuedFragments() throws IOException {
         String stream = frame("first") + SseFrames.done() + frame("late");
-        assertEquals("first", SseDeltaParser.parse(input(stream), delta -> {
-        }));
+        assertEquals("first", SseDeltaParser.parse(input(stream), delta -> {}));
     }
 
     @Test
@@ -47,8 +46,9 @@ class SseDeltaParserTest {
     void handlesFramesSplitAcrossReads() throws IOException {
         ArrayList<String> deltas = new ArrayList<>();
 
-        String accumulated = SseDeltaParser.parse(oneByteAtATime(input(frame("split") + SseFrames.done())),
-                deltas::add);
+        String accumulated =
+                SseDeltaParser.parse(
+                        oneByteAtATime(input(frame("split") + SseFrames.done())), deltas::add);
 
         assertEquals(List.of("split"), deltas);
         assertEquals("split", accumulated);
@@ -89,10 +89,16 @@ class SseDeltaParserTest {
 
     @Test
     void propagatesSinkFailures() {
-        IllegalStateException error = assertThrows(IllegalStateException.class,
-                () -> SseDeltaParser.parse(input(frame("boom")), delta -> {
-                    throw new IllegalStateException("sink failed: " + delta);
-                }));
+        IllegalStateException error =
+                assertThrows(
+                        IllegalStateException.class,
+                        () ->
+                                SseDeltaParser.parse(
+                                        input(frame("boom")),
+                                        delta -> {
+                                            throw new IllegalStateException(
+                                                    "sink failed: " + delta);
+                                        }));
 
         assertEquals("sink failed: boom", error.getMessage());
     }

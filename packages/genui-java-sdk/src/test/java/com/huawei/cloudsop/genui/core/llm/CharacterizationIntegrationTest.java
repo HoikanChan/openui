@@ -24,23 +24,29 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Proves the core invariant from spec 5.3: characterization touches ONLY the prompt copy of the host data. The seq=0
- * {@code dataModel} stream envelope and {@code GenUiGenerationResult.dataModel()} must always carry the full, untouched
- * {@code response()} — regardless of whether the prompt's embedded JSON sample was reduced by the characterization
- * gate.
+ * Proves the core invariant from spec 5.3: characterization touches ONLY the prompt copy of the
+ * host data. The seq=0 {@code dataModel} stream envelope and {@code
+ * GenUiGenerationResult.dataModel()} must always carry the full, untouched {@code response()} —
+ * regardless of whether the prompt's embedded JSON sample was reduced by the characterization gate.
  */
 class CharacterizationIntegrationTest {
     private static final int ROW_COUNT = 200;
 
     @Test
     void generateKeepsFullDataModelButCharacterizesPromptCopy() {
-        FakeTransport transport = FakeTransport
-                .sync("{\"choices\":[{\"message\":{\"content\":\"```openui\\nroot = Stack([])\\n```\"}}]}");
+        FakeTransport transport =
+                FakeTransport.sync(
+                        "{\"choices\":[{\"message\":{\"content\":\"```openui\\nroot = Stack([])\\n```\"}}]}");
         Map<String, Object> response = largeHostData();
-        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport);
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport);
 
-        GenUiGenerationResult result = generator
-                .generate(UiGenerationRequest.builder().userInput("show rows").response(response).build());
+        GenUiGenerationResult result =
+                generator.generate(
+                        UiGenerationRequest.builder()
+                                .userInput("show rows")
+                                .response(response)
+                                .build());
 
         // Render Data Model stays full — untouched by characterization.
         assertEquals(response, result.dataModel());
@@ -62,14 +68,20 @@ class CharacterizationIntegrationTest {
 
     @Test
     void generateStreamKeepsFullDataModelInSeqZeroEnvelopeAndResult() {
-        FakeTransport transport = FakeTransport.stream(frame("```openui\n"), frame("root = Stack([])\n```"),
-                SseFrames.done());
+        FakeTransport transport =
+                FakeTransport.stream(
+                        frame("```openui\n"), frame("root = Stack([])\n```"), SseFrames.done());
         ArrayList<RenderStreamEnvelope> envelopes = new ArrayList<>();
         Map<String, Object> response = largeHostData();
 
-        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
-                .generateStream(UiGenerationRequest.builder().userInput("show rows").response(response).build(),
-                        envelopes::add);
+        GenUiGenerationResult result =
+                GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                        .generateStream(
+                                UiGenerationRequest.builder()
+                                        .userInput("show rows")
+                                        .response(response)
+                                        .build(),
+                                envelopes::add);
 
         RenderStreamEnvelope first = envelopes.get(0);
         assertEquals(RenderStreamEnvelope.TYPE_DATA_MODEL, first.type());
@@ -83,14 +95,20 @@ class CharacterizationIntegrationTest {
 
     @Test
     void disabledCharacterizationFallsBackToFullPromptCopy() {
-        FakeTransport transport = FakeTransport
-                .sync("{\"choices\":[{\"message\":{\"content\":\"```openui\\nroot = Stack([])\\n```\"}}]}");
+        FakeTransport transport =
+                FakeTransport.sync(
+                        "{\"choices\":[{\"message\":{\"content\":\"```openui\\nroot = Stack([])\\n```\"}}]}");
         Map<String, Object> response = largeHostData();
         CharacterizationConfig disabled = CharacterizationConfig.builder().enabled(false).build();
-        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), disabled, transport);
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), disabled, transport);
 
-        GenUiGenerationResult result = generator
-                .generate(UiGenerationRequest.builder().userInput("show rows").response(response).build());
+        GenUiGenerationResult result =
+                generator.generate(
+                        UiGenerationRequest.builder()
+                                .userInput("show rows")
+                                .response(response)
+                                .build());
 
         assertEquals(response, result.dataModel());
 
@@ -102,11 +120,12 @@ class CharacterizationIntegrationTest {
     // ─── helpers ────────────────────────────────────────────────────────────
 
     /**
-     * 200 rows of {@code {id, status}}. The first 5 rows are all {@code "open"}; {@code "closed"} and {@code "pending"}
-     * appear only from row 5 onward. With the default {@code sampleRows} (3), the first-K sample therefore contains
-     * ONLY {@code "open"} — both other enum values are absent from the sample — yet the full 200-row scan still
-     * observes the complete domain. This exercises the brief's scenario (b): the characterizer recovers enum values
-     * missing from the sampled rows.
+     * 200 rows of {@code {id, status}}. The first 5 rows are all {@code "open"}; {@code "closed"}
+     * and {@code "pending"} appear only from row 5 onward. With the default {@code sampleRows} (3),
+     * the first-K sample therefore contains ONLY {@code "open"} — both other enum values are absent
+     * from the sample — yet the full 200-row scan still observes the complete domain. This
+     * exercises the brief's scenario (b): the characterizer recovers enum values missing from the
+     * sampled rows.
      */
     private static Map<String, Object> largeHostData() {
         String[] statuses = {"closed", "pending"};
@@ -148,7 +167,10 @@ class CharacterizationIntegrationTest {
         return prompt.substring(start + 7, end);
     }
 
-    /** Counts occurrences of {@code "id":} within the embedded ```json block to approximate row count. */
+    /**
+     * Counts occurrences of {@code "id":} within the embedded ```json block to approximate row
+     * count.
+     */
     private static int promptJsonRowCount(String prompt) {
         String jsonBlock = jsonBlock(prompt);
         int count = 0;
@@ -161,12 +183,13 @@ class CharacterizationIntegrationTest {
     }
 
     private static String frame(String content) {
-        return "data: {\"choices\":[{\"delta\":{\"content\":" + Json.stringify(content) + "}}]}\n\n";
+        return "data: {\"choices\":[{\"delta\":{\"content\":"
+                + Json.stringify(content)
+                + "}}]}\n\n";
     }
 
     private static final class FakeTransport
-            implements
-                com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
+            implements com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
         private final String response;
         private final String stream;
         private String lastBody;

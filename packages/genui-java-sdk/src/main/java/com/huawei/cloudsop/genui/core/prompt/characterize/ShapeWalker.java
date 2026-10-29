@@ -12,20 +12,18 @@ import java.util.Map;
 import java.util.TreeSet;
 
 /**
- * Single-pass, deterministic walker that reduces a host-data value into a small same-shape "sample" tree plus an
- * inferred {@link ShapeNode} schema tree.
+ * Single-pass, deterministic walker that reduces a host-data value into a small same-shape "sample"
+ * tree plus an inferred {@link ShapeNode} schema tree.
  *
- * <p>
- * The sample is always the first {@code sampleRows} elements of any array (never a random or reordered subset), enum
- * domains are sorted lexicographically so they are robust to upstream row reordering, and {@link Map} key order is
- * preserved. Given the same input and config, {@link #walk} produces a byte-identical sample and a structurally-equal
- * shape every time.
+ * <p>The sample is always the first {@code sampleRows} elements of any array (never a random or
+ * reordered subset), enum domains are sorted lexicographically so they are robust to upstream row
+ * reordering, and {@link Map} key order is preserved. Given the same input and config, {@link
+ * #walk} produces a byte-identical sample and a structurally-equal shape every time.
  *
  * @since 2026
  */
 public final class ShapeWalker {
-    private ShapeWalker() {
-    }
+    private ShapeWalker() {}
 
     /** The single Unicode ellipsis character (U+2026) used to mark truncated strings. */
     private static final String ELLIPSIS = "…";
@@ -53,7 +51,8 @@ public final class ShapeWalker {
     }
 
     private static Characterized walkString(String s, CharacterizationConfig cfg) {
-        String sample = s.length() > cfg.maxStringLen() ? s.substring(0, cfg.maxStringLen()) + ELLIPSIS : s;
+        String sample =
+                s.length() > cfg.maxStringLen() ? s.substring(0, cfg.maxStringLen()) + ELLIPSIS : s;
         return new Characterized(sample, new ScalarShape(ScalarType.STRING));
     }
 
@@ -140,14 +139,17 @@ public final class ShapeWalker {
             long rowsSeenBeforeThis = n - 1;
             for (Map.Entry<?, ?> entry : row.entrySet()) {
                 String key = String.valueOf(entry.getKey());
-                columns.computeIfAbsent(key, k -> {
-                    ColumnAccumulator accumulator = new ColumnAccumulator(cfg.enumMaxDistinct());
-                    // Backfill: every earlier row lacked this key, so it was missing there.
-                    for (long i = 0; i < rowsSeenBeforeThis; i++) {
-                        accumulator.observeMissing();
-                    }
-                    return accumulator;
-                });
+                columns.computeIfAbsent(
+                        key,
+                        k -> {
+                            ColumnAccumulator accumulator =
+                                    new ColumnAccumulator(cfg.enumMaxDistinct());
+                            // Backfill: every earlier row lacked this key, so it was missing there.
+                            for (long i = 0; i < rowsSeenBeforeThis; i++) {
+                                accumulator.observeMissing();
+                            }
+                            return accumulator;
+                        });
             }
             for (Map.Entry<String, ColumnAccumulator> columnEntry : columns.entrySet()) {
                 String key = columnEntry.getKey();
@@ -167,8 +169,12 @@ public final class ShapeWalker {
         return new ObjectShape(fields);
     }
 
-    private static void observeColumnValue(ColumnAccumulator accumulator, Object value, CharacterizationConfig cfg,
-            int depth, boolean withinDeepScanLimit) {
+    private static void observeColumnValue(
+            ColumnAccumulator accumulator,
+            Object value,
+            CharacterizationConfig cfg,
+            int depth,
+            boolean withinDeepScanLimit) {
         if (value == null) {
             accumulator.observeNull();
             return;
@@ -190,10 +196,13 @@ public final class ShapeWalker {
             accumulator.observeScalarType(ScalarType.UNKNOWN);
             if (withinDeepScanLimit && accumulator.deepScanned() < cfg.deepScanLimit()) {
                 accumulator.incrementDeepScanned();
-                // v1 best-effort: the nested-object column's deep schema is last-row-wins, not a union
-                // across rows. For columns whose nested objects have differing inner keys, the sidecar
+                // v1 best-effort: the nested-object column's deep schema is last-row-wins, not a
+                // union
+                // across rows. For columns whose nested objects have differing inner keys, the
+                // sidecar
                 // reflects the most recently scanned (within deepScanLimit) row's shape. Top-level
-                // enum/count completeness is unaffected; widening this to a union is deferred (see design).
+                // enum/count completeness is unaffected; widening this to a union is deferred (see
+                // design).
                 ShapeNode deepShape = walk(value, cfg, depth + 1).shape();
                 accumulator.setChildDeepShape(deepShape);
             }
@@ -202,7 +211,8 @@ public final class ShapeWalker {
         accumulator.observeScalarType(ScalarType.UNKNOWN);
     }
 
-    private static FieldShape finalizeColumn(ColumnAccumulator accumulator, long n, CharacterizationConfig cfg) {
+    private static FieldShape finalizeColumn(
+            ColumnAccumulator accumulator, long n, CharacterizationConfig cfg) {
         boolean nullable = accumulator.nullCount() > 0;
         boolean optional = accumulator.occurrences() < n;
 
@@ -214,7 +224,9 @@ public final class ShapeWalker {
         } else if (types.size() == 1 && types.contains(ScalarType.STRING)) {
             long nonNullTotal = accumulator.occurrences() - accumulator.nullCount();
             node = finalizeStringShape(accumulator, nonNullTotal, cfg);
-        } else if (types.size() == 1 && types.contains(ScalarType.UNKNOWN) && accumulator.childDeepShape() != null) {
+        } else if (types.size() == 1
+                && types.contains(ScalarType.UNKNOWN)
+                && accumulator.childDeepShape() != null) {
             node = accumulator.childDeepShape();
         } else if (types.size() == 1) {
             node = new ScalarShape(types.iterator().next());
@@ -225,8 +237,8 @@ public final class ShapeWalker {
         return new FieldShape(node, optional, nullable);
     }
 
-    private static ShapeNode finalizeStringShape(ColumnAccumulator accumulator, long total,
-            CharacterizationConfig cfg) {
+    private static ShapeNode finalizeStringShape(
+            ColumnAccumulator accumulator, long total, CharacterizationConfig cfg) {
         if (!accumulator.distinctOverflowed()) {
             long distinct = accumulator.distinctStrings().size();
             double ratio = total == 0 ? 0.0 : distinct / (double) total;

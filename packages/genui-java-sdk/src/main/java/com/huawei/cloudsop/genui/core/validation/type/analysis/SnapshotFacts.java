@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
 
 import java.util.ArrayList;
@@ -10,28 +14,24 @@ import java.util.Set;
 /**
  * Render Data Model 快照的类型化(#77 第 13.1 节:按需访问 + 截断进入上界)。
  *
- * <p>
- * 数据值按形状类型化:标量、字符串字面值(域有界)、数组(元素联合 + 精确数量区间)、对象(全 REQUIRED 字段、
- * 关闭尾部)。数组扫描超过样本预算时,未访问部分进入上界(元素并入 Unknown 分支)并记录
- * {@link Fact.Loss#PRECISION_BUDGET}——不能把已扫描样本当完整数据。观察到的值与字段存在性以
- * {@link Fact.Evidence} 形式保留在事实上。
+ * <p>数据值按形状类型化:标量、字符串字面值(域有界)、数组(元素联合 + 精确数量区间)、对象(全 REQUIRED 字段、 关闭尾部)。数组扫描超过样本预算时,未访问部分进入上界(元素并入
+ * Unknown 分支)并记录 {@link Fact.Loss#PRECISION_BUDGET}——不能把已扫描样本当完整数据。观察到的值与字段存在性以 {@link
+ * Fact.Evidence} 形式保留在事实上。
  *
  * @since 2026
  */
 public final class SnapshotFacts {
 
-    private SnapshotFacts() {
-    }
+    private SnapshotFacts() {}
 
-    /**
-     * 把一个 JSON 值类型化为事实。{@code path} 用于观察证据关联;{@code depth} 为当前对象深度(预算截断用)。
-     */
+    /** 把一个 JSON 值类型化为事实。{@code path} 用于观察证据关联;{@code depth} 为当前对象深度(预算截断用)。 */
     public static Fact typeOfValue(Object value, String path, int depth) {
         return typeOfValue(value, path, depth, AnalysisBudget.defaults().tracker());
     }
 
     /** 带预算的深度截断版本;超过预算的对象/数组/采样进入 Unknown 上界并记录预算损失。 */
-    public static Fact typeOfValue(Object value, String path, int depth, AnalysisBudget.Tracker budget) {
+    public static Fact typeOfValue(
+            Object value, String path, int depth, AnalysisBudget.Tracker budget) {
         Set<Fact.Evidence> evidence = new LinkedHashSet<>();
         Set<Fact.Loss> losses = new LinkedHashSet<>();
         if (path != null) {
@@ -41,8 +41,13 @@ public final class SnapshotFacts {
         return new Fact(type, evidence, losses, Set.of());
     }
 
-    private static Type typeOf(Object value, String path, int depth, AnalysisBudget.Tracker budget,
-            Set<Fact.Evidence> evidence, Set<Fact.Loss> losses) {
+    private static Type typeOf(
+            Object value,
+            String path,
+            int depth,
+            AnalysisBudget.Tracker budget,
+            Set<Fact.Evidence> evidence,
+            Set<Fact.Loss> losses) {
         if (value == null) {
             return Types.scalar(Type.ScalarKind.NULL);
         }
@@ -70,8 +75,13 @@ public final class SnapshotFacts {
         return Type.Unknown.INSTANCE;
     }
 
-    private static Type typeOfList(List<?> list, String path, int depth, AnalysisBudget.Tracker budget,
-            Set<Fact.Evidence> evidence, Set<Fact.Loss> losses) {
+    private static Type typeOfList(
+            List<?> list,
+            String path,
+            int depth,
+            AnalysisBudget.Tracker budget,
+            Set<Fact.Evidence> evidence,
+            Set<Fact.Loss> losses) {
         if (list.isEmpty()) {
             return Types.emptySequence();
         }
@@ -79,8 +89,10 @@ public final class SnapshotFacts {
             evidence.add(new Fact.Evidence.ElementPresence());
         }
         long sampleLimit = budget.budget().maxArraySample();
-        List<?> sample = list.size() <= sampleLimit ? list
-                : new ArrayList<>(list.subList(0, (int) sampleLimit));
+        List<?> sample =
+                list.size() <= sampleLimit
+                        ? list
+                        : new ArrayList<>(list.subList(0, (int) sampleLimit));
         List<Type> elementTypes = new ArrayList<>();
         for (Object element : sample) {
             elementTypes.add(typeOf(element, null, depth + 1, budget, evidence, losses));
@@ -95,15 +107,27 @@ public final class SnapshotFacts {
         return Types.sequence(element, list.size(), list.size());
     }
 
-    private static Type typeOfMap(Map<?, ?> map, String path, int depth, AnalysisBudget.Tracker budget,
-            Set<Fact.Evidence> evidence, Set<Fact.Loss> losses) {
+    private static Type typeOfMap(
+            Map<?, ?> map,
+            String path,
+            int depth,
+            AnalysisBudget.Tracker budget,
+            Set<Fact.Evidence> evidence,
+            Set<Fact.Loss> losses) {
         Map<String, Type.Field> fields = new LinkedHashMap<>();
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             String key = String.valueOf(entry.getKey());
-            fields.put(key, Type.Field.required(typeOf(entry.getValue(),
-                    path == null ? null : path + "." + key, depth + 1, budget, evidence, losses)));
+            fields.put(
+                    key,
+                    Type.Field.required(
+                            typeOf(
+                                    entry.getValue(),
+                                    path == null ? null : path + "." + key,
+                                    depth + 1,
+                                    budget,
+                                    evidence,
+                                    losses)));
         }
         return Types.record(fields, Type.Extra.closed());
     }
-
 }

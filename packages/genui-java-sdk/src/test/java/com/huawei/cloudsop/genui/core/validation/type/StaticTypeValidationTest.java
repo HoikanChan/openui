@@ -21,8 +21,10 @@ class StaticTypeValidationTest {
 
     @Test
     void reportsMissingRenderDataModelPath() {
-        ValidationResult result = validate("root = CardHeader(data.device.displayName)",
-                Map.of("device", Map.of("name", "leaf-1")));
+        ValidationResult result =
+                validate(
+                        "root = CardHeader(data.device.displayName)",
+                        Map.of("device", Map.of("name", "leaf-1")));
 
         ValidationIssue issue = issue(result, "type-data-path-missing");
         assertEquals("data.device.displayName", issue.path());
@@ -31,7 +33,8 @@ class StaticTypeValidationTest {
 
     @Test
     void reportsInvalidScalarTraversal() {
-        ValidationResult result = validate("root = CardHeader(data.device.name)", Map.of("device", "leaf-1"));
+        ValidationResult result =
+                validate("root = CardHeader(data.device.name)", Map.of("device", "leaf-1"));
 
         ValidationIssue issue = issue(result, "type-data-invalid-traversal");
         assertEquals("data.device.name", issue.path());
@@ -40,7 +43,8 @@ class StaticTypeValidationTest {
 
     @Test
     void reportsUnprovableMemberTypeFromEmptyArray() {
-        ValidationResult result = validate("root = CardHeader(data.users.name)", Map.of("users", List.of()));
+        ValidationResult result =
+                validate("root = CardHeader(data.users.name)", Map.of("users", List.of()));
 
         ValidationIssue issue = issue(result, "type-data-unprovable");
         assertEquals("data.users.name", issue.path());
@@ -48,8 +52,10 @@ class StaticTypeValidationTest {
 
     @Test
     void reportsScalarPassedToArrayProp() {
-        ValidationResult result = validate("root = Table([nameCol], data.total)\nnameCol = Col(\"Name\", \"name\")",
-                Map.of("total", 3));
+        ValidationResult result =
+                validate(
+                        "root = Table([nameCol], data.total)\nnameCol = Col(\"Name\", \"name\")",
+                        Map.of("total", 3));
 
         ValidationIssue issue = issue(result, "type-prop-mismatch");
         assertEquals("Table", issue.component());
@@ -59,8 +65,10 @@ class StaticTypeValidationTest {
 
     @Test
     void reportsWrongArrayElementType() {
-        ValidationResult result = validate("root = PieChart([\"A\"], data.values, \"pie\")",
-                Map.of("values", List.of(true)));
+        ValidationResult result =
+                validate(
+                        "root = PieChart([\"A\"], data.values, \"pie\")",
+                        Map.of("values", List.of(true)));
 
         ValidationIssue issue = issue(result, "type-prop-mismatch");
         assertEquals("PieChart", issue.component());
@@ -69,31 +77,51 @@ class StaticTypeValidationTest {
 
     @Test
     void infersEachBinderAndBuiltinResultTypes() {
-        String dsl = "root = LineChart(labels, [values])\n" + "labels = @Each(data.points, \"point\", point.label)\n"
-                + "values = Series(\"Value\", @Each(data.points, \"point\", point.value))";
+        String dsl =
+                "root = LineChart(labels, [values])\n"
+                        + "labels = @Each(data.points, \"point\", point.label)\n"
+                        + "values = Series(\"Value\", @Each(data.points, \"point\", point.value))";
 
-        ValidationResult result = validate(dsl,
-                Map.of("points", List.of(Map.of("label", "A", "value", 1), Map.of("label", "B", "value", 2))));
+        ValidationResult result =
+                validate(
+                        dsl,
+                        Map.of(
+                                "points",
+                                List.of(
+                                        Map.of("label", "A", "value", 1),
+                                        Map.of("label", "B", "value", 2))));
 
-        assertEquals(ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+        assertEquals(
+                ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
     }
 
     @Test
     void acceptsEachBinderAcrossReferencedTemplateStatements() {
-        String dsl = "root = Tabs(@Each(data.groups, \"group\", groupTemplate))\n"
-                + "groupTemplate = TabItem(group.model, group.model, [groupTable])\n"
-                + "groupTable = Table([nameCol], group.devices)\n" + "nameCol = Col(\"Device Name\", \"name\")";
-        Map<String, Object> dataModel = Map.of("groups",
-                List.of(Map.of("model", "CE12804S", "devices", List.of(Map.of("name", "DC1-spine-01")))));
+        String dsl =
+                "root = Tabs(@Each(data.groups, \"group\", groupTemplate))\n"
+                        + "groupTemplate = TabItem(group.model, group.model, [groupTable])\n"
+                        + "groupTable = Table([nameCol], group.devices)\n"
+                        + "nameCol = Col(\"Device Name\", \"name\")";
+        Map<String, Object> dataModel =
+                Map.of(
+                        "groups",
+                        List.of(
+                                Map.of(
+                                        "model",
+                                        "CE12804S",
+                                        "devices",
+                                        List.of(Map.of("name", "DC1-spine-01")))));
 
         ValidationResult result = validate(dsl, dataModel);
 
-        assertEquals(ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+        assertEquals(
+                ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
     }
 
     @Test
     void rejectsReferencedTemplateWhenEachBinderIsNotInScope() {
-        String dsl = "root = groupTemplate\n" + "groupTemplate = TabItem(group.model, group.model, [])";
+        String dsl =
+                "root = groupTemplate\n" + "groupTemplate = TabItem(group.model, group.model, [])";
 
         ValidationResult result = validate(dsl, Map.of("groups", List.of()));
 
@@ -102,22 +130,27 @@ class StaticTypeValidationTest {
 
     @Test
     void acceptsRenderBindersWithoutUnresolvedReferenceNoise() {
-        String dsl = "root = Table([nameCol], data.users)\n"
-                + "nameCol = Col(\"Name\", \"name\", {cell: @Render(\"v\", TextContent(v))})";
+        String dsl =
+                "root = Table([nameCol], data.users)\n"
+                        + "nameCol = Col(\"Name\", \"name\", {cell: @Render(\"v\", TextContent(v))})";
 
         ValidationResult result = validate(dsl, Map.of("users", List.of(Map.of("name", "Ada"))));
 
-        assertEquals(ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+        assertEquals(
+                ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
     }
 
     @Test
     void rejectsNonStringTemplateBinders() {
-        ValidationResult each = validate("root = Stack(@Each(data.users, 1, TextContent(\"x\")))",
-                Map.of("users", List.of(Map.of("name", "Ada"))));
-        ValidationResult render = validate(
-                "root = Table([nameCol], data.users)\n"
-                        + "nameCol = Col(\"Name\", \"name\", {cell: @Render(1, TextContent(\"x\"))})",
-                Map.of("users", List.of(Map.of("name", "Ada"))));
+        ValidationResult each =
+                validate(
+                        "root = Stack(@Each(data.users, 1, TextContent(\"x\")))",
+                        Map.of("users", List.of(Map.of("name", "Ada"))));
+        ValidationResult render =
+                validate(
+                        "root = Table([nameCol], data.users)\n"
+                                + "nameCol = Col(\"Name\", \"name\", {cell: @Render(1, TextContent(\"x\"))})",
+                        Map.of("users", List.of(Map.of("name", "Ada"))));
 
         issue(each, "builtin-argument-type-mismatch");
         issue(render, "builtin-argument-type-mismatch");
@@ -125,14 +158,16 @@ class StaticTypeValidationTest {
 
     @Test
     void reportsBuiltinArgumentMismatch() {
-        ValidationResult result = validate("root = TextContent(@Count(data.total))", Map.of("total", 3));
+        ValidationResult result =
+                validate("root = TextContent(@Count(data.total))", Map.of("total", 3));
 
         issue(result, "builtin-argument-type-mismatch");
     }
 
     @Test
     void rejectsInvalidEnumLiteral() {
-        ValidationResult result = validate("root = Tag(\"Alert\", \"purple\")", Map.of("present", true));
+        ValidationResult result =
+                validate("root = Tag(\"Alert\", \"purple\")", Map.of("present", true));
 
         ValidationIssue issue = issue(result, "type-prop-mismatch");
         assertEquals("/variant", issue.path());
@@ -140,7 +175,8 @@ class StaticTypeValidationTest {
 
     @Test
     void rejectsIncompatibleComponentSlot() {
-        ValidationResult result = validate("root = Descriptions([Tag(\"Wrong child\")])", Map.of("present", true));
+        ValidationResult result =
+                validate("root = Descriptions([Tag(\"Wrong child\")])", Map.of("present", true));
 
         ValidationIssue issue = issue(result, "component-slot-type-mismatch");
         assertEquals("Descriptions", issue.component());
@@ -149,7 +185,9 @@ class StaticTypeValidationTest {
 
     @Test
     void validatesTableColumnFieldsAgainstRowShape() {
-        String dsl = "root = Table([nameCol], data.users)\n" + "nameCol = Col(\"Name\", \"displayName\")";
+        String dsl =
+                "root = Table([nameCol], data.users)\n"
+                        + "nameCol = Col(\"Name\", \"displayName\")";
 
         ValidationResult result = validate(dsl, Map.of("users", List.of(Map.of("name", "Ada"))));
 
@@ -159,19 +197,24 @@ class StaticTypeValidationTest {
 
     @Test
     void validatesNestedTableColumnFieldsAgainstRowShape() {
-        String dsl = "root = Table([statusCol], data.users)\n"
-                + "statusCol = Col(\"Status\", \"profile.missingStatus\")";
+        String dsl =
+                "root = Table([statusCol], data.users)\n"
+                        + "statusCol = Col(\"Status\", \"profile.missingStatus\")";
 
-        ValidationResult result = validate(dsl,
-                Map.of("users", List.of(Map.of("profile", Map.of("status", "active")))));
+        ValidationResult result =
+                validate(
+                        dsl,
+                        Map.of("users", List.of(Map.of("profile", Map.of("status", "active")))));
 
         issue(result, "type-table-column-missing");
     }
 
     @Test
     void validatesTableColumnFieldReachedThroughAReference() {
-        String dsl = "root = Table([nameCol], data.users)\n" + "nameCol = Col(\"Name\", field)\n"
-                + "field = \"missing\"";
+        String dsl =
+                "root = Table([nameCol], data.users)\n"
+                        + "nameCol = Col(\"Name\", field)\n"
+                        + "field = \"missing\"";
 
         ValidationResult result = validate(dsl, Map.of("users", List.of(Map.of("name", "Ada"))));
 
@@ -180,15 +223,20 @@ class StaticTypeValidationTest {
 
     @Test
     void rejectsArrayComparedWithScalar() {
-        ValidationResult result = validate("root = TextContent(data.items.status == \"inactive\")",
-                Map.of("items", List.of(Map.of("status", "inactive"))));
+        ValidationResult result =
+                validate(
+                        "root = TextContent(data.items.status == \"inactive\")",
+                        Map.of("items", List.of(Map.of("status", "inactive"))));
 
         issue(result, "type-operator-mismatch");
     }
 
     @Test
     void reportsBuiltinArgumentCountMismatch() {
-        ValidationResult result = validate("root = TextContent(@Count(data.items, 2))", Map.of("items", List.of(1, 2)));
+        ValidationResult result =
+                validate(
+                        "root = TextContent(@Count(data.items, 2))",
+                        Map.of("items", List.of(1, 2)));
 
         issue(result, "builtin-argument-count-mismatch");
     }
@@ -199,8 +247,12 @@ class StaticTypeValidationTest {
         ValidationResult result = validate(dsl, Map.of("mode", "a"));
 
         issue(result, "type-data-path-missing");
-        assertFalse(result.issues().stream().anyMatch(candidate -> "type-prop-mismatch".equals(candidate.code())),
-                () -> "an unproven Switch branch must not fabricate a result type: " + result.issues());
+        assertFalse(
+                result.issues().stream()
+                        .anyMatch(candidate -> "type-prop-mismatch".equals(candidate.code())),
+                () ->
+                        "an unproven Switch branch must not fabricate a result type: "
+                                + result.issues());
     }
 
     @Test
@@ -220,7 +272,8 @@ class StaticTypeValidationTest {
 
     @Test
     void reportsUnprovableEmptyDataArrayForTypedComponentSlot() {
-        ValidationResult result = validate("root = Descriptions(data.items)", Map.of("items", List.of()));
+        ValidationResult result =
+                validate("root = Descriptions(data.items)", Map.of("items", List.of()));
 
         ValidationIssue issue = issue(result, "type-data-unprovable");
         assertEquals("data.items", issue.path());
@@ -228,8 +281,9 @@ class StaticTypeValidationTest {
 
     @Test
     void typesTableCellValueBinderFromTheSelectedField() {
-        String dsl = "root = Table([nameCol], data.users)\n"
-                + "nameCol = Col(\"Name\", \"name\", {cell: @Render(\"v\", TextContent(@Count(v)))})";
+        String dsl =
+                "root = Table([nameCol], data.users)\n"
+                        + "nameCol = Col(\"Name\", \"name\", {cell: @Render(\"v\", TextContent(@Count(v)))})";
 
         ValidationResult result = validate(dsl, Map.of("users", List.of(Map.of("name", "Ada"))));
 
@@ -245,38 +299,52 @@ class StaticTypeValidationTest {
 
     @Test
     void rejectsArithmeticOnArrays() {
-        ValidationResult result = validate("root = TextContent(data.left + data.right)",
-                Map.of("left", List.of(1), "right", List.of(2)));
+        ValidationResult result =
+                validate(
+                        "root = TextContent(data.left + data.right)",
+                        Map.of("left", List.of(1), "right", List.of(2)));
 
         issue(result, "type-operator-mismatch");
     }
 
     @Test
     void operatorMismatchDoesNotCreateDownstreamPropNoise() {
-        String dsl = "root = Table([nameCol], rows)\n" + "nameCol = Col(\"Name\", \"name\")\n"
-                + "rows = data.left + []";
+        String dsl =
+                "root = Table([nameCol], rows)\n"
+                        + "nameCol = Col(\"Name\", \"name\")\n"
+                        + "rows = data.left + []";
         ValidationResult result = validate(dsl, Map.of("left", List.of(Map.of("name", "Ada"))));
 
         issue(result, "type-operator-mismatch");
-        assertFalse(result.issues().stream().anyMatch(candidate -> "type-prop-mismatch".equals(candidate.code())),
+        assertFalse(
+                result.issues().stream()
+                        .anyMatch(candidate -> "type-prop-mismatch".equals(candidate.code())),
                 () -> "downstream mismatch should be suppressed: " + result.issues());
     }
 
     @Test
     void rejectsAddingEachResultsWhenOneInputIsEmpty() {
-        String dsl = "root = TextContent(rows)\n"
-                + "rows = @Each(data.left, \"item\", item) + @Each(data.right, \"item\", item)";
-        ValidationResult result = validate(dsl, Map.of("left", List.of(Map.of("name", "Ada")), "right", List.of()));
+        String dsl =
+                "root = TextContent(rows)\n"
+                        + "rows = @Each(data.left, \"item\", item) + @Each(data.right, \"item\", item)";
+        ValidationResult result =
+                validate(dsl, Map.of("left", List.of(Map.of("name", "Ada")), "right", List.of()));
 
         issue(result, "type-operator-mismatch");
     }
 
     @Test
     void rejectsNestedArraysAsTableRows() {
-        String dsl = "root = Table([nameCol], rows)\n" + "nameCol = Col(\"Name\", \"name\")\n"
-                + "rows = @Each(data.groups, \"group\", @Each(group.items, \"item\", item))";
-        Map<String, Object> dataModel = Map.of("groups",
-                List.of(Map.of("items", List.of(Map.of("name", "Ada"))), Map.of("items", List.of())));
+        String dsl =
+                "root = Table([nameCol], rows)\n"
+                        + "nameCol = Col(\"Name\", \"name\")\n"
+                        + "rows = @Each(data.groups, \"group\", @Each(group.items, \"item\", item))";
+        Map<String, Object> dataModel =
+                Map.of(
+                        "groups",
+                        List.of(
+                                Map.of("items", List.of(Map.of("name", "Ada"))),
+                                Map.of("items", List.of())));
 
         ValidationResult result = validate(dsl, dataModel);
 
@@ -286,21 +354,27 @@ class StaticTypeValidationTest {
     @Test
     void acceptsTableColumnPresentInSomeRows() {
         // 列渲染容忍缺值行(空单元格),部分行有字段是合法用法:提示词侧形状描述同样把这类字段标为 optional。
-        String dsl = "root = Table([aliasCol], data.users)\n" + "aliasCol = Col(\"Alias\", \"alias\")";
-        Map<String, Object> dataModel = Map.of("users",
-                List.of(Map.of("name", "Ada", "alias", "a"), Map.of("name", "Grace")));
+        String dsl =
+                "root = Table([aliasCol], data.users)\n" + "aliasCol = Col(\"Alias\", \"alias\")";
+        Map<String, Object> dataModel =
+                Map.of(
+                        "users",
+                        List.of(Map.of("name", "Ada", "alias", "a"), Map.of("name", "Grace")));
 
         ValidationResult result = validate(dsl, dataModel);
 
-        assertTrue(result.issues().stream().noneMatch(i -> "type-table-column-missing".equals(i.code())),
+        assertTrue(
+                result.issues().stream()
+                        .noneMatch(i -> "type-table-column-missing".equals(i.code())),
                 "部分行带该字段即满足列存在性: " + result.issues());
     }
 
     @Test
     void rejectsTableColumnAbsentFromEveryRow() {
-        String dsl = "root = Table([aliasCol], data.users)\n" + "aliasCol = Col(\"Alias\", \"alias\")";
-        Map<String, Object> dataModel = Map.of("users",
-                List.of(Map.of("name", "Ada"), Map.of("name", "Grace")));
+        String dsl =
+                "root = Table([aliasCol], data.users)\n" + "aliasCol = Col(\"Alias\", \"alias\")";
+        Map<String, Object> dataModel =
+                Map.of("users", List.of(Map.of("name", "Ada"), Map.of("name", "Grace")));
 
         ValidationResult result = validate(dsl, dataModel);
 
@@ -309,9 +383,12 @@ class StaticTypeValidationTest {
 
     @Test
     void rejectsLineChartWithOnlyOneKnownPoint() {
-        String dsl = "root = LineChart(labels, [series])\n" + "labels = @Each(data.points, \"point\", point.label)\n"
-                + "series = Series(\"Value\", @Each(data.points, \"point\", point.value))";
-        ValidationResult result = validate(dsl, Map.of("points", List.of(Map.of("label", "A", "value", 1))));
+        String dsl =
+                "root = LineChart(labels, [series])\n"
+                        + "labels = @Each(data.points, \"point\", point.label)\n"
+                        + "series = Series(\"Value\", @Each(data.points, \"point\", point.value))";
+        ValidationResult result =
+                validate(dsl, Map.of("points", List.of(Map.of("label", "A", "value", 1))));
 
         issue(result, "type-chart-insufficient-data");
     }
@@ -326,20 +403,29 @@ class StaticTypeValidationTest {
 
     @Test
     void rejectsDuplicateDerivedValuesInsideOneChartSeries() {
-        String dsl = "root = BarChart([\"UP/UP\", \"UP/DOWN\"], [Series(\"Count\", [upUp, upDown])])\n"
-                + "upUp = @Count(@Filter(data.rows, \"adminStatus\", \"==\", \"active\"))\n"
-                + "upDown = @Count(@Filter(data.rows, \"adminStatus\", \"==\", \"active\"))";
-        ValidationResult result = validate(dsl,
-                Map.of("rows", List.of(Map.of("adminStatus", "active", "operStatus", "active"))));
+        String dsl =
+                "root = BarChart([\"UP/UP\", \"UP/DOWN\"], [Series(\"Count\", [upUp, upDown])])\n"
+                        + "upUp = @Count(@Filter(data.rows, \"adminStatus\", \"==\", \"active\"))\n"
+                        + "upDown = @Count(@Filter(data.rows, \"adminStatus\", \"==\", \"active\"))";
+        ValidationResult result =
+                validate(
+                        dsl,
+                        Map.of(
+                                "rows",
+                                List.of(Map.of("adminStatus", "active", "operStatus", "active"))));
 
         issue(result, "type-chart-duplicate-series-value");
     }
 
     @Test
     void noDataModelReportsUnprovenReasonsWithoutIncompleteTraversal() {
-        ValidationResult result = DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder()
-                .dsl("root = TextContent(data.title)").contract(GenerationContractLoader.loadDefault())
-                .externalRefs(java.util.Set.of("data")).build());
+        ValidationResult result =
+                DefaultOpenuiLangValidator.INSTANCE.validate(
+                        ValidationRequest.builder()
+                                .dsl("root = TextContent(data.title)")
+                                .contract(GenerationContractLoader.loadDefault())
+                                .externalRefs(java.util.Set.of("data"))
+                                .build());
 
         Map<String, String> extra = result.metadata().extra();
         assertEquals(ValidationStatus.VALID, result.status());
@@ -347,7 +433,8 @@ class StaticTypeValidationTest {
         assertTrue(extra.get("typeChecks.unprovenReasons").contains("UNKNOWN_INPUT="));
         assertEquals("true", extra.get("typeChecks.analysisComplete"));
         assertEquals("0", extra.get("typeChecks.mismatched"));
-        assertEquals(Long.parseLong(extra.get("typeChecks.discovered")),
+        assertEquals(
+                Long.parseLong(extra.get("typeChecks.discovered")),
                 Long.parseLong(extra.get("typeChecks.matched"))
                         + Long.parseLong(extra.get("typeChecks.mismatched"))
                         + Long.parseLong(extra.get("typeChecks.unproven")));
@@ -355,27 +442,39 @@ class StaticTypeValidationTest {
 
     @Test
     void anyAcceptanceKeepsValidVerdictButCannotHideSessionTruncation() {
-        ValidationRequest request = ValidationRequest.builder()
-                .dsl("root = DescField(label, @String(@ObjectValues(data)))\nlabel = \"label\"")
-                .contract(GenerationContractLoader.loadDefault())
-                .dataModel(Map.of("values", List.of("one", "two"))).build();
-        var sampled = new DefaultOpenuiLangValidator(
-                new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(4096, 64, 16, 1, 2048))
-                .validate(request);
-        var complete = new DefaultOpenuiLangValidator(
-                new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(4096, 64, 16, 2, 2048))
-                .validate(request);
+        ValidationRequest request =
+                ValidationRequest.builder()
+                        .dsl(
+                                "root = DescField(label, @String(@ObjectValues(data)))\nlabel = \"label\"")
+                        .contract(GenerationContractLoader.loadDefault())
+                        .dataModel(Map.of("values", List.of("one", "two")))
+                        .build();
+        var sampled =
+                new DefaultOpenuiLangValidator(
+                                new com.huawei.cloudsop.genui.core.validation.type.analysis
+                                        .AnalysisBudget(4096, 64, 16, 1, 2048))
+                        .validate(request);
+        var complete =
+                new DefaultOpenuiLangValidator(
+                                new com.huawei.cloudsop.genui.core.validation.type.analysis
+                                        .AnalysisBudget(4096, 64, 16, 2, 2048))
+                        .validate(request);
 
         assertEquals(ValidationStatus.VALID, sampled.status());
         assertEquals(ValidationStatus.VALID, complete.status());
         // 采样截断下,ObjectValues 的 object 参数要求仍是“已包含但分析未完整”,按未证明登记并只归因于
         // 预算损失;截断本身另由 analysisComplete/traversalTruncated 呈现,不伪装成通过。
         assertEquals("1", sampled.metadata().extra().get("typeChecks.unproven"));
-        assertTrue(sampled.metadata().extra().get("typeChecks.unprovenReasons").contains("PRECISION_BUDGET"),
+        assertTrue(
+                sampled.metadata()
+                        .extra()
+                        .get("typeChecks.unprovenReasons")
+                        .contains("PRECISION_BUDGET"),
                 () -> sampled.metadata().extra().toString());
         assertEquals("false", sampled.metadata().extra().get("typeChecks.analysisComplete"));
         assertEquals("true", sampled.metadata().extra().get("typeChecks.traversalTruncated"));
-        assertEquals("PRECISION_BUDGET", sampled.metadata().extra().get("typeChecks.precisionLosses"));
+        assertEquals(
+                "PRECISION_BUDGET", sampled.metadata().extra().get("typeChecks.precisionLosses"));
         assertEquals("true", complete.metadata().extra().get("typeChecks.analysisComplete"));
         assertFalse(complete.metadata().extra().containsKey("typeChecks.traversalTruncated"));
         assertFalse(complete.metadata().extra().containsKey("typeChecks.precisionLosses"));
@@ -383,26 +482,41 @@ class StaticTypeValidationTest {
 
     @Test
     void sampleTruncationAloneCannotClaimCompleteAnalysis() {
-        var validator = new DefaultOpenuiLangValidator(
-                new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(4096, 64, 16, 1, 2048));
-        ValidationResult result = validator.validate(ValidationRequest.builder()
-                .dsl("root = TextContent(@First(@First(@ObjectValues(data))))")
-                .contract(GenerationContractLoader.loadDefault())
-                .dataModel(Map.of("values", List.of("one", "two"))).build());
+        var validator =
+                new DefaultOpenuiLangValidator(
+                        new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(
+                                4096, 64, 16, 1, 2048));
+        ValidationResult result =
+                validator.validate(
+                        ValidationRequest.builder()
+                                .dsl("root = TextContent(@First(@First(@ObjectValues(data))))")
+                                .contract(GenerationContractLoader.loadDefault())
+                                .dataModel(Map.of("values", List.of("one", "two")))
+                                .build());
 
         assertEquals("false", result.metadata().extra().get("typeChecks.analysisComplete"));
         assertEquals("true", result.metadata().extra().get("typeChecks.traversalTruncated"));
-        assertTrue(result.metadata().extra().get("typeChecks.unprovenReasons").contains("PRECISION_BUDGET="));
+        assertTrue(
+                result.metadata()
+                        .extra()
+                        .get("typeChecks.unprovenReasons")
+                        .contains("PRECISION_BUDGET="));
     }
 
     @Test
     void tinyBudgetReportsTruncationAndPrecisionLossInPublicMetadata() {
-        var validator = new DefaultOpenuiLangValidator(
-                new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(4096, 64, 16, 1, 1));
-        ValidationResult result = validator.validate(ValidationRequest.builder()
-                .dsl("root = TextContent(value)\nvalue = @First(@First(@ObjectValues(data)))")
-                .contract(GenerationContractLoader.loadDefault())
-                .dataModel(Map.of("values", List.of("one", "two"))).build());
+        var validator =
+                new DefaultOpenuiLangValidator(
+                        new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(
+                                4096, 64, 16, 1, 1));
+        ValidationResult result =
+                validator.validate(
+                        ValidationRequest.builder()
+                                .dsl(
+                                        "root = TextContent(value)\nvalue = @First(@First(@ObjectValues(data)))")
+                                .contract(GenerationContractLoader.loadDefault())
+                                .dataModel(Map.of("values", List.of("one", "two")))
+                                .build());
 
         Map<String, String> extra = result.metadata().extra();
         assertEquals("true", extra.get("typeChecks.traversalTruncated"));
@@ -412,20 +526,27 @@ class StaticTypeValidationTest {
     }
 
     private static ValidationResult validate(String dsl, Map<String, Object> dataModel) {
-        return DefaultOpenuiLangValidator.INSTANCE
-                .validate(ValidationRequest.builder().dsl(dsl).contract(GenerationContractLoader.loadDefault())
-                        .dataModel(dataModel).build());
+        return DefaultOpenuiLangValidator.INSTANCE.validate(
+                ValidationRequest.builder()
+                        .dsl(dsl)
+                        .contract(GenerationContractLoader.loadDefault())
+                        .dataModel(dataModel)
+                        .build());
     }
 
     @Test
     void overriddenStatementNoLongerProducesStaleTypeError() {
         // #56:同名覆盖后,旧定义的数据路径错误不得继续产生当前错误。
         // rows 先绑到不存在的 data.wrong_path,后被同名覆盖为 data.rows → 类型检查使用当前有效定义。
-        String dsl = "rows = Table([nameCol], data.wrong_path)\n" + "rows = data.rows\n"
-                + "nameCol = Col(\"Name\", \"name\")\n" + "root = Stack([rows])";
+        String dsl =
+                "rows = Table([nameCol], data.wrong_path)\n"
+                        + "rows = data.rows\n"
+                        + "nameCol = Col(\"Name\", \"name\")\n"
+                        + "root = Stack([rows])";
         ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("name", "dev-1"))));
 
-        assertFalse(result.issues().stream().anyMatch(i -> "type-data-path-missing".equals(i.code())),
+        assertFalse(
+                result.issues().stream().anyMatch(i -> "type-data-path-missing".equals(i.code())),
                 "被覆盖语句的历史类型错误不得出现在当前校验中: " + result.issues());
         assertEquals(ValidationStatus.VALID, result.status());
     }
@@ -433,19 +554,32 @@ class StaticTypeValidationTest {
     @Test
     void redefinedStatementDownstreamMismatchIsStillDetected() {
         // #56:修改定义造成下游不匹配时仍能发现——rows 被同名覆盖成二维数组后,Table rows 报 shape 错误。
-        String dsl = "rows = data.rows\n" + "rows = @Each(data.groups, \"g\", g.devices)\n"
-                + "nameCol = Col(\"Name\", \"name\")\n" + "table = Table([nameCol], rows)\n" + "root = Stack([table])";
-        Map<String, Object> dataModel = Map.of("groups", List.of(Map.of("devices", List.of(Map.of("name", "d1")))),
-                "rows", List.of(Map.of("name", "d1")));
+        String dsl =
+                "rows = data.rows\n"
+                        + "rows = @Each(data.groups, \"g\", g.devices)\n"
+                        + "nameCol = Col(\"Name\", \"name\")\n"
+                        + "table = Table([nameCol], rows)\n"
+                        + "root = Stack([table])";
+        Map<String, Object> dataModel =
+                Map.of(
+                        "groups",
+                        List.of(Map.of("devices", List.of(Map.of("name", "d1")))),
+                        "rows",
+                        List.of(Map.of("name", "d1")));
 
         ValidationResult result = validate(dsl, dataModel);
-        assertTrue(result.issues().stream().anyMatch(i -> "type-table-row-shape-mismatch".equals(i.code())),
+        assertTrue(
+                result.issues().stream()
+                        .anyMatch(i -> "type-table-row-shape-mismatch".equals(i.code())),
                 "覆盖后的新定义造成下游 Table 不匹配必须被发现: " + result.issues());
     }
 
     private static ValidationIssue issue(ValidationResult result, String code) {
-        ValidationIssue issue = result.issues().stream().filter(candidate -> code.equals(candidate.code())).findFirst()
-                .orElse(null);
+        ValidationIssue issue =
+                result.issues().stream()
+                        .filter(candidate -> code.equals(candidate.code()))
+                        .findFirst()
+                        .orElse(null);
         assertNotNull(issue, () -> "missing " + code + " in " + result.issues());
         return issue;
     }
