@@ -20,12 +20,16 @@ class OpenuiPreprocessorTest {
 
     @Test
     void stripsSlashSlashComments() {
-        assertEquals("root = Title(\"hi\")", OpenuiPreprocessor.preprocess("root = Title(\"hi\") // a comment"));
+        assertEquals(
+                "root = Title(\"hi\")",
+                OpenuiPreprocessor.preprocess("root = Title(\"hi\") // a comment"));
     }
 
     @Test
     void stripsHashComments() {
-        assertEquals("root = Title(\"hi\")", OpenuiPreprocessor.preprocess("root = Title(\"hi\") # note"));
+        assertEquals(
+                "root = Title(\"hi\")",
+                OpenuiPreprocessor.preprocess("root = Title(\"hi\") # note"));
     }
 
     @Test
@@ -52,21 +56,24 @@ class OpenuiPreprocessorTest {
 
     @Test
     void autoCloseRepairsUnclosedBracketInStreamingMode() {
-        OpenuiPreprocessor.Result r = OpenuiPreprocessor.process("root = Table([col", ParseMode.STREAMING);
+        OpenuiPreprocessor.Result r =
+                OpenuiPreprocessor.process("root = Table([col", ParseMode.STREAMING);
         assertTrue(r.wasIncomplete());
         assertEquals("root = Table([col])", r.text());
     }
 
     @Test
     void finalModeDoesNotAutoClose() {
-        OpenuiPreprocessor.Result r = OpenuiPreprocessor.process("root = Table([col", ParseMode.FINAL);
+        OpenuiPreprocessor.Result r =
+                OpenuiPreprocessor.process("root = Table([col", ParseMode.FINAL);
         assertFalse(r.wasIncomplete());
         assertEquals("root = Table([col", r.text());
     }
 
     @Test
     void autoCloseRepairsUnclosedString() {
-        OpenuiPreprocessor.Result r = OpenuiPreprocessor.process("root = Title(\"hi", ParseMode.STREAMING);
+        OpenuiPreprocessor.Result r =
+                OpenuiPreprocessor.process("root = Title(\"hi", ParseMode.STREAMING);
         assertTrue(r.wasIncomplete());
         assertEquals("root = Title(\"hi\")", r.text());
     }

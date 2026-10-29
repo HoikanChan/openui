@@ -13,9 +13,7 @@ import java.util.Objects;
 /**
  * Java 原生校验器:从同一不可变快照执行语法、语义及类型分析。
  *
- * <p>
- * 无 Render Data Model 时仍检查静态可知部分;数据依赖部分的未证明结论进入 metadata。
- * 分析预算为不可变配置,每次请求独立计数,实例可安全并发使用。
+ * <p>无 Render Data Model 时仍检查静态可知部分;数据依赖部分的未证明结论进入 metadata。 分析预算为不可变配置,每次请求独立计数,实例可安全并发使用。
  *
  * @since 2026
  */
@@ -45,12 +43,19 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
         String normalizedDsl = snapshot.normalizedDsl();
         var issues = new ArrayList<>(analysis.issues());
         java.util.Map<String, String> extra = new java.util.LinkedHashMap<>();
-        TypeAnalysis.Result typeResult = TypeAnalysis.analyze(snapshot.program(), snapshot.catalog(),
-                snapshot.builtins(), snapshot.dataModel(), analysis.entryId(), analysisBudget);
+        TypeAnalysis.Result typeResult =
+                TypeAnalysis.analyze(
+                        snapshot.program(),
+                        snapshot.catalog(),
+                        snapshot.builtins(),
+                        snapshot.dataModel(),
+                        analysis.entryId(),
+                        analysisBudget);
         issues.addAll(typeResult.issues());
         extra.putAll(typeResult.coverage().metadataSummary());
         boolean hasError = issues.stream().anyMatch(i -> i.severity() == ValidationSeverity.ERROR);
-        ValidationMetadata metadata = new ValidationMetadata(analysis.statementCount(), analysis.entryId(), extra);
+        ValidationMetadata metadata =
+                new ValidationMetadata(analysis.statementCount(), analysis.entryId(), extra);
 
         if (hasError) {
             return ValidationResult.invalid(issues, metadata);

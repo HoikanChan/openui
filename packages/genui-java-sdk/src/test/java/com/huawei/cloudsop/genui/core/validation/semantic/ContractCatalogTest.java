@@ -19,17 +19,31 @@ import java.util.Map;
 
 class ContractCatalogTest {
 
-    private static GenerationContract contract(String root, Map<String, ComponentPromptSpec> comps) {
-        return new GenerationContract("v1", root, comps, List.of(), List.of(), List.of(), List.of());
+    private static GenerationContract contract(
+            String root, Map<String, ComponentPromptSpec> comps) {
+        return new GenerationContract(
+                "v1", root, comps, List.of(), List.of(), List.of(), List.of());
     }
 
     @Test
     void extractsParamOrderRequiredAndDefault() {
-        ComponentPromptSpec header = new ComponentPromptSpec("Header",
-                Map.of("type", "object", "properties", new java.util.LinkedHashMap<>(
-                        Map.of("title", Map.of("type", "string"), "level", Map.of("type", "number", "default", 1.0))),
-                        "required", List.of("title")));
-        ContractCatalog catalog = ContractCatalog.from(contract("Header", Map.of("Header", header)));
+        ComponentPromptSpec header =
+                new ComponentPromptSpec(
+                        "Header",
+                        Map.of(
+                                "type",
+                                "object",
+                                "properties",
+                                new java.util.LinkedHashMap<>(
+                                        Map.of(
+                                                "title",
+                                                Map.of("type", "string"),
+                                                "level",
+                                                Map.of("type", "number", "default", 1.0))),
+                                "required",
+                                List.of("title")));
+        ContractCatalog catalog =
+                ContractCatalog.from(contract("Header", Map.of("Header", header)));
 
         ComponentDef def = catalog.get("Header");
         assertFalse(def.signatureOnly());

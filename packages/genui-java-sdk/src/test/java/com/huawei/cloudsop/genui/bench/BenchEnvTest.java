@@ -22,22 +22,29 @@ import java.util.Map;
  */
 class BenchEnvTest {
 
-    @TempDir
-    Path tempDir;
+    @TempDir Path tempDir;
 
     @Test
     void missingFileYieldsEmpty() throws Exception {
         Map<String, String> resolved = BenchEnv.resolve(tempDir.resolve(".env"));
         // 不能断言完全为空（真实环境变量可能命中 KEYS），只需不抛异常且不包含文件键。
         assertTrue(BenchEnv.readDotEnv(tempDir.resolve(".env")).isEmpty());
-        assertEquals(resolved.keySet().stream().filter(key -> System.getenv(key) == null).count(), 0);
+        assertEquals(
+                resolved.keySet().stream().filter(key -> System.getenv(key) == null).count(), 0);
     }
 
     @Test
     void parsesKeyValueAndSkipsComments() throws Exception {
         Path env = tempDir.resolve(".env");
-        Files.writeString(env, "# comment line\n" + "\n" + "LLM_BASE_URL=https://llm.example/v1\n" + "NO_EQUALS_LINE\n"
-                + "LLM_MODEL= qwen3.6-27b \n" + "OTHER_KEY=ignored-but-parsed\n", StandardCharsets.UTF_8);
+        Files.writeString(
+                env,
+                "# comment line\n"
+                        + "\n"
+                        + "LLM_BASE_URL=https://llm.example/v1\n"
+                        + "NO_EQUALS_LINE\n"
+                        + "LLM_MODEL= qwen3.6-27b \n"
+                        + "OTHER_KEY=ignored-but-parsed\n",
+                StandardCharsets.UTF_8);
 
         Map<String, String> fileValues = BenchEnv.readDotEnv(env);
         assertEquals("https://llm.example/v1", fileValues.get("LLM_BASE_URL"));
@@ -49,8 +56,10 @@ class BenchEnvTest {
     @Test
     void resolveMergesOnlyBenchKeys() throws Exception {
         Path env = tempDir.resolve(".env");
-        Files.writeString(env,
-                "LLM_BASE_URL=https://llm.example/v1\nLLM_API_KEY=sk-test\nLLM_MODEL=m1\n" + "UNRELATED=nope\n",
+        Files.writeString(
+                env,
+                "LLM_BASE_URL=https://llm.example/v1\nLLM_API_KEY=sk-test\nLLM_MODEL=m1\n"
+                        + "UNRELATED=nope\n",
                 StandardCharsets.UTF_8);
 
         Map<String, String> resolved = BenchEnv.resolve(env);
@@ -61,6 +70,8 @@ class BenchEnvTest {
         if (System.getenv("LLM_MODEL") == null) {
             assertEquals("m1", resolved.get("LLM_MODEL"));
         }
-        assertTrue(!resolved.containsKey("UNRELATED"), "non-bench keys must not leak into the resolved view");
+        assertTrue(
+                !resolved.containsKey("UNRELATED"),
+                "non-bench keys must not leak into the resolved view");
     }
 }

@@ -37,9 +37,17 @@ class TsTypeRendererTest {
         rootFields.put("rows", field(rowsShape));
         ObjectShape root = new ObjectShape(rootFields);
 
-        String expected = "data: {\n" + "  title: string\n" + "  rows: {\n" + "    id: number\n" + "    name: string\n"
-                + "    status: \"closed\" | \"open\" | \"pending\"\n" + "    revenue: number\n"
-                + "    note?: string | null\n" + "  }[]  // 10000 items (showing 3)\n" + "}";
+        String expected =
+                "data: {\n"
+                        + "  title: string\n"
+                        + "  rows: {\n"
+                        + "    id: number\n"
+                        + "    name: string\n"
+                        + "    status: \"closed\" | \"open\" | \"pending\"\n"
+                        + "    revenue: number\n"
+                        + "    note?: string | null\n"
+                        + "  }[]  // 10000 items (showing 3)\n"
+                        + "}";
 
         assertEquals(expected, TsTypeRenderer.render(root, 3));
     }
@@ -143,8 +151,14 @@ class TsTypeRendererTest {
 
         String result = TsTypeRenderer.render(root, 3);
 
-        String expected = "data: {\n" + "  groups: {\n" + "    items: {\n" + "      id: number\n" + "    }[]\n"
-                + "  }[]\n" + "}";
+        String expected =
+                "data: {\n"
+                        + "  groups: {\n"
+                        + "    items: {\n"
+                        + "      id: number\n"
+                        + "    }[]\n"
+                        + "  }[]\n"
+                        + "}";
         assertEquals(expected, result);
     }
 

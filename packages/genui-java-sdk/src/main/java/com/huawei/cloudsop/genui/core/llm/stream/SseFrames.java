@@ -5,8 +5,7 @@
 package com.huawei.cloudsop.genui.core.llm.stream;
 
 public final class SseFrames {
-    private SseFrames() {
-    }
+    private SseFrames() {}
 
     public static String of(String content) {
         StringBuilder frame = new StringBuilder();

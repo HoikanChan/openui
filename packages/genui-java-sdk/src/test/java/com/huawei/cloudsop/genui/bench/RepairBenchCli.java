@@ -21,8 +21,7 @@ import java.util.Map;
 /**
  * repair-bench 入口：真实错误语料修复基准（内部迭代工具，test scope，永不进交付物）。 案例包进 → JSONL 出，并在每次运行后自动生成一份 自包含 HTML 报告。
  *
- * <p>
- * 用法：
+ * <p>用法：
  *
  * <pre>{@code
  * java -cp <test-classpath> com.huawei.cloudsop.genui.bench.RepairBenchCli \
@@ -30,33 +29,31 @@ import java.util.Map;
  *   [--out=target/bench.jsonl] [--html=target/bench.html]
  * }</pre>
  *
- * 默认（不带 {@code --repair}）为 validation-only：每案例只做 FINAL 校验并输出 status + issueCodes， 不读 .env、不建 transport、零 LLM 调用。带
- * {@code --repair} 才走流式增量修复（此时才需要 LLM 配置）。
+ * 默认（不带 {@code --repair}）为 validation-only：每案例只做 FINAL 校验并输出 status + issueCodes， 不读 .env、不建
+ * transport、零 LLM 调用。带 {@code --repair} 才走流式增量修复（此时才需要 LLM 配置）。
  *
- * <p>
- * 输出：JSONL 默认写 stdout；{@code --out} 指定文件时写该文件。HTML 报告始终生成：{@code --html} 显式指定， 否则与 {@code --out} 同名 .html；未给
- * {@code --out} 时写入 {@code target/repair-bench/} 下的时间戳文件，并在 stderr 打印路径。
+ * <p>输出：JSONL 默认写 stdout；{@code --out} 指定文件时写该文件。HTML 报告始终生成：{@code --html} 显式指定， 否则与 {@code --out}
+ * 同名 .html；未给 {@code --out} 时写入 {@code target/repair-bench/} 下的时间戳文件，并在 stderr 打印路径。
  *
- * <p>
- * LLM 配置：{@code LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / HTTPS_PROXY}，真实环境变量优先，其次从仓库根 {@code .env} 读取。
+ * <p>LLM 配置：{@code LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / HTTPS_PROXY}，真实环境变量优先，其次从仓库根 {@code
+ * .env} 读取。
  *
- * <p>
- * 退出码：0 = 整批跑完；2 = 用法错误；1 = 基础设施失败（含加载阶段任何案例解析失败——语料是 git 静态资产， 坏一个就是全坏，不静默降级）。
+ * <p>退出码：0 = 整批跑完；2 = 用法错误；1 = 基础设施失败（含加载阶段任何案例解析失败——语料是 git 静态资产， 坏一个就是全坏，不静默降级）。
  *
  * @since 2026
  */
 public final class RepairBenchCli {
 
-    private RepairBenchCli() {
-    }
+    private RepairBenchCli() {}
 
     public static void main(String[] args) {
         RepairBenchArgs parsed;
         try {
             parsed = RepairBenchArgs.parse(args);
         } catch (IllegalArgumentException error) {
-            System.err.println("usage: RepairBenchCli --cases=<dir> [--concurrency=4] [--max-attempts=3] "
-                    + "[--timeout-minutes=0] [--limit=N] [--repair] [--out=<file.jsonl>] [--html=<file.html>]");
+            System.err.println(
+                    "usage: RepairBenchCli --cases=<dir> [--concurrency=4] [--max-attempts=3] "
+                            + "[--timeout-minutes=0] [--limit=N] [--repair] [--out=<file.jsonl>] [--html=<file.html>]");
             System.err.println("error: " + error.getMessage());
             System.exit(2);
             return;
@@ -71,7 +68,8 @@ public final class RepairBenchCli {
             return;
         }
 
-        Map<String, String> env = parsed.repair() ? BenchEnv.resolve(findRepoRoot().resolve(".env")) : Map.of();
+        Map<String, String> env =
+                parsed.repair() ? BenchEnv.resolve(findRepoRoot().resolve(".env")) : Map.of();
         LlmTransport transport = null;
         String model = null;
         if (parsed.repair()) {
@@ -82,8 +80,11 @@ public final class RepairBenchCli {
                 return;
             }
             try {
-                transport = new OpenAiCompatBenchTransport(env.get("LLM_BASE_URL"), env.get("LLM_API_KEY"),
-                        env.get("HTTPS_PROXY"));
+                transport =
+                        new OpenAiCompatBenchTransport(
+                                env.get("LLM_BASE_URL"),
+                                env.get("LLM_API_KEY"),
+                                env.get("HTTPS_PROXY"));
             } catch (IllegalArgumentException error) {
                 System.err.println("[repair-bench] " + error.getMessage());
                 System.exit(1);
@@ -99,7 +100,9 @@ public final class RepairBenchCli {
                 if (parent != null) {
                     Files.createDirectories(parent);
                 }
-                jsonlOut = new PrintStream(Files.newOutputStream(outPath), true, StandardCharsets.UTF_8);
+                jsonlOut =
+                        new PrintStream(
+                                Files.newOutputStream(outPath), true, StandardCharsets.UTF_8);
             }
         } catch (IOException error) {
             System.err.println("[repair-bench] failed to open --out: " + error.getMessage());
@@ -107,8 +110,14 @@ public final class RepairBenchCli {
             return;
         }
 
-        RepairBenchRunner runner = new RepairBenchRunner(transport, model, parsed.maxAttempts(),
-                Duration.ofMinutes(parsed.timeoutMinutes()), jsonlOut, parsed.repair());
+        RepairBenchRunner runner =
+                new RepairBenchRunner(
+                        transport,
+                        model,
+                        parsed.maxAttempts(),
+                        Duration.ofMinutes(parsed.timeoutMinutes()),
+                        jsonlOut,
+                        parsed.repair());
         try {
             runner.runAll(cases, parsed.concurrency());
         } catch (InterruptedException error) {
@@ -125,7 +134,8 @@ public final class RepairBenchCli {
         Path reportPath = reportPath(parsed, outPath);
         String sourceLabel = outPath == null ? "stdout" : outPath.getFileName().toString();
         try {
-            RepairBenchReport.write(runner.emittedLines(), Paths.get(parsed.casesDir()), reportPath, sourceLabel);
+            RepairBenchReport.write(
+                    runner.emittedLines(), Paths.get(parsed.casesDir()), reportPath, sourceLabel);
             System.err.println("[repair-bench] report: " + reportPath.toAbsolutePath());
         } catch (Exception error) {
             // 报告是运行结果的视图，写失败不应把已完成的基准批次判为失败。

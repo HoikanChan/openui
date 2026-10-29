@@ -17,13 +17,18 @@ import java.util.List;
 import java.util.Map;
 
 public final class Json {
-    private Json() {
-    }
+    /** Doubles beyond this magnitude cannot be represented exactly as a long. */
+    private static final double MAX_EXACT_LONG_AS_DOUBLE = 1e15;
+
+    private Json() {}
 
     public static Object parse(String json) {
         try {
-            Object parsed = JSON.parse(json, JSONReader.Feature.UseDoubleForDecimals,
-                    JSONReader.Feature.DisableSingleQuote);
+            Object parsed =
+                    JSON.parse(
+                            json,
+                            JSONReader.Feature.UseDoubleForDecimals,
+                            JSONReader.Feature.DisableSingleQuote);
             return normalizeParsed(parsed);
         } catch (JSONException | ArithmeticException error) {
             throw new GenerationSdkException("Invalid JSON: " + error.getMessage(), error);
@@ -43,15 +48,17 @@ public final class Json {
 
     @SuppressWarnings("unchecked")
     public static Map<String, Object> asObject(Object value, String label) {
-        if (value instanceof Map<?, ?> map)
+        if (value instanceof Map<?, ?> map) {
             return (Map<String, Object>) map;
+        }
         throw new GenerationSdkException(label + " must be a JSON object");
     }
 
     @SuppressWarnings("unchecked")
     public static List<Object> asList(Object value, String label) {
-        if (value instanceof List<?> list)
+        if (value instanceof List<?> list) {
             return (List<Object>) list;
+        }
         throw new GenerationSdkException(label + " must be a JSON array");
     }
 
@@ -65,8 +72,9 @@ public final class Json {
         }
         if (value instanceof List<?> list) {
             ArrayList<Object> normalized = new ArrayList<>(list.size());
-            for (Object item : list)
+            for (Object item : list) {
                 normalized.add(normalizeParsed(item));
+            }
             return normalized;
         }
         if (value instanceof BigInteger integer) {
@@ -75,7 +83,10 @@ public final class Json {
         if (value instanceof BigDecimal decimal) {
             return decimal.doubleValue();
         }
-        if (value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long) {
+        if (value instanceof Byte
+                || value instanceof Short
+                || value instanceof Integer
+                || value instanceof Long) {
             return ((Number) value).longValue();
         }
         if (value instanceof Float || value instanceof Double) {
@@ -91,21 +102,25 @@ public final class Json {
         if (value instanceof Map<?, ?> map) {
             LinkedHashMap<String, Object> normalized = new LinkedHashMap<>();
             for (Map.Entry<?, ?> entry : map.entrySet()) {
-                normalized.put(String.valueOf(entry.getKey()), normalizeForSerialization(entry.getValue()));
+                normalized.put(
+                        String.valueOf(entry.getKey()),
+                        normalizeForSerialization(entry.getValue()));
             }
             return normalized;
         }
         if (value instanceof Iterable<?> iterable) {
             ArrayList<Object> normalized = new ArrayList<>();
-            for (Object item : iterable)
+            for (Object item : iterable) {
                 normalized.add(normalizeForSerialization(item));
+            }
             return normalized;
         }
         if (value instanceof Float || value instanceof Double) {
             double number = ((Number) value).doubleValue();
-            if (!Double.isFinite(number))
+            if (!Double.isFinite(number)) {
                 return null;
-            if (number == Math.rint(number) && Math.abs(number) < 1e15) {
+            }
+            if (number == Math.rint(number) && Math.abs(number) < MAX_EXACT_LONG_AS_DOUBLE) {
                 return (long) number;
             }
             return number;
@@ -135,8 +150,9 @@ public final class Json {
         out.append("{\n");
         boolean first = true;
         for (Map.Entry<?, ?> entry : map.entrySet()) {
-            if (!first)
+            if (!first) {
                 out.append(",\n");
+            }
             first = false;
             indent(out, depth + 1);
             out.append(JSON.toJSONString(String.valueOf(entry.getKey()))).append(": ");
@@ -155,8 +171,9 @@ public final class Json {
 
         out.append("[\n");
         for (int index = 0; index < list.size(); index++) {
-            if (index > 0)
+            if (index > 0) {
                 out.append(",\n");
+            }
             indent(out, depth + 1);
             writePretty(out, list.get(index), depth + 1);
         }

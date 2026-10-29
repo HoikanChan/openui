@@ -28,8 +28,14 @@ class GenUiLlmConfigTest {
 
     @Test
     void builderOverridesEndpointModelAndTemperature() {
-        GenUiLlmConfig config = GenUiLlmConfig.builder().endpoint("/custom/chat").defaultModel("custom-model")
-                .temperature(0.7).enableThinking(true).jsonObjectResponse(false).build();
+        GenUiLlmConfig config =
+                GenUiLlmConfig.builder()
+                        .endpoint("/custom/chat")
+                        .defaultModel("custom-model")
+                        .temperature(0.7)
+                        .enableThinking(true)
+                        .jsonObjectResponse(false)
+                        .build();
 
         assertEquals("/custom/chat", config.endpoint());
         assertEquals("custom-model", config.defaultModel());
@@ -50,11 +56,14 @@ class GenUiLlmConfigTest {
     void extraHeadersAreImmutableAndDefensivelyCopied() {
         Map<String, String> headers = new java.util.LinkedHashMap<>();
         headers.put("X-One", "1");
-        GenUiLlmConfig config = GenUiLlmConfig.builder().extraHeaders(headers).putHeader("X-Two", "2").build();
+        GenUiLlmConfig config =
+                GenUiLlmConfig.builder().extraHeaders(headers).putHeader("X-Two", "2").build();
 
         headers.put("X-Three", "3");
 
         assertEquals(Map.of("X-One", "1", "X-Two", "2"), config.extraHeaders());
-        assertThrows(UnsupportedOperationException.class, () -> config.extraHeaders().put("X-Four", "4"));
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> config.extraHeaders().put("X-Four", "4"));
     }
 }

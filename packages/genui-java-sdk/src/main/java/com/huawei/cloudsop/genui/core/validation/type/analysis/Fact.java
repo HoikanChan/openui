@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
 
 import java.util.List;
@@ -6,22 +10,17 @@ import java.util.Set;
 /**
  * 一次表达式分析得到的事实:类型上界 + 证据 + 精度损失 + 上游错误身份(#77 第 5.2 节)。
  *
- * <p>
- * 身份即全部字段:相同类型但证据、损失或上游错误不同的两个事实具有不同身份,检查缓存不得复用彼此结论
- * (例如同为 Unknown,一个含当前检查对象的确定反例,另一个没有,对 number 要求分别是 MISMATCH 与 UNPROVEN)。
+ * <p>身份即全部字段:相同类型但证据、损失或上游错误不同的两个事实具有不同身份,检查缓存不得复用彼此结论 (例如同为 Unknown,一个含当前检查对象的确定反例,另一个没有,对 number
+ * 要求分别是 MISMATCH 与 UNPROVEN)。
  *
- * @param type
- *            可能值的上界
- * @param evidence
- *            直接快照观察、局部结构证明或已声明运算保留的事实
- * @param losses
- *            信息损失原因(未知输入、缺上下文、未支持规则、预算等)
- * @param upstreamErrors
- *            已报告错误的身份,用于阻止连锁误报
- *
+ * @param type 可能值的上界
+ * @param evidence 直接快照观察、局部结构证明或已声明运算保留的事实
+ * @param losses 信息损失原因(未知输入、缺上下文、未支持规则、预算等)
+ * @param upstreamErrors 已报告错误的身份,用于阻止连锁误报
  * @since 2026
  */
-public record Fact(Type type, Set<Evidence> evidence, Set<Loss> losses, Set<String> upstreamErrors) {
+public record Fact(
+        Type type, Set<Evidence> evidence, Set<Loss> losses, Set<String> upstreamErrors) {
 
     public Fact {
         if (type == null) {
@@ -95,18 +94,14 @@ public record Fact(Type type, Set<Evidence> evidence, Set<Loss> losses, Set<Stri
         /**
          * 直接快照观察到的值(Render Data Model 中的实际值;可携带确定反例)。
          *
-         * @param path
-         *            观察来源的数据路径
-         * @param value
-         *            观察到的 JSON 值(已不可变快照)
+         * @param path 观察来源的数据路径
+         * @param value 观察到的 JSON 值(已不可变快照)
          */
-        record ObservedValue(String path, Object value) implements Evidence {
-        }
+        record ObservedValue(String path, Object value) implements Evidence {}
 
-        /**
-         * 字段存在性观察:present 数 / missing 数 / null 数 / 总行数。
-         */
-        record FieldPresence(String path, int present, int missing, int nulls, int total) implements Evidence {
+        /** 字段存在性观察:present 数 / missing 数 / null 数 / 总行数。 */
+        record FieldPresence(String path, int present, int missing, int nulls, int total)
+                implements Evidence {
 
             /** 是否观察到过至少一个确定缺失。 */
             public boolean hasMissingCounterexample() {
@@ -114,11 +109,8 @@ public record Fact(Type type, Set<Evidence> evidence, Set<Loss> losses, Set<Stri
             }
         }
 
-        /**
-         * 元素存在证据:数组确定含至少一个元素(Sort 保留、Filter 删除)。
-         */
-        record ElementPresence() implements Evidence {
-        }
+        /** 元素存在证据:数组确定含至少一个元素(Sort 保留、Filter 删除)。 */
+        record ElementPresence() implements Evidence {}
     }
 
     /**

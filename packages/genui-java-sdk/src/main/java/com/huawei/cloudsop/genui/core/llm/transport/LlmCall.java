@@ -10,8 +10,8 @@ public interface LlmCall extends AutoCloseable {
     InputStream execute() throws LlmTransportException;
 
     /**
-     * Thread-safe, idempotent and prompt. Abort pending headers AND blocked body reads, release resources, and prevent
-     * execution if called before execute. Must not wait for the reader.
+     * Thread-safe, idempotent and prompt. Abort pending headers AND blocked body reads, release
+     * resources, and prevent execution if called before execute. Must not wait for the reader.
      */
     void cancel();
 

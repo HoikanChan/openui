@@ -8,7 +8,9 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 
-/** Injectable monotonic clock. The 20-second budget gates second and later incremental repairs only. */
+/**
+ * Injectable monotonic clock. The 20-second budget gates second and later incremental repairs only.
+ */
 public record GenerationTiming(LongSupplier nanoTime, Scheduler scheduler) {
     public static final long BUDGET_NANOS = TimeUnit.SECONDS.toNanos(20);
     private static final ScheduledThreadPoolExecutor TIMER = timer();
@@ -26,15 +28,18 @@ public record GenerationTiming(LongSupplier nanoTime, Scheduler scheduler) {
     }
 
     public static GenerationTiming system() {
-        return new GenerationTiming(System::nanoTime, (action, delay) -> {
-            var task = TIMER.schedule(action, Math.max(0, delay), TimeUnit.NANOSECONDS);
-            return () -> task.cancel(false);
-        });
+        return new GenerationTiming(
+                System::nanoTime,
+                (action, delay) -> {
+                    var task = TIMER.schedule(action, Math.max(0, delay), TimeUnit.NANOSECONDS);
+                    return () -> task.cancel(false);
+                });
     }
 
     private static ScheduledThreadPoolExecutor timer() {
-        var timer = new ScheduledThreadPoolExecutor(1,
-                Thread.ofPlatform().daemon().name("genui-deadline-", 0).factory());
+        var timer =
+                new ScheduledThreadPoolExecutor(
+                        1, Thread.ofPlatform().daemon().name("genui-deadline-", 0).factory());
         timer.setRemoveOnCancelPolicy(true);
         return timer;
     }

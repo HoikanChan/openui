@@ -16,31 +16,29 @@ import java.util.Set;
 /**
  * DSL 校验器的输入。
  *
- * <p>
- * 请使用 {@link #builder()} 构造实例。{@code externalRefs} 集合始终非空且不可变；传入 {@code null} 会得到空集合。 {@code dataModel} 为 {@code null}
- * 表示调用方未提供运行时数据；空 map 是一个具体的空数据模型，两者语义不同。
+ * <p>请使用 {@link #builder()} 构造实例。{@code externalRefs} 集合始终非空且不可变；传入 {@code null} 会得到空集合。 {@code
+ * dataModel} 为 {@code null} 表示调用方未提供运行时数据；空 map 是一个具体的空数据模型，两者语义不同。
  *
- * @param dsl
- *            待校验的 DSL 字符串
- * @param contract
- *            用于校验的合约；{@code null} 表示仅做语法校验
- * @param rootName
- *            预期的根组件名，或 {@code null}
- * @param externalRefs
- *            DSL 中引用的外部类型名集合；不会为 {@code null}
- * @param dataModel
- *            用于校验生成数据路径的具体渲染数据模型；未提供时为 {@code null}
- *
+ * @param dsl 待校验的 DSL 字符串
+ * @param contract 用于校验的合约；{@code null} 表示仅做语法校验
+ * @param rootName 预期的根组件名，或 {@code null}
+ * @param externalRefs DSL 中引用的外部类型名集合；不会为 {@code null}
+ * @param dataModel 用于校验生成数据路径的具体渲染数据模型；未提供时为 {@code null}
  * @since 2026
  */
-public record ValidationRequest(String dsl, GenerationContract contract, String rootName, Set<String> externalRefs,
+public record ValidationRequest(
+        String dsl,
+        GenerationContract contract,
+        String rootName,
+        Set<String> externalRefs,
         Map<String, Object> dataModel) {
 
-    /**
-     * 紧凑构造方法，将 {@code externalRefs} 归一化为不可变集合、{@code dataModel} 归一化为不可变 map。
-     */
+    /** 紧凑构造方法，将 {@code externalRefs} 归一化为不可变集合、{@code dataModel} 归一化为不可变 map。 */
     public ValidationRequest {
-        externalRefs = externalRefs == null ? Set.of() : Collections.unmodifiableSet(new LinkedHashSet<>(externalRefs));
+        externalRefs =
+                externalRefs == null
+                        ? Set.of()
+                        : Collections.unmodifiableSet(new LinkedHashSet<>(externalRefs));
         if (dataModel != null) {
             dataModel = Collections.unmodifiableMap(new LinkedHashMap<>(dataModel));
         }
@@ -71,14 +69,12 @@ public record ValidationRequest(String dsl, GenerationContract contract, String 
 
         private Map<String, Object> dataModel;
 
-        private Builder() {
-        }
+        private Builder() {}
 
         /**
          * 设置待校验的 DSL 字符串。
          *
-         * @param dsl
-         *            DSL 字符串
+         * @param dsl DSL 字符串
          * @return 本构造器，便于链式调用
          */
         public Builder dsl(String dsl) {
@@ -89,8 +85,7 @@ public record ValidationRequest(String dsl, GenerationContract contract, String 
         /**
          * 设置用于校验的合约。
          *
-         * @param contract
-         *            合约，{@code null} 表示仅做语法校验
+         * @param contract 合约，{@code null} 表示仅做语法校验
          * @return 本构造器，便于链式调用
          */
         public Builder contract(GenerationContract contract) {
@@ -101,8 +96,7 @@ public record ValidationRequest(String dsl, GenerationContract contract, String 
         /**
          * 设置预期的根组件名。
          *
-         * @param rootName
-         *            根组件名
+         * @param rootName 根组件名
          * @return 本构造器，便于链式调用
          */
         public Builder rootName(String rootName) {
@@ -113,8 +107,7 @@ public record ValidationRequest(String dsl, GenerationContract contract, String 
         /**
          * 设置 DSL 中引用的外部类型名集合。
          *
-         * @param externalRefs
-         *            外部类型名集合
+         * @param externalRefs 外部类型名集合
          * @return 本构造器，便于链式调用
          */
         public Builder externalRefs(Set<String> externalRefs) {
@@ -125,8 +118,7 @@ public record ValidationRequest(String dsl, GenerationContract contract, String 
         /**
          * 设置用于校验生成数据路径的渲染数据模型。
          *
-         * @param dataModel
-         *            数据模型 map，未提供时为 {@code null}
+         * @param dataModel 数据模型 map，未提供时为 {@code null}
          * @return 本构造器，便于链式调用
          */
         public Builder dataModel(Map<String, Object> dataModel) {

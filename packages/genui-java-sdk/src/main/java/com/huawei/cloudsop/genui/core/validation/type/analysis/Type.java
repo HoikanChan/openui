@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
 
 import java.util.Collections;
@@ -9,10 +13,10 @@ import java.util.Set;
 /**
  * #80 子集的类型代数:不可变值类型,构造即归一化。
  *
- * <p>
- * 身份语义:#77 第 5.1 节。{@link Union} 构造时展平嵌套联合、去重、删除 Never 分支、按结构键排序; {@link Sequence} 对 Never 元素执行两条归一规则——允许零长度时归一为确知空数组
- * {@code Sequence(never, 0, 0)}, 长度下界大于零时没有合法值,归一为 {@link Never}; {@link RecordType} 中 {@link Extra#closed()} 以
- * {@code open(never)} 归一表示。证据与精度损失不进类型身份(它们在 {@link Fact} 上),类型相等可直接用 {@code equals}。
+ * <p>身份语义:#77 第 5.1 节。{@link Union} 构造时展平嵌套联合、去重、删除 Never 分支、按结构键排序; {@link Sequence} 对 Never
+ * 元素执行两条归一规则——允许零长度时归一为确知空数组 {@code Sequence(never, 0, 0)}, 长度下界大于零时没有合法值,归一为 {@link Never}; {@link
+ * RecordType} 中 {@link Extra#closed()} 以 {@code open(never)} 归一表示。证据与精度损失不进类型身份(它们在 {@link Fact}
+ * 上),类型相等可直接用 {@code equals}。
  *
  * @since 2026
  */
@@ -30,7 +34,10 @@ public sealed interface Type {
 
     /** 基础标量种类。 */
     enum ScalarKind {
-        NUMBER("number"), STRING("string"), BOOLEAN("boolean"), NULL("null");
+        NUMBER("number"),
+        STRING("string"),
+        BOOLEAN("boolean"),
+        NULL("null");
 
         private final String displayName;
 
@@ -44,8 +51,7 @@ public sealed interface Type {
     }
 
     /** 基础标量。 */
-    record Scalar(ScalarKind kind) implements Type {
-    }
+    record Scalar(ScalarKind kind) implements Type {}
 
     /** 有限字符串字面值集合(非空;空集合应使用 {@link Never})。 */
     record StringLiterals(Set<String> values) implements Type {
@@ -60,12 +66,9 @@ public sealed interface Type {
     /**
      * 数组类型:元素上界 + 数量区间。
      *
-     * @param element
-     *            元素类型上界;{@link Never} 表示只能为空数组
-     * @param minLength
-     *            长度下界,非负
-     * @param maxLength
-     *            长度上界,非负或 {@link Long#MAX_VALUE} 表示无界
+     * @param element 元素类型上界;{@link Never} 表示只能为空数组
+     * @param minLength 长度下界,非负
+     * @param maxLength 长度上界,非负或 {@link Long#MAX_VALUE} 表示无界
      */
     record Sequence(Type element, long minLength, long maxLength) implements Type {
 
@@ -74,7 +77,8 @@ public sealed interface Type {
 
         public Sequence {
             if (minLength < 0 || maxLength < 0 || minLength > maxLength) {
-                throw new IllegalArgumentException("invalid length interval [" + minLength + ", " + maxLength + "]");
+                throw new IllegalArgumentException(
+                        "invalid length interval [" + minLength + ", " + maxLength + "]");
             }
             if (element instanceof Never && minLength > 0) {
                 throw new IllegalArgumentException(
@@ -89,7 +93,8 @@ public sealed interface Type {
 
     /** 字段存在性:必有 / 可能有。OPTIONAL 表示可能不存在,不是“存在且值为 null”。 */
     enum Presence {
-        REQUIRED, OPTIONAL
+        REQUIRED,
+        OPTIONAL
     }
 
     /** 对象字段:值类型 + 存在性。 */
@@ -110,8 +115,8 @@ public sealed interface Type {
     }
 
     /**
-     * 对象额外字段约束。{@link Extra#closed()} 表示不允许额外字段,等价于额外字段值类型为 {@link Never} 的开放约束;
-     * 显式列出的字段不再受 extra 重复限制。
+     * 对象额外字段约束。{@link Extra#closed()} 表示不允许额外字段,等价于额外字段值类型为 {@link Never} 的开放约束; 显式列出的字段不再受 extra
+     * 重复限制。
      */
     record Extra(Type valueType) {
         public Extra {
@@ -136,8 +141,7 @@ public sealed interface Type {
     /**
      * 结构对象:字段(必有/可能有)+ 额外字段约束。
      *
-     * <p>
-     * 未知字段不从对象中删除——字段保留、类型可为 {@link Unknown};确定缺失与可能缺失由 presence 区分。
+     * <p>未知字段不从对象中删除——字段保留、类型可为 {@link Unknown};确定缺失与可能缺失由 presence 区分。
      */
     record RecordType(Map<String, Field> fields, Extra extra) implements Type {
         public RecordType {
@@ -159,8 +163,7 @@ public sealed interface Type {
     }
 
     /** 组件值(名义)。 */
-    record Component(String name) implements Type {
-    }
+    record Component(String name) implements Type {}
 
     /** 模板值:只描述形状;body 与环境在分析产物中,不进类型身份。 */
     enum Template implements Type {
@@ -173,18 +176,31 @@ public sealed interface Type {
             case Never ignored -> "never";
             case Unknown ignored -> "unknown";
             case Scalar scalar -> scalar.kind().displayName();
-            case StringLiterals literals -> literals.values().stream().sorted().map(v -> "\"" + v + "\"")
-                    .reduce((a, b) -> a + " | " + b).orElse("string");
+            case StringLiterals literals ->
+                    literals.values().stream()
+                            .sorted()
+                            .map(v -> "\"" + v + "\"")
+                            .reduce((a, b) -> a + " | " + b)
+                            .orElse("string");
             case Sequence sequence -> {
-                String cardinality = sequence.minLength() == sequence.maxLength()
-                        ? String.valueOf(sequence.minLength())
-                        : sequence.minLength() + ".."
-                                + (sequence.maxLength() == Sequence.UNBOUNDED ? "*" : sequence.maxLength());
+                String cardinality =
+                        sequence.minLength() == sequence.maxLength()
+                                ? String.valueOf(sequence.minLength())
+                                : sequence.minLength()
+                                        + ".."
+                                        + (sequence.maxLength() == Sequence.UNBOUNDED
+                                                ? "*"
+                                                : sequence.maxLength());
                 yield sequence.element().displayName() + "[" + cardinality + "]";
             }
-            case RecordType record -> record.extra().isClosed() && record.fields().isEmpty() ? "object{}" : "object";
-            case Union union -> union.alternatives().stream().map(Type::displayName).distinct()
-                    .reduce((a, b) -> a + " | " + b).orElse("never");
+            case RecordType record ->
+                    record.extra().isClosed() && record.fields().isEmpty() ? "object{}" : "object";
+            case Union union ->
+                    union.alternatives().stream()
+                            .map(Type::displayName)
+                            .distinct()
+                            .reduce((a, b) -> a + " | " + b)
+                            .orElse("never");
             case Component component -> "Component<" + component.name() + ">";
             case Template ignored -> "template";
         };

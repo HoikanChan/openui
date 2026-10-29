@@ -22,21 +22,20 @@ import java.util.Set;
  * fields  := (ident ":" expr ("," ident ":" expr)*)? ","?
  * </pre>
  *
- * <p>
- * 条件形态仅支持 {@code A when param(n) is array, else B}——按第 n 实参是否为数组分流（FormatDate 的数组映射语义），不开放通用条件系统。
+ * <p>条件形态仅支持 {@code A when param(n) is array, else B}——按第 n 实参是否为数组分流（FormatDate
+ * 的数组映射语义），不开放通用条件系统。
  *
- * <p>
- * 文法之外的构造（未知 token、括号不配对、非递归下降可接受的形状）在解析期抛出 {@link GenerationSdkException}，错误信息带条目名与原始串——契约加载期 fail-fast 的基础。
+ * <p>文法之外的构造（未知 token、括号不配对、非递归下降可接受的形状）在解析期抛出 {@link GenerationSdkException}，错误信息带条目名与原始串——契约加载期
+ * fail-fast 的基础。
  *
  * @since 2026
  */
 public final class TypeExprParser {
 
-    private static final Set<String> BASE_TYPES = Set.of("any", "number", "string", "boolean", "null", "object",
-            "array");
+    private static final Set<String> BASE_TYPES =
+            Set.of("any", "number", "string", "boolean", "null", "object", "array");
 
-    private TypeExprParser() {
-    }
+    private TypeExprParser() {}
 
     /** 解析 {@code source} 为 {@link TypeExpr}；{@code entry} 仅用于错误信息定位。 */
     public static TypeExpr parse(String source, String entry) {
@@ -69,8 +68,8 @@ public final class TypeExprParser {
                     i++;
                     continue;
                 }
-                if (c == '|' || c == '[' || c == ']' || c == '{' || c == '}' || c == ',' || c == ':' || c == '<'
-                        || c == '>' || c == '(' || c == ')') {
+                if (c == '|' || c == '[' || c == ']' || c == '{' || c == '}' || c == ',' || c == ':'
+                        || c == '<' || c == '>' || c == '(' || c == ')') {
                     tokens.add(String.valueOf(c));
                     i++;
                     continue;
@@ -98,7 +97,13 @@ public final class TypeExprParser {
 
         GenerationSdkException error(String message) {
             return new GenerationSdkException(
-                    "Invalid type expression in builtin '" + entry + "': " + message + " (source: \"" + source + "\")");
+                    "Invalid type expression in builtin '"
+                            + entry
+                            + "': "
+                            + message
+                            + " (source: \""
+                            + source
+                            + "\")");
         }
     }
 
@@ -161,18 +166,18 @@ public final class TypeExprParser {
         private TypeExpr parseFactor() {
             String token = next();
             switch (token) {
-                case "Record" :
+                case "Record":
                     expect("<");
                     expect("string");
                     expect(",");
                     TypeExpr value = parseExpr();
                     expect(">");
                     return new TypeExpr.RecordOf(value);
-                case "{" :
+                case "{":
                     return parseObjectLiteral();
-                case "T" :
+                case "T":
                     return new TypeExpr.TypeVar();
-                case "param" :
+                case "param":
                     expect("(");
                     String digits = next();
                     int index;
@@ -183,7 +188,7 @@ public final class TypeExprParser {
                     }
                     expect(")");
                     return new TypeExpr.ParamRef(index);
-                default :
+                default:
                     if (BASE_TYPES.contains(token)) {
                         return new TypeExpr.Base(token);
                     }
@@ -254,7 +259,13 @@ public final class TypeExprParser {
 
         GenerationSdkException error(String message) {
             return new GenerationSdkException(
-                    "Invalid type expression in builtin '" + entry + "': " + message + " (source: \"" + source + "\")");
+                    "Invalid type expression in builtin '"
+                            + entry
+                            + "': "
+                            + message
+                            + " (source: \""
+                            + source
+                            + "\")");
         }
     }
 }

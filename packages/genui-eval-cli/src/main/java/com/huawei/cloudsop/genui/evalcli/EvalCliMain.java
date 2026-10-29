@@ -27,8 +27,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Eval Generation CLI:无状态计算器。用例清单进(--jobs JSON),生成的 openui-lang 逐行出(stdout JSONL); 所有文件簿记(快照、run 清单、prompt 存档)由 Node
- * 侧负责。用法:
+ * Eval Generation CLI:无状态计算器。用例清单进(--jobs JSON),生成的 openui-lang 逐行出(stdout JSONL); 所有文件簿记(快照、run
+ * 清单、prompt 存档)由 Node 侧负责。用法:
  *
  * <pre>
  *   java -jar genui-eval-cli.jar generate --base-contract=&lt;path&gt; --jobs=&lt;path&gt; [--concurrency=6]
@@ -41,18 +41,20 @@ public final class EvalCliMain {
     /** 与 Node 侧 prompt-artifact 约定一致的规范 prompt 占位 dataModel。 */
     static final String PLACEHOLDER_KEY = "__EVAL_DATA_MODEL_PLACEHOLDER__";
 
-    static final String PLACEHOLDER_VALUE = "Fixture data is recorded in report-data.json entries[].dataModel";
+    static final String PLACEHOLDER_VALUE =
+            "Fixture data is recorded in report-data.json entries[].dataModel";
 
     private static final int DEFAULT_CONCURRENCY = 6;
 
     private static final int EXIT_USAGE = 2;
 
-    private EvalCliMain() {
-    }
+    private EvalCliMain() {}
 
     public static void main(String[] args) {
         // stdout 承载 prompt/DSL 内容,必须无条件 UTF-8,不随平台控制台编码漂移
-        PrintStream out = new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
+        PrintStream out =
+                new PrintStream(
+                        new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
         try {
             run(args, out, System.getenv());
         } catch (CliUsageException error) {
@@ -78,31 +80,44 @@ public final class EvalCliMain {
         LinkedHashMap<String, Object> placeholder = new LinkedHashMap<>();
         placeholder.put(PLACEHOLDER_KEY, PLACEHOLDER_VALUE);
         // 与 GenUiGenerator.toPromptRequest 相同的 DataModelSpec 描述,保证存档与实际发送字节一致
-        GenUIPromptRequest request = new GenUIPromptRequest(null, new DataModelSpec("Response data", placeholder),
-                List.of(), null, null, null, null);
+        GenUIPromptRequest request =
+                new GenUIPromptRequest(
+                        null,
+                        new DataModelSpec("Response data", placeholder),
+                        List.of(),
+                        null,
+                        null,
+                        null,
+                        null);
         return sdk.assemblePrompt(request).prompt();
     }
 
-    private static void generate(CliArgs cli, GenerationSdk sdk, PrintStream out, Map<String, String> env)
+    private static void generate(
+            CliArgs cli, GenerationSdk sdk, PrintStream out, Map<String, String> env)
             throws Exception {
         String model = env.get("LLM_MODEL");
         if (model == null || model.isBlank()) {
             throw new CliUsageException("LLM_MODEL is not set");
         }
-        OpenAiCompatibleLlmTransport transport = new OpenAiCompatibleLlmTransport(env.get("LLM_BASE_URL"),
-                env.get("LLM_API_KEY"), env.get("HTTPS_PROXY"));
+        OpenAiCompatibleLlmTransport transport =
+                new OpenAiCompatibleLlmTransport(
+                        env.get("LLM_BASE_URL"), env.get("LLM_API_KEY"), env.get("HTTPS_PROXY"));
         GenUiLlmConfig config = GenUiLlmConfig.builder().defaultModel(model).temperature(0).build();
-        // Eval regen records the model's raw DSL (including invalid output); it must not spend the 20s budget on
-        // validation/repair, and a Markdown fallback must still be reported as a failure by JobRunner.
-        GenUiGenerator generator = GenUiGenerator.withTransport(sdk, config, transport,
-                GenUiValidationConfig.disabled(), null);
+        // Eval regen records the model's raw DSL (including invalid output); it must not spend the
+        // 20s budget on
+        // validation/repair, and a Markdown fallback must still be reported as a failure by
+        // JobRunner.
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(
+                        sdk, config, transport, GenUiValidationConfig.disabled(), null);
 
         List<GenerationJob> jobs = GenerationJob.parseAll(readFile(cli.jobsPath(), "jobs"));
         JobRunner.runAll(jobs, cli.concurrency(), generator, out);
     }
 
     private static GenerationSdk loadSdk(String baseContractPath) {
-        GenerationContract contract = GenerationContractLoader.fromJson(readFile(baseContractPath, "base contract"));
+        GenerationContract contract =
+                GenerationContractLoader.fromJson(readFile(baseContractPath, "base contract"));
         return GenerationSdk.builder().baseContract(contract).build();
     }
 
@@ -110,7 +125,8 @@ public final class EvalCliMain {
         try {
             return Files.readString(Path.of(path), StandardCharsets.UTF_8);
         } catch (Exception error) {
-            throw new CliUsageException("Cannot read " + label + " file: " + path + " (" + error.getMessage() + ")");
+            throw new CliUsageException(
+                    "Cannot read " + label + " file: " + path + " (" + error.getMessage() + ")");
         }
     }
 
@@ -118,8 +134,9 @@ public final class EvalCliMain {
     record CliArgs(String command, String baseContractPath, String jobsPath, int concurrency) {
         static CliArgs parse(String[] args) {
             if (args == null || args.length == 0) {
-                throw new CliUsageException("Usage: generate --base-contract=<path> --jobs=<path> [--concurrency=N] | "
-                        + "print-prompt --base-contract=<path>");
+                throw new CliUsageException(
+                        "Usage: generate --base-contract=<path> --jobs=<path> [--concurrency=N] | "
+                                + "print-prompt --base-contract=<path>");
             }
             String command = normalizeCommand(args[0]);
             String baseContract = null;
@@ -172,24 +189,36 @@ public final class EvalCliMain {
         @SuppressWarnings("unchecked")
         static List<GenerationJob> parseAll(String jobsJson) {
             List<Object> entries = Json.asList(Json.parse(jobsJson), "jobs");
-            return entries.stream().map(entry -> {
-                Map<String, Object> map = Json.asObject(entry, "job");
-                String id = String.valueOf(map.get("id"));
-                if (map.get("id") == null || id.isBlank()) {
-                    throw new CliUsageException("Job entry is missing required field: id");
-                }
-                String userInput = map.get("userInput") == null ? "" : String.valueOf(map.get("userInput"));
-                Object rawModel = map.get("dataModel");
-                Map<String, Object> dataModel = rawModel == null
-                        ? Map.of()
-                        : (Map<String, Object>) Json.asObject(rawModel, "dataModel");
-                return new GenerationJob(id, userInput, dataModel);
-            }).toList();
+            return entries.stream()
+                    .map(
+                            entry -> {
+                                Map<String, Object> map = Json.asObject(entry, "job");
+                                String id = String.valueOf(map.get("id"));
+                                if (map.get("id") == null || id.isBlank()) {
+                                    throw new CliUsageException(
+                                            "Job entry is missing required field: id");
+                                }
+                                String userInput =
+                                        map.get("userInput") == null
+                                                ? ""
+                                                : String.valueOf(map.get("userInput"));
+                                Object rawModel = map.get("dataModel");
+                                Map<String, Object> dataModel =
+                                        rawModel == null
+                                                ? Map.of()
+                                                : (Map<String, Object>)
+                                                        Json.asObject(rawModel, "dataModel");
+                                return new GenerationJob(id, userInput, dataModel);
+                            })
+                    .toList();
         }
 
         static GenUiGenerationResult execute(GenerationJob job, GenUiGenerator generator) {
-            return generator.generate(UiGenerationRequest.builder().userInput(job.userInput())
-                    .response(new LinkedHashMap<>(job.dataModel())).build());
+            return generator.generate(
+                    UiGenerationRequest.builder()
+                            .userInput(job.userInput())
+                            .response(new LinkedHashMap<>(job.dataModel()))
+                            .build());
         }
     }
 

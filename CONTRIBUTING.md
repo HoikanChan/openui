@@ -44,4 +44,8 @@ mvn -f packages/genui-java-sdk/pom.xml spotbugs:check
 
 `mvn verify` 会依次执行全部检查，任一违规即失败。`packages/genui-eval-cli` 同理替换 `-f` 路径。
 
+CI：PR 和 main 推送会触发 `.github/workflows/java-lint.yml`，对两个 Java 模块执行
+`mvn -B -DskipTests verify`（即上述三项检查）。豁免项集中在 `config/checkstyle/suppressions.xml`
+（按行）与 `config/spotbugs/spotbugs-exclude.xml`（按类/方法），新增豁免需写明理由。
+
 IDE 一致性：IntelliJ IDEA 装 google-java-format 插件并选 AOSP 风格，保存即与 `fmt` 结果一致。

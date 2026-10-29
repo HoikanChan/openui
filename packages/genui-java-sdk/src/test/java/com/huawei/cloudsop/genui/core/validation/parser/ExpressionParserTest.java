@@ -146,7 +146,8 @@ class ExpressionParserTest {
 
     @Test
     void atBuiltinCallIsComp() {
-        AstNode.Comp comp = assertInstanceOf(AstNode.Comp.class, parse("@Render(\"v\", TextContent(v))"));
+        AstNode.Comp comp =
+                assertInstanceOf(AstNode.Comp.class, parse("@Render(\"v\", TextContent(v))"));
         assertEquals("Render", comp.name());
         assertEquals(2, comp.args().size());
     }
@@ -184,7 +185,8 @@ class ExpressionParserTest {
     void unclosedParenReportsDiagnostic() {
         ExpressionParser p = new ExpressionParser(OpenuiLexer.tokenize("(a + b"));
         p.parse();
-        assertTrue(p.diagnostics().stream().anyMatch(d -> d.code() == ParseErrorCode.UNCLOSED_BRACKET),
+        assertTrue(
+                p.diagnostics().stream().anyMatch(d -> d.code() == ParseErrorCode.UNCLOSED_BRACKET),
                 "expected an UNCLOSED_BRACKET diagnostic");
     }
 }

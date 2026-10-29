@@ -9,10 +9,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class OpenuiCodeExtractor {
-    private static final Pattern CODE_BLOCK = Pattern.compile("```([^\\r\\n`]*)\\R?(.*?)```", Pattern.DOTALL);
+    private static final Pattern CODE_BLOCK =
+            Pattern.compile("```([^\\r\\n`]*)\\R?(.*?)```", Pattern.DOTALL);
 
-    private OpenuiCodeExtractor() {
-    }
+    private OpenuiCodeExtractor() {}
 
     public static String extract(String raw) {
         if (raw == null || raw.isBlank()) {
@@ -37,7 +37,9 @@ public final class OpenuiCodeExtractor {
         Matcher matcher = CODE_BLOCK.matcher(raw);
         while (matcher.find()) {
             String language = matcher.group(1).trim().toLowerCase(Locale.ROOT);
-            if (language.equals("openui") || language.equals("openui-lang") || language.equals("text")) {
+            if (language.equals("openui")
+                    || language.equals("openui-lang")
+                    || language.equals("text")) {
                 return matcher.group(2).trim();
             }
         }

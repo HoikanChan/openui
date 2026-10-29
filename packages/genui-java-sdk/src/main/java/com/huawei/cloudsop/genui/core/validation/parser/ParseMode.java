@@ -7,9 +7,8 @@ package com.huawei.cloudsop.genui.core.validation.parser;
 /**
  * 预处理器/解析器的解析模式。
  *
- * <p>
- * 对应 TS 侧一次性 {@code parse()}（完整输入）与流式解析器之间的区别：{@link #STREAMING} 会自动闭合未闭合的括号/字符串， 使部分输入也能解析；而 {@link #FINAL}
- * 保持文本原样（未闭合结构会作为诊断信息暴露）。
+ * <p>对应 TS 侧一次性 {@code parse()}（完整输入）与流式解析器之间的区别：{@link #STREAMING} 会自动闭合未闭合的括号/字符串， 使部分输入也能解析；而
+ * {@link #FINAL} 保持文本原样（未闭合结构会作为诊断信息暴露）。
  *
  * @since 2026
  */

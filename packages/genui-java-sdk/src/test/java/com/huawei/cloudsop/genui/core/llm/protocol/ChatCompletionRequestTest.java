@@ -19,8 +19,14 @@ import java.util.Map;
 class ChatCompletionRequestTest {
     @Test
     void synchronousBodyUsesDefaultsWithoutJsonObjectResponse() {
-        Map<String, Object> body = body(ChatCompletionRequest
-                .of(GenUiLlmConfig.defaults(), "", List.of(ChatMessage.user("hello")), false).toJson());
+        Map<String, Object> body =
+                body(
+                        ChatCompletionRequest.of(
+                                        GenUiLlmConfig.defaults(),
+                                        "",
+                                        List.of(ChatMessage.user("hello")),
+                                        false)
+                                .toJson());
 
         assertEquals(GenUiLlmConfig.DEFAULT_MODEL, body.get("model"));
         assertEquals(false, body.get("stream"));
@@ -31,16 +37,30 @@ class ChatCompletionRequestTest {
 
     @Test
     void streamingBodySetsStreamTrue() {
-        Map<String, Object> body = body(ChatCompletionRequest
-                .of(GenUiLlmConfig.defaults(), null, List.of(ChatMessage.user("hello")), true).toJson());
+        Map<String, Object> body =
+                body(
+                        ChatCompletionRequest.of(
+                                        GenUiLlmConfig.defaults(),
+                                        null,
+                                        List.of(ChatMessage.user("hello")),
+                                        true)
+                                .toJson());
 
         assertEquals(true, body.get("stream"));
     }
 
     @Test
     void serializesMultipleMessagesWithRolesInOrder() {
-        Map<String, Object> body = body(ChatCompletionRequest.of(GenUiLlmConfig.defaults(), "model-a",
-                List.of(ChatMessage.system("sys"), ChatMessage.user("user")), false).toJson());
+        Map<String, Object> body =
+                body(
+                        ChatCompletionRequest.of(
+                                        GenUiLlmConfig.defaults(),
+                                        "model-a",
+                                        List.of(
+                                                ChatMessage.system("sys"),
+                                                ChatMessage.user("user")),
+                                        false)
+                                .toJson());
 
         List<Object> messages = Json.asList(body.get("messages"), "messages");
         assertEquals("system", Json.asObject(messages.get(0), "message").get("role"));
@@ -51,9 +71,11 @@ class ChatCompletionRequestTest {
 
     @Test
     void customTemperatureAndDisabledJsonObjectResponseAreReflected() {
-        GenUiLlmConfig config = GenUiLlmConfig.builder().temperature(0.3).jsonObjectResponse(false).build();
+        GenUiLlmConfig config =
+                GenUiLlmConfig.builder().temperature(0.3).jsonObjectResponse(false).build();
 
-        Map<String, Object> body = body(ChatCompletionRequest.of(config, "model-a", List.of(), false).toJson());
+        Map<String, Object> body =
+                body(ChatCompletionRequest.of(config, "model-a", List.of(), false).toJson());
 
         assertEquals(0.3, body.get("temperature"));
         assertFalse(body.containsKey("response_format"));
@@ -63,15 +85,21 @@ class ChatCompletionRequestTest {
     void enabledJsonObjectResponseIsReflected() {
         GenUiLlmConfig config = GenUiLlmConfig.builder().jsonObjectResponse(true).build();
 
-        Map<String, Object> body = body(ChatCompletionRequest.of(config, "model-a", List.of(), false).toJson());
+        Map<String, Object> body =
+                body(ChatCompletionRequest.of(config, "model-a", List.of(), false).toJson());
 
-        assertEquals("json_object", Json.asObject(body.get("response_format"), "response_format").get("type"));
+        assertEquals(
+                "json_object",
+                Json.asObject(body.get("response_format"), "response_format").get("type"));
     }
 
     @Test
     void customModelIsNotReplaced() {
-        Map<String, Object> body = body(
-                ChatCompletionRequest.of(GenUiLlmConfig.defaults(), "model-b", List.of(), false).toJson());
+        Map<String, Object> body =
+                body(
+                        ChatCompletionRequest.of(
+                                        GenUiLlmConfig.defaults(), "model-b", List.of(), false)
+                                .toJson());
 
         assertEquals("model-b", body.get("model"));
     }

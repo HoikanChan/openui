@@ -20,8 +20,13 @@ public final class ChatCompletionRequest {
     private final boolean enableThinking;
     private final boolean jsonObjectResponse;
 
-    private ChatCompletionRequest(String model, List<ChatMessage> messages, boolean stream, double temperature,
-            boolean enableThinking, boolean jsonObjectResponse) {
+    private ChatCompletionRequest(
+            String model,
+            List<ChatMessage> messages,
+            boolean stream,
+            double temperature,
+            boolean enableThinking,
+            boolean jsonObjectResponse) {
         this.model = model;
         this.messages = List.copyOf(messages == null ? List.of() : messages);
         this.stream = stream;
@@ -30,12 +35,18 @@ public final class ChatCompletionRequest {
         this.jsonObjectResponse = jsonObjectResponse;
     }
 
-    public static ChatCompletionRequest of(GenUiLlmConfig config, String model, List<ChatMessage> messages,
-            boolean stream) {
+    public static ChatCompletionRequest of(
+            GenUiLlmConfig config, String model, List<ChatMessage> messages, boolean stream) {
         GenUiLlmConfig effectiveConfig = config == null ? GenUiLlmConfig.defaults() : config;
-        String effectiveModel = model == null || model.isBlank() ? effectiveConfig.defaultModel() : model;
-        return new ChatCompletionRequest(effectiveModel, messages, stream, effectiveConfig.temperature(),
-                effectiveConfig.enableThinking(), effectiveConfig.jsonObjectResponse());
+        String effectiveModel =
+                model == null || model.isBlank() ? effectiveConfig.defaultModel() : model;
+        return new ChatCompletionRequest(
+                effectiveModel,
+                messages,
+                stream,
+                effectiveConfig.temperature(),
+                effectiveConfig.enableThinking(),
+                effectiveConfig.jsonObjectResponse());
     }
 
     public String toJson() {

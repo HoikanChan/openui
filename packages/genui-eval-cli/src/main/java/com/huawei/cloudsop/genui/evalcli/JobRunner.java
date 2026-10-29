@@ -16,25 +16,31 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-/**
- * 有界线程池批量执行生成用例,按完成顺序向 stdout 逐行输出 JSONL。单用例失败输出 error 行、批次继续; 整批跑完即正常返回(exit 0),基础设施失败由调用方抛出。
- */
+/** 有界线程池批量执行生成用例,按完成顺序向 stdout 逐行输出 JSONL。单用例失败输出 error 行、批次继续; 整批跑完即正常返回(exit 0),基础设施失败由调用方抛出。 */
 final class JobRunner {
-    private JobRunner() {
-    }
+    private JobRunner() {}
 
-    static void runAll(List<EvalCliMain.GenerationJob> jobs, int concurrency, GenUiGenerator generator, PrintStream out)
+    static void runAll(
+            List<EvalCliMain.GenerationJob> jobs,
+            int concurrency,
+            GenUiGenerator generator,
+            PrintStream out)
             throws InterruptedException {
-        ExecutorService pool = Executors.newFixedThreadPool(Math.min(concurrency, Math.max(jobs.size(), 1)));
+        ExecutorService pool =
+                Executors.newFixedThreadPool(Math.min(concurrency, Math.max(jobs.size(), 1)));
         try {
-            List<Future<?>> futures = jobs.stream().map(job -> pool.submit(() -> runOne(job, generator, out)))
-                    .<Future<?>>map(f -> f).toList();
+            List<Future<?>> futures =
+                    jobs.stream()
+                            .map(job -> pool.submit(() -> runOne(job, generator, out)))
+                            .<Future<?>>map(f -> f)
+                            .toList();
             for (Future<?> future : futures) {
                 try {
                     future.get();
                 } catch (java.util.concurrent.ExecutionException error) {
                     // runOne 已把用例级异常转为 error 行;走到这里属于意外,记录后继续等其余用例
-                    System.err.println("[genui-eval-cli] unexpected worker failure: " + error.getCause());
+                    System.err.println(
+                            "[genui-eval-cli] unexpected worker failure: " + error.getCause());
                 }
             }
         } finally {
@@ -42,7 +48,8 @@ final class JobRunner {
         }
     }
 
-    private static void runOne(EvalCliMain.GenerationJob job, GenUiGenerator generator, PrintStream out) {
+    private static void runOne(
+            EvalCliMain.GenerationJob job, GenUiGenerator generator, PrintStream out) {
         LinkedHashMap<String, Object> line = new LinkedHashMap<>();
         line.put("id", job.id());
         try {
@@ -67,9 +74,10 @@ final class JobRunner {
     }
 
     /**
-     * A Markdown fallback also fills {@code result.dsl()} with the whole-page Markdown wrapper. Only a DSL session that
-     * finished successfully may be reported as {@code ok}: validation passed, or validation was explicitly disabled
-     * (nothing was checked). TIMEOUT / MODEL_REQUEST_FAILED / VALIDATION_FAILED keep their reason.
+     * A Markdown fallback also fills {@code result.dsl()} with the whole-page Markdown wrapper.
+     * Only a DSL session that finished successfully may be reported as {@code ok}: validation
+     * passed, or validation was explicitly disabled (nothing was checked). TIMEOUT /
+     * MODEL_REQUEST_FAILED / VALIDATION_FAILED keep their reason.
      */
     static String dslFailure(GenUiGenerationResult result) {
         GenerationEndReason reason = result.endReason();

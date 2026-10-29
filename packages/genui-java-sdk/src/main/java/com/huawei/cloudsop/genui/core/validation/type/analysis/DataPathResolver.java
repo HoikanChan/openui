@@ -20,8 +20,8 @@ import java.util.Set;
 /**
  * 单次快照内、按需遍历一条生成路径的观察器。
  *
- * <p>
- * 只读 Render Data Model:逐段记录字段存在性,最后把观察到的值提升为类型内核的 {@link Type}。这是类型阶段 访问数据的唯一生产路径——没有并行的值类型代数或翻译层。
+ * <p>只读 Render Data Model:逐段记录字段存在性,最后把观察到的值提升为类型内核的 {@link Type}。这是类型阶段
+ * 访问数据的唯一生产路径——没有并行的值类型代数或翻译层。
  *
  * @since 2026
  */
@@ -54,7 +54,10 @@ public final class DataPathResolver {
         return new DataPathResolution.Resolved(path.source(), type, evidence, observedValue);
     }
 
-    /** Return a proven array cardinality for a literal data path, or empty when traversal is uncertain. */
+    /**
+     * Return a proven array cardinality for a literal data path, or empty when traversal is
+     * uncertain.
+     */
     public OptionalInt resolveCardinality(Map<String, Object> dataModel, DataPath path) {
         Object current = dataModel;
         for (Segment segment : path.segments()) {
@@ -99,20 +102,30 @@ public final class DataPathResolver {
         for (Object value : current) {
             if (segment instanceof Key key && value instanceof List<?> list) {
                 if ("length".equals(key.name())) {
-                    return Step.failure(new DataPathResolution.InvalidTraversal(path, "array",
-                            "Use @Count(" + path.substring(0, path.length() - ".length".length()) + ") instead."));
+                    return Step.failure(
+                            new DataPathResolution.InvalidTraversal(
+                                    path,
+                                    "array",
+                                    "Use @Count("
+                                            + path.substring(0, path.length() - ".length".length())
+                                            + ") instead."));
                 }
                 if (list.isEmpty()) {
-                    return Step.failure(new DataPathResolution.Unprovable(path,
-                            "The empty array does not prove member type; use existing data or avoid the member "
-                                    + "traversal."));
+                    return Step.failure(
+                            new DataPathResolution.Unprovable(
+                                    path,
+                                    "The empty array does not prove member type; use existing data or avoid the member "
+                                            + "traversal."));
                 }
                 plucked = true;
                 for (Object item : list) {
                     total++;
                     if (!(item instanceof Map<?, ?> map)) {
-                        return Step.failure(new DataPathResolution.InvalidTraversal(path, coarseTypeName(item),
-                                "Member access requires an object array."));
+                        return Step.failure(
+                                new DataPathResolution.InvalidTraversal(
+                                        path,
+                                        coarseTypeName(item),
+                                        "Member access requires an object array."));
                     }
                     if (!map.containsKey(key.name())) {
                         missing++;
@@ -162,13 +175,18 @@ public final class DataPathResolver {
                 }
                 continue;
             }
-            return Step.failure(new DataPathResolution.InvalidTraversal(path, coarseTypeName(value),
-                    "Member access requires an object or array."));
+            return Step.failure(
+                    new DataPathResolution.InvalidTraversal(
+                            path,
+                            coarseTypeName(value),
+                            "Member access requires an object or array."));
         }
 
         if (next.isEmpty()) {
             // null 值已作为投影结果保留(next 非空),走到这里说明该步完全没有可取值。
-            return Step.failure(new DataPathResolution.Missing(path, "Use a path present in the Render Data Model."));
+            return Step.failure(
+                    new DataPathResolution.Missing(
+                            path, "Use a path present in the Render Data Model."));
         }
         return new Step(next, new Evidence(present, missing, nulls, total, plucked), plucked, null);
     }
@@ -208,7 +226,9 @@ public final class DataPathResolver {
         if (value instanceof Map<?, ?> map) {
             Map<String, Type.Field> fields = new LinkedHashMap<>();
             for (Map.Entry<?, ?> entry : map.entrySet()) {
-                fields.put(String.valueOf(entry.getKey()), Type.Field.required(inferValue(entry.getValue())));
+                fields.put(
+                        String.valueOf(entry.getKey()),
+                        Type.Field.required(inferValue(entry.getValue())));
             }
             return Types.record(fields, Type.Extra.closed());
         }
@@ -238,7 +258,8 @@ public final class DataPathResolver {
         return "unknown";
     }
 
-    private record Step(List<Object> values, Evidence evidence, boolean plucked, DataPathResolution failure) {
+    private record Step(
+            List<Object> values, Evidence evidence, boolean plucked, DataPathResolution failure) {
         static Step failure(DataPathResolution failure) {
             return new Step(List.of(), new Evidence(0, 0, 0, 0, false), false, failure);
         }

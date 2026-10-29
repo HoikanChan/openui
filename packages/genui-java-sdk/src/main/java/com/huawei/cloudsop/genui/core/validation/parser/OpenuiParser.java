@@ -10,26 +10,23 @@ import java.util.List;
 /**
  * 顶层编排器：预处理 → 分词 → 切分 → 解析 → 分类 → {@link Program}。
  *
- * <p>
- * 对应 {@code packages/lang-core/src/parser/parser.ts} 中直到语法层（语句分类）为止的流水线，在 schema 物化 之前停止（后续章节负责语义层）。语句分类遵循
- * {@code classifyStatement}：{@code Query(...)} / {@code Mutation(...)} 会在 {@code $var} 状态判断<em>之前</em>被检测，其次是
- * {@code $var} → 状态，其余情况 为取值声明。
+ * <p>对应 {@code packages/lang-core/src/parser/parser.ts} 中直到语法层（语句分类）为止的流水线，在 schema 物化
+ * 之前停止（后续章节负责语义层）。语句分类遵循 {@code classifyStatement}：{@code Query(...)} / {@code Mutation(...)} 会在
+ * {@code $var} 状态判断<em>之前</em>被检测，其次是 {@code $var} → 状态，其余情况 为取值声明。
  *
- * <p>
- * 每个阶段的语法问题都会作为 {@link ParseDiagnostic} 收集到 {@link Program} 上；不会抛出异常。格式错误的语句会 降级为一条诊断信息并被跳过，使后续语句仍可继续解析。
+ * <p>每个阶段的语法问题都会作为 {@link ParseDiagnostic} 收集到 {@link Program} 上；不会抛出异常。格式错误的语句会
+ * 降级为一条诊断信息并被跳过，使后续语句仍可继续解析。
  *
  * @since 2026
  */
 public final class OpenuiParser {
 
-    private OpenuiParser() {
-    }
+    private OpenuiParser() {}
 
     /**
      * 解析完整（非流式）输入。未闭合的结构会作为诊断信息暴露。
      *
-     * @param input
-     *            待解析的源字符串
+     * @param input 待解析的源字符串
      * @return 解析得到的程序
      */
     public static Program parse(String input) {
@@ -39,10 +36,8 @@ public final class OpenuiParser {
     /**
      * 按指定的 {@link ParseMode} 解析输入。
      *
-     * @param input
-     *            待解析的源字符串
-     * @param mode
-     *            解析模式
+     * @param input 待解析的源字符串
+     * @param mode 解析模式
      * @return 解析得到的程序
      */
     public static Program parse(String input, ParseMode mode) {
@@ -52,12 +47,9 @@ public final class OpenuiParser {
     /**
      * 按指定的 {@link ParseMode} 与 {@link BuiltinCatalog} 解析输入。
      *
-     * @param input
-     *            待解析的源字符串
-     * @param mode
-     *            解析模式
-     * @param builtins
-     *            当前契约派生的 builtin 词表
+     * @param input 待解析的源字符串
+     * @param mode 解析模式
+     * @param builtins 当前契约派生的 builtin 词表
      * @return 解析得到的程序
      */
     public static Program parse(String input, ParseMode mode, BuiltinCatalog builtins) {
@@ -65,7 +57,8 @@ public final class OpenuiParser {
     }
 
     public static Program parse(OpenuiPreprocessor.Result pre, BuiltinCatalog builtins) {
-        BuiltinCatalog effectiveBuiltins = builtins == null ? BuiltinCatalog.getDefault() : builtins;
+        BuiltinCatalog effectiveBuiltins =
+                builtins == null ? BuiltinCatalog.getDefault() : builtins;
         List<ParseDiagnostic> diagnostics = new ArrayList<>();
         List<Statement> statements = new ArrayList<>();
 
@@ -78,7 +71,8 @@ public final class OpenuiParser {
         diagnostics.addAll(split.diagnostics());
 
         for (StatementSplitter.RawStmt raw : split.statements()) {
-            ExpressionParser exprParser = new ExpressionParser(raw.tokens(), raw.id(), effectiveBuiltins);
+            ExpressionParser exprParser =
+                    new ExpressionParser(raw.tokens(), raw.id(), effectiveBuiltins);
             AstNode expr = exprParser.parse();
             diagnostics.addAll(exprParser.diagnostics());
             statements.add(classify(raw, expr));

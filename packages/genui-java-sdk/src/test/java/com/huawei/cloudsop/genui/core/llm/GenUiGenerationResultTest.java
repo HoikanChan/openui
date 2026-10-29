@@ -44,17 +44,23 @@ class GenUiGenerationResultTest {
     void twoArgConstructorLeavesValidationFieldsNull() {
         GenUiGenerationResult result = new GenUiGenerationResult("root = Stack([])", Map.of());
 
-        assertNull(result.validationStatus(), "backward-compatible ctor must default validationStatus to null");
-        assertNull(result.validationResult(), "backward-compatible ctor must default validationResult to null");
+        assertNull(
+                result.validationStatus(),
+                "backward-compatible ctor must default validationStatus to null");
+        assertNull(
+                result.validationResult(),
+                "backward-compatible ctor must default validationResult to null");
     }
 
     @Test
     void canonicalConstructorCarriesValidationStatusAndResult() {
-        ValidationResult validationResult = ValidationResult.valid("root = Stack([])", List.of(),
-                new ValidationMetadata(1, "root", null));
+        ValidationResult validationResult =
+                ValidationResult.valid(
+                        "root = Stack([])", List.of(), new ValidationMetadata(1, "root", null));
 
-        GenUiGenerationResult result = new GenUiGenerationResult("root = Stack([])", Map.of(), ValidationStatus.VALID,
-                validationResult);
+        GenUiGenerationResult result =
+                new GenUiGenerationResult(
+                        "root = Stack([])", Map.of(), ValidationStatus.VALID, validationResult);
 
         assertEquals(ValidationStatus.VALID, result.validationStatus());
         assertEquals(validationResult, result.validationResult());

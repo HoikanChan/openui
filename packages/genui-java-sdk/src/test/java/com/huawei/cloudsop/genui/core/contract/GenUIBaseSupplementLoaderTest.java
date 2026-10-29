@@ -18,7 +18,9 @@ import java.util.Map;
 class GenUIBaseSupplementLoaderTest {
     @Test
     void parsesLegalSupplementWithBothComponentForms() {
-        GenUIBaseSupplement supplement = GenUIBaseSupplementLoader.fromJson("""
+        GenUIBaseSupplement supplement =
+                GenUIBaseSupplementLoader.fromJson(
+                        """
                 {
                   "supplementVersion": "supp-v1",
                   "components": {
@@ -50,10 +52,14 @@ class GenUIBaseSupplementLoaderTest {
                 }
                 """);
 
-        assertEquals(List.of("TopoChart", "LegacyBadge"), List.copyOf(supplement.components().keySet()));
+        assertEquals(
+                List.of("TopoChart", "LegacyBadge"), List.copyOf(supplement.components().keySet()));
         assertEquals("Topology chart.", supplement.components().get("TopoChart").description());
-        assertTrue(supplement.components().get("TopoChart").propsSchema().containsKey("properties"));
-        assertEquals("LegacyBadge(label: string)", supplement.components().get("LegacyBadge").signature());
+        assertTrue(
+                supplement.components().get("TopoChart").propsSchema().containsKey("properties"));
+        assertEquals(
+                "LegacyBadge(label: string)",
+                supplement.components().get("LegacyBadge").signature());
         assertEquals(1, supplement.componentGroups().size());
         assertEquals("Charts", supplement.componentGroups().get(0).name());
         assertEquals(List.of("TopoChart"), supplement.componentGroups().get(0).components());
@@ -78,8 +84,12 @@ class GenUIBaseSupplementLoaderTest {
 
     @Test
     void rejectsBaseOnlyTopLevelKeysAndListsAllOfThem() {
-        GenerationSdkException error = assertThrows(GenerationSdkException.class,
-                () -> GenUIBaseSupplementLoader.fromJson("""
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                GenUIBaseSupplementLoader.fromJson(
+                                        """
                         { "tools": [], "root": "Stack", "builtins": [], "contractVersion": "v1" }
                         """));
 
@@ -91,15 +101,20 @@ class GenUIBaseSupplementLoaderTest {
 
     @Test
     void rejectsMisspelledTopLevelKey() {
-        GenerationSdkException error = assertThrows(GenerationSdkException.class,
-                () -> GenUIBaseSupplementLoader.fromJson("{ \"additionalRule\": [\"typo\"] }"));
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                GenUIBaseSupplementLoader.fromJson(
+                                        "{ \"additionalRule\": [\"typo\"] }"));
 
         assertTrue(error.getMessage().contains("additionalRule"));
     }
 
     @Test
     void fromResourceLoadsClasspathJson() {
-        GenUIBaseSupplement supplement = GenUIBaseSupplementLoader.fromResource("genui/test-supplement.json");
+        GenUIBaseSupplement supplement =
+                GenUIBaseSupplementLoader.fromResource("genui/test-supplement.json");
 
         assertEquals(List.of("TopoChart"), List.copyOf(supplement.components().keySet()));
         assertEquals("Charts", supplement.componentGroups().get(0).name());
@@ -107,16 +122,22 @@ class GenUIBaseSupplementLoaderTest {
 
     @Test
     void fromResourceRejectsMissingResource() {
-        GenerationSdkException error = assertThrows(GenerationSdkException.class,
-                () -> GenUIBaseSupplementLoader.fromResource("genui/does-not-exist.json"));
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () -> GenUIBaseSupplementLoader.fromResource("genui/does-not-exist.json"));
 
         assertTrue(error.getMessage().contains("genui/does-not-exist.json"));
     }
 
     @Test
     void rejectsNullElementInCapabilityGapAliasesAndPhrasesWithSdkException() {
-        GenerationSdkException aliasError = assertThrows(GenerationSdkException.class,
-                () -> GenUIBaseSupplementLoader.fromJson("""
+        GenerationSdkException aliasError =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                GenUIBaseSupplementLoader.fromJson(
+                                        """
                         {
                           "capabilityGaps": [
                             {
@@ -132,8 +153,12 @@ class GenUIBaseSupplementLoaderTest {
                         """));
         assertTrue(aliasError.getMessage().contains("blank alias"));
 
-        GenerationSdkException phraseError = assertThrows(GenerationSdkException.class,
-                () -> GenUIBaseSupplementLoader.fromJson("""
+        GenerationSdkException phraseError =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                GenUIBaseSupplementLoader.fromJson(
+                                        """
                         {
                           "capabilityGaps": [
                             {
@@ -152,8 +177,12 @@ class GenUIBaseSupplementLoaderTest {
 
     @Test
     void rejectsSupplementCapabilityGapCollidingWithSupplementComponent() {
-        GenerationSdkException error = assertThrows(GenerationSdkException.class,
-                () -> GenUIBaseSupplementLoader.fromJson("""
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                GenUIBaseSupplementLoader.fromJson(
+                                        """
                         {
                           "components": {
                             "TopoChart": { "signature": "TopoChart(nodes: any[])", "description": "Topology chart." }

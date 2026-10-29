@@ -25,7 +25,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Internal validation input. Only the validation pipeline can build a complete, consistent snapshot. */
+/**
+ * Internal validation input. Only the validation pipeline can build a complete, consistent
+ * snapshot.
+ */
 public final class ValidationSnapshot {
     private final Program program;
     private final ContractCatalog catalog;
@@ -39,7 +42,10 @@ public final class ValidationSnapshot {
     private ValidationSnapshot(ValidationRequest request) {
         GenerationContract contract = copyContract(request.contract());
         dataModel = request.dataModel();
-        builtins = BuiltinCatalog.of(copyBuiltins(BuiltinCatalog.fromContract(contract).specsForTypeValidation()));
+        builtins =
+                BuiltinCatalog.of(
+                        copyBuiltins(
+                                BuiltinCatalog.fromContract(contract).specsForTypeValidation()));
         catalog = ContractCatalog.from(contract);
         String dsl = request.dsl() == null ? "" : request.dsl();
         OpenuiPreprocessor.Result preprocessed = OpenuiPreprocessor.process(dsl, ParseMode.FINAL);
@@ -95,23 +101,55 @@ public final class ValidationSnapshot {
             return null;
         }
         Map<String, ComponentPromptSpec> components = new LinkedHashMap<>();
-        source.components().forEach((name, spec) -> components.put(name,
-                new ComponentPromptSpec(spec.description(), copyMap(spec.propsSchema()))));
-        // Only validation-consumed contract data is retained. Prompt-only tools/groups are not analysis inputs.
-        return new GenerationContract(source.contractVersion(), source.root(), components, List.of(), List.of(),
-                List.of(), List.of(), copyBuiltins(source.builtins()), source.capabilityGaps());
+        source.components()
+                .forEach(
+                        (name, spec) ->
+                                components.put(
+                                        name,
+                                        new ComponentPromptSpec(
+                                                spec.description(), copyMap(spec.propsSchema()))));
+        // Only validation-consumed contract data is retained. Prompt-only tools/groups are not
+        // analysis inputs.
+        return new GenerationContract(
+                source.contractVersion(),
+                source.root(),
+                components,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                copyBuiltins(source.builtins()),
+                source.capabilityGaps());
     }
 
     private static List<BuiltinSpec> copyBuiltins(Iterable<BuiltinSpec> source) {
         List<BuiltinSpec> builtins = new ArrayList<>();
         for (BuiltinSpec spec : source) {
-            List<BuiltinSpec.ParamSpec> params = spec.params().stream()
-                    .map(param -> new BuiltinSpec.ParamSpec(param.name(), param.type(), copyType(param.typeExpr()),
-                            param.optional(), param.variadic(), param.binder(), param.nameSyntax()))
-                    .toList();
+            List<BuiltinSpec.ParamSpec> params =
+                    spec.params().stream()
+                            .map(
+                                    param ->
+                                            new BuiltinSpec.ParamSpec(
+                                                    param.name(),
+                                                    param.type(),
+                                                    copyType(param.typeExpr()),
+                                                    param.optional(),
+                                                    param.variadic(),
+                                                    param.binder(),
+                                                    param.nameSyntax()))
+                            .toList();
             // 结构化类型规则与 binder 布局随词表一并进入快照（#81/#83）：同一次契约解析，不在快照层剥离。
-            builtins.add(new BuiltinSpec(spec.name(), spec.signature(), spec.description(), spec.templateBuiltin(),
-                    params, copyType(spec.returnType()), spec.typeRule(), spec.inputIndex(), spec.callForms()));
+            builtins.add(
+                    new BuiltinSpec(
+                            spec.name(),
+                            spec.signature(),
+                            spec.description(),
+                            spec.templateBuiltin(),
+                            params,
+                            copyType(spec.returnType()),
+                            spec.typeRule(),
+                            spec.inputIndex(),
+                            spec.callForms()));
         }
         return List.copyOf(builtins);
     }
@@ -123,12 +161,24 @@ public final class ValidationSnapshot {
         return switch (type) {
             case TypeExpr.ArrayOf array -> new TypeExpr.ArrayOf(copyType(array.element()));
             case TypeExpr.RecordOf record -> new TypeExpr.RecordOf(copyType(record.value()));
-            case TypeExpr.ObjectLiteral object -> new TypeExpr.ObjectLiteral(object.fields().stream()
-                    .map(field -> new TypeExpr.ObjectLiteral.Field(field.name(), copyType(field.type()))).toList());
+            case TypeExpr.ObjectLiteral object ->
+                    new TypeExpr.ObjectLiteral(
+                            object.fields().stream()
+                                    .map(
+                                            field ->
+                                                    new TypeExpr.ObjectLiteral.Field(
+                                                            field.name(), copyType(field.type())))
+                                    .toList());
             case TypeExpr.UnionOf union ->
-                new TypeExpr.UnionOf(union.alternatives().stream().map(ValidationSnapshot::copyType).toList());
-            case TypeExpr.Conditional conditional -> new TypeExpr.Conditional(conditional.paramIndex(),
-                    copyType(conditional.whenArray()), copyType(conditional.otherwise()));
+                    new TypeExpr.UnionOf(
+                            union.alternatives().stream()
+                                    .map(ValidationSnapshot::copyType)
+                                    .toList());
+            case TypeExpr.Conditional conditional ->
+                    new TypeExpr.Conditional(
+                            conditional.paramIndex(),
+                            copyType(conditional.whenArray()),
+                            copyType(conditional.otherwise()));
             default -> type;
         };
     }

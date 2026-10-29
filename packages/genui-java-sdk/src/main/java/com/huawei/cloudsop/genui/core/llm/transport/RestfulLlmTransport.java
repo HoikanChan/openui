@@ -50,7 +50,8 @@ public final class RestfulLlmTransport implements LlmTransport {
         }
 
         try {
-            RestfulResponse response = RestfulFactory.getRestInstance().post(config.endpoint(), params);
+            RestfulResponse response =
+                    RestfulFactory.getRestInstance().post(config.endpoint(), params);
             int status = response == null ? -1 : response.getStatus();
             if (status != HTTP_OK) {
                 throw new LlmTransportException("LLM request failed, status: " + status);

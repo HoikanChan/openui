@@ -26,39 +26,56 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * SDK-level end-to-end checks that {@link GenerationSdk#assemblePrompt} merges base + registered generation + request
- * additions and feeds the result into {@link PromptAssembler} correctly.
+ * SDK-level end-to-end checks that {@link GenerationSdk#assemblePrompt} merges base + registered
+ * generation + request additions and feeds the result into {@link PromptAssembler} correctly.
  *
- * <p>
- * Here we independently reconstruct the merged {@code PromptInput} (base → generation → request order) and assert the
- * SDK produces exactly that prompt — locking the merge wiring and ordering.
+ * <p>Here we independently reconstruct the merged {@code PromptInput} (base → generation → request
+ * order) and assert the SDK produces exactly that prompt — locking the merge wiring and ordering.
  */
 class SdkPromptMergeTest {
 
-    private static final List<BuiltinSpec> BUILTINS = GenerationContractLoader.loadDefault().builtins();
+    private static final List<BuiltinSpec> BUILTINS =
+            GenerationContractLoader.loadDefault().builtins();
 
     @Test
     void mergesBaseExtensionAndRequestAdditionsIntoAssembler() {
         GenerationContract base = baseContract();
         GenerationSdk sdk = GenerationSdk.builder().baseContract(base).build();
 
-        GenUIExtension generation = new GenUIExtension("genA", "gen-v1",
-                singleComponent("BizCard", "BizCard(title: string)", "Business card"),
-                List.of(new ComponentGroup("Business", List.of("BizCard"), List.of())), List.of(tool("loadOrders")),
-                List.of("root = Stack([BizCard(\"A\")])"), List.of("Generation rule"),
-                List.of(new CapabilityGapSpec("gantt", "component", "甘特图", List.of("GanttChart"), List.of("甘特图"),
-                        "用 Table 展示")));
+        GenUIExtension generation =
+                new GenUIExtension(
+                        "genA",
+                        "gen-v1",
+                        singleComponent("BizCard", "BizCard(title: string)", "Business card"),
+                        List.of(new ComponentGroup("Business", List.of("BizCard"), List.of())),
+                        List.of(tool("loadOrders")),
+                        List.of("root = Stack([BizCard(\"A\")])"),
+                        List.of("Generation rule"),
+                        List.of(
+                                new CapabilityGapSpec(
+                                        "gantt",
+                                        "component",
+                                        "甘特图",
+                                        List.of("GanttChart"),
+                                        List.of("甘特图"),
+                                        "用 Table 展示")));
         sdk.register(generation);
 
-        DataModelSpec dataModel = new DataModelSpec("Order data", orderedMap("orders", List.of(orderedMap("id", 1L))));
-        GenUIPromptRequest request = new GenUIPromptRequest("genA", dataModel, List.of("Request rule"), null, null,
-                null, null);
+        DataModelSpec dataModel =
+                new DataModelSpec(
+                        "Order data", orderedMap("orders", List.of(orderedMap("id", 1L))));
+        GenUIPromptRequest request =
+                new GenUIPromptRequest(
+                        "genA", dataModel, List.of("Request rule"), null, null, null, null);
 
         String actual = sdk.assemblePrompt(request).prompt();
         List<CapabilityGapSpec> mergedGaps = new ArrayList<>(base.capabilityGaps());
         mergedGaps.addAll(generation.capabilityGaps());
-        String expected = PromptAssembler.assemble(mergedInput(base, generation, dataModel, List.of("Request rule")),
-                base.builtins(), mergedGaps);
+        String expected =
+                PromptAssembler.assemble(
+                        mergedInput(base, generation, dataModel, List.of("Request rule")),
+                        base.builtins(),
+                        mergedGaps);
 
         assertEquals(expected, actual);
     }
@@ -68,21 +85,29 @@ class SdkPromptMergeTest {
         GenerationContract base = baseContract();
         GenerationSdk sdk = GenerationSdk.builder().baseContract(base).build();
 
-        GenUIPromptRequest request = new GenUIPromptRequest("genA", null, List.of("Request rule"), null, null, null,
-                null);
+        GenUIPromptRequest request =
+                new GenUIPromptRequest(
+                        "genA", null, List.of("Request rule"), null, null, null, null);
 
         String actual = sdk.assemblePrompt(request).prompt();
-        String expected = PromptAssembler.assemble(mergedInput(base, null, null, List.of("Request rule")),
-                base.builtins(), base.capabilityGaps());
+        String expected =
+                PromptAssembler.assemble(
+                        mergedInput(base, null, null, List.of("Request rule")),
+                        base.builtins(),
+                        base.capabilityGaps());
 
         assertEquals(expected, actual);
     }
 
     // ─── helpers ───────────────────────────────────────────────────────────────
 
-    private static PromptAssembler.PromptInput mergedInput(GenerationContract base, GenUIExtension generation,
-            DataModelSpec dataModel, List<String> requestRules) {
-        LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>(base.components());
+    private static PromptAssembler.PromptInput mergedInput(
+            GenerationContract base,
+            GenUIExtension generation,
+            DataModelSpec dataModel,
+            List<String> requestRules) {
+        LinkedHashMap<String, ComponentPromptSpec> components =
+                new LinkedHashMap<>(base.components());
         List<ComponentGroup> groups = new ArrayList<>(base.componentGroups());
         List<ToolSpec> tools = new ArrayList<>(base.tools());
         List<String> examples = new ArrayList<>(base.examples());
@@ -97,22 +122,50 @@ class SdkPromptMergeTest {
         }
         rules.addAll(requestRules);
 
-        return new PromptAssembler.PromptInput(null, base.root(), components, groups, dataModel, tools, examples, rules,
-                null, null, null, null);
+        return new PromptAssembler.PromptInput(
+                null,
+                base.root(),
+                components,
+                groups,
+                dataModel,
+                tools,
+                examples,
+                rules,
+                null,
+                null,
+                null,
+                null);
     }
 
     private static GenerationContract baseContract() {
         LinkedHashMap<String, ComponentPromptSpec> components = new LinkedHashMap<>();
         components.put("Stack", new ComponentPromptSpec("Stack(children?: Component[])", "Layout"));
         components.put("TextContent", new ComponentPromptSpec("TextContent(text: string)", "Text"));
-        return new GenerationContract("base-v1", "Stack", components,
-                List.of(new ComponentGroup("Layout", List.of("Stack", "TextContent"), List.of("Layout note."))),
-                List.of(), List.of("root = Stack([])"), List.of("Base rule"), BUILTINS,
-                List.of(new CapabilityGapSpec("group-by", "data", "分组展示", List.of("GroupBy"), List.of("按X分组"),
-                        "用一张 Table 展示全部行")));
+        return new GenerationContract(
+                "base-v1",
+                "Stack",
+                components,
+                List.of(
+                        new ComponentGroup(
+                                "Layout",
+                                List.of("Stack", "TextContent"),
+                                List.of("Layout note."))),
+                List.of(),
+                List.of("root = Stack([])"),
+                List.of("Base rule"),
+                BUILTINS,
+                List.of(
+                        new CapabilityGapSpec(
+                                "group-by",
+                                "data",
+                                "分组展示",
+                                List.of("GroupBy"),
+                                List.of("按X分组"),
+                                "用一张 Table 展示全部行")));
     }
 
-    private static Map<String, ComponentPromptSpec> singleComponent(String name, String signature, String description) {
+    private static Map<String, ComponentPromptSpec> singleComponent(
+            String name, String signature, String description) {
         LinkedHashMap<String, ComponentPromptSpec> map = new LinkedHashMap<>();
         map.put(name, new ComponentPromptSpec(signature, description));
         return map;

@@ -40,24 +40,47 @@ class SemanticValidationTest {
     }
 
     private static ComponentPromptSpec spec(Map<String, Object> properties, List<String> required) {
-        return new ComponentPromptSpec("comp", obj("type", "object", "properties", properties, "required", required));
+        return new ComponentPromptSpec(
+                "comp", obj("type", "object", "properties", properties, "required", required));
     }
 
     /** Catalog with Header(title, subtitle?), Table(columns, rows), Col(title, field, options?). */
     private static ContractCatalog catalog() {
         Map<String, ComponentPromptSpec> comps = new LinkedHashMap<>();
-        comps.put("Header",
-                spec(obj("title", obj("type", "string"), "subtitle", obj("type", "string")), List.of("title")));
-        comps.put("Table",
-                spec(obj("columns", obj("type", "array"), "rows", obj("type", "array")), List.of("columns", "rows")));
-        // Col.options is a closed object (additionalProperties:false) so removed `format` is flagged.
-        Map<String, Object> optionsSchema = obj("type", "object", "additionalProperties", false, "properties",
-                obj("sortable", obj("type", "boolean")));
-        comps.put("Col",
-                spec(obj("title", obj("type", "string"), "field", obj("type", "string"), "options", optionsSchema),
+        comps.put(
+                "Header",
+                spec(
+                        obj("title", obj("type", "string"), "subtitle", obj("type", "string")),
+                        List.of("title")));
+        comps.put(
+                "Table",
+                spec(
+                        obj("columns", obj("type", "array"), "rows", obj("type", "array")),
+                        List.of("columns", "rows")));
+        // Col.options is a closed object (additionalProperties:false) so removed `format` is
+        // flagged.
+        Map<String, Object> optionsSchema =
+                obj(
+                        "type",
+                        "object",
+                        "additionalProperties",
+                        false,
+                        "properties",
+                        obj("sortable", obj("type", "boolean")));
+        comps.put(
+                "Col",
+                spec(
+                        obj(
+                                "title",
+                                obj("type", "string"),
+                                "field",
+                                obj("type", "string"),
+                                "options",
+                                optionsSchema),
                         List.of("title", "field")));
-        return ContractCatalog
-                .from(new GenerationContract("v1", "Header", comps, List.of(), List.of(), List.of(), List.of()));
+        return ContractCatalog.from(
+                new GenerationContract(
+                        "v1", "Header", comps, List.of(), List.of(), List.of(), List.of()));
     }
 
     private static ProgramAnalysis analyze(String dsl) {
@@ -187,7 +210,8 @@ class SemanticValidationTest {
     @Test
     void lastWinsDuplicateId() {
         // Two statements with id `root`: the LAST wins → Table (renderable, valid).
-        // The first (Header()) would be missing-required; if last-wins works, no missing-required fires.
+        // The first (Header()) would be missing-required; if last-wins works, no missing-required
+        // fires.
         String dsl = "root = Header()\nroot = Table([], [])";
         ProgramAnalysis a = analyze(dsl);
         assertEquals(1, a.statementCount(), "duplicate ids collapse to one symbol");
@@ -199,13 +223,28 @@ class SemanticValidationTest {
     void defaultFallbackSuppressesMissingRequired() {
         // Required prop with a declared default → no missing-required.
         Map<String, ComponentPromptSpec> comps = new LinkedHashMap<>();
-        comps.put("Box", new ComponentPromptSpec("box", obj("type", "object", "properties",
-                obj("label", obj("type", "string", "default", "untitled")), "required", List.of("label"))));
-        ContractCatalog cat = ContractCatalog
-                .from(new GenerationContract("v1", "Box", comps, List.of(), List.of(), List.of(), List.of()));
+        comps.put(
+                "Box",
+                new ComponentPromptSpec(
+                        "box",
+                        obj(
+                                "type",
+                                "object",
+                                "properties",
+                                obj("label", obj("type", "string", "default", "untitled")),
+                                "required",
+                                List.of("label"))));
+        ContractCatalog cat =
+                ContractCatalog.from(
+                        new GenerationContract(
+                                "v1", "Box", comps, List.of(), List.of(), List.of(), List.of()));
         Program program = OpenuiParser.parse("root = Box()", ParseMode.FINAL);
         ProgramAnalysis a = new ProgramAnalyzer(cat).analyze(program, null, Set.of());
-        assertNull(a.issues().stream().filter(i -> i.code().equals("missing-required")).findFirst().orElse(null));
+        assertNull(
+                a.issues().stream()
+                        .filter(i -> i.code().equals("missing-required"))
+                        .findFirst()
+                        .orElse(null));
         assertTrue(a.rootResolved());
     }
 
@@ -213,8 +252,10 @@ class SemanticValidationTest {
     void signatureOnlyComponentSkipsPropChecks() {
         Map<String, ComponentPromptSpec> comps = new LinkedHashMap<>();
         comps.put("Widget", new ComponentPromptSpec("Widget(a, b)", "a widget"));
-        ContractCatalog cat = ContractCatalog
-                .from(new GenerationContract("v1", "Widget", comps, List.of(), List.of(), List.of(), List.of()));
+        ContractCatalog cat =
+                ContractCatalog.from(
+                        new GenerationContract(
+                                "v1", "Widget", comps, List.of(), List.of(), List.of(), List.of()));
         Program program = OpenuiParser.parse("root = Widget()", ParseMode.FINAL);
         ProgramAnalysis a = new ProgramAnalyzer(cat).analyze(program, null, Set.of());
         // Existence OK, no prop-level false positives.
@@ -226,7 +267,8 @@ class SemanticValidationTest {
     @Test
     void validProgramHasNoBlockingIssues() {
         ProgramAnalysis a = analyze("root = Header(\"Hello\", \"World\")");
-        assertTrue(a.issues().stream().noneMatch(i -> i.severity() == ValidationSeverity.ERROR),
+        assertTrue(
+                a.issues().stream().noneMatch(i -> i.severity() == ValidationSeverity.ERROR),
                 "clean program should have no blocking issues: " + a.issues());
         assertTrue(a.rootResolved());
         assertEquals("root", a.entryId());
@@ -235,26 +277,28 @@ class SemanticValidationTest {
     // ── Lazy builtin binder scoping (@Render/@Each) — mirrors materialize.ts ───
 
     /**
-     * {@code @Render("v", template)}: the string-literal binder "v" must be in scope while the template argument is
-     * walked, so {@code v} inside the template is NOT an unresolved reference.
+     * {@code @Render("v", template)}: the string-literal binder "v" must be in scope while the
+     * template argument is walked, so {@code v} inside the template is NOT an unresolved reference.
      */
     @Test
     void renderStringBinderResolvesInsideTemplate() {
         ProgramAnalysis a = analyze("root = Header(\"T\", @Render(\"v\", Header(v)))");
-        assertNull(issue(a, "unresolved-ref"),
+        assertNull(
+                issue(a, "unresolved-ref"),
                 "@Render binder \"v\" must be scoped inside its template: " + a.issues());
         assertTrue(a.rootResolved());
     }
 
     /**
-     * {@code @Each(array, varName, template)}: with three args the second arg is the binder; refs to it inside the
-     * template argument resolve.
+     * {@code @Each(array, varName, template)}: with three args the second arg is the binder; refs
+     * to it inside the template argument resolve.
      */
     @Test
     void eachStringBinderResolvesInsideTemplate() {
         String dsl = "rows = [1, 2]\nroot = Header(\"T\", @Each(rows, \"item\", Header(item)))";
         ProgramAnalysis a = analyze(dsl);
-        assertNull(issue(a, "unresolved-ref"),
+        assertNull(
+                issue(a, "unresolved-ref"),
                 "@Each binder \"item\" must be scoped inside its template: " + a.issues());
         assertTrue(a.rootResolved());
     }
@@ -264,11 +308,15 @@ class SemanticValidationTest {
     void eachRefBinderResolvesInsideTemplate() {
         String dsl = "rows = [1, 2]\nroot = Header(\"T\", @Each(rows, item, Header(item)))";
         ProgramAnalysis a = analyze(dsl);
-        assertNull(issue(a, "unresolved-ref"),
+        assertNull(
+                issue(a, "unresolved-ref"),
                 "@Each ref-form binder \"item\" must be scoped inside its template: " + a.issues());
     }
 
-    /** A two-arg {@code @Each} has no binder position — its second arg is an ordinary ref and stays unresolved. */
+    /**
+     * A two-arg {@code @Each} has no binder position — its second arg is an ordinary ref and stays
+     * unresolved.
+     */
     @Test
     void eachWithoutTemplateArgHasNoBinderScope() {
         String dsl = "rows = [1, 2]\nroot = Header(\"T\", @Each(rows, item))";
@@ -278,7 +326,10 @@ class SemanticValidationTest {
         assertTrue(a.unresolvedRefs().contains("item"));
     }
 
-    /** The binder scope covers ONLY the lazy builtin's own arguments — it must not leak to sibling args. */
+    /**
+     * The binder scope covers ONLY the lazy builtin's own arguments — it must not leak to sibling
+     * args.
+     */
     @Test
     void binderNotVisibleOutsideTemplate() {
         ProgramAnalysis a = analyze("root = Header(@Render(\"v\", Header(v)), v)");
@@ -287,25 +338,31 @@ class SemanticValidationTest {
         assertTrue(a.unresolvedRefs().contains("v"));
     }
 
-    /** Nested lazy builtins stack scopes: the inner scope pops without dropping the outer binder. */
+    /**
+     * Nested lazy builtins stack scopes: the inner scope pops without dropping the outer binder.
+     */
     @Test
     void nestedLazyBuiltinsStackScopes() {
-        String dsl = "root = Header(\"T\", @Render(\"a\", Header(@Each([1], \"b\", Header(b)), a)))";
+        String dsl =
+                "root = Header(\"T\", @Render(\"a\", Header(@Each([1], \"b\", Header(b)), a)))";
         ProgramAnalysis a = analyze(dsl);
-        assertNull(issue(a, "unresolved-ref"),
+        assertNull(
+                issue(a, "unresolved-ref"),
                 "outer binder \"a\" must survive the inner @Each scope pop: " + a.issues());
     }
 
     /**
-     * The binder stays visible when the template references a NAMED statement whose expression uses it (TS
-     * materialize.ts propagates scopedRefs through resolveRef in expr mode).
+     * The binder stays visible when the template references a NAMED statement whose expression uses
+     * it (TS materialize.ts propagates scopedRefs through resolveRef in expr mode).
      */
     @Test
     void binderVisibleInsideReferencedStatementTemplate() {
         String dsl = "cell = Header(\"C\", v)\nroot = Header(\"T\", @Render(\"v\", cell))";
         ProgramAnalysis a = analyze(dsl);
-        assertNull(issue(a, "unresolved-ref"),
-                "binder \"v\" must remain visible inside the referenced statement's template: " + a.issues());
+        assertNull(
+                issue(a, "unresolved-ref"),
+                "binder \"v\" must remain visible inside the referenced statement's template: "
+                        + a.issues());
     }
 
     // ── #75: unknown-component 3-tier routing & cascade suppression exemption ──
@@ -316,34 +373,52 @@ class SemanticValidationTest {
         ProgramAnalyzer analyzer = new ProgramAnalyzer(defaultCat);
 
         // Tier 1: Action step called without leading '@'
-        ProgramAnalysis tier1 = analyzer
-                .analyze(OpenuiParser.parse("root = Set($count, 1)", ParseMode.FINAL), null, Set.of());
+        ProgramAnalysis tier1 =
+                analyzer.analyze(
+                        OpenuiParser.parse("root = Set($count, 1)", ParseMode.FINAL),
+                        null,
+                        Set.of());
         ValidationIssue i1 = issue(tier1, "unknown-component");
         assertNotNull(i1);
         assertEquals("Unknown component \"Set\" — not found in catalog or builtins", i1.message());
-        assertEquals("did you mean \"@Set\"? openui-lang builtins must be called with a leading '@'", i1.hint());
+        assertEquals(
+                "did you mean \"@Set\"? openui-lang builtins must be called with a leading '@'",
+                i1.hint());
         assertTrue(RepairHints.isRootCauseHint(i1.hint()));
 
         // Tier 2: capabilityGaps alias (both @GroupBy and @ObjectFromEntries)
-        ProgramAnalysis tier2 = analyzer.analyze(
-                OpenuiParser.parse("grouped = @GroupBy(data.items, \"model\")\nroot = Stack([grouped])", ParseMode.FINAL),
-                "Stack", Set.of("data"));
+        ProgramAnalysis tier2 =
+                analyzer.analyze(
+                        OpenuiParser.parse(
+                                "grouped = @GroupBy(data.items, \"model\")\nroot = Stack([grouped])",
+                                ParseMode.FINAL),
+                        "Stack",
+                        Set.of("data"));
         ValidationIssue i2 = issue(tier2, "unknown-component");
         assertNotNull(i2);
-        assertEquals("Unknown component \"GroupBy\" — not found in catalog or builtins", i2.message(),
+        assertEquals(
+                "Unknown component \"GroupBy\" — not found in catalog or builtins",
+                i2.message(),
                 "ADR-0003 D2: message must stay unchanged");
         assertNotNull(i2.hint());
-        assertTrue(i2.hint().contains("分组展示"), "tier-2 hint must identify group-by gap: " + i2.hint());
+        assertTrue(
+                i2.hint().contains("分组展示"), "tier-2 hint must identify group-by gap: " + i2.hint());
         assertTrue(RepairHints.isRootCauseHint(i2.hint()), "tier-2 hint must be a root-cause hint");
 
         // Tier 3: ordinary unknown component name
-        ProgramAnalysis tier3 = analyzer
-                .analyze(OpenuiParser.parse("root = ChartCard(\"T\")", ParseMode.FINAL), null, Set.of());
+        ProgramAnalysis tier3 =
+                analyzer.analyze(
+                        OpenuiParser.parse("root = ChartCard(\"T\")", ParseMode.FINAL),
+                        null,
+                        Set.of());
         ValidationIssue i3 = issue(tier3, "unknown-component");
         assertNotNull(i3);
-        assertEquals("Unknown component \"ChartCard\" — not found in catalog or builtins", i3.message());
+        assertEquals(
+                "Unknown component \"ChartCard\" — not found in catalog or builtins", i3.message());
         assertNotNull(i3.hint());
-        assertFalse(RepairHints.isRootCauseHint(i3.hint()), "tier-3 hint must not be a root-cause hint");
+        assertFalse(
+                RepairHints.isRootCauseHint(i3.hint()),
+                "tier-3 hint must not be a root-cause hint");
     }
 
     @Test
@@ -352,14 +427,20 @@ class SemanticValidationTest {
         ProgramAnalyzer analyzer = new ProgramAnalyzer(defaultCat);
 
         // Statement `grouped` has both a JS arrow function syntax error (`=>`) AND `@GroupBy(...)`.
-        Program program = OpenuiParser
-                .parse("grouped = @GroupBy(data.items, item => item.model)\nroot = Stack([grouped])", ParseMode.FINAL);
+        Program program =
+                OpenuiParser.parse(
+                        "grouped = @GroupBy(data.items, item => item.model)\nroot = Stack([grouped])",
+                        ParseMode.FINAL);
         ProgramAnalysis analysis = analyzer.analyze(program, "Stack", Set.of("data"));
         List<ValidationIssue> actionable = ValidationIssueReducer.actionable(analysis.issues());
 
         assertTrue(
                 actionable.stream()
-                        .anyMatch(i -> "unknown-component".equals(i.code()) && "GroupBy".equals(i.component())),
-                "tier-2 capability gap unknown-component must survive syntax cascade suppression; got: " + actionable);
+                        .anyMatch(
+                                i ->
+                                        "unknown-component".equals(i.code())
+                                                && "GroupBy".equals(i.component())),
+                "tier-2 capability gap unknown-component must survive syntax cascade suppression; got: "
+                        + actionable);
     }
 }

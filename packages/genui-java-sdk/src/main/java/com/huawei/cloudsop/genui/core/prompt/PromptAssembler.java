@@ -20,40 +20,45 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Byte-for-byte Java port of {@code packages/lang-core/src/parser/prompt.ts}'s {@code generatePrompt}.
+ * Byte-for-byte Java port of {@code packages/lang-core/src/parser/prompt.ts}'s {@code
+ * generatePrompt}.
  *
- * <p>
- * Per design D9, the Java SDK is the authoritative prompt assembler. Builtin docs (Template/Data Built-ins) are sourced
- * from the {@link BuiltinSpec} manifest exported by the frontend; every other section is transcribed from
- * {@code prompt.ts}. Cross-language golden tests pin the two outputs to byte equality on the merged-{@code PromptSpec}
- * layer.
+ * <p>Per design D9, the Java SDK is the authoritative prompt assembler. Builtin docs (Template/Data
+ * Built-ins) are sourced from the {@link BuiltinSpec} manifest exported by the frontend; every
+ * other section is transcribed from {@code prompt.ts}. Cross-language golden tests pin the two
+ * outputs to byte equality on the merged-{@code PromptSpec} layer.
  *
  * @since 2026
  */
 public final class PromptAssembler {
-    private static final String PREAMBLE = "You are an AI assistant that responds using openui-lang, a declarative UI language. "
-            + "Your ENTIRE response must be valid openui-lang code — no markdown, no explanations, just openui-lang.";
+    /** Numbering continues after the seven always-present syntax rules. */
+    private static final int FIRST_OPTIONAL_RULE_NUMBER = 8;
 
-    private PromptAssembler() {
-    }
+    private static final String PREAMBLE =
+            "You are an AI assistant that responds using openui-lang, a declarative UI language. "
+                    + "Your ENTIRE response must be valid openui-lang code — no markdown, no explanations, just openui-lang.";
+
+    private PromptAssembler() {}
 
     /**
-     * Test/legacy convenience overload without {@code capabilityGaps} (defaults to empty). Production code must call
-     * {@link #assemble(PromptInput, List, List)} so {@code capabilityGaps} are included.
+     * Test/legacy convenience overload without {@code capabilityGaps} (defaults to empty).
+     * Production code must call {@link #assemble(PromptInput, List, List)} so {@code
+     * capabilityGaps} are included.
      */
     public static String assemble(PromptInput input, List<BuiltinSpec> builtins) {
         return assemble(input, builtins, List.of());
     }
 
-    public static String assemble(PromptInput input, List<BuiltinSpec> builtins,
-            List<CapabilityGapSpec> capabilityGaps) {
+    public static String assemble(
+            PromptInput input, List<BuiltinSpec> builtins, List<CapabilityGapSpec> capabilityGaps) {
         String rootName = input.root() == null ? "Root" : input.root();
         boolean hasTools = input.tools() != null && !input.tools().isEmpty();
         boolean toolCalls = input.toolCalls() == null ? hasTools : input.toolCalls();
         boolean bindings = input.bindings() == null ? toolCalls : input.bindings();
         boolean supportsExpressions = toolCalls || bindings;
-        boolean usesActionExpression = componentSignatures(input.components()).stream()
-                .anyMatch(signature -> signature.contains("ActionExpression"));
+        boolean usesActionExpression =
+                componentSignatures(input.components()).stream()
+                        .anyMatch(signature -> signature.contains("ActionExpression"));
         boolean hasRawDataModel = hasRawDataModel(input.dataModel());
         List<CapabilityGapSpec> gaps = capabilityGaps == null ? List.of() : capabilityGaps;
         boolean hasCapabilityGaps = !gaps.isEmpty();
@@ -63,8 +68,13 @@ public final class PromptAssembler {
         parts.add("");
         parts.add(syntaxRules(rootName, bindings));
         parts.add("");
-        parts.add(componentSignatures(input.components(), input.componentGroups(), toolCalls, bindings,
-                usesActionExpression));
+        parts.add(
+                componentSignatures(
+                        input.components(),
+                        input.componentGroups(),
+                        toolCalls,
+                        bindings,
+                        usesActionExpression));
 
         if (hasRawDataModel) {
             parts.add("");
@@ -153,27 +163,34 @@ public final class PromptAssembler {
         lines.add("## Syntax Rules");
         lines.add("");
         lines.add("1. Each statement is on its own line: `identifier = Expression`");
-        lines.add("2. `root` is the entry point — every program must define `root = " + rootName + "(...)`");
+        lines.add(
+                "2. `root` is the entry point — every program must define `root = "
+                        + rootName
+                        + "(...)`");
         lines.add(
                 "3. Expressions are: strings (\"...\"), numbers, booleans (true/false), null, arrays ([...]), objects ({...}), or component calls TypeName(arg1, arg2, ...)");
-        lines.add("4. Use references for readability: define `name = ...` on one line, then use `name` later");
+        lines.add(
+                "4. Use references for readability: define `name = ...` on one line, then use `name` later");
         lines.add(
                 "5. EVERY variable (except root) MUST be referenced by at least one other variable. Unreferenced variables are silently dropped and will NOT render. Always include defined variables in their parent's children/items array.");
         lines.add(
                 "6. Arguments are POSITIONAL (order matters, not names). Write `Stack([children], \"row\", \"l\")` NOT `Stack([children], direction: \"row\", gap: \"l\")` — colon syntax is NOT supported and silently breaks");
         lines.add("7. Optional arguments can be omitted from the end");
 
-        int ruleNum = 8;
+        int ruleNum = FIRST_OPTIONAL_RULE_NUMBER;
         if (bindings) {
-            lines.add(ruleNum++
-                    + ". Declare mutable state with `$varName = defaultValue`. Components marked with `$binding` can read/write these. Undeclared $variables are auto-created with null default.");
+            lines.add(
+                    ruleNum++
+                            + ". Declare mutable state with `$varName = defaultValue`. Components marked with `$binding` can read/write these. Undeclared $variables are auto-created with null default.");
         }
         lines.add(ruleNum++ + ". String concatenation: `\"text\" + value + \"more\"`");
-        lines.add(ruleNum++
-                + ". Dot member access: `obj.field` reads a field; on arrays it extracts that field from every element");
+        lines.add(
+                ruleNum++
+                        + ". Dot member access: `obj.field` reads a field; on arrays it extracts that field from every element");
         lines.add(ruleNum++ + ". Index access: `arr[0]`, `items[index]`");
-        lines.add(ruleNum++
-                + ". Arithmetic operators: +, -, *, /, % (work on numbers; + is string concat when either side is a string)");
+        lines.add(
+                ruleNum++
+                        + ". Arithmetic operators: +, -, *, /, % (work on numbers; + is string concat when either side is a string)");
         lines.add(ruleNum++ + ". Comparison: ==, !=, >, <, >=, <=");
         lines.add(ruleNum++ + ". Logical: &&, ||, ! (prefix)");
         lines.add(ruleNum++ + ". Ternary: `condition ? valueIfTrue : valueIfFalse`");
@@ -185,8 +202,12 @@ public final class PromptAssembler {
 
     // ─── Component signatures ──────────────────────────────────────────────────
 
-    private static String componentSignatures(Map<String, ComponentPromptSpec> components,
-            List<ComponentGroup> componentGroups, boolean toolCalls, boolean bindings, boolean usesActionExpression) {
+    private static String componentSignatures(
+            Map<String, ComponentPromptSpec> components,
+            List<ComponentGroup> componentGroups,
+            boolean toolCalls,
+            boolean bindings,
+            boolean usesActionExpression) {
         ArrayList<String> lines = new ArrayList<>();
         lines.add("## Component Signatures");
         lines.add("");
@@ -195,8 +216,9 @@ public final class PromptAssembler {
 
         if (usesActionExpression) {
             ArrayList<String> allSteps = new ArrayList<>();
-            if (toolCalls)
+            if (toolCalls) {
                 allSteps.add("@Run");
+            }
             allSteps.add("@ToAssistant");
             allSteps.add("@OpenUrl");
             if (bindings) {
@@ -205,13 +227,17 @@ public final class PromptAssembler {
             }
             lines.add(
                     "Props typed `ActionExpression` accept an Action([@steps...]) expression. See the Action section for available steps ("
-                            + String.join(", ", allSteps) + ").");
+                            + String.join(", ", allSteps)
+                            + ").");
         }
 
-        boolean usesBindings = bindings
-                || componentSignatures(components).stream().anyMatch(signature -> signature.contains("$binding"));
+        boolean usesBindings =
+                bindings
+                        || componentSignatures(components).stream()
+                                .anyMatch(signature -> signature.contains("$binding"));
         if (usesBindings) {
-            lines.add("Props marked `$binding<type>` accept a `$variable` reference for two-way binding.");
+            lines.add(
+                    "Props marked `$binding<type>` accept a `$variable` reference for two-way binding.");
         }
 
         if (componentGroups != null && !componentGroups.isEmpty()) {
@@ -220,29 +246,34 @@ public final class PromptAssembler {
                 lines.add("");
                 lines.add("### " + group.name());
                 for (String name : group.components()) {
-                    if (grouped.contains(name))
+                    if (grouped.contains(name)) {
                         continue;
+                    }
                     ComponentPromptSpec comp = components.get(name);
-                    if (comp == null)
+                    if (comp == null) {
                         continue;
+                    }
                     grouped.add(name);
                     lines.add(formatSig(name, comp));
                 }
                 if (group.notes() != null && !group.notes().isEmpty()) {
-                    for (String note : group.notes())
+                    for (String note : group.notes()) {
                         lines.add(note);
+                    }
                 }
             }
             ArrayList<String> ungrouped = new ArrayList<>();
             for (String name : components.keySet()) {
-                if (!grouped.contains(name))
+                if (!grouped.contains(name)) {
                     ungrouped.add(name);
+                }
             }
             if (!ungrouped.isEmpty()) {
                 lines.add("");
                 lines.add("### Other");
-                for (String name : ungrouped)
+                for (String name : ungrouped) {
                     lines.add(formatSig(name, components.get(name)));
+                }
             }
         } else {
             lines.add("");
@@ -256,8 +287,9 @@ public final class PromptAssembler {
     private static String formatSig(String componentName, ComponentPromptSpec comp) {
         String description = comp.description();
         String signature = ComponentPropsSchema.formatSignature(componentName, comp);
-        if (description == null || description.isEmpty())
+        if (description == null || description.isEmpty()) {
             return signature;
+        }
         return signature + " — " + description;
     }
 
@@ -278,12 +310,10 @@ public final class PromptAssembler {
     /**
      * Render the {@code ## Data Model} prompt section for a caller-supplied data model.
      *
-     * <p>
-     * Shared by initial prompt assembly ({@link #assemble}) and the incremental repair prompt (#58), so both describe
-     * the same data shape, samples and scale.
+     * <p>Shared by initial prompt assembly ({@link #assemble}) and the incremental repair prompt
+     * (#58), so both describe the same data shape, samples and scale.
      *
-     * @param dataModel
-     *            caller data model; must not be {@code null}
+     * @param dataModel caller data model; must not be {@code null}
      * @return the rendered section text
      */
     public static String dataModelSection(DataModelSpec dataModel) {
@@ -318,9 +348,14 @@ public final class PromptAssembler {
 
     private static String templateBuiltinsSection(List<BuiltinSpec> builtins) {
         String entries = builtinLines(builtins, true);
-        return "## Template Built-ins\n" + "\n"
+        return "## Template Built-ins\n"
+                + "\n"
                 + "Template/render functions are prefixed with `@` to distinguish them from components. These are available in every prompt configuration.\n"
-                + "\n" + entries + "\n" + "\n" + "Builtins compose — output of one is input to the next:\n"
+                + "\n"
+                + entries
+                + "\n"
+                + "\n"
+                + "Builtins compose — output of one is input to the next:\n"
                 + "`@Each(data.rows, \"item\", Comp(@Switch(item.status, {\"open\": \"Open\"}, \"Unknown\")))` for per-item rendering and enum display.\n"
                 + "\n"
                 + "IMPORTANT @Each rule: The loop variable (e.g. \"item\") is ONLY available inside the @Each template expression. Always inline the template — do NOT extract it to a separate statement.\n"
@@ -332,10 +367,15 @@ public final class PromptAssembler {
 
     private static String dataBuiltinsSection(List<BuiltinSpec> builtins) {
         String entries = builtinLines(builtins, false);
-        return "## Data Built-ins\n" + "\n"
+        return "## Data Built-ins\n"
+                + "\n"
                 + "Data functions prefixed with `@` are available when expressions are enabled. These are the ONLY data functions available — do NOT invent new ones.\n"
                 + "Use @-prefixed built-in functions (@Count, @Sum, @Avg, @Min, @Max, @Round) on Query results — do NOT hardcode computed values.\n"
-                + "\n" + entries + "\n" + "\n" + "Builtins compose — output of one is input to the next:\n"
+                + "\n"
+                + entries
+                + "\n"
+                + "\n"
+                + "Builtins compose — output of one is input to the next:\n"
                 + "`@Count(@Filter(data.rows, \"field\", \"==\", \"val\"))` for KPIs/chart values, `@Round(@Avg(data.rows.score), 1)`.\n"
                 + "Array pluck: `data.rows.field` extracts a field from every row → use with @Sum, @Avg, charts, tables.";
     }
@@ -351,7 +391,14 @@ public final class PromptAssembler {
         lines.add("| Not supported | Typical wording | Show instead |");
         lines.add("|---|---|---|");
         for (CapabilityGapSpec gap : capabilityGaps) {
-            lines.add("| " + gap.name() + " | " + String.join(" / ", gap.phrases()) + " | " + gap.fallback() + " |");
+            lines.add(
+                    "| "
+                            + gap.name()
+                            + " | "
+                            + String.join(" / ", gap.phrases())
+                            + " | "
+                            + gap.fallback()
+                            + " |");
         }
         lines.add("");
         lines.add(CapabilityGapSpec.NOTICE_STATEMENT_TEMPLATE);
@@ -363,7 +410,10 @@ public final class PromptAssembler {
         ArrayList<String> lines = new ArrayList<>();
         for (BuiltinSpec builtin : builtins) {
             if (builtin.templateBuiltin() == templateBuiltin) {
-                lines.add(formatBuiltinSignature(builtin.signature()) + " — " + builtin.description());
+                lines.add(
+                        formatBuiltinSignature(builtin.signature())
+                                + " — "
+                                + builtin.description());
             }
         }
         return String.join("\n", lines);
@@ -372,8 +422,9 @@ public final class PromptAssembler {
     private static String formatBuiltinSignature(String signature) {
         String[] variants = signature.split(" / ");
         ArrayList<String> prefixed = new ArrayList<>();
-        for (String variant : variants)
+        for (String variant : variants) {
             prefixed.add("@" + variant);
+        }
         return String.join(" / ", prefixed);
     }
 
@@ -396,27 +447,43 @@ public final class PromptAssembler {
 
         ArrayList<String> examples = new ArrayList<>();
         if (toolCalls) {
-            examples.add("Example — mutation + refresh + reset (PREFERRED pattern):\n" + "```\n"
-                    + "$binding = \"default\"\n" + "result = Mutation(\"tool_name\", {field: $binding})\n"
-                    + "data = Query(\"tool_name\", {}, {rows: []})\n"
-                    + "onSubmit = Action([@Run(result), @Run(data), @Reset($binding)])\n" + "```");
+            examples.add(
+                    "Example — mutation + refresh + reset (PREFERRED pattern):\n"
+                            + "```\n"
+                            + "$binding = \"default\"\n"
+                            + "result = Mutation(\"tool_name\", {field: $binding})\n"
+                            + "data = Query(\"tool_name\", {}, {rows: []})\n"
+                            + "onSubmit = Action([@Run(result), @Run(data), @Reset($binding)])\n"
+                            + "```");
         }
-        examples.add("Example — simple nav:\n" + "```\n"
-                + "viewBtn = Button(\"View\", Action([@OpenUrl(\"https://example.com\")]))\n" + "```");
+        examples.add(
+                "Example — simple nav:\n"
+                        + "```\n"
+                        + "viewBtn = Button(\"View\", Action([@OpenUrl(\"https://example.com\")]))\n"
+                        + "```");
 
         ArrayList<String> rules = new ArrayList<>();
         rules.add(
                 "- Action can be assigned to a variable or inlined: Button(\"Go\", onSubmit) and Button(\"Go\", Action([...])) both work");
         if (toolCalls) {
-            rules.add("- If a @Run(mutation) step fails, remaining steps are skipped (halt on failure)");
+            rules.add(
+                    "- If a @Run(mutation) step fails, remaining steps are skipped (halt on failure)");
             rules.add("- @Run(queryRef) re-fetches the query (fire-and-forget, cannot fail)");
         }
 
-        return "## Action — Button Behavior\n" + "\n"
+        return "## Action — Button Behavior\n"
+                + "\n"
                 + "Action([@steps...]) wires button clicks to operations. Steps are @-prefixed built-in actions. Steps execute in order.\n"
                 + "Buttons without an explicit Action prop automatically send their label to the assistant (equivalent to Action([@ToAssistant(label)])).\n"
-                + "\n" + "Available steps:\n" + String.join("\n", steps) + "\n" + "\n" + String.join("\n\n", examples)
-                + "\n" + "\n" + String.join("\n", rules);
+                + "\n"
+                + "Available steps:\n"
+                + String.join("\n", steps)
+                + "\n"
+                + "\n"
+                + String.join("\n\n", examples)
+                + "\n"
+                + "\n"
+                + String.join("\n", rules);
     }
 
     // ─── Tools ─────────────────────────────────────────────────────────────────
@@ -434,8 +501,9 @@ public final class PromptAssembler {
 
         ArrayList<ToolSpec> withOutput = new ArrayList<>();
         for (ToolSpec tool : tools) {
-            if (hasSchema(tool.outputSchema()))
+            if (hasSchema(tool.outputSchema())) {
                 withOutput.add(tool);
+            }
         }
         if (!withOutput.isEmpty()) {
             lines.add("");
@@ -443,7 +511,12 @@ public final class PromptAssembler {
             lines.add("");
             lines.add("Use these shapes as minimal Query defaults:");
             for (ToolSpec tool : withOutput) {
-                lines.add("- " + tool.name() + ": `" + Json.stringify(defaultForSchema(tool.outputSchema())) + "`");
+                lines.add(
+                        "- "
+                                + tool.name()
+                                + ": `"
+                                + Json.stringify(defaultForSchema(tool.outputSchema()))
+                                + "`");
             }
         }
 
@@ -464,7 +537,11 @@ public final class PromptAssembler {
                 ArrayList<String> fields = new ArrayList<>();
                 for (Map.Entry<String, Object> entry : props.entrySet()) {
                     String opt = required.contains(entry.getKey()) ? "" : "?";
-                    fields.add(entry.getKey() + opt + ": " + jsonSchemaTypeStr(asObject(entry.getValue())));
+                    fields.add(
+                            entry.getKey()
+                                    + opt
+                                    + ": "
+                                    + jsonSchemaTypeStr(asObject(entry.getValue())));
                 }
                 args = String.join(", ", fields);
             }
@@ -493,20 +570,24 @@ public final class PromptAssembler {
             Object enumObj = schema.get("enum");
             if (enumObj instanceof List<?> enumVals) {
                 ArrayList<String> quoted = new ArrayList<>();
-                for (Object value : enumVals)
+                for (Object value : enumVals) {
                     quoted.add("\"" + value + "\"");
+                }
                 return String.join(" | ", quoted);
             }
             return "string";
         }
-        if ("number".equals(type) || "integer".equals(type))
+        if ("number".equals(type) || "integer".equals(type)) {
             return "number";
-        if ("boolean".equals(type))
+        }
+        if ("boolean".equals(type)) {
             return "boolean";
+        }
         if ("array".equals(type)) {
             Object items = schema.get("items");
-            if (items instanceof Map<?, ?> itemMap)
+            if (items instanceof Map<?, ?> itemMap) {
                 return jsonSchemaTypeStr(asObject(itemMap)) + "[]";
+            }
             return "any[]";
         }
         if ("object".equals(type)) {
@@ -517,7 +598,11 @@ public final class PromptAssembler {
                 ArrayList<String> fields = new ArrayList<>();
                 for (Map.Entry<String, Object> entry : props.entrySet()) {
                     String opt = required.contains(entry.getKey()) ? "" : "?";
-                    fields.add(entry.getKey() + opt + ": " + jsonSchemaTypeStr(asObject(entry.getValue())));
+                    fields.add(
+                            entry.getKey()
+                                    + opt
+                                    + ": "
+                                    + jsonSchemaTypeStr(asObject(entry.getValue())));
                 }
                 return "{" + String.join(", ", fields) + "}";
             }
@@ -528,14 +613,18 @@ public final class PromptAssembler {
 
     private static Object defaultForSchema(Map<String, Object> schema) {
         String type = schema.get("type") instanceof String s ? s : null;
-        if ("string".equals(type))
+        if ("string".equals(type)) {
             return "";
-        if ("number".equals(type) || "integer".equals(type))
+        }
+        if ("number".equals(type) || "integer".equals(type)) {
             return 0L;
-        if ("boolean".equals(type))
+        }
+        if ("boolean".equals(type)) {
             return Boolean.FALSE;
-        if ("array".equals(type))
+        }
+        if ("array".equals(type)) {
             return new ArrayList<>();
+        }
         if ("object".equals(type)) {
             Object propsObj = schema.get("properties");
             if (propsObj instanceof Map<?, ?> rawProps && !rawProps.isEmpty()) {
@@ -559,8 +648,9 @@ public final class PromptAssembler {
     private static List<String> stringList(Object value) {
         ArrayList<String> result = new ArrayList<>();
         if (value instanceof List<?> list) {
-            for (Object item : list)
+            for (Object item : list) {
                 result.add(String.valueOf(item));
+            }
         }
         return result;
     }
@@ -572,7 +662,8 @@ public final class PromptAssembler {
         steps.add("1. `root = " + rootName + "(...)` — UI shell appears immediately");
         if (supportsExpressions) {
             steps.add("2. $variable declarations — state ready for bindings");
-            steps.add("3. Query statements — defaults resolve immediately so components render with data");
+            steps.add(
+                    "3. Query statements — defaults resolve immediately so components render with data");
             steps.add("4. Component definitions — fill in with data already available");
             steps.add("5. Data values — leaf content last");
         } else {
@@ -580,44 +671,58 @@ public final class PromptAssembler {
             steps.add("3. Data values — leaf content last");
         }
 
-        return "## Hoisting & Streaming (CRITICAL)\n" + "\n"
+        return "## Hoisting & Streaming (CRITICAL)\n"
+                + "\n"
                 + "openui-lang supports hoisting: a reference can be used BEFORE it is defined. The parser resolves all references after the full input is parsed.\n"
                 + "\n"
                 + "During streaming, the output is re-parsed on every chunk. Undefined references are temporarily unresolved and appear once their definitions stream in. This creates a progressive top-down reveal — structure first, then data fills in.\n"
-                + "\n" + "**Recommended statement order for optimal streaming:**\n" + String.join("\n", steps) + "\n"
-                + "\n" + "Always write the root = " + rootName
+                + "\n"
+                + "**Recommended statement order for optimal streaming:**\n"
+                + String.join("\n", steps)
+                + "\n"
+                + "\n"
+                + "Always write the root = "
+                + rootName
                 + "(...) statement first so the UI shell appears immediately, even before child data has streamed in.";
     }
 
     // ─── Important rules ───────────────────────────────────────────────────────
 
-    private static String importantRules(String rootName, boolean toolCalls, boolean bindings,
-            boolean hasCapabilityGaps) {
+    private static String importantRules(
+            String rootName, boolean toolCalls, boolean bindings, boolean hasCapabilityGaps) {
         ArrayList<String> verifyLines = new ArrayList<>();
-        verifyLines.add("1. root = " + rootName + "(...) is the FIRST line (for optimal streaming).");
+        verifyLines.add(
+                "1. root = " + rootName + "(...) is the FIRST line (for optimal streaming).");
         verifyLines.add(
                 "2. Every referenced name is defined. Every defined name (other than root) is reachable from root.");
         if (toolCalls) {
-            verifyLines.add((verifyLines.size() + 1) + ". Every Query result is referenced by at least one component.");
+            verifyLines.add(
+                    (verifyLines.size() + 1)
+                            + ". Every Query result is referenced by at least one component.");
         }
         if (bindings) {
             verifyLines.add(
-                    (verifyLines.size() + 1) + ". Every $binding appears in at least one component or expression.");
+                    (verifyLines.size() + 1)
+                            + ". Every $binding appears in at least one component or expression.");
         }
         if (hasCapabilityGaps) {
-            verifyLines.add((verifyLines.size() + 1)
-                    + ". If a requested capability is not supported and fallback display is used, the first child of root is `capabilityNotice`.");
+            verifyLines.add(
+                    (verifyLines.size() + 1)
+                            + ". If a requested capability is not supported and fallback display is used, the first child of root is `capabilityNotice`.");
         }
 
         return "## Important Rules\n"
                 + "- Choose components that best represent the content (tables for comparisons, charts for trends, forms for input, etc.)\n"
-                + "\n" + "## Final Verification\n" + "Before finishing, walk your output and verify:\n"
+                + "\n"
+                + "## Final Verification\n"
+                + "Before finishing, walk your output and verify:\n"
                 + String.join("\n", verifyLines);
     }
 
     // ─── Static sections (verbatim from prompt.ts) ─────────────────────────────
 
-    private static final String QUERY_SECTION = """
+    private static final String QUERY_SECTION =
+            """
             ## Query — Live Data Fetching
 
             Fetch data from available tools. Returns defaults instantly, swaps in real data when it arrives.
@@ -635,7 +740,8 @@ public final class PromptAssembler {
             - Manual refresh: `Button("Refresh", Action([@Run(query1), @Run(query2)]), "secondary")` — re-fetches the listed queries
             - Refresh all queries: create Action with @Run for each query""";
 
-    private static final String MUTATION_SECTION = """
+    private static final String MUTATION_SECTION =
+            """
             ## Mutation — Write Operations
 
             Execute state-changing tool calls (create, update, delete). Unlike Query (auto-fetches on render), Mutation fires only on button click via Action.
@@ -652,7 +758,8 @@ public final class PromptAssembler {
             - Mutation results use regular identifiers: `result = Mutation(...)`, NOT `$result`
             - Show loading state: `result.status == "loading" ? TextContent("Saving...") : null`""";
 
-    private static final String INTERACTIVE_FILTERS_SECTION = """
+    private static final String INTERACTIVE_FILTERS_SECTION =
+            """
             ## Interactive Filters
 
             To let the user filter data with a dropdown:
@@ -694,7 +801,8 @@ public final class PromptAssembler {
 
             IMPORTANT: Always add validation rules to form fields used with Mutations. Use OBJECT syntax: {required: true, email: true, minLength: 8}. The renderer shows error messages automatically and blocks submit when validation fails.""";
 
-    private static final String TOOL_WORKFLOW_SECTION = """
+    private static final String TOOL_WORKFLOW_SECTION =
+            """
             ## Data Workflow
 
             When tools are available, follow this workflow:
@@ -725,7 +833,8 @@ public final class PromptAssembler {
             ```
             Everything derives from the Query — when data refreshes, the entire dashboard updates automatically.""";
 
-    private static final String EDIT_MODE_SECTION = """
+    private static final String EDIT_MODE_SECTION =
+            """
             ## Edit Mode
 
             The runtime merges by statement name: same name = replace, new name = append.
@@ -750,7 +859,8 @@ public final class PromptAssembler {
             - NEVER output the entire program as a patch. Only output what actually changes
             - If you are about to output more than 10 statements, reconsider — most edits need fewer""";
 
-    private static final String INLINE_MODE_SECTION = """
+    private static final String INLINE_MODE_SECTION =
+            """
             ## Inline Mode
 
             You are in inline mode. You can respond in two ways:
@@ -776,8 +886,17 @@ public final class PromptAssembler {
             - When the user asks a question, respond with text only — NO code. The dashboard stays unchanged.
             - The parser extracts code from fences automatically. Text outside fences is shown as chat.""";
 
-    public record PromptInput(String preamble, String root, Map<String, ComponentPromptSpec> components,
-            List<ComponentGroup> componentGroups, DataModelSpec dataModel, List<ToolSpec> tools, List<String> examples,
-            List<String> additionalRules, Boolean editMode, Boolean inlineMode, Boolean toolCalls, Boolean bindings) {
-    }
+    public record PromptInput(
+            String preamble,
+            String root,
+            Map<String, ComponentPromptSpec> components,
+            List<ComponentGroup> componentGroups,
+            DataModelSpec dataModel,
+            List<ToolSpec> tools,
+            List<String> examples,
+            List<String> additionalRules,
+            Boolean editMode,
+            Boolean inlineMode,
+            Boolean toolCalls,
+            Boolean bindings) {}
 }

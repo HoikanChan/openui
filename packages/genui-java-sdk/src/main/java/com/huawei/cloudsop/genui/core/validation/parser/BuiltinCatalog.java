@@ -14,19 +14,17 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 校验链的 builtin 函数词表——从当前生效契约的 {@code builtins} 派生（参见 ADR 0003 D1）；当请求未携带契约或契约 {@code builtins} 为空（如仅构造组件目录的轻量测试契约）时回退到
- * SDK 默认 {@code base-contract.json} 派生集。
+ * 校验链的 builtin 函数词表——从当前生效契约的 {@code builtins} 派生（参见 ADR 0003 D1）；当请求未携带契约或契约 {@code builtins}
+ * 为空（如仅构造组件目录的轻量测试契约）时回退到 SDK 默认 {@code base-contract.json} 派生集。
  *
- * <p>
- * 解析器/分析器/类型求值器通过构造或参数注入本词表识别 builtin 调用；契约里没有的函数名按幻觉（unknown）处理。Action 步骤名与 Query/Mutation 是 DSL 语法保留字，不来自契约；
- * 它们与 builtin 词表同处本类但判断入口各自独立（{@link #isActionName} / {@link #isReservedCall} 不并入 {@link #isBuiltin}）。
+ * <p>解析器/分析器/类型求值器通过构造或参数注入本词表识别 builtin 调用；契约里没有的函数名按幻觉（unknown）处理。Action 步骤名与 Query/Mutation 是
+ * DSL 语法保留字，不来自契约； 它们与 builtin 词表同处本类但判断入口各自独立（{@link #isActionName} / {@link #isReservedCall} 不并入
+ * {@link #isBuiltin}）。
  *
- * <p>
- * 惰性/模板类（lazy）判定由契约 params 的 {@code binder} 标记派生——带 binder 参数的 builtin 即 lazy，其绑定名会为模板参数引入局部作用域（与提示词分节标记
- * templateBuiltin 是两个概念）。
+ * <p>惰性/模板类（lazy）判定由契约 params 的 {@code binder} 标记派生——带 binder 参数的 builtin 即
+ * lazy，其绑定名会为模板参数引入局部作用域（与提示词分节标记 templateBuiltin 是两个概念）。
  *
- * <p>
- * 无状态、线程安全；实例可自由共享。
+ * <p>无状态、线程安全；实例可自由共享。
  *
  * @since 2026
  */
@@ -39,12 +37,14 @@ public final class BuiltinCatalog {
     public static final String MUTATION = "Mutation";
 
     /** 全部 action 表达式名（步骤与容器）。 */
-    private static final Set<String> ACTION_NAMES = Set.of("Run", "ToAssistant", "OpenUrl", "Set", "Reset", "Action");
+    private static final Set<String> ACTION_NAMES =
+            Set.of("Run", "ToAssistant", "OpenUrl", "Set", "Reset", "Action");
 
     /** 保留的语句级调用名集合。 */
     private static final Set<String> RESERVED_CALLS = Set.of(QUERY, MUTATION);
 
-    private static final BuiltinCatalog DEFAULT = new BuiltinCatalog(GenerationContractLoader.loadDefault().builtins());
+    private static final BuiltinCatalog DEFAULT =
+            new BuiltinCatalog(GenerationContractLoader.loadDefault().builtins());
 
     private final Set<String> names;
     private final Set<String> lazyNames;

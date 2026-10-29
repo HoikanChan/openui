@@ -9,5 +9,4 @@ package com.huawei.cloudsop.genui.core.prompt.characterize;
  *
  * @since 2026
  */
-public record ScalarShape(ScalarType type) implements ShapeNode {
-}
+public record ScalarShape(ScalarType type) implements ShapeNode {}

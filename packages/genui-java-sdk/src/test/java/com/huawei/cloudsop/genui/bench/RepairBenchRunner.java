@@ -60,17 +60,15 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * repair-bench 批量执行器。照 {@code JobRunner} 形态：有界固定线程池、按完成顺序逐行 JSONL、 {@code synchronized} emit；加载阶段的语料损坏已在 loader
- * 层整批终止（退出码 1），执行阶段单案例异常转 {@code error} 行不中断批次。
+ * repair-bench 批量执行器。照 {@code JobRunner} 形态：有界固定线程池、按完成顺序逐行 JSONL、 {@code synchronized}
+ * emit；加载阶段的语料损坏已在 loader 层整批终止（退出码 1），执行阶段单案例异常转 {@code error} 行不中断批次。
  *
- * <p>
- * 单案例流程（实现设计 §3）：案例契约现算 initial FINAL 校验 → 复现判定（非 INVALID 即 {@code not-reproduced}）→ 用公开 {@link GenUiGenerator}
- * 跑一次真实<b>流式</b>生成会话（{@code generateStream}；流式是唯一修复路径，同步 {@code generate} 不再校验/修复）：transport 以 SSE 把案例 DSL
- * 当作"历史初次生成"回放，修复轮转交真实模型 SSE，整页 Markdown 降级由本地桩 SSE 承接，生成会话随后做轮末统一校验与增量修复 → 由轮记录映射输出状态。
- * 全链路 issue code 一律取 <b>actionable</b> 视图（与修复提示词所见一致）。
+ * <p>单案例流程（实现设计 §3）：案例契约现算 initial FINAL 校验 → 复现判定（非 INVALID 即 {@code not-reproduced}）→ 用公开 {@link
+ * GenUiGenerator} 跑一次真实<b>流式</b>生成会话（{@code generateStream}；流式是唯一修复路径，同步 {@code generate}
+ * 不再校验/修复）：transport 以 SSE 把案例 DSL 当作"历史初次生成"回放，修复轮转交真实模型 SSE，整页 Markdown 降级由本地桩 SSE
+ * 承接，生成会话随后做轮末统一校验与增量修复 → 由轮记录映射输出状态。 全链路 issue code 一律取 <b>actionable</b> 视图（与修复提示词所见一致）。
  *
- * <p>
- * 每个案例独立构建 {@link GenerationSdk}（案例契约）与生成器，避免跨案例共享契约/会话状态。
+ * <p>每个案例独立构建 {@link GenerationSdk}（案例契约）与生成器，避免跨案例共享契约/会话状态。
  *
  * @since 2026
  */
@@ -95,11 +93,21 @@ final class RepairBenchRunner {
     /** 是否跑修复：false = 每案例只做 FINAL 校验（validation-only，不初始化 transport、零 LLM 调用）。 */
     private final boolean repair;
 
-    RepairBenchRunner(LlmTransport transport, String model, int maxAttempts, Duration timeout, PrintStream out) {
+    RepairBenchRunner(
+            LlmTransport transport,
+            String model,
+            int maxAttempts,
+            Duration timeout,
+            PrintStream out) {
         this(transport, model, maxAttempts, timeout, out, true);
     }
 
-    RepairBenchRunner(LlmTransport transport, String model, int maxAttempts, Duration timeout, PrintStream out,
+    RepairBenchRunner(
+            LlmTransport transport,
+            String model,
+            int maxAttempts,
+            Duration timeout,
+            PrintStream out,
             boolean repair) {
         this.transport = transport;
         this.model = model;
@@ -107,40 +115,53 @@ final class RepairBenchRunner {
         this.timeout = timeout == null ? Duration.ZERO : timeout;
         this.out = out;
         this.repair = repair;
-        this.repairConfig = GenUiLlmConfig.builder().defaultModel(model).temperature(0).enableThinking(false).build();
+        this.repairConfig =
+                GenUiLlmConfig.builder()
+                        .defaultModel(model)
+                        .temperature(0)
+                        .enableThinking(false)
+                        .build();
     }
 
     /**
      * 跑完整批案例：逐案例行按完成顺序输出，批次末尾输出一行汇总。
      *
-     * @param cases
-     *            已加载的案例（顺序即执行提交顺序）
-     * @param concurrency
-     *            线程池大小
-     * @throws InterruptedException
-     *             等待期间被中断
+     * @param cases 已加载的案例（顺序即执行提交顺序）
+     * @param concurrency 线程池大小
+     * @throws InterruptedException 等待期间被中断
      */
-    void runAll(List<RepairCasePack.RepairCase> cases, int concurrency) throws InterruptedException {
+    void runAll(List<RepairCasePack.RepairCase> cases, int concurrency)
+            throws InterruptedException {
         long batchStart = System.currentTimeMillis();
         SummaryAccumulator summary = new SummaryAccumulator();
-        ExecutorService pool = Executors.newFixedThreadPool(Math.min(concurrency, Math.max(cases.size(), 1)));
+        ExecutorService pool =
+                Executors.newFixedThreadPool(Math.min(concurrency, Math.max(cases.size(), 1)));
         try {
-            List<Future<?>> futures = cases.stream()
-                    .map(benchCase -> pool.submit(() -> runOneSafely(benchCase, summary))).<Future<?>>map(f -> f)
-                    .toList();
+            List<Future<?>> futures =
+                    cases.stream()
+                            .map(benchCase -> pool.submit(() -> runOneSafely(benchCase, summary)))
+                            .<Future<?>>map(f -> f)
+                            .toList();
             for (Future<?> future : futures) {
                 try {
                     future.get();
                 } catch (java.util.concurrent.ExecutionException error) {
                     // runOneSafely 已把案例级异常转为 error 行；走到这里属于意外，记录后继续等其余案例
-                    System.err.println("[repair-bench] unexpected worker failure: " + error.getCause());
+                    System.err.println(
+                            "[repair-bench] unexpected worker failure: " + error.getCause());
                 }
             }
         } finally {
             pool.shutdownNow();
         }
-        emit(Json.stringify(
-                summary.toLine(model, maxAttempts, concurrency, timeout, System.currentTimeMillis() - batchStart)));
+        emit(
+                Json.stringify(
+                        summary.toLine(
+                                model,
+                                maxAttempts,
+                                concurrency,
+                                timeout,
+                                System.currentTimeMillis() - batchStart)));
     }
 
     private void runOneSafely(RepairCasePack.RepairCase benchCase, SummaryAccumulator summary) {
@@ -165,10 +186,18 @@ final class RepairBenchRunner {
         Set<String> externalRefs = Set.of("data");
 
         // ── 步骤 1：复现判定（FINAL）──
-        ValidationResult v0 = DefaultOpenuiLangValidator.INSTANCE.validate(ValidationRequest.builder()
-                .dsl(benchCase.dsl()).contract(benchCase.contract())
-                .rootName(benchCase.contract().root() == null ? "root" : benchCase.contract().root())
-                .externalRefs(externalRefs).dataModel(benchCase.dataModel()).build());
+        ValidationResult v0 =
+                DefaultOpenuiLangValidator.INSTANCE.validate(
+                        ValidationRequest.builder()
+                                .dsl(benchCase.dsl())
+                                .contract(benchCase.contract())
+                                .rootName(
+                                        benchCase.contract().root() == null
+                                                ? "root"
+                                                : benchCase.contract().root())
+                                .externalRefs(externalRefs)
+                                .dataModel(benchCase.dataModel())
+                                .build());
         List<String> initialCodes = actionableCodes(v0);
 
         if (v0.status() != ValidationStatus.INVALID) {
@@ -201,13 +230,20 @@ final class RepairBenchRunner {
         // ── 步骤 2：真实流式生成会话（transport 以 SSE 重放历史 DSL 作为初次生成，轮末校验 + 增量修复）──
         GenerationSdk sdk = GenerationSdk.builder().baseContract(benchCase.contract()).build();
         CaseReplayTransport replay = new CaseReplayTransport(transport, benchCase.dsl(), timeout);
-        GenUiGenerator generator = GenUiGenerator.withTransport(sdk, repairConfig, replay,
-                GenUiValidationConfig.incremental(maxAttempts), null);
-        UiGenerationRequest request = UiGenerationRequest.builder().userInput(benchCase.originalIntent())
-                .response(benchCase.dataModel()).build();
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(
+                        sdk,
+                        repairConfig,
+                        replay,
+                        GenUiValidationConfig.incremental(maxAttempts),
+                        null);
+        UiGenerationRequest request =
+                UiGenerationRequest.builder()
+                        .userInput(benchCase.originalIntent())
+                        .response(benchCase.dataModel())
+                        .build();
         // 流事件仅是生成过程的实时转发；bench 只消费返回结果与轮记录，不落盘前端帧。
-        GenUiGenerationResult generated = generator.generateStream(request, event -> {
-        });
+        GenUiGenerationResult generated = generator.generateStream(request, event -> {});
 
         List<RoundEndResult> rounds = generated.rounds();
         RoundEndResult lastValidated = null;
@@ -216,12 +252,16 @@ final class RepairBenchRunner {
                 lastValidated = round;
             }
         }
-        // Strict success: the DSL session itself passed the check. CHECK_PASSED is only set on validated programs, and
-        // the equality guard rejects any wrapped fallback output, so a Markdown handoff can never count as repaired.
-        boolean repaired = generated.endReason() == GenerationEndReason.CHECK_PASSED
-                && generated.validationStatus() == ValidationStatus.VALID && lastValidated != null
-                && lastValidated.validationResult().status() == ValidationStatus.VALID
-                && generated.dsl().equals(lastValidated.currentDefinitions());
+        // Strict success: the DSL session itself passed the check. CHECK_PASSED is only set on
+        // validated programs, and
+        // the equality guard rejects any wrapped fallback output, so a Markdown handoff can never
+        // count as repaired.
+        boolean repaired =
+                generated.endReason() == GenerationEndReason.CHECK_PASSED
+                        && generated.validationStatus() == ValidationStatus.VALID
+                        && lastValidated != null
+                        && lastValidated.validationResult().status() == ValidationStatus.VALID
+                        && generated.dsl().equals(lastValidated.currentDefinitions());
 
         String status;
         if (repaired) {
@@ -248,30 +288,52 @@ final class RepairBenchRunner {
         line.put("endReason", generated.endReason() == null ? null : generated.endReason().name());
         line.put("markdownFallback", generated.endReason() != GenerationEndReason.CHECK_PASSED);
         line.put("outputDsl", generated.dsl());
-        line.put("rounds", rounds.stream().map(round -> {
-            LinkedHashMap<String, Object> record = new LinkedHashMap<>();
-            record.put("rawOutput", round.rawOutput());
-            record.put("currentDefinitions", round.currentDefinitions());
-            record.put("durationMs", round.durationMs());
-            record.put("endReason", round.endReason() == null ? null : round.endReason().name());
-            record.put("status", round.validationResult() == null ? null : round.validationResult().status().name());
-            record.put("issues", round.validationResult() == null ? List.of() : round.validationResult().issues());
-            return record;
-        }).toList());
+        line.put(
+                "rounds",
+                rounds.stream()
+                        .map(
+                                round -> {
+                                    LinkedHashMap<String, Object> record = new LinkedHashMap<>();
+                                    record.put("rawOutput", round.rawOutput());
+                                    record.put("currentDefinitions", round.currentDefinitions());
+                                    record.put("durationMs", round.durationMs());
+                                    record.put(
+                                            "endReason",
+                                            round.endReason() == null
+                                                    ? null
+                                                    : round.endReason().name());
+                                    record.put(
+                                            "status",
+                                            round.validationResult() == null
+                                                    ? null
+                                                    : round.validationResult().status().name());
+                                    record.put(
+                                            "issues",
+                                            round.validationResult() == null
+                                                    ? List.of()
+                                                    : round.validationResult().issues());
+                                    return record;
+                                })
+                        .toList());
         String finalDsl = lastValidated == null ? null : lastValidated.currentDefinitions();
         boolean initialHasCapabilityGap = hasCapabilityGapIssue(v0);
-        CapabilityDslInspect dslInspect = inspectFinalDsl(finalDsl, benchCase.contract(), externalRefs);
+        CapabilityDslInspect dslInspect =
+                inspectFinalDsl(finalDsl, benchCase.contract(), externalRefs);
         List<String> consecutiveUnmatched = consecutiveUnmatchedUnknownComponents(rounds);
 
-        line.put("finalIssueCodes",
-                lastValidated == null ? List.of() : actionableCodes(lastValidated.validationResult()));
+        line.put(
+                "finalIssueCodes",
+                lastValidated == null
+                        ? List.of()
+                        : actionableCodes(lastValidated.validationResult()));
         line.put("finalDsl", finalDsl);
         line.put("capabilityNoticePresent", dslInspect.capabilityNoticePresent());
         line.put("remainingCapabilityGapAliases", dslInspect.remainingGapAliases());
         line.put("consecutiveUnmatchedUnknownComponents", consecutiveUnmatched);
         line.put("durationMs", System.currentTimeMillis() - started);
         emit(Json.stringify(line));
-        summary.record(status, initialCodes, initialHasCapabilityGap, dslInspect, consecutiveUnmatched);
+        summary.record(
+                status, initialCodes, initialHasCapabilityGap, dslInspect, consecutiveUnmatched);
     }
 
     /**
@@ -285,17 +347,22 @@ final class RepairBenchRunner {
             if (round.validationResult() == null) {
                 continue;
             }
-            attempts.add(attemptLine(attempts.size() + 1, round.validationResult().isValid(),
-                    actionableCodes(round.validationResult())));
+            attempts.add(
+                    attemptLine(
+                            attempts.size() + 1,
+                            round.validationResult().isValid(),
+                            actionableCodes(round.validationResult())));
         }
-        boolean interruptedRepair = rounds.size() > 1 && rounds.get(rounds.size() - 1).validationResult() == null;
+        boolean interruptedRepair =
+                rounds.size() > 1 && rounds.get(rounds.size() - 1).validationResult() == null;
         if (interruptedRepair) {
             attempts.add(attemptLine(attempts.size() + 1, false, null));
         }
         return attempts;
     }
 
-    private static LinkedHashMap<String, Object> attemptLine(int attempt, boolean valid, List<String> issueCodes) {
+    private static LinkedHashMap<String, Object> attemptLine(
+            int attempt, boolean valid, List<String> issueCodes) {
         LinkedHashMap<String, Object> attemptLine = new LinkedHashMap<>();
         attemptLine.put("attempt", attempt);
         attemptLine.put("valid", valid);
@@ -310,7 +377,8 @@ final class RepairBenchRunner {
         return line;
     }
 
-    private static void putInternalCodes(LinkedHashMap<String, Object> line, RepairCasePack.RepairCase benchCase) {
+    private static void putInternalCodes(
+            LinkedHashMap<String, Object> line, RepairCasePack.RepairCase benchCase) {
         if (benchCase.internalIssueCodes() != null) {
             line.put("internalIssueCodes", benchCase.internalIssueCodes());
         }
@@ -330,17 +398,18 @@ final class RepairBenchRunner {
             return false;
         }
         return result.actionableIssues().stream()
-                .anyMatch(i -> "unknown-component".equals(i.code()) && RepairHints.isCapabilityGapHint(i.hint()));
+                .anyMatch(
+                        i ->
+                                "unknown-component".equals(i.code())
+                                        && RepairHints.isCapabilityGapHint(i.hint()));
     }
 
-    private record CapabilityDslInspect(boolean capabilityNoticePresent, List<String> remainingGapAliases) {
-    }
+    private record CapabilityDslInspect(
+            boolean capabilityNoticePresent, List<String> remainingGapAliases) {}
 
-    /**
-     * 检查修复后最终 DSL 的能力边界落点：可达语句中 {@code capabilityNotice} 是否按模板声明，以及仍调用了哪些能力缺口别名。
-     */
-    private static CapabilityDslInspect inspectFinalDsl(String dsl, GenerationContract contract,
-            Set<String> externalRefs) {
+    /** 检查修复后最终 DSL 的能力边界落点：可达语句中 {@code capabilityNotice} 是否按模板声明，以及仍调用了哪些能力缺口别名。 */
+    private static CapabilityDslInspect inspectFinalDsl(
+            String dsl, GenerationContract contract, Set<String> externalRefs) {
         if (dsl == null || dsl.isBlank() || contract == null) {
             return new CapabilityDslInspect(false, List.of());
         }
@@ -351,13 +420,16 @@ final class RepairBenchRunner {
             return new CapabilityDslInspect(false, List.of());
         }
         String rootName = contract.root() == null ? "root" : contract.root();
-        ProgramAnalysis analysis = new ProgramAnalyzer(ContractCatalog.from(contract), builtins).analyze(program,
-                rootName, externalRefs);
+        ProgramAnalysis analysis =
+                new ProgramAnalyzer(ContractCatalog.from(contract), builtins)
+                        .analyze(program, rootName, externalRefs);
         Set<String> reachable = reachableStatementIds(stmts, analysis.entryId(), builtins);
 
         Statement noticeStmt = stmts.get("capabilityNotice");
-        boolean noticeDeclared = noticeStmt instanceof Statement.Value val && val.expr() instanceof AstNode.Comp comp
-                && "TextCallout".equals(comp.name());
+        boolean noticeDeclared =
+                noticeStmt instanceof Statement.Value val
+                        && val.expr() instanceof AstNode.Comp comp
+                        && "TextCallout".equals(comp.name());
         boolean capabilityNoticePresent = noticeDeclared && reachable.contains("capabilityNotice");
 
         Set<String> remainingAliases = new TreeSet<>();
@@ -370,8 +442,8 @@ final class RepairBenchRunner {
     }
 
     /** 从语义分析选定的入口语句出发，沿语句间的引用求可达语句 id 集合（不含孤立语句）。 */
-    private static Set<String> reachableStatementIds(Map<String, Statement> stmts, String entryId,
-            BuiltinCatalog builtins) {
+    private static Set<String> reachableStatementIds(
+            Map<String, Statement> stmts, String entryId, BuiltinCatalog builtins) {
         Set<String> reachable = new HashSet<>();
         if (entryId == null || !stmts.containsKey(entryId)) {
             return reachable;
@@ -385,7 +457,8 @@ final class RepairBenchRunner {
             Statement statement = stmts.get(statementId);
             // 被引用的 Query/Mutation 声明在物化时按运行时值处理，不展开其表达式（与原可达语义一致）。
             if (!statementId.equals(entryId)
-                    && (statement instanceof Statement.Query || statement instanceof Statement.Mutation)) {
+                    && (statement instanceof Statement.Query
+                            || statement instanceof Statement.Mutation)) {
                 continue;
             }
             Set<String> refs = new LinkedHashSet<>();
@@ -399,7 +472,10 @@ final class RepairBenchRunner {
         return reachable;
     }
 
-    private static void collectRefs(AstNode node, Set<String> out, Deque<Set<String>> scopeFrames,
+    private static void collectRefs(
+            AstNode node,
+            Set<String> out,
+            Deque<Set<String>> scopeFrames,
             BuiltinCatalog builtins) {
         if (node == null) {
             return;
@@ -456,10 +532,15 @@ final class RepairBenchRunner {
     }
 
     /** 惰性 builtin（{@code @Each}/{@code @Render}）的 binder 只作用于 body，body 内同名引用不算语句引用。 */
-    private static void collectCompRefs(AstNode.Comp comp, Set<String> out, Deque<Set<String>> scopeFrames,
+    private static void collectCompRefs(
+            AstNode.Comp comp,
+            Set<String> out,
+            Deque<Set<String>> scopeFrames,
             BuiltinCatalog builtins) {
-        List<Integer> binderIndexes = builtins.isBuiltin(comp.name())
-                ? LazyBuiltinBinders.binderIndexes(comp, builtins) : List.of();
+        List<Integer> binderIndexes =
+                builtins.isBuiltin(comp.name())
+                        ? LazyBuiltinBinders.binderIndexes(comp, builtins)
+                        : List.of();
         if (binderIndexes.isEmpty()) {
             for (AstNode arg : comp.args()) {
                 collectRefs(arg, out, scopeFrames, builtins);
@@ -505,12 +586,14 @@ final class RepairBenchRunner {
         return false;
     }
 
-    private static void collectGapAliases(AstNode node, GenerationContract contract, Set<String> out) {
+    private static void collectGapAliases(
+            AstNode node, GenerationContract contract, Set<String> out) {
         if (node == null) {
             return;
         }
         if (node instanceof AstNode.Comp comp) {
-            if (RepairHints.findCapabilityGapByAlias(comp.name(), contract.capabilityGaps()) != null) {
+            if (RepairHints.findCapabilityGapByAlias(comp.name(), contract.capabilityGaps())
+                    != null) {
                 out.add(comp.name());
             }
             for (AstNode arg : comp.args()) {
@@ -560,7 +643,8 @@ final class RepairBenchRunner {
     }
 
     /**
-     * 统计连续两轮校验中重复出现的“未命中 capabilityGaps.aliases 且非 builtin 漏 @”的同名 unknown-component（#71 D7 / #75 AC 6）。
+     * 统计连续两轮校验中重复出现的“未命中 capabilityGaps.aliases 且非 builtin 漏 @”的同名 unknown-component（#71 D7 / #75
+     * AC 6）。
      */
     private static List<String> consecutiveUnmatchedUnknownComponents(List<RoundEndResult> rounds) {
         if (rounds == null || rounds.size() < 2) {
@@ -574,8 +658,10 @@ final class RepairBenchRunner {
             }
             Set<String> currentUnmatched = new LinkedHashSet<>();
             for (ValidationIssue issue : round.validationResult().actionableIssues()) {
-                if ("unknown-component".equals(issue.code()) && issue.component() != null
-                        && !issue.component().isBlank() && !RepairHints.isMissingAtHint(issue.hint())
+                if ("unknown-component".equals(issue.code())
+                        && issue.component() != null
+                        && !issue.component().isBlank()
+                        && !RepairHints.isMissingAtHint(issue.hint())
                         && !RepairHints.isCapabilityGapHint(issue.hint())) {
                     currentUnmatched.add(issue.component());
                 }
@@ -609,23 +695,24 @@ final class RepairBenchRunner {
      * 单案例 transport 包装，三种请求都用 SSE 应答（{@code generateStream} 只走 {@code postStream}）：
      *
      * <ul>
-     * <li><b>初次生成</b>——把案例 DSL 作为一条 SSE 增量回放（bench 复现历史失败，不打模型）。
-     * <li><b>增量修复</b>——转交真实 transport 的 SSE 流；每次转交前检查 {@code --timeout-minutes} 墙钟预算，命中后抛
-     * {@link LlmTransportException} 并记录原因。
-     * <li><b>整页 Markdown 降级</b>——返回本地桩 SSE（修复失败不应额外消耗一次模型调用）。
+     *   <li><b>初次生成</b>——把案例 DSL 作为一条 SSE 增量回放（bench 复现历史失败，不打模型）。
+     *   <li><b>增量修复</b>——转交真实 transport 的 SSE 流；每次转交前检查 {@code --timeout-minutes} 墙钟预算，命中后抛 {@link
+     *       LlmTransportException} 并记录原因。
+     *   <li><b>整页 Markdown 降级</b>——返回本地桩 SSE（修复失败不应额外消耗一次模型调用）。
      * </ul>
      *
-     * <p>
-     * 修复尝试次数由生成会话的 {@code maxIncrementalAttempts} 控制（与 CLI 的 {@code --max-attempts} 同值）；本包装只负责超时检查与请求分类。同步
-     * {@code post} 显式拒绝：bench 全链路只走流式。
+     * <p>修复尝试次数由生成会话的 {@code maxIncrementalAttempts} 控制（与 CLI 的 {@code --max-attempts}
+     * 同值）；本包装只负责超时检查与请求分类。同步 {@code post} 显式拒绝：bench 全链路只走流式。
      */
     private static final class CaseReplayTransport implements InMemoryLlmTransport {
 
         /** 与 {@code MarkdownGeneration} 的固定 system 文案对齐，用于识别整页降级请求。 */
-        private static final String MARKDOWN_SYSTEM_HINT = "Answer the user's request in Markdown only.";
+        private static final String MARKDOWN_SYSTEM_HINT =
+                "Answer the user's request in Markdown only.";
 
         /** 修复失败时整页降级的桩内容；不进入判定，只让 Markdown 交接正常完成。 */
-        private static final String MARKDOWN_STUB = "Incremental repair did not produce a valid page.";
+        private static final String MARKDOWN_STUB =
+                "Incremental repair did not produce a valid page.";
 
         private final LlmTransport delegate;
 
@@ -653,7 +740,8 @@ final class RepairBenchRunner {
         public String post(String body) throws LlmTransportException {
             // bench 已完全迁到流式：generateStream 只经 newCall(stream=true)/postStream。保留同步入口只会
             // 形成未经测试的死支路，因此显式拒绝。
-            throw new UnsupportedOperationException("repair-bench is streaming-only; use postStream");
+            throw new UnsupportedOperationException(
+                    "repair-bench is streaming-only; use postStream");
         }
 
         @Override
@@ -674,7 +762,8 @@ final class RepairBenchRunner {
         private void checkTimeout() throws LlmTransportException {
             if (!timeout.isZero() && System.nanoTime() - repairStartedNanos >= timeout.toNanos()) {
                 timedOut = true;
-                throw new LlmTransportException("repair timeout after " + repairCalls.get() + " attempt(s)");
+                throw new LlmTransportException(
+                        "repair timeout after " + repairCalls.get() + " attempt(s)");
             }
         }
 
@@ -708,12 +797,18 @@ final class RepairBenchRunner {
          * {@code finish_reason=stop} 时结束；这里用前者，避免额外的 finish 帧。
          */
         private static InputStream sseResponse(String content) {
-            String delta = "data: {\"choices\":[{\"delta\":{\"content\":" + Json.stringify(content) + "}}]}\n\n";
-            return new ByteArrayInputStream((delta + SseFrames.done()).getBytes(StandardCharsets.UTF_8));
+            String delta =
+                    "data: {\"choices\":[{\"delta\":{\"content\":"
+                            + Json.stringify(content)
+                            + "}}]}\n\n";
+            return new ByteArrayInputStream(
+                    (delta + SseFrames.done()).getBytes(StandardCharsets.UTF_8));
         }
 
         private enum RequestKind {
-            INITIAL, REPAIR, MARKDOWN
+            INITIAL,
+            REPAIR,
+            MARKDOWN
         }
     }
 
@@ -721,12 +816,12 @@ final class RepairBenchRunner {
      * 批次汇总累加器（worker 线程共享，全部方法 synchronized）。口径（实现设计 §5.2）：
      *
      * <ul>
-     * <li>主口径 = repaired / (repaired + still-invalid)——transport-error 与 timeout 剔除分母（基础设施噪声与 自设预算不算"修不动"，可筛出重跑）；分母为 0
-     * 时 rate 为 null，并通过 {@code mainRateExcludes} 明示被剔除的状态。
-     * <li>端到端口径 = repaired / (repaired + still-invalid + timeout + transport-error + error)——不剔除任何运行期 失败，not-reproduced
-     * 仍排除（它不是修复尝试）。
-     * <li>副口径 = repaired / total（not-reproduced 计入惩罚，度量外部环境保真度）。
-     * <li>issueBuckets 仅统计 reproduced 案例，按 initialIssueCodes 分桶（一案例可入多桶）。
+     *   <li>主口径 = repaired / (repaired + still-invalid)——transport-error 与 timeout 剔除分母（基础设施噪声与
+     *       自设预算不算"修不动"，可筛出重跑）；分母为 0 时 rate 为 null，并通过 {@code mainRateExcludes} 明示被剔除的状态。
+     *   <li>端到端口径 = repaired / (repaired + still-invalid + timeout + transport-error +
+     *       error)——不剔除任何运行期 失败，not-reproduced 仍排除（它不是修复尝试）。
+     *   <li>副口径 = repaired / total（not-reproduced 计入惩罚，度量外部环境保真度）。
+     *   <li>issueBuckets 仅统计 reproduced 案例，按 initialIssueCodes 分桶（一案例可入多桶）。
      * </ul>
      */
     private static final class SummaryAccumulator {
@@ -752,13 +847,18 @@ final class RepairBenchRunner {
             record(status, initialCodes, false, null, List.of());
         }
 
-        synchronized void record(String status, List<String> initialCodes, boolean initialHasCapabilityGap,
-                CapabilityDslInspect dslInspect, List<String> consecutiveUnmatched) {
+        synchronized void record(
+                String status,
+                List<String> initialCodes,
+                boolean initialHasCapabilityGap,
+                CapabilityDslInspect dslInspect,
+                List<String> consecutiveUnmatched) {
             total++;
             byStatus.computeIfAbsent(status, key -> new int[1])[0]++;
             if (initialCodes != null) {
                 for (String code : initialCodes) {
-                    Map<String, Integer> bucket = buckets.computeIfAbsent(code, key -> new TreeMap<>());
+                    Map<String, Integer> bucket =
+                            buckets.computeIfAbsent(code, key -> new TreeMap<>());
                     bucket.put("cases", bucket.getOrDefault("cases", 0) + 1);
                     bucket.put(status, bucket.getOrDefault(status, 0) + 1);
                 }
@@ -781,8 +881,8 @@ final class RepairBenchRunner {
             }
         }
 
-        synchronized Map<String, Object> toLine(String model, int maxAttempts, int concurrency, Duration timeout,
-                long durationMs) {
+        synchronized Map<String, Object> toLine(
+                String model, int maxAttempts, int concurrency, Duration timeout, long durationMs) {
             long repaired = count("repaired");
             long stillInvalid = count("still-invalid");
 
@@ -805,16 +905,26 @@ final class RepairBenchRunner {
             mainRate.put("denominator", mainDenominator);
             mainRate.put("rate", mainDenominator == 0 ? null : (double) repaired / mainDenominator);
             line.put("mainRate", mainRate);
-            line.put("mainRateExcludes", List.of("timeout", "transport-error", "error", "not-reproduced"));
-            long endToEndDenominator = repaired + stillInvalid + count("timeout") + count("transport-error")
-                    + count("error");
+            line.put(
+                    "mainRateExcludes",
+                    List.of("timeout", "transport-error", "error", "not-reproduced"));
+            long endToEndDenominator =
+                    repaired
+                            + stillInvalid
+                            + count("timeout")
+                            + count("transport-error")
+                            + count("error");
             LinkedHashMap<String, Object> endToEndRate = new LinkedHashMap<>();
             endToEndRate.put("success", repaired);
             endToEndRate.put("denominator", endToEndDenominator);
-            endToEndRate.put("rate", endToEndDenominator == 0 ? null : (double) repaired / endToEndDenominator);
+            endToEndRate.put(
+                    "rate",
+                    endToEndDenominator == 0 ? null : (double) repaired / endToEndDenominator);
             line.put("endToEndRate", endToEndRate);
-            line.put("sessionBudgetSeconds",
-                    java.util.concurrent.TimeUnit.NANOSECONDS.toSeconds(GenerationTiming.BUDGET_NANOS));
+            line.put(
+                    "sessionBudgetSeconds",
+                    java.util.concurrent.TimeUnit.NANOSECONDS.toSeconds(
+                            GenerationTiming.BUDGET_NANOS));
 
             LinkedHashMap<String, Object> secondaryRate = new LinkedHashMap<>();
             secondaryRate.put("success", repaired);
@@ -841,17 +951,23 @@ final class RepairBenchRunner {
             capabilityBoundary.put("capabilityGapCases", capabilityGapCases);
             capabilityBoundary.put("capabilityGapRepaired", capabilityGapRepaired);
             capabilityBoundary.put("capabilityNoticeCount", capabilityNoticeCount);
-            capabilityBoundary.put("capabilityNoticeRate",
-                    capabilityGapRepaired == 0 ? null : (double) capabilityNoticeCount / capabilityGapRepaired);
+            capabilityBoundary.put(
+                    "capabilityNoticeRate",
+                    capabilityGapRepaired == 0
+                            ? null
+                            : (double) capabilityNoticeCount / capabilityGapRepaired);
             capabilityBoundary.put("casesWithRemainingGapCalls", casesWithRemainingGapCalls);
-            capabilityBoundary.put("consecutiveUnmatchedUnknownComponentCases", consecutiveUnmatchedCases);
-            capabilityBoundary.put("consecutiveUnmatchedUnknownComponentCount", consecutiveUnmatchedTotal);
+            capabilityBoundary.put(
+                    "consecutiveUnmatchedUnknownComponentCases", consecutiveUnmatchedCases);
+            capabilityBoundary.put(
+                    "consecutiveUnmatchedUnknownComponentCount", consecutiveUnmatchedTotal);
             line.put("capabilityBoundary", capabilityBoundary);
             line.put("durationMs", durationMs);
             return line;
         }
 
-        private static void putIfPresent(Map<String, Object> bucket, Map<String, Integer> counts, String key) {
+        private static void putIfPresent(
+                Map<String, Object> bucket, Map<String, Integer> counts, String key) {
             if (counts.containsKey(key)) {
                 bucket.put(key, counts.get(key));
             }

@@ -14,7 +14,9 @@ import org.junit.jupiter.api.Test;
 class ChatCompletionResponseTest {
     @Test
     void returnsFirstChoiceContent() {
-        ChatCompletionResponse response = ChatCompletionResponse.parse("""
+        ChatCompletionResponse response =
+                ChatCompletionResponse.parse(
+                        """
                 {"choices":[{"message":{"role":"assistant","content":"root = Stack([])"},"finish_reason":"stop"}]}
                 """);
 
@@ -24,18 +26,23 @@ class ChatCompletionResponseTest {
 
     @Test
     void emptyChoicesThrowsClearException() {
-        GenerationSdkException error = assertThrows(GenerationSdkException.class,
-                () -> ChatCompletionResponse.parse("{\"choices\":[]}").firstContent());
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () -> ChatCompletionResponse.parse("{\"choices\":[]}").firstContent());
 
         assertEquals("Chat completion response choices is empty", error.getMessage());
     }
 
     @Test
     void missingMessageThrowsClearException() {
-        GenerationSdkException error = assertThrows(GenerationSdkException.class,
-                () -> ChatCompletionResponse.parse("{\"choices\":[{}]}").firstContent());
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () -> ChatCompletionResponse.parse("{\"choices\":[{}]}").firstContent());
 
-        assertEquals("Chat completion response first choice message is missing", error.getMessage());
+        assertEquals(
+                "Chat completion response first choice message is missing", error.getMessage());
     }
 
     @Test

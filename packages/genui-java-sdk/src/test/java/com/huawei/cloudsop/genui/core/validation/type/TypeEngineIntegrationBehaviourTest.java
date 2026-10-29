@@ -17,15 +17,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * #90 集成行为:类型分析只对入口可达的当前定义负责,且不修改调用方输入。
- */
+/** #90 集成行为:类型分析只对入口可达的当前定义负责,且不修改调用方输入。 */
 class TypeEngineIntegrationBehaviourTest {
 
     private static ValidationResult validate(String dsl, Map<String, Object> dataModel) {
-        return DefaultOpenuiLangValidator.INSTANCE
-                .validate(ValidationRequest.builder().dsl(dsl).contract(GenerationContractLoader.loadDefault())
-                        .dataModel(dataModel).build());
+        return DefaultOpenuiLangValidator.INSTANCE.validate(
+                ValidationRequest.builder()
+                        .dsl(dsl)
+                        .contract(GenerationContractLoader.loadDefault())
+                        .dataModel(dataModel)
+                        .build());
     }
 
     @Test
@@ -35,8 +36,11 @@ class TypeEngineIntegrationBehaviourTest {
 
         ValidationResult result = validate(dsl, Map.of("device", Map.of("name", "leaf-1")));
 
-        assertEquals(ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
-        assertFalse(result.issues().stream().anyMatch(issue -> "type-data-path-missing".equals(issue.code())),
+        assertEquals(
+                ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+        assertFalse(
+                result.issues().stream()
+                        .anyMatch(issue -> "type-data-path-missing".equals(issue.code())),
                 () -> String.valueOf(result.issues()));
         assertEquals("0", result.metadata().extra().get("typeChecks.mismatched"));
     }
@@ -49,7 +53,9 @@ class TypeEngineIntegrationBehaviourTest {
         ValidationResult result = validate(dsl, Map.of("device", Map.of("name", "leaf-1")));
 
         assertEquals(ValidationStatus.INVALID, result.status());
-        assertTrue(result.issues().stream().anyMatch(issue -> "type-data-path-missing".equals(issue.code())),
+        assertTrue(
+                result.issues().stream()
+                        .anyMatch(issue -> "type-data-path-missing".equals(issue.code())),
                 () -> String.valueOf(result.issues()));
     }
 
@@ -67,25 +73,30 @@ class TypeEngineIntegrationBehaviourTest {
         validate("root = TextContent(@String(@Abs(@FormatNumber(data.value))))", dataModel);
         validate("root = CardHeader(data.users.name)", dataModel);
 
-        assertEquals(snapshot, dataModel, "validation must not mutate the caller's Render Data Model");
+        assertEquals(
+                snapshot, dataModel, "validation must not mutate the caller's Render Data Model");
     }
 
     @SuppressWarnings("unchecked")
     private static Map<String, Object> deepCopy(Map<String, Object> value) {
         Map<String, Object> copy = new LinkedHashMap<>();
-        value.forEach((key, item) -> {
-            if (item instanceof Map<?, ?> map) {
-                copy.put(key, deepCopy((Map<String, Object>) map));
-            } else if (item instanceof List<?> list) {
-                List<Object> items = new ArrayList<>();
-                for (Object element : list) {
-                    items.add(element instanceof Map<?, ?> map ? deepCopy((Map<String, Object>) map) : element);
-                }
-                copy.put(key, items);
-            } else {
-                copy.put(key, item);
-            }
-        });
+        value.forEach(
+                (key, item) -> {
+                    if (item instanceof Map<?, ?> map) {
+                        copy.put(key, deepCopy((Map<String, Object>) map));
+                    } else if (item instanceof List<?> list) {
+                        List<Object> items = new ArrayList<>();
+                        for (Object element : list) {
+                            items.add(
+                                    element instanceof Map<?, ?> map
+                                            ? deepCopy((Map<String, Object>) map)
+                                            : element);
+                        }
+                        copy.put(key, items);
+                    } else {
+                        copy.put(key, item);
+                    }
+                });
         return copy;
     }
 }

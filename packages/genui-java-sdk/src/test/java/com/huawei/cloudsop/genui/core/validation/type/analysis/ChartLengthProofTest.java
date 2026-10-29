@@ -19,40 +19,68 @@ class ChartLengthProofTest {
 
     @Test
     void exactEqualLengthsProveEquality() {
-        assertTrue(AnalysisSession.provenSameLength(expr("[\"A\", \"B\"]"), new long[]{2, 2},
-                expr("[1, 2]"), new long[]{2, 2}));
+        assertTrue(
+                AnalysisSession.provenSameLength(
+                        expr("[\"A\", \"B\"]"),
+                        new long[] {2, 2},
+                        expr("[1, 2]"),
+                        new long[] {2, 2}));
     }
 
     @Test
     void exactDifferentLengthsDoNotProveEquality() {
-        assertFalse(AnalysisSession.provenSameLength(expr("[\"A\", \"B\"]"), new long[]{2, 2},
-                expr("[1, 2, 3]"), new long[]{3, 3}));
+        assertFalse(
+                AnalysisSession.provenSameLength(
+                        expr("[\"A\", \"B\"]"),
+                        new long[] {2, 2},
+                        expr("[1, 2, 3]"),
+                        new long[] {3, 3}));
     }
 
     @Test
     void oneExactOneNonExactDoesNotProveEquality() {
-        assertFalse(AnalysisSession.provenSameLength(expr("[\"A\", \"B\"]"), new long[]{2, 2},
-                expr("@Each(rows, \"r\", r.value)"), UNBOUNDED));
+        assertFalse(
+                AnalysisSession.provenSameLength(
+                        expr("[\"A\", \"B\"]"),
+                        new long[] {2, 2},
+                        expr("@Each(rows, \"r\", r.value)"),
+                        UNBOUNDED));
     }
 
     @Test
     void identicalNonExactIntervalsFromDifferentSourcesProveNothing() {
-        assertFalse(AnalysisSession.provenSameLength(expr("@Each(active, \"r\", r.label)"), UNBOUNDED,
-                expr("@Each(inactive, \"r\", r.value)"), UNBOUNDED));
+        assertFalse(
+                AnalysisSession.provenSameLength(
+                        expr("@Each(active, \"r\", r.label)"),
+                        UNBOUNDED,
+                        expr("@Each(inactive, \"r\", r.value)"),
+                        UNBOUNDED));
     }
 
     @Test
     void sameLengthPreservingSourceProvesEquality() {
-        assertTrue(AnalysisSession.provenSameLength(expr("@Each(rows, \"r\", r.label)"), UNBOUNDED,
-                expr("@Each(rows, \"r\", r.value)"), UNBOUNDED));
-        assertTrue(AnalysisSession.provenSameLength(expr("@Sort(rows, \"k\")"), UNBOUNDED,
-                expr("@Each(@Sort(rows, \"k\"), \"r\", r.value)"), UNBOUNDED));
+        assertTrue(
+                AnalysisSession.provenSameLength(
+                        expr("@Each(rows, \"r\", r.label)"),
+                        UNBOUNDED,
+                        expr("@Each(rows, \"r\", r.value)"),
+                        UNBOUNDED));
+        assertTrue(
+                AnalysisSession.provenSameLength(
+                        expr("@Sort(rows, \"k\")"),
+                        UNBOUNDED,
+                        expr("@Each(@Sort(rows, \"k\"), \"r\", r.value)"),
+                        UNBOUNDED));
     }
 
     @Test
     void sameDataPathProvesEqualityWithoutAnyDerivation() {
-        assertTrue(AnalysisSession.provenSameLength(expr("data.labels"), UNBOUNDED, expr("data.labels"), UNBOUNDED));
-        assertFalse(AnalysisSession.provenSameLength(expr("data.labels"), UNBOUNDED, expr("data.other"), UNBOUNDED));
+        assertTrue(
+                AnalysisSession.provenSameLength(
+                        expr("data.labels"), UNBOUNDED, expr("data.labels"), UNBOUNDED));
+        assertFalse(
+                AnalysisSession.provenSameLength(
+                        expr("data.labels"), UNBOUNDED, expr("data.other"), UNBOUNDED));
     }
 
     private static com.huawei.cloudsop.genui.core.validation.parser.AstNode expr(String source) {

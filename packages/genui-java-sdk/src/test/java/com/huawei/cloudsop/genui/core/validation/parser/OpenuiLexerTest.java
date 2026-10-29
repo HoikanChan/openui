@@ -19,7 +19,10 @@ class OpenuiLexerTest {
     }
 
     private static Token first(String src, TokenType type) {
-        return OpenuiLexer.tokenize(src).stream().filter(t -> t.type() == type).findFirst().orElseThrow();
+        return OpenuiLexer.tokenize(src).stream()
+                .filter(t -> t.type() == type)
+                .findFirst()
+                .orElseThrow();
     }
 
     @Test
@@ -38,7 +41,9 @@ class OpenuiLexerTest {
 
     @Test
     void booleanAndNullKeywords() {
-        assertEquals(List.of(TokenType.TRUE, TokenType.FALSE, TokenType.NULL, TokenType.EOF), types("true false null"));
+        assertEquals(
+                List.of(TokenType.TRUE, TokenType.FALSE, TokenType.NULL, TokenType.EOF),
+                types("true false null"));
     }
 
     @Test
@@ -55,23 +60,52 @@ class OpenuiLexerTest {
 
     @Test
     void twoCharOperators() {
-        assertEquals(List.of(TokenType.EQ_EQ, TokenType.NOT_EQ, TokenType.GREATER_EQ, TokenType.LESS_EQ, TokenType.AND,
-                TokenType.OR, TokenType.NULL_COAL, TokenType.EOF), types("== != >= <= && || ??"));
+        assertEquals(
+                List.of(
+                        TokenType.EQ_EQ,
+                        TokenType.NOT_EQ,
+                        TokenType.GREATER_EQ,
+                        TokenType.LESS_EQ,
+                        TokenType.AND,
+                        TokenType.OR,
+                        TokenType.NULL_COAL,
+                        TokenType.EOF),
+                types("== != >= <= && || ??"));
     }
 
     @Test
     void singleCharOperatorsAndPunctuation() {
         assertEquals(
-                List.of(TokenType.EQUALS, TokenType.NOT, TokenType.GREATER, TokenType.LESS, TokenType.QUESTION,
-                        TokenType.PLUS, TokenType.MINUS, TokenType.STAR, TokenType.SLASH, TokenType.PERCENT,
-                        TokenType.DOT, TokenType.COLON, TokenType.COMMA, TokenType.EOF),
+                List.of(
+                        TokenType.EQUALS,
+                        TokenType.NOT,
+                        TokenType.GREATER,
+                        TokenType.LESS,
+                        TokenType.QUESTION,
+                        TokenType.PLUS,
+                        TokenType.MINUS,
+                        TokenType.STAR,
+                        TokenType.SLASH,
+                        TokenType.PERCENT,
+                        TokenType.DOT,
+                        TokenType.COLON,
+                        TokenType.COMMA,
+                        TokenType.EOF),
                 types("= ! > < ? + - * / % . : ,"));
     }
 
     @Test
     void brackets() {
-        assertEquals(List.of(TokenType.L_PAREN, TokenType.R_PAREN, TokenType.L_BRACK, TokenType.R_BRACK,
-                TokenType.L_BRACE, TokenType.R_BRACE, TokenType.EOF), types("()[]{}"));
+        assertEquals(
+                List.of(
+                        TokenType.L_PAREN,
+                        TokenType.R_PAREN,
+                        TokenType.L_BRACK,
+                        TokenType.R_BRACK,
+                        TokenType.L_BRACE,
+                        TokenType.R_BRACE,
+                        TokenType.EOF),
+                types("()[]{}"));
     }
 
     @Test
@@ -104,21 +138,35 @@ class OpenuiLexerTest {
 
     @Test
     void newlinesAreSignificant() {
-        assertEquals(List.of(TokenType.IDENT, TokenType.NEWLINE, TokenType.IDENT, TokenType.EOF), types("a\nb"));
+        assertEquals(
+                List.of(TokenType.IDENT, TokenType.NEWLINE, TokenType.IDENT, TokenType.EOF),
+                types("a\nb"));
     }
 
     @Test
     void componentCallSequence() {
         // Table([col], data.rows)
-        assertEquals(List.of(TokenType.TYPE, TokenType.L_PAREN, TokenType.L_BRACK, TokenType.IDENT, TokenType.R_BRACK,
-                TokenType.COMMA, TokenType.IDENT, TokenType.DOT, TokenType.IDENT, TokenType.R_PAREN, TokenType.EOF),
+        assertEquals(
+                List.of(
+                        TokenType.TYPE,
+                        TokenType.L_PAREN,
+                        TokenType.L_BRACK,
+                        TokenType.IDENT,
+                        TokenType.R_BRACK,
+                        TokenType.COMMA,
+                        TokenType.IDENT,
+                        TokenType.DOT,
+                        TokenType.IDENT,
+                        TokenType.R_PAREN,
+                        TokenType.EOF),
                 types("Table([col], data.rows)"));
     }
 
     @Test
     void tracksLineAndColumn() {
         List<Token> toks = OpenuiLexer.tokenize("a\n  Table");
-        Token table = toks.stream().filter(t -> t.type() == TokenType.TYPE).findFirst().orElseThrow();
+        Token table =
+                toks.stream().filter(t -> t.type() == TokenType.TYPE).findFirst().orElseThrow();
         assertEquals(2, table.line());
         assertEquals(3, table.column());
     }

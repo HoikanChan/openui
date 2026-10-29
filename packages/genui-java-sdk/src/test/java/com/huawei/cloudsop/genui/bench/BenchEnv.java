@@ -20,16 +20,15 @@ import java.util.Map;
 final class BenchEnv {
 
     /** bench 消费的配置键（含代理）。 */
-    static final List<String> KEYS = List.of("LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL", "HTTPS_PROXY");
+    static final List<String> KEYS =
+            List.of("LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL", "HTTPS_PROXY");
 
-    private BenchEnv() {
-    }
+    private BenchEnv() {}
 
     /**
      * 合并环境变量与 {@code .env} 文件：环境变量非空者胜出，文件只补齐缺省键。
      *
-     * @param dotEnvPath
-     *            仓库根 .env 路径；不存在或不可读时按空文件处理
+     * @param dotEnvPath 仓库根 .env 路径；不存在或不可读时按空文件处理
      * @return 合并后的配置视图（只含 {@link #KEYS} 中实际有值的键）
      */
     static Map<String, String> resolve(Path dotEnvPath) {
@@ -52,8 +51,7 @@ final class BenchEnv {
     /**
      * 解析 .env 文件。只认 {@code KEY=VALUE} 行；{@code #} 开头与空行跳过；无 {@code =} 的行跳过。
      *
-     * @param path
-     *            .env 文件路径
+     * @param path .env 文件路径
      * @return 文件内解析到的键值（键去空格，值保留原样去首尾空格）
      */
     static Map<String, String> readDotEnv(Path path) {

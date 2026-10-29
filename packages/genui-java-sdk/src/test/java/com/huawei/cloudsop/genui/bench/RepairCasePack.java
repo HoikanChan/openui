@@ -33,13 +33,12 @@ import java.util.stream.Stream;
  *     issues.json          # 可选：内部拦截报错 [{"code": "...", ...}]，仅透传
  * </pre>
  *
- * 默认与生产共用 SDK 的 {@code openui/base-contract.json}，仓库内语料不维护契约副本。
- * 外部自定义案例包可显式覆盖：{@code <case>/contract.json} &gt; 包级 {@code contract.json} &gt; SDK 默认契约。
- * 显式契约解析失败仍整批终止，不回退默认契约。历史结果用 Git 修订和契约哈希固定版本。
+ * 默认与生产共用 SDK 的 {@code openui/base-contract.json}，仓库内语料不维护契约副本。 外部自定义案例包可显式覆盖：{@code
+ * <case>/contract.json} &gt; 包级 {@code contract.json} &gt; SDK 默认契约。 显式契约解析失败仍整批终止，不回退默认契约。历史结果用
+ * Git 修订和契约哈希固定版本。
  *
- * <p>
- * 语料是 git 静态资产：<b>任何</b>解析失败（case.json 非法 / dsl.txt 缺失或空 / contract 解析失败 / issues.json 非法 / id 重复 / 零案例目录 / --cases
- * 不是目录）都收集全部问题后整批终止，不提供降级跑法。
+ * <p>语料是 git 静态资产：<b>任何</b>解析失败（case.json 非法 / dsl.txt 缺失或空 / contract 解析失败 / issues.json 非法 / id
+ * 重复 / 零案例目录 / --cases 不是目录）都收集全部问题后整批终止，不提供降级跑法。
  *
  * @since 2026
  */
@@ -55,36 +54,31 @@ final class RepairCasePack {
     /**
      * 单个修复案例。
      *
-     * @param id
-     *            案例 id（以 case.json 的 {@code id} 字段为准，全语料唯一）
-     * @param originalIntent
-     *            原始用户意图；缺失为 {@code null}（增量修复提示词对 null/blank 输出占位说明）
-     * @param dataModel
-     *            渲染数据模型：缺失/显式 null → {@code null}（仅数据依赖部分未知）；{@code {}} → 空 map（具体空模型）。 绝不能把缺失归一成空 map ——
-     *            {@code ValidationRequest.dataModel} 区分两者
-     * @param dsl
-     *            失败 DSL 原文（不 strip）
-     * @param contract
-     *            该案例生效的契约（默认共用 SDK 契约，允许显式自定义）
-     * @param internalIssueCodes
-     *            issues.json 透传的内部拦截 code；文件缺失为 {@code null}（输出层据此缺省该字段）
-     * @param dirName
-     *            案例目录名（仅用于排序与定位）
+     * @param id 案例 id（以 case.json 的 {@code id} 字段为准，全语料唯一）
+     * @param originalIntent 原始用户意图；缺失为 {@code null}（增量修复提示词对 null/blank 输出占位说明）
+     * @param dataModel 渲染数据模型：缺失/显式 null → {@code null}（仅数据依赖部分未知）；{@code {}} → 空 map（具体空模型）。
+     *     绝不能把缺失归一成空 map —— {@code ValidationRequest.dataModel} 区分两者
+     * @param dsl 失败 DSL 原文（不 strip）
+     * @param contract 该案例生效的契约（默认共用 SDK 契约，允许显式自定义）
+     * @param internalIssueCodes issues.json 透传的内部拦截 code；文件缺失为 {@code null}（输出层据此缺省该字段）
+     * @param dirName 案例目录名（仅用于排序与定位）
      */
-    record RepairCase(String id, String originalIntent, Map<String, Object> dataModel, String dsl,
-            GenerationContract contract, List<String> internalIssueCodes, String dirName) {
-    }
+    record RepairCase(
+            String id,
+            String originalIntent,
+            Map<String, Object> dataModel,
+            String dsl,
+            GenerationContract contract,
+            List<String> internalIssueCodes,
+            String dirName) {}
 
     /**
      * 扫描并加载整个案例包；结构性损坏时抛出 {@link PackLoadException}。
      *
-     * @param casesRoot
-     *            案例包根目录
-     * @param limit
-     *            只取按目录名排序后的前 N 个案例；{@code null} 表示全部
+     * @param casesRoot 案例包根目录
+     * @param limit 只取按目录名排序后的前 N 个案例；{@code null} 表示全部
      * @return 按目录名排序的案例列表
-     * @throws PackLoadException
-     *             案例包结构性损坏（报错信息列出全部问题案例）
+     * @throws PackLoadException 案例包结构性损坏（报错信息列出全部问题案例）
      */
     static List<RepairCase> load(Path casesRoot, Integer limit) throws PackLoadException {
         List<String> problems = new ArrayList<>();
@@ -98,7 +92,10 @@ final class RepairCasePack {
             try {
                 sharedContract = parseContract(sharedContractPath);
             } catch (Exception error) {
-                problems.add(problem(sharedContractPath, "corpus contract.json invalid: " + error.getMessage()));
+                problems.add(
+                        problem(
+                                sharedContractPath,
+                                "corpus contract.json invalid: " + error.getMessage()));
             }
         } else {
             try {
@@ -110,10 +107,16 @@ final class RepairCasePack {
 
         List<Path> caseDirs;
         try (Stream<Path> stream = Files.list(casesRoot)) {
-            caseDirs = stream.filter(Files::isDirectory).map(Path::getFileName).map(Path::toString).sorted()
-                    .map(casesRoot::resolve).toList();
+            caseDirs =
+                    stream.filter(Files::isDirectory)
+                            .map(Path::getFileName)
+                            .map(Path::toString)
+                            .sorted()
+                            .map(casesRoot::resolve)
+                            .toList();
         } catch (IOException error) {
-            throw new PackLoadException("Failed to list cases directory " + casesRoot + ": " + error.getMessage());
+            throw new PackLoadException(
+                    "Failed to list cases directory " + casesRoot + ": " + error.getMessage());
         }
 
         List<Path> withCaseJson = new ArrayList<>();
@@ -139,8 +142,14 @@ final class RepairCasePack {
                 continue;
             }
             if (!ids.add(loaded.id())) {
-                problems.add(problem(dir,
-                        "duplicate case id '" + loaded.id() + "' (also in " + idDirs.get(loaded.id()) + ")"));
+                problems.add(
+                        problem(
+                                dir,
+                                "duplicate case id '"
+                                        + loaded.id()
+                                        + "' (also in "
+                                        + idDirs.get(loaded.id())
+                                        + ")"));
                 continue;
             }
             idDirs.put(loaded.id(), dir.getFileName().toString());
@@ -148,17 +157,19 @@ final class RepairCasePack {
         }
 
         if (!problems.isEmpty()) {
-            throw new PackLoadException("Repair case pack is structurally broken (" + problems.size()
-                    + " problem(s)):\n - " + String.join("\n - ", problems));
+            throw new PackLoadException(
+                    "Repair case pack is structurally broken ("
+                            + problems.size()
+                            + " problem(s)):\n - "
+                            + String.join("\n - ", problems));
         }
         cases.sort(Comparator.comparing(RepairCase::dirName));
         return cases;
     }
 
-    /**
-     * 加载单个案例目录；所有问题记入 {@code problems} 并返回 {@code null}。
-     */
-    private static RepairCase loadOne(Path dir, GenerationContract sharedContract, List<String> problems) {
+    /** 加载单个案例目录；所有问题记入 {@code problems} 并返回 {@code null}。 */
+    private static RepairCase loadOne(
+            Path dir, GenerationContract sharedContract, List<String> problems) {
         Map<String, Object> caseJson;
         try {
             caseJson = Json.asObject(Json.parse(readUtf8(dir.resolve("case.json"))), "case.json");
@@ -182,7 +193,11 @@ final class RepairCasePack {
             try {
                 dataModel = Json.asObject(caseJson.get("dataModel"), "dataModel");
             } catch (Exception error) {
-                problems.add(problem(dir, "case.json 'dataModel' must be a JSON object: " + error.getMessage()));
+                problems.add(
+                        problem(
+                                dir,
+                                "case.json 'dataModel' must be a JSON object: "
+                                        + error.getMessage()));
                 return null;
             }
         }
@@ -225,7 +240,13 @@ final class RepairCasePack {
             }
         }
 
-        return new RepairCase(id, originalIntent, dataModel, dsl, contract, internalIssueCodes,
+        return new RepairCase(
+                id,
+                originalIntent,
+                dataModel,
+                dsl,
+                contract,
+                internalIssueCodes,
                 dir.getFileName().toString());
     }
 
@@ -240,7 +261,8 @@ final class RepairCasePack {
             Map<String, Object> entry = Json.asObject(entries.get(i), "issues.json[" + i + "]");
             Object code = entry.get("code");
             if (!(code instanceof String text) || text.isBlank()) {
-                throw new IllegalArgumentException("issues.json[" + i + "].code must be a non-empty string");
+                throw new IllegalArgumentException(
+                        "issues.json[" + i + "].code must be a non-empty string");
             }
             codes.add(text);
         }

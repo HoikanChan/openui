@@ -11,5 +11,4 @@ import java.util.LinkedHashMap;
  *
  * @since 2026
  */
-public record ObjectShape(LinkedHashMap<String, FieldShape> fields) implements ShapeNode {
-}
+public record ObjectShape(LinkedHashMap<String, FieldShape> fields) implements ShapeNode {}

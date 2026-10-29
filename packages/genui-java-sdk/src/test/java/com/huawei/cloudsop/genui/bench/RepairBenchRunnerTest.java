@@ -34,18 +34,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * {@link RepairBenchRunner} 全批流程（假 transport）：复现判定、repaired / still-invalid / transport-error / not-reproduced 状态映射、逐
- * attempt codes、主副口径与 issueBuckets 算术（含 transport-error 剔除分母、 分母 0 → rate null）、内部 issues.json 透传。
+ * {@link RepairBenchRunner} 全批流程（假 transport）：复现判定、repaired / still-invalid / transport-error /
+ * not-reproduced 状态映射、逐 attempt codes、主副口径与 issueBuckets 算术（含 transport-error 剔除分母、 分母 0 → rate
+ * null）、内部 issues.json 透传。
  *
  * @since 2026
  */
 class RepairBenchRunnerTest {
 
-    private static final String CONTRACT_JSON = "{\"contractVersion\":\"v1\",\"root\":\"Stack\",\"components\":{"
-            + "\"Stack\":{\"description\":\"Flex container\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
-            + "\"children\":{\"type\":\"array\"}},\"required\":[\"children\"]}},"
-            + "\"TextContent\":{\"description\":\"Text block\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
-            + "\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}}}}";
+    private static final String CONTRACT_JSON =
+            "{\"contractVersion\":\"v1\",\"root\":\"Stack\",\"components\":{"
+                    + "\"Stack\":{\"description\":\"Flex container\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
+                    + "\"children\":{\"type\":\"array\"}},\"required\":[\"children\"]}},"
+                    + "\"TextContent\":{\"description\":\"Text block\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
+                    + "\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}}}}";
 
     private static final String VALID_DSL = "root = Stack([TextContent(\"ok\")])";
 
@@ -53,27 +55,26 @@ class RepairBenchRunnerTest {
     private static final String STILL_BAD_DSL = "root = StillBad()";
 
     /**
-     * 一个会触发"修复后仍无效"的 DSL（测试契约里不存在 {@code StillBad} 组件）， 但它依然是合法的 openui-lang 语法 —— 不会触发 root-mismatch 之外的解析级错误。
-     * 注意：不带参数（避免括号引号在 JSON 转义/反转义中变形）。
+     * 一个会触发"修复后仍无效"的 DSL（测试契约里不存在 {@code StillBad} 组件）， 但它依然是合法的 openui-lang 语法 —— 不会触发
+     * root-mismatch 之外的解析级错误。 注意：不带参数（避免括号引号在 JSON 转义/反转义中变形）。
      */
     private static final String STILL_BAD_DSL_2 = "root = StillBad2()";
 
-    /**
-     * 一个会触发"修复后仍无效"的 DSL，第三次尝试用。
-     */
+    /** 一个会触发"修复后仍无效"的 DSL，第三次尝试用。 */
     private static final String STILL_BAD_DSL_3 = "root = StillBad3()";
 
     /** 修复第二轮用的"仍无效但根名正确"的 DSL（根名与契约一致，不会触发 root-not-renderable）。 */
     private static final String STILL_BAD_ROOTED_DSL = "root = Stack([Bogus()])";
 
-    @TempDir
-    Path tempDir;
+    @TempDir Path tempDir;
 
     // ── 假 transport ─────────────────────────────────────────────────────────
 
     /** 一条 SSE 增量帧；bench 的流式生成只消费 {@code delta.content}。 */
     private static String frame(String content) {
-        return "data: {\"choices\":[{\"delta\":{\"content\":" + Json.stringify(content) + "}}]}\n\n";
+        return "data: {\"choices\":[{\"delta\":{\"content\":"
+                + Json.stringify(content)
+                + "}}]}\n\n";
     }
 
     /** 提取增量修复提示词中的当前有效 DSL 段；非修复请求返回 {@code null}。 */
@@ -94,8 +95,7 @@ class RepairBenchRunnerTest {
 
     /** 按 DSL 脚本化的假 transport：从请求体里提取修复提示词携带的无效 DSL，反查脚本队列。 */
     private static final class ScriptedTransport
-            implements
-                com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
+            implements com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport {
         private final Map<String, Deque<String>> scriptByDsl = new LinkedHashMap<>();
 
         private final int[] postCount = {0};
@@ -132,10 +132,13 @@ class RepairBenchRunnerTest {
             String currentDsl = currentDsl(allContent.toString());
             Map.Entry<String, Deque<String>> matched = null;
             for (Map.Entry<String, Deque<String>> entry : scriptByDsl.entrySet()) {
-                boolean hit = currentDsl == null
-                        ? allContent.toString().contains(entry.getKey())
-                        : currentDsl.contains(entry.getKey());
-                if (hit && (matched == null || entry.getKey().length() > matched.getKey().length())) {
+                boolean hit =
+                        currentDsl == null
+                                ? allContent.toString().contains(entry.getKey())
+                                : currentDsl.contains(entry.getKey());
+                if (hit
+                        && (matched == null
+                                || entry.getKey().length() > matched.getKey().length())) {
                     matched = entry;
                 }
             }
@@ -148,7 +151,8 @@ class RepairBenchRunnerTest {
                 if ("<boom>".equals(next)) {
                     throw new LlmTransportException("scripted boom");
                 }
-                return new ByteArrayInputStream((frame(next) + SseFrames.done()).getBytes(StandardCharsets.UTF_8));
+                return new ByteArrayInputStream(
+                        (frame(next) + SseFrames.done()).getBytes(StandardCharsets.UTF_8));
             }
             throw new LlmTransportException("no script matches body");
         }
@@ -167,7 +171,10 @@ class RepairBenchRunnerTest {
         }
 
         Map<String, Object> caseLine(String caseId) {
-            return caseLines.stream().filter(line -> caseId.equals(line.get("caseId"))).findFirst().orElseThrow();
+            return caseLines.stream()
+                    .filter(line -> caseId.equals(line.get("caseId")))
+                    .findFirst()
+                    .orElseThrow();
         }
     }
 
@@ -176,9 +183,11 @@ class RepairBenchRunnerTest {
         return tempDir;
     }
 
-    private void writeCase(String dirName, String id, String dsl, String extraCaseJson) throws Exception {
+    private void writeCase(String dirName, String id, String dsl, String extraCaseJson)
+            throws Exception {
         Path dir = Files.createDirectories(tempDir.resolve(dirName));
-        String caseJson = "{\"id\":\"" + id + "\"" + (extraCaseJson == null ? "" : "," + extraCaseJson) + "}";
+        String caseJson =
+                "{\"id\":\"" + id + "\"" + (extraCaseJson == null ? "" : "," + extraCaseJson) + "}";
         Files.writeString(dir.resolve("case.json"), caseJson, StandardCharsets.UTF_8);
         Files.writeString(dir.resolve("dsl.txt"), dsl, StandardCharsets.UTF_8);
     }
@@ -187,7 +196,8 @@ class RepairBenchRunnerTest {
         List<RepairCase> cases = RepairCasePack.load(packDir(), null);
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         PrintStream print = new PrintStream(buffer, true, StandardCharsets.UTF_8);
-        new RepairBenchRunner(transport, "test-model", 3, Duration.ZERO, print).runAll(cases, concurrency);
+        new RepairBenchRunner(transport, "test-model", 3, Duration.ZERO, print)
+                .runAll(cases, concurrency);
         print.flush();
 
         List<Map<String, Object>> caseLines = new ArrayList<>();
@@ -228,8 +238,10 @@ class RepairBenchRunnerTest {
         String invalidDsl = "root = Bogus(\"x\")";
         writeCase("case-a", "a", invalidDsl, null);
         // 第一次修复返回根名正确但仍含未知组件的 DSL（触发第二轮），第二次返回有效 DSL。
-        ScriptedTransport transport = new ScriptedTransport().answer(invalidDsl, STILL_BAD_ROOTED_DSL)
-                .answer(STILL_BAD_ROOTED_DSL, VALID_DSL);
+        ScriptedTransport transport =
+                new ScriptedTransport()
+                        .answer(invalidDsl, STILL_BAD_ROOTED_DSL)
+                        .answer(STILL_BAD_ROOTED_DSL, VALID_DSL);
 
         BatchResult result = run(transport, 2);
         Map<String, Object> line = result.caseLine("a");
@@ -266,8 +278,11 @@ class RepairBenchRunnerTest {
         String invalidDsl = "root = Bogus(\"x\")";
         writeCase("case-a", "a", invalidDsl, null);
         // 每一轮修复都返回另一个仍无效的 DSL（逐轮换 key，模拟模型修不动）。
-        ScriptedTransport transport = new ScriptedTransport().answer(invalidDsl, STILL_BAD_DSL)
-                .answer(STILL_BAD_DSL, STILL_BAD_DSL_2).answer(STILL_BAD_DSL_2, STILL_BAD_DSL_3);
+        ScriptedTransport transport =
+                new ScriptedTransport()
+                        .answer(invalidDsl, STILL_BAD_DSL)
+                        .answer(STILL_BAD_DSL, STILL_BAD_DSL_2)
+                        .answer(STILL_BAD_DSL_2, STILL_BAD_DSL_3);
 
         BatchResult result = run(transport, 1);
         Map<String, Object> line = result.caseLine("a");
@@ -361,8 +376,11 @@ class RepairBenchRunnerTest {
         }
         assertNotNull(summary, "summary line must be emitted");
 
-        Map<String, Object> invalidLine = caseLines.stream().filter(l -> "a".equals(l.get("caseId"))).findFirst()
-                .orElseThrow();
+        Map<String, Object> invalidLine =
+                caseLines.stream()
+                        .filter(l -> "a".equals(l.get("caseId")))
+                        .findFirst()
+                        .orElseThrow();
         assertEquals("invalid", invalidLine.get("status"));
         assertEquals(false, invalidLine.get("success"));
         assertEquals(true, invalidLine.get("reproduced"));
@@ -370,8 +388,11 @@ class RepairBenchRunnerTest {
         assertTrue(!invalidLine.containsKey("attempts"), "validation-only rows carry no attempts");
         assertTrue(!invalidLine.containsKey("finalDsl"), "validation-only rows carry no finalDsl");
 
-        Map<String, Object> validLine = caseLines.stream().filter(l -> "b".equals(l.get("caseId"))).findFirst()
-                .orElseThrow();
+        Map<String, Object> validLine =
+                caseLines.stream()
+                        .filter(l -> "b".equals(l.get("caseId")))
+                        .findFirst()
+                        .orElseThrow();
         assertEquals("not-reproduced", validLine.get("status"));
 
         assertEquals(0, transport.postCount(), "validation-only must make zero LLM calls");
@@ -381,7 +402,9 @@ class RepairBenchRunnerTest {
         assertEquals(1L, longOf(byStatus.get("not-reproduced")));
         Map<String, Object> mainRate = map(summary, "mainRate");
         assertEquals(0L, longOf(mainRate.get("denominator")));
-        assertNull(mainRate.get("rate"), "no repaired/still-invalid in validation-only → null main rate");
+        assertNull(
+                mainRate.get("rate"),
+                "no repaired/still-invalid in validation-only → null main rate");
         Map<String, Object> bucket = map(map(summary, "issueBuckets"), "unknown-component");
         assertEquals(1L, longOf(bucket.get("cases")));
         assertEquals(1L, longOf(bucket.get("invalid")));
@@ -393,12 +416,16 @@ class RepairBenchRunnerTest {
         Path dir = Files.createDirectories(tempDir.resolve("case-a"));
         Files.writeString(dir.resolve("case.json"), "{\"id\":\"a\"}", StandardCharsets.UTF_8);
         Files.writeString(dir.resolve("dsl.txt"), invalidDsl, StandardCharsets.UTF_8);
-        Files.writeString(dir.resolve("issues.json"), "[{\"code\":\"internal-code-1\"}]", StandardCharsets.UTF_8);
+        Files.writeString(
+                dir.resolve("issues.json"),
+                "[{\"code\":\"internal-code-1\"}]",
+                StandardCharsets.UTF_8);
         Files.writeString(tempDir.resolve("contract.json"), CONTRACT_JSON, StandardCharsets.UTF_8);
         ScriptedTransport transport = new ScriptedTransport().answer(invalidDsl, VALID_DSL);
 
         BatchResult result = run(transport, 1);
-        assertEquals(List.of("internal-code-1"), strings(result.caseLine("a"), "internalIssueCodes"));
+        assertEquals(
+                List.of("internal-code-1"), strings(result.caseLine("a"), "internalIssueCodes"));
     }
 
     @Test
@@ -411,9 +438,12 @@ class RepairBenchRunnerTest {
         writeCase("case-d", "d", badDslA, null); // 与 a 同一 DSL → 共享脚本队列
         // a 消费第一条（修复成功），d 消费第二条（"<boom>" → transport-error）。
         // badDslB 逐轮换 key，三次都返回仍无效 DSL → still-invalid。
-        ScriptedTransport transport = new ScriptedTransport().answer(badDslA, VALID_DSL, "<boom>")
-                .answer(badDslB, STILL_BAD_DSL).answer(STILL_BAD_DSL, STILL_BAD_DSL_2)
-                .answer(STILL_BAD_DSL_2, STILL_BAD_DSL_3);
+        ScriptedTransport transport =
+                new ScriptedTransport()
+                        .answer(badDslA, VALID_DSL, "<boom>")
+                        .answer(badDslB, STILL_BAD_DSL)
+                        .answer(STILL_BAD_DSL, STILL_BAD_DSL_2)
+                        .answer(STILL_BAD_DSL_2, STILL_BAD_DSL_3);
 
         BatchResult result = run(transport, 2);
 
@@ -421,8 +451,10 @@ class RepairBenchRunnerTest {
         Map<String, Object> byStatus = map(result.summary, "byStatus");
         long total = longOf(result.summary.get("total"));
         assertEquals(4L, total);
-        long reproducedCount = longOf(byStatus.get("repaired")) + longOf(byStatus.get("still-invalid"))
-                + longOf(byStatus.get("transport-error"));
+        long reproducedCount =
+                longOf(byStatus.get("repaired"))
+                        + longOf(byStatus.get("still-invalid"))
+                        + longOf(byStatus.get("transport-error"));
         assertEquals(1L, longOf(byStatus.get("repaired")));
         assertEquals(1L, longOf(byStatus.get("still-invalid")));
         assertEquals(1L, longOf(byStatus.get("transport-error")));
@@ -462,50 +494,66 @@ class RepairBenchRunnerTest {
         writeCase("case-a", "a", invalidDsl, "\"originalIntent\":\"show the dashboard\"");
         // 用一个捕获型 transport 验证请求体里带着原始意图与温度 0。
         List<String> bodies = new ArrayList<>();
-        LlmTransport capturing = new com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport() {
-            @Override
-            public String post(String body) {
-                throw new UnsupportedOperationException("streaming-only fake transport");
-            }
+        LlmTransport capturing =
+                new com.huawei.cloudsop.genui.core.llm.transport.InMemoryLlmTransport() {
+                    @Override
+                    public String post(String body) {
+                        throw new UnsupportedOperationException("streaming-only fake transport");
+                    }
 
-            @Override
-            public InputStream postStream(String body) {
-                bodies.add(body);
-                return new ByteArrayInputStream((frame(VALID_DSL) + SseFrames.done()).getBytes(StandardCharsets.UTF_8));
-            }
-        };
+                    @Override
+                    public InputStream postStream(String body) {
+                        bodies.add(body);
+                        return new ByteArrayInputStream(
+                                (frame(VALID_DSL) + SseFrames.done())
+                                        .getBytes(StandardCharsets.UTF_8));
+                    }
+                };
         List<RepairCase> cases = RepairCasePack.load(packDir(), null);
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        new RepairBenchRunner(capturing, "test-model", 3, Duration.ZERO,
-                new PrintStream(buffer, true, StandardCharsets.UTF_8)).runAll(cases, 1);
+        new RepairBenchRunner(
+                        capturing,
+                        "test-model",
+                        3,
+                        Duration.ZERO,
+                        new PrintStream(buffer, true, StandardCharsets.UTF_8))
+                .runAll(cases, 1);
 
         assertEquals(1, bodies.size());
-        assertTrue(bodies.get(0).contains("show the dashboard"), "original intent must reach the repair prompt");
+        assertTrue(
+                bodies.get(0).contains("show the dashboard"),
+                "original intent must reach the repair prompt");
         assertTrue(bodies.get(0).contains("\"temperature\":0"), "repair discipline: temperature 0");
-        assertTrue(bodies.get(0).contains("\"enable_thinking\":false"), "repair discipline: thinking off");
+        assertTrue(
+                bodies.get(0).contains("\"enable_thinking\":false"),
+                "repair discipline: thinking off");
         assertTrue(bodies.get(0).contains("\"model\":\"test-model\""));
     }
 
     @Test
     void capabilityBoundaryMetricsTrackRemainingGapAliasesAndNotice() throws Exception {
-        String contractWithGap = "{\"contractVersion\":\"v1\",\"root\":\"Stack\",\"components\":{"
-                + "\"Stack\":{\"description\":\"Flex\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
-                + "\"children\":{\"type\":\"array\"}},\"required\":[\"children\"]}},"
-                + "\"TextContent\":{\"description\":\"Text\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
-                + "\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}},"
-                + "\"TextCallout\":{\"description\":\"Callout\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
-                + "\"variant\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"}},"
-                + "\"required\":[\"variant\",\"title\",\"description\"]}}},"
-                + "\"capabilityGaps\":[{\"id\":\"group-by\",\"kind\":\"data\",\"name\":\"分组展示\","
-                + "\"aliases\":[\"GroupBy\"],\"phrases\":[\"按X分组\"],\"fallback\":\"用单表展示\"}]}";
-        Files.writeString(tempDir.resolve("contract.json"), contractWithGap, StandardCharsets.UTF_8);
+        String contractWithGap =
+                "{\"contractVersion\":\"v1\",\"root\":\"Stack\",\"components\":{"
+                        + "\"Stack\":{\"description\":\"Flex\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
+                        + "\"children\":{\"type\":\"array\"}},\"required\":[\"children\"]}},"
+                        + "\"TextContent\":{\"description\":\"Text\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
+                        + "\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}},"
+                        + "\"TextCallout\":{\"description\":\"Callout\",\"propsSchema\":{\"type\":\"object\",\"properties\":{"
+                        + "\"variant\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"},\"description\":{\"type\":\"string\"}},"
+                        + "\"required\":[\"variant\",\"title\",\"description\"]}}},"
+                        + "\"capabilityGaps\":[{\"id\":\"group-by\",\"kind\":\"data\",\"name\":\"分组展示\","
+                        + "\"aliases\":[\"GroupBy\"],\"phrases\":[\"按X分组\"],\"fallback\":\"用单表展示\"}]}";
+        Files.writeString(
+                tempDir.resolve("contract.json"), contractWithGap, StandardCharsets.UTF_8);
 
         String invalidDsl = "grouped = @GroupBy(data.items, \"k\")\nroot = Stack([grouped])";
-        String repairedWithNotice = "capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\", \"暂不支持分组展示，以下按原始数据展示\")\n"
-                + "root = Stack([capabilityNotice, TextContent(\"ok\")])";
+        String repairedWithNotice =
+                "capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\", \"暂不支持分组展示，以下按原始数据展示\")\n"
+                        + "root = Stack([capabilityNotice, TextContent(\"ok\")])";
         writeCase("case-gap", "gap-case", invalidDsl, null);
 
-        ScriptedTransport transport = new ScriptedTransport().answer(invalidDsl, repairedWithNotice);
+        ScriptedTransport transport =
+                new ScriptedTransport().answer(invalidDsl, repairedWithNotice);
         List<RepairCase> cases = RepairCasePack.load(tempDir, null);
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         PrintStream print = new PrintStream(buffer, true, StandardCharsets.UTF_8);

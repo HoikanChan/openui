@@ -17,8 +17,11 @@ class AnalysisRegressionTest {
         Type open = Types.record(Map.of(), Type.Extra.open(Types.scalar(Type.ScalarKind.STRING)));
         Fact fact = Fact.of(Types.union(java.util.List.of(closed, open)));
 
-        Checks.CheckResult result = Checks.check(fact,
-                new SchemaCompiler.ExtraClosed("/additionalProperties", Set.of()), null);
+        Checks.CheckResult result =
+                Checks.check(
+                        fact,
+                        new SchemaCompiler.ExtraClosed("/additionalProperties", Set.of()),
+                        null);
 
         assertEquals(Checks.Verdict.UNPROVEN, result.verdict());
         assertTrue(result.reasons().contains(Fact.Loss.INSUFFICIENT_EVIDENCE));
@@ -29,7 +32,8 @@ class AnalysisRegressionTest {
         Type singleValueWithComma = Types.stringLiterals(Set.of("a,b"));
         Type twoValues = Types.stringLiterals(Set.of("a", "b"));
 
-        assertEquals(2, TypeOps.flatten(Types.union(List.of(singleValueWithComma, twoValues))).size());
+        assertEquals(
+                2, TypeOps.flatten(Types.union(List.of(singleValueWithComma, twoValues))).size());
         assertEquals(1, TypeOps.flatten(Types.union(List.of(twoValues, twoValues))).size());
     }
 
@@ -37,9 +41,16 @@ class AnalysisRegressionTest {
     void unionBranchBudgetLossReachesReturnedFact() {
         Type number = Types.scalar(Type.ScalarKind.NUMBER);
         Type string = Types.scalar(Type.ScalarKind.STRING);
-        Fact object = Fact.of(Types.union(List.of(
-                Types.record(Map.of("value", Type.Field.required(number)), Type.Extra.closed()),
-                Types.record(Map.of("value", Type.Field.required(string)), Type.Extra.closed()))));
+        Fact object =
+                Fact.of(
+                        Types.union(
+                                List.of(
+                                        Types.record(
+                                                Map.of("value", Type.Field.required(number)),
+                                                Type.Extra.closed()),
+                                        Types.record(
+                                                Map.of("value", Type.Field.required(string)),
+                                                Type.Extra.closed()))));
         TypeOps ops = new TypeOps(new AnalysisBudget(4096, 1, 16, 256, 2048).tracker());
 
         Fact result = ops.readField(object, "value");
@@ -52,9 +63,16 @@ class AnalysisRegressionTest {
     void overlayBranchBudgetReturnsSafeSummaryWithPrecisionLoss() {
         Type number = Types.scalar(Type.ScalarKind.NUMBER);
         Type string = Types.scalar(Type.ScalarKind.STRING);
-        Fact alternatives = Fact.of(Types.union(java.util.List.of(
-                Types.record(Map.of("value", Type.Field.required(number)), Type.Extra.closed()),
-                Types.record(Map.of("value", Type.Field.required(string)), Type.Extra.closed()))));
+        Fact alternatives =
+                Fact.of(
+                        Types.union(
+                                java.util.List.of(
+                                        Types.record(
+                                                Map.of("value", Type.Field.required(number)),
+                                                Type.Extra.closed()),
+                                        Types.record(
+                                                Map.of("value", Type.Field.required(string)),
+                                                Type.Extra.closed()))));
         var tracker = new AnalysisBudget(4096, 1, 16, 256, 2048).tracker();
         TypeOps ops = new TypeOps(tracker);
 
@@ -70,7 +88,9 @@ class AnalysisRegressionTest {
         var tracker = new AnalysisBudget(0, 64, 16, 256, 2048).tracker();
         TypeOps ops = new TypeOps(tracker);
 
-        Fact result = ops.overlay(java.util.List.of(Fact.of(Types.record(Map.of(), Type.Extra.closed()))));
+        Fact result =
+                ops.overlay(
+                        java.util.List.of(Fact.of(Types.record(Map.of(), Type.Extra.closed()))));
 
         assertEquals(Type.Unknown.INSTANCE, result.type());
         assertTrue(result.losses().contains(Fact.Loss.PRECISION_BUDGET));
@@ -79,13 +99,23 @@ class AnalysisRegressionTest {
 
     @Test
     void sampleBudgetPreservesPrecisionLossAndUnknownRemainder() {
-        Fact fact = SnapshotFacts.typeOfValue(java.util.List.of("known", "also valid"), "data.values", 0,
-                new AnalysisBudget(4096, 64, 16, 1, 2048).tracker());
+        Fact fact =
+                SnapshotFacts.typeOfValue(
+                        java.util.List.of("known", "also valid"),
+                        "data.values",
+                        0,
+                        new AnalysisBudget(4096, 64, 16, 1, 2048).tracker());
 
         assertTrue(fact.losses().contains(Fact.Loss.PRECISION_BUDGET));
         assertEquals(Type.Unknown.INSTANCE, ((Type.Sequence) fact.type()).element());
-        assertEquals(Checks.Verdict.UNPROVEN, Checks.check(fact,
-                new Expectation.SequenceOf(new Expectation.Accept(Types.scalar(Type.ScalarKind.STRING))),
-                "data.values").verdict());
+        assertEquals(
+                Checks.Verdict.UNPROVEN,
+                Checks.check(
+                                fact,
+                                new Expectation.SequenceOf(
+                                        new Expectation.Accept(
+                                                Types.scalar(Type.ScalarKind.STRING))),
+                                "data.values")
+                        .verdict());
     }
 }

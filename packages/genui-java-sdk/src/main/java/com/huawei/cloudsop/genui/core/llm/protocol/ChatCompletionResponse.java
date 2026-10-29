@@ -34,7 +34,10 @@ public final class ChatCompletionResponse {
             Object rawMessage = choice.get("message");
             if (rawMessage != null) {
                 Map<String, Object> messageObject = Json.asObject(rawMessage, "message");
-                message = new Message(asString(messageObject.get("role")), asString(messageObject.get("content")));
+                message =
+                        new Message(
+                                asString(messageObject.get("role")),
+                                asString(messageObject.get("content")));
             }
             choices.add(new Choice(message, asString(choice.get("finish_reason"))));
         }
@@ -51,10 +54,12 @@ public final class ChatCompletionResponse {
         }
         Message message = choices.getFirst().message();
         if (message == null) {
-            throw new GenerationSdkException("Chat completion response first choice message is missing");
+            throw new GenerationSdkException(
+                    "Chat completion response first choice message is missing");
         }
         if (message.content() == null) {
-            throw new GenerationSdkException("Chat completion response first choice content is missing");
+            throw new GenerationSdkException(
+                    "Chat completion response first choice content is missing");
         }
         return message.content();
     }
@@ -63,9 +68,7 @@ public final class ChatCompletionResponse {
         return value == null ? null : String.valueOf(value);
     }
 
-    public record Choice(Message message, String finishReason) {
-    }
+    public record Choice(Message message, String finishReason) {}
 
-    public record Message(String role, String content) {
-    }
+    public record Message(String role, String content) {}
 }

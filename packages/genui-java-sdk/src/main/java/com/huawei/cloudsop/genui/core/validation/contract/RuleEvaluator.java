@@ -26,24 +26,22 @@ import java.util.Set;
 /**
  * 结构化类型规则的求值器：把契约编译产物（{@link TypeRule}）落到 #80 类型内核（Type/Fact/TypeOps/Checks）上。
  *
- * <p>
- * 本类只持有规则语法与内核之间的映射，不含第二套类型语义：
+ * <p>本类只持有规则语法与内核之间的映射，不含第二套类型语义：
  *
  * <ul>
- * <li>arity 与逐参模式检查（variadic 每个实参都检查）;</li>
- * <li>单次调用内的泛型求解：重复出现的类型变量合并下界（取并集），未知输入（Unknown 类型或带 loss 的事实） 并入 Unknown 下界——已知实参不能把未知输入盖掉;</li>
- * <li>运算按种类分派到 {@link TypeOps}（证据传播由内核承载：preserve 保留元素存在证据、subset 删除）。</li>
+ *   <li>arity 与逐参模式检查（variadic 每个实参都检查）;
+ *   <li>单次调用内的泛型求解：重复出现的类型变量合并下界（取并集），未知输入（Unknown 类型或带 loss 的事实） 并入 Unknown 下界——已知实参不能把未知输入盖掉;
+ *   <li>运算按种类分派到 {@link TypeOps}（证据传播由内核承载：preserve 保留元素存在证据、subset 删除）。
  * </ul>
  *
- * 结果带内核 Fact：Unknown 结果记 {@link Fact.Loss#UNKNOWN_INPUT}，未绑定变量记
- * {@link Fact.Loss#UNBOUND_TYPE_VARIABLE}——未证明对覆盖可见，不伪装成精确类型。
+ * 结果带内核 Fact：Unknown 结果记 {@link Fact.Loss#UNKNOWN_INPUT}，未绑定变量记 {@link
+ * Fact.Loss#UNBOUND_TYPE_VARIABLE}——未证明对覆盖可见，不伪装成精确类型。
  *
  * @since 2026
  */
 public final class RuleEvaluator {
 
-    private RuleEvaluator() {
-    }
+    private RuleEvaluator() {}
 
     /** 宿主调用现场：实参事实、运算入口与诊断上报。 */
     public interface CallSite {
@@ -59,11 +57,9 @@ public final class RuleEvaluator {
         /** 实参数量不满足调用形式。 */
         void reportArityViolation(int minimum, OptionalInt maximum, int actual);
 
-        /**
-         * 登记一条参数模式的检查结论(含 MATCH/UNPROVEN),供覆盖统计使用;默认忽略,便于轻量调用方。
-         */
-        default void recordArgumentCheck(int index, TypePattern pattern, Fact actual, Checks.CheckResult result) {
-        }
+        /** 登记一条参数模式的检查结论(含 MATCH/UNPROVEN),供覆盖统计使用;默认忽略,便于轻量调用方。 */
+        default void recordArgumentCheck(
+                int index, TypePattern pattern, Fact actual, Checks.CheckResult result) {}
     }
 
     /**
@@ -105,7 +101,8 @@ public final class RuleEvaluator {
     }
 
     /** 模式检查：编译为内核 Expectation，经 {@link Checks#check} 判定；结论全部登记，只有 MISMATCH 上报。 */
-    private static void checkPattern(TypePattern pattern, Fact actual, int index, CallSite callSite) {
+    private static void checkPattern(
+            TypePattern pattern, Fact actual, int index, CallSite callSite) {
         Expectation expectation = toExpectation(pattern);
         if (expectation == null) {
             return;
@@ -113,8 +110,9 @@ public final class RuleEvaluator {
         // object 参数要求整个值是对象。内核 Accept 检查对“可能为空数组”的分支保留逐元素空集容错
         // （空数组满足“所有元素属于 T”），但空数组本身仍是确定的非对象，不能因此放过 object 参数。
         if (pattern instanceof TypePattern.AnyRecord && definitelyNotRecord(actual.type())) {
-            Checks.CheckResult mismatch = new Checks.CheckResult(Checks.Verdict.MISMATCH, Set.of(),
-                    "value is not an object");
+            Checks.CheckResult mismatch =
+                    new Checks.CheckResult(
+                            Checks.Verdict.MISMATCH, Set.of(), "value is not an object");
             callSite.recordArgumentCheck(index, pattern, actual, mismatch);
             if (!actual.hasUpstreamErrors()) {
                 callSite.reportArgumentMismatch(index, displayPattern(pattern), actual);
@@ -132,8 +130,13 @@ public final class RuleEvaluator {
     /** 所有可能分支都确定不是对象（对象、Unknown、Never 之外的联合至少有一个分支可能是对象，不算确定）。 */
     private static boolean definitelyNotRecord(Type type) {
         List<Type> branches = flatten(type);
-        return !branches.isEmpty() && branches.stream().allMatch(branch -> !(branch instanceof Type.RecordType)
-                && !(branch instanceof Type.Unknown) && !(branch instanceof Type.Never));
+        return !branches.isEmpty()
+                && branches.stream()
+                        .allMatch(
+                                branch ->
+                                        !(branch instanceof Type.RecordType)
+                                                && !(branch instanceof Type.Unknown)
+                                                && !(branch instanceof Type.Never));
     }
 
     /** TypePattern → 内核 Expectation；变量与 any 无静态入口要求（变量在求解时收集约束）。 */
@@ -154,16 +157,20 @@ public final class RuleEvaluator {
         if (pattern instanceof TypePattern.RecordOf record) {
             Expectation value = toExpectation(record.value());
             return value == null || !(value instanceof Expectation.Accept accept)
-                    ? new Expectation.Accept(Types.record(Map.of(), Type.Extra.open(Type.Unknown.INSTANCE)))
-                    : new Expectation.Accept(Types.record(Map.of(), Type.Extra.open(accept.type())));
+                    ? new Expectation.Accept(
+                            Types.record(Map.of(), Type.Extra.open(Type.Unknown.INSTANCE)))
+                    : new Expectation.Accept(
+                            Types.record(Map.of(), Type.Extra.open(accept.type())));
         }
         return null;
     }
 
     /**
-     * 单次调用内的泛型求解：变量每出现一次收集一条下界，重复出现取并集；未知输入（Unknown 类型、 或带精度损失的事实）并入 Unknown 下界——其他已知实参不能把 T 收窄成虚假的具体类型。
+     * 单次调用内的泛型求解：变量每出现一次收集一条下界，重复出现取并集；未知输入（Unknown 类型、 或带精度损失的事实）并入 Unknown 下界——其他已知实参不能把 T
+     * 收窄成虚假的具体类型。
      */
-    private static void mergeLowerBound(Map<String, Type> bounds, TypePattern pattern, Fact actual) {
+    private static void mergeLowerBound(
+            Map<String, Type> bounds, TypePattern pattern, Fact actual) {
         if (pattern instanceof TypePattern.Variable variable) {
             mergeBound(bounds, variable.name(), unknownIfNotPrecise(actual));
             return;
@@ -187,7 +194,8 @@ public final class RuleEvaluator {
             }
             return;
         }
-        if (pattern instanceof TypePattern.RecordOf record && record.value() instanceof TypePattern.Variable variable) {
+        if (pattern instanceof TypePattern.RecordOf record
+                && record.value() instanceof TypePattern.Variable variable) {
             if (actual.hasUpstreamErrors()) {
                 return;
             }
@@ -217,7 +225,8 @@ public final class RuleEvaluator {
         bounds.merge(name, bound, Types::union);
     }
 
-    private static Fact instantiate(Rule rule, Map<String, Type> bounds, int argumentCount, CallSite callSite) {
+    private static Fact instantiate(
+            Rule rule, Map<String, Type> bounds, int argumentCount, CallSite callSite) {
         if (rule instanceof Rule.Constant constant) {
             return constantType(constant.pattern());
         }
@@ -258,26 +267,46 @@ public final class RuleEvaluator {
     }
 
     /** 运算分派：按 op 种类进入内核 TypeOps，不感知函数名。 */
-    private static Fact apply(Rule.Apply apply, Map<String, Type> bounds, int argumentCount, CallSite callSite) {
+    private static Fact apply(
+            Rule.Apply apply, Map<String, Type> bounds, int argumentCount, CallSite callSite) {
         TypeOps ops = callSite.ops();
         return switch (apply.op()) {
             case SEQUENCE_PRESERVE ->
-                ops.preserve(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
-            case SEQUENCE_SUBSET -> ops.subset(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
-            case SEQUENCE_ELEMENT -> ops.element(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+                    ops.preserve(
+                            operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+            case SEQUENCE_SUBSET ->
+                    ops.subset(
+                            operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+            case SEQUENCE_ELEMENT ->
+                    ops.element(
+                            operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
             case SEQUENCE_FLATTEN_ONE ->
-                ops.flattenOne(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
-            case SEQUENCE_SELECT -> ops.select(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
-            case RECORD_OVERLAY -> recordOverlay(apply.operands().get(0), bounds, argumentCount, callSite, ops);
-            case RECORD_KEYS -> ops.keys(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
-            case RECORD_VALUES -> ops.values(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
-            case RECORD_ENTRIES -> ops.entries(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+                    ops.flattenOne(
+                            operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+            case SEQUENCE_SELECT ->
+                    ops.select(
+                            operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+            case RECORD_OVERLAY ->
+                    recordOverlay(apply.operands().get(0), bounds, argumentCount, callSite, ops);
+            case RECORD_KEYS ->
+                    ops.keys(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+            case RECORD_VALUES ->
+                    ops.values(
+                            operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+            case RECORD_ENTRIES ->
+                    ops.entries(
+                            operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
             case SHAPE_MAP_SCALAR_OR_ARRAY ->
-                ops.mapScalarOrArray(operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
+                    ops.mapScalarOrArray(
+                            operandFact(apply.operands().get(0), bounds, argumentCount, callSite));
         };
     }
 
-    private static Fact recordOverlay(Operand operand, Map<String, Type> bounds, int argumentCount, CallSite callSite,
+    private static Fact recordOverlay(
+            Operand operand,
+            Map<String, Type> bounds,
+            int argumentCount,
+            CallSite callSite,
             TypeOps ops) {
         if (!(operand instanceof Operand.ArgumentsFrom from)) {
             return ops.overlay(List.of(operandFact(operand, bounds, argumentCount, callSite)));
@@ -292,7 +321,8 @@ public final class RuleEvaluator {
         return ops.overlay(operands);
     }
 
-    private static Fact operandFact(Operand operand, Map<String, Type> bounds, int argumentCount, CallSite callSite) {
+    private static Fact operandFact(
+            Operand operand, Map<String, Type> bounds, int argumentCount, CallSite callSite) {
         if (operand instanceof Operand.RuleOperand ruleOperand) {
             return instantiate(ruleOperand.rule(), bounds, argumentCount, callSite);
         }
@@ -303,12 +333,13 @@ public final class RuleEvaluator {
     /** 模式直接对应的内核类型：标量、任意对象、任意数组；其余模式没有固定类型。 */
     private static Type fixedType(TypePattern pattern) {
         if (pattern instanceof TypePattern.Scalar scalar) {
-            return Types.scalar(switch (scalar.kind()) {
-                case NUMBER -> Type.ScalarKind.NUMBER;
-                case STRING -> Type.ScalarKind.STRING;
-                case BOOLEAN -> Type.ScalarKind.BOOLEAN;
-                case NULL -> Type.ScalarKind.NULL;
-            });
+            return Types.scalar(
+                    switch (scalar.kind()) {
+                        case NUMBER -> Type.ScalarKind.NUMBER;
+                        case STRING -> Type.ScalarKind.STRING;
+                        case BOOLEAN -> Type.ScalarKind.BOOLEAN;
+                        case NULL -> Type.ScalarKind.NULL;
+                    });
         }
         if (pattern instanceof TypePattern.AnyRecord) {
             return Types.openRecord();

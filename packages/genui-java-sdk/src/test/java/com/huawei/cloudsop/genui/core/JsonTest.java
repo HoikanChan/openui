@@ -21,7 +21,8 @@ class JsonTest {
         Object parsed = Json.parse("{\"first\":1,\"second\":1.5,\"third\":1e3,\"items\":[2]}");
         Map<String, Object> object = Json.asObject(parsed, "value");
 
-        assertEquals(List.of("first", "second", "third", "items"), new ArrayList<>(object.keySet()));
+        assertEquals(
+                List.of("first", "second", "third", "items"), new ArrayList<>(object.keySet()));
         assertInstanceOf(LinkedHashMap.class, object);
         assertInstanceOf(Long.class, object.get("first"));
         assertInstanceOf(Double.class, object.get("second"));
@@ -39,7 +40,8 @@ class JsonTest {
         value.put("nested", List.of(nested));
 
         assertEquals("{\"value\":7,\"nested\":[{\"enabled\":true}]}", Json.stringify(value));
-        assertEquals("""
+        assertEquals(
+                """
                 {
                   "value": 7,
                   "nested": [
@@ -47,7 +49,8 @@ class JsonTest {
                       "enabled": true
                     }
                   ]
-                }""", Json.stringifyPretty(value));
+                }""",
+                Json.stringifyPretty(value));
     }
 
     @Test
@@ -57,12 +60,15 @@ class JsonTest {
         values.put("positiveInfinity", Double.POSITIVE_INFINITY);
         values.put("negativeInfinity", Float.NEGATIVE_INFINITY);
 
-        assertEquals("{\"nan\":null,\"positiveInfinity\":null,\"negativeInfinity\":null}", Json.stringify(values));
+        assertEquals(
+                "{\"nan\":null,\"positiveInfinity\":null,\"negativeInfinity\":null}",
+                Json.stringify(values));
     }
 
     @Test
     void wrapsInvalidJsonWithTheVendorFailureAsCause() {
-        GenerationSdkException error = assertThrows(GenerationSdkException.class, () -> Json.parse("{"));
+        GenerationSdkException error =
+                assertThrows(GenerationSdkException.class, () -> Json.parse("{"));
 
         assertInstanceOf(com.alibaba.fastjson2.JSONException.class, error.getCause());
     }

@@ -37,12 +37,10 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * GenUiGenerator validation contract.
  *
- * <p>
- * 同步 {@code generate()} 只发一次模型请求并返回提取结果:不校验、不修复、不降级;模型请求或响应失败直接抛
- * {@link GenerationSdkException}。校验与增量修复只发生在流式入口。
+ * <p>同步 {@code generate()} 只发一次模型请求并返回提取结果:不校验、不修复、不降级;模型请求或响应失败直接抛 {@link
+ * GenerationSdkException}。校验与增量修复只发生在流式入口。
  *
- * <p>
- * All tests use a fake LlmTransport — no real LLM is involved.
+ * <p>All tests use a fake LlmTransport — no real LLM is involved.
  */
 class GenUiGeneratorValidationTest {
 
@@ -50,7 +48,9 @@ class GenUiGeneratorValidationTest {
 
     /** Build a JSON response body that the fake transport returns for sync generate(). */
     private static String syncResponse(String dsl) {
-        return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"" + escape(dsl) + "\"}}]}";
+        return "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\""
+                + escape(dsl)
+                + "\"}}]}";
     }
 
     private static String escape(String value) {
@@ -77,16 +77,21 @@ class GenUiGeneratorValidationTest {
         String dsl = "root = BogusWidget()";
         FakeTransport transport = FakeTransport.sync(syncResponse(dsl));
         AtomicInteger validatorCalls = new AtomicInteger();
-        OpenuiLangValidator validator = request -> {
-            validatorCalls.incrementAndGet();
-            throw new AssertionError("sync generate() must not invoke the validator");
-        };
+        OpenuiLangValidator validator =
+                request -> {
+                    validatorCalls.incrementAndGet();
+                    throw new AssertionError("sync generate() must not invoke the validator");
+                };
 
-        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport,
-                GenUiValidationConfig.incremental(), validator);
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(
+                        GenUiLlmConfig.defaults(),
+                        transport,
+                        GenUiValidationConfig.incremental(),
+                        validator);
 
-        GenUiGenerationResult result = generator
-                .generate(UiGenerationRequest.builder().userInput("show bogus").build());
+        GenUiGenerationResult result =
+                generator.generate(UiGenerationRequest.builder().userInput("show bogus").build());
 
         assertEquals(dsl, result.dsl());
         assertEquals(0, validatorCalls.get(), "sync generation must never validate");
@@ -102,10 +107,17 @@ class GenUiGeneratorValidationTest {
         String dsl = "root = Stack([])";
         FakeTransport transport = FakeTransport.sync(syncResponse("```openui\n" + dsl + "\n```"));
 
-        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport,
-                GenUiValidationConfig.incremental(), request -> {
-                    throw new AssertionError("sync generate() must not invoke the validator");
-                }).generate(UiGenerationRequest.builder().userInput("show something").build());
+        GenUiGenerationResult result =
+                GenUiGenerator.withTransport(
+                                GenUiLlmConfig.defaults(),
+                                transport,
+                                GenUiValidationConfig.incremental(),
+                                request -> {
+                                    throw new AssertionError(
+                                            "sync generate() must not invoke the validator");
+                                })
+                        .generate(
+                                UiGenerationRequest.builder().userInput("show something").build());
 
         assertEquals(dsl, result.dsl(), "the openui fenced block is still extracted");
         assertEquals(GenerationEndReason.UNCHECKED, result.endReason());
@@ -115,27 +127,44 @@ class GenUiGeneratorValidationTest {
     @Test
     void syncTransportFailureThrowsWithoutMarkdownFallback() {
         FakeTransport transport = FakeTransport.failing();
-        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport,
-                GenUiValidationConfig.incremental(), null);
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(
+                        GenUiLlmConfig.defaults(),
+                        transport,
+                        GenUiValidationConfig.incremental(),
+                        null);
 
-        GenerationSdkException error = assertThrows(GenerationSdkException.class,
-                () -> generator.generate(UiGenerationRequest.builder().userInput("base").build()));
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                generator.generate(
+                                        UiGenerationRequest.builder().userInput("base").build()));
 
         assertEquals("Model request failed: transport down", error.getMessage());
-        assertEquals(1, transport.postCount.get(), "failure must not trigger a Markdown fallback request");
+        assertEquals(
+                1,
+                transport.postCount.get(),
+                "failure must not trigger a Markdown fallback request");
         assertEquals(0, transport.streamCount.get());
     }
 
     @Test
     void syncEmptyContentThrowsWithoutMarkdownFallback() {
-        FakeTransport transport = FakeTransport
-                .sync("{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null}}]}");
-        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport);
+        FakeTransport transport =
+                FakeTransport.sync(
+                        "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null}}]}");
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport);
 
-        assertThrows(GenerationSdkException.class,
+        assertThrows(
+                GenerationSdkException.class,
                 () -> generator.generate(UiGenerationRequest.builder().userInput("base").build()));
 
-        assertEquals(1, transport.postCount.get(), "an unusable response must not be retried as Markdown");
+        assertEquals(
+                1,
+                transport.postCount.get(),
+                "an unusable response must not be retried as Markdown");
     }
 
     // ── 流式:轮末统一校验 ───────────────────────────────────────────────────
@@ -146,20 +175,32 @@ class GenUiGeneratorValidationTest {
         FakeTransport transport = FakeTransport.stream(streamOf(dsl));
         AtomicInteger handoffs = new AtomicInteger();
 
-        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport,
-                GenUiValidationConfig.finalOnly(), null).generateStream(
-                        UiGenerationRequest.builder().userInput("show bogus").build(), envelope -> {
-                        }, (original, reason, sink) -> {
-                            handoffs.incrementAndGet();
-                            return new GenUiGenerationResult("fallback", original.response());
-                        });
+        GenUiGenerationResult result =
+                GenUiGenerator.withTransport(
+                                GenUiLlmConfig.defaults(),
+                                transport,
+                                GenUiValidationConfig.finalOnly(),
+                                null)
+                        .generateStream(
+                                UiGenerationRequest.builder().userInput("show bogus").build(),
+                                envelope -> {},
+                                (original, reason, sink) -> {
+                                    handoffs.incrementAndGet();
+                                    return new GenUiGenerationResult(
+                                            "fallback", original.response());
+                                });
 
         assertEquals(ValidationStatus.INVALID, result.validationStatus());
         assertEquals(GenerationEndReason.VALIDATION_FAILED, result.endReason());
         assertTrue(result.validationResult().hasBlockingIssues());
-        assertTrue(result.validationResult().issues().stream().anyMatch(
-                i -> "unknown-component".equals(i.code()) && i.severity() == ValidationSeverity.ERROR),
-                "must have an unknown-component ERROR issue, got: " + result.validationResult().issues());
+        assertTrue(
+                result.validationResult().issues().stream()
+                        .anyMatch(
+                                i ->
+                                        "unknown-component".equals(i.code())
+                                                && i.severity() == ValidationSeverity.ERROR),
+                "must have an unknown-component ERROR issue, got: "
+                        + result.validationResult().issues());
         assertEquals(1, transport.streamCount.get(), "finalOnly must not issue a repair request");
         assertEquals(0, handoffs.get());
     }
@@ -168,18 +209,38 @@ class GenUiGeneratorValidationTest {
     void streamCustomValidatorForcesInvalidEvenForValidDsl() {
         String dsl = "root = Stack([])";
         FakeTransport transport = FakeTransport.stream(streamOf(dsl));
-        OpenuiLangValidator alwaysInvalid = request -> ValidationResult.invalid(
-                List.of(new ValidationIssue("stub-error", ValidationSeverity.ERROR, "test", "stub always-invalid", null,
-                        null, null, -1, -1, null, false)),
-                new ValidationMetadata(1, "root", null));
+        OpenuiLangValidator alwaysInvalid =
+                request ->
+                        ValidationResult.invalid(
+                                List.of(
+                                        new ValidationIssue(
+                                                "stub-error",
+                                                ValidationSeverity.ERROR,
+                                                "test",
+                                                "stub always-invalid",
+                                                null,
+                                                null,
+                                                null,
+                                                -1,
+                                                -1,
+                                                null,
+                                                false)),
+                                new ValidationMetadata(1, "root", null));
 
-        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport,
-                GenUiValidationConfig.finalOnly(), alwaysInvalid)
-                .generateStream(UiGenerationRequest.builder().userInput("x").build(), envelope -> {
-                });
+        GenUiGenerationResult result =
+                GenUiGenerator.withTransport(
+                                GenUiLlmConfig.defaults(),
+                                transport,
+                                GenUiValidationConfig.finalOnly(),
+                                alwaysInvalid)
+                        .generateStream(
+                                UiGenerationRequest.builder().userInput("x").build(),
+                                envelope -> {});
 
         assertEquals(ValidationStatus.INVALID, result.validationStatus());
-        assertTrue(result.validationResult().issues().stream().anyMatch(i -> "stub-error".equals(i.code())),
+        assertTrue(
+                result.validationResult().issues().stream()
+                        .anyMatch(i -> "stub-error".equals(i.code())),
                 "custom stub error code must be present");
     }
 
@@ -187,13 +248,20 @@ class GenUiGeneratorValidationTest {
     void streamCustomValidatorForcesValidEvenForInvalidDsl() {
         String dsl = "root = TotallyFakeComponent()";
         FakeTransport transport = FakeTransport.stream(streamOf(dsl));
-        OpenuiLangValidator alwaysValid = request -> ValidationResult.valid(dsl, List.of(),
-                new ValidationMetadata(1, "root", null));
+        OpenuiLangValidator alwaysValid =
+                request ->
+                        ValidationResult.valid(
+                                dsl, List.of(), new ValidationMetadata(1, "root", null));
 
-        GenUiGenerationResult result = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport,
-                GenUiValidationConfig.finalOnly(), alwaysValid)
-                .generateStream(UiGenerationRequest.builder().userInput("x").build(), envelope -> {
-                });
+        GenUiGenerationResult result =
+                GenUiGenerator.withTransport(
+                                GenUiLlmConfig.defaults(),
+                                transport,
+                                GenUiValidationConfig.finalOnly(),
+                                alwaysValid)
+                        .generateStream(
+                                UiGenerationRequest.builder().userInput("x").build(),
+                                envelope -> {});
 
         assertEquals(ValidationStatus.VALID, result.validationStatus());
         assertEquals(dsl, result.dsl());
@@ -204,23 +272,32 @@ class GenUiGeneratorValidationTest {
         String dsl = "root = Stack([])";
         FakeTransport transport = FakeTransport.stream(streamOf(dsl));
         AtomicReference<ValidationRequest> capturedRequest = new AtomicReference<>();
-        OpenuiLangValidator capturingValidator = request -> {
-            capturedRequest.set(request);
-            return new DefaultOpenuiLangValidator().validate(request);
-        };
+        OpenuiLangValidator capturingValidator =
+                request -> {
+                    capturedRequest.set(request);
+                    return new DefaultOpenuiLangValidator().validate(request);
+                };
 
-        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport,
-                GenUiValidationConfig.finalOnly(), capturingValidator);
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(
+                        GenUiLlmConfig.defaults(),
+                        transport,
+                        GenUiValidationConfig.finalOnly(),
+                        capturingValidator);
 
         generator.generateStream(
-                UiGenerationRequest.builder().userInput("x").response(Map.of("total", 3)).build(), envelope -> {
-                });
+                UiGenerationRequest.builder().userInput("x").response(Map.of("total", 3)).build(),
+                envelope -> {});
 
         ValidationRequest req = capturedRequest.get();
         assertNotNull(req, "validator must have been called");
         assertNotNull(req.contract(), "validator must receive a non-null merged contract");
-        assertEquals(Map.of("total", 3), req.dataModel(), "validator must receive the Render Data Model");
-        assertTrue(req.contract().components().containsKey("Stack"),
+        assertEquals(
+                Map.of("total", 3),
+                req.dataModel(),
+                "validator must receive the Render Data Model");
+        assertTrue(
+                req.contract().components().containsKey("Stack"),
                 "merged contract must include Stack from base contract");
     }
 
@@ -229,22 +306,32 @@ class GenUiGeneratorValidationTest {
         String dsl = "root = Stack([TextContent(data.name)])";
         FakeTransport transport = FakeTransport.stream(streamOf(dsl));
         AtomicReference<ValidationRequest> capturedRequest = new AtomicReference<>();
-        OpenuiLangValidator capturingValidator = request -> {
-            capturedRequest.set(request);
-            return new DefaultOpenuiLangValidator().validate(request);
-        };
+        OpenuiLangValidator capturingValidator =
+                request -> {
+                    capturedRequest.set(request);
+                    return new DefaultOpenuiLangValidator().validate(request);
+                };
 
-        GenUiGenerator generator = GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport,
-                GenUiValidationConfig.finalOnly(), capturingValidator);
+        GenUiGenerator generator =
+                GenUiGenerator.withTransport(
+                        GenUiLlmConfig.defaults(),
+                        transport,
+                        GenUiValidationConfig.finalOnly(),
+                        capturingValidator);
 
-        generator.generateStream(UiGenerationRequest.builder().userInput("show device")
-                .response(Map.of("name", "CloudEngine")).build(), envelope -> {
-                });
+        generator.generateStream(
+                UiGenerationRequest.builder()
+                        .userInput("show device")
+                        .response(Map.of("name", "CloudEngine"))
+                        .build(),
+                envelope -> {});
 
         ValidationRequest req = capturedRequest.get();
         assertNotNull(req, "validator must have been called");
-        assertTrue(req.externalRefs().contains("data"),
-                "externalRefs must contain \"data\" when a dataModel is present, got: " + req.externalRefs());
+        assertTrue(
+                req.externalRefs().contains("data"),
+                "externalRefs must contain \"data\" when a dataModel is present, got: "
+                        + req.externalRefs());
     }
 
     @Test
@@ -252,13 +339,22 @@ class GenUiGeneratorValidationTest {
         String dsl = "root = Stack([TextContent(data.name)])";
         FakeTransport transport = FakeTransport.stream(streamOf(dsl));
 
-        GenUiGenerationResult result = GenUiGenerator
-                .withTransport(GenUiLlmConfig.defaults(), transport, GenUiValidationConfig.finalOnly(), null)
-                .generateStream(UiGenerationRequest.builder().userInput("show device")
-                        .response(Map.of("name", "CloudEngine")).build(), envelope -> {
-                        });
+        GenUiGenerationResult result =
+                GenUiGenerator.withTransport(
+                                GenUiLlmConfig.defaults(),
+                                transport,
+                                GenUiValidationConfig.finalOnly(),
+                                null)
+                        .generateStream(
+                                UiGenerationRequest.builder()
+                                        .userInput("show device")
+                                        .response(Map.of("name", "CloudEngine"))
+                                        .build(),
+                                envelope -> {});
 
-        assertEquals(ValidationStatus.VALID, result.validationStatus(),
+        assertEquals(
+                ValidationStatus.VALID,
+                result.validationStatus(),
                 "data.* reference must be valid when the request has a dataModel");
     }
 
@@ -267,14 +363,22 @@ class GenUiGeneratorValidationTest {
         String dsl = "root = Stack([TextContent(data.name)])";
         FakeTransport transport = FakeTransport.stream(streamOf(dsl));
 
-        GenUiGenerationResult result = GenUiGenerator
-                .withTransport(GenUiLlmConfig.defaults(), transport, GenUiValidationConfig.finalOnly(), null)
-                .generateStream(UiGenerationRequest.builder().userInput("show device").build(), envelope -> {
-                });
+        GenUiGenerationResult result =
+                GenUiGenerator.withTransport(
+                                GenUiLlmConfig.defaults(),
+                                transport,
+                                GenUiValidationConfig.finalOnly(),
+                                null)
+                        .generateStream(
+                                UiGenerationRequest.builder().userInput("show device").build(),
+                                envelope -> {});
 
         assertEquals(ValidationStatus.INVALID, result.validationStatus());
-        assertTrue(result.validationResult().issues().stream().anyMatch(i -> "unresolved-ref".equals(i.code())),
-                "data must stay unresolved without a dataModel, got: " + result.validationResult().issues());
+        assertTrue(
+                result.validationResult().issues().stream()
+                        .anyMatch(i -> "unresolved-ref".equals(i.code())),
+                "data must stay unresolved without a dataModel, got: "
+                        + result.validationResult().issues());
     }
 
     // ── DefaultOpenuiLangValidator — standalone unit tests ────────────────────
@@ -285,7 +389,8 @@ class GenUiGeneratorValidationTest {
         DefaultOpenuiLangValidator v = new DefaultOpenuiLangValidator();
         ValidationResult result = v.validate(ValidationRequest.builder().dsl("").build());
         assertEquals(ValidationStatus.INVALID, result.status());
-        assertTrue(result.issues().stream().anyMatch(i -> "root-missing".equals(i.code())),
+        assertTrue(
+                result.issues().stream().anyMatch(i -> "root-missing".equals(i.code())),
                 "empty DSL must produce root-missing issue");
     }
 
@@ -294,11 +399,12 @@ class GenUiGeneratorValidationTest {
         // A null contract yields an EMPTY ContractCatalog, so every component is reported as
         // unknown-component — there is no contract-less "syntax-only" validation mode.
         DefaultOpenuiLangValidator v = new DefaultOpenuiLangValidator();
-        ValidationResult result = v
-                .validate(ValidationRequest.builder().dsl("root = AnyComponent()").build());
+        ValidationResult result =
+                v.validate(ValidationRequest.builder().dsl("root = AnyComponent()").build());
         // ProgramAnalyzer with empty catalog flags AnyComponent as unknown → INVALID
         assertEquals(ValidationStatus.INVALID, result.status());
-        assertTrue(result.issues().stream().anyMatch(i -> "unknown-component".equals(i.code())),
+        assertTrue(
+                result.issues().stream().anyMatch(i -> "unknown-component".equals(i.code())),
                 "AnyComponent not in empty catalog must produce unknown-component issue");
     }
 
@@ -330,16 +436,14 @@ class GenUiGeneratorValidationTest {
         @Override
         public String post(String body) throws LlmTransportException {
             postCount.incrementAndGet();
-            if (fail)
-                throw new LlmTransportException("transport down");
+            if (fail) throw new LlmTransportException("transport down");
             return response;
         }
 
         @Override
         public InputStream postStream(String body) throws LlmTransportException {
             streamCount.incrementAndGet();
-            if (fail)
-                throw new LlmTransportException("transport down");
+            if (fail) throw new LlmTransportException("transport down");
             return new ByteArrayInputStream(response.getBytes(StandardCharsets.UTF_8));
         }
     }
