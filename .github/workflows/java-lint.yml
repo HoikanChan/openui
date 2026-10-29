@@ -2,7 +2,7 @@ name: Java Lint
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "packages/genui-java-sdk/**"
       - "packages/genui-eval-cli/**"
