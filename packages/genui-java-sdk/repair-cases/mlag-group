@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "source": "fhl-mlag-groups",
+    "prompt": "展示当前环境中所有 MLAG 组及其成员设备信息，共 3 个 MLAG 组，每个组包含 2 台成员设备。以表格形式呈现 MLAG 组名称、成员设备名称和设备 IP。"
+  },
+  "data": {
+    "mlagGroups": [
+      {
+        "groupName": "MLAG组1",
+        "members": [
+          {
+            "device-ip": "10.136.193.108",
+            "device-name": "serverleaf2"
+          },
+          {
+            "device-ip": "10.136.193.107",
+            "device-name": "serverleaf1"
+          }
+        ]
+      },
+      {
+        "groupName": "MLAG组2",
+        "members": [
+          {
+            "device-ip": "10.136.243.110",
+            "device-name": "POD6-Mlag3-1-110"
+          },
+          {
+            "device-ip": "10.136.243.111",
+            "device-name": "POD6-Mlag3-2-111"
+          }
+        ]
+      },
+      {
+        "groupName": "MLAG组3",
+        "members": [
+          {
+            "device-ip": "10.136.246.10",
+            "device-name": "POD6-Mlag1-2-10"
+          },
+          {
+            "device-ip": "10.136.246.106",
+            "device-name": "POD6-Mlag1-1-106"
+          }
+        ]
+      }
+    ],
+    "totalCount": 3
+  }
+}
