@@ -24,7 +24,7 @@ import java.util.Map;
 
 class ObjectEnumerationValidationTest {
     @Test
-    void renamedEnumerationRulesWorkThroughPublicValidator() throws IOException {
+    void renamedEnumerationAliasesUseTheirDeclaredSignatures() throws IOException {
         String json;
         try (var input = getClass().getResourceAsStream("/openui/base-contract.json")) {
             json = new String(input.readAllBytes(), StandardCharsets.UTF_8);
@@ -36,6 +36,8 @@ class ObjectEnumerationValidationTest {
                                 .replace(
                                         "\"name\": \"ObjectEntries\"",
                                         "\"name\": \"EntriesAlias\""));
+        // #120 起特殊语义按函数名归 Java builtin module:改名后的别名只按契约声明的 params/returnType 工作,
+        // 不再携带旧规则的精确长度证据,因此允许 NO_ELEMENT_EVIDENCE,但不能出现参数类型错误。
         for (String expression :
                 new String[] {
                     "@KeysAlias({port: 1})",
@@ -46,12 +48,20 @@ class ObjectEnumerationValidationTest {
                     validate(
                             contract, "root = Stack(@Each(" + expression + ", v, TextContent(v)))");
             assertEquals(ValidationStatus.VALID, result.status(), () -> result.issues().toString());
-            assertEquals("0", result.metadata().extra().get("typeChecks.unproven"));
+            assertFalse(
+                    result.issues().stream()
+                            .anyMatch(i -> "builtin-argument-type-mismatch".equals(i.code())),
+                    () -> result.issues().toString());
         }
+        // 旧名已从词表移除:调用不能因 Java 侧仍存在同名特殊逻辑而合法。
+        ValidationResult removed =
+                validate(
+                        contract, "root = Stack(@Each(@ObjectKeys({port: 1}), k, TextContent(k)))");
+        assertEquals(ValidationStatus.INVALID, removed.status(), () -> removed.issues().toString());
     }
 
     @Test
-    void effectiveContractOverridesDefaultEnumerationRule() throws IOException {
+    void effectiveContractParamsOverrideDefaultDeclaration() throws IOException {
         String json;
         try (var input = getClass().getResourceAsStream("/openui/base-contract.json")) {
             json = new String(input.readAllBytes(), StandardCharsets.UTF_8);
@@ -63,17 +73,10 @@ class ObjectEnumerationValidationTest {
                 com.huawei.cloudsop.genui.core.Json.asList(document.get("builtins"), "builtins")) {
             var builtin = com.huawei.cloudsop.genui.core.Json.asObject(raw, "builtin");
             if ("ObjectValues".equals(builtin.get("name"))) {
-                builtin.put(
-                        "typeRule",
-                        Map.of(
-                                "typeRulesVersion",
-                                1,
-                                "arity",
-                                Map.of("min", 1, "max", 1),
-                                "parameters",
-                                java.util.List.of(Map.of("name", "obj")),
-                                "result",
-                                Map.of("type", "string")));
+                // 生效契约的参数声明覆盖默认值:obj 改成 string 后,对象实参必须在该调用处报错,
+                // 证明检查读取的是请求契约而不是默认词表。
+                builtin.put("params", java.util.List.of(Map.of("name", "obj", "type", "string")));
+                builtin.put("returnType", "array");
             }
         }
         var contract =
@@ -81,7 +84,9 @@ class ObjectEnumerationValidationTest {
                         com.huawei.cloudsop.genui.core.Json.stringify(document));
         ValidationResult result =
                 validate(contract, "root = TextContent(@Abs(@ObjectValues({port: 1})))");
-        assertEquals("/args/0", issue(result, "builtin-argument-type-mismatch").path());
+        ValidationIssue mismatch = issue(result, "builtin-argument-type-mismatch");
+        assertEquals("/args/0", mismatch.path());
+        assertTrue(mismatch.message().contains("@ObjectValues"), mismatch.message());
     }
 
     @Test

@@ -4,7 +4,6 @@
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
 
-import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
@@ -13,13 +12,13 @@ import com.huawei.cloudsop.genui.core.validation.parser.ParseDiagnostic;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.parser.SourceSpan;
 import com.huawei.cloudsop.genui.core.validation.parser.Statement;
+import com.huawei.cloudsop.genui.core.validation.type.analysis.BuiltinAnalysis;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -304,13 +303,8 @@ public final class ProgramAnalyzer {
 
         if (builtins.isBuiltin(name)) {
             // Builtin: recurse args for nested refs/components; not a renderable element.
-            // Lazy builtins (@Each/@Render) scope their binder names over the template args first.
-            if (walkLazyBuiltin(comp, ctx)) {
-                return DYNAMIC;
-            }
-            for (AstNode a : comp.args()) {
-                walkExpr(a, ctx);
-            }
+            // 实参角色(Each/Render 的 binder 与模板位)由 builtin module 给出。
+            walkBuiltinArguments(comp, ctx);
             return DYNAMIC;
         }
 
@@ -369,41 +363,32 @@ public final class ProgramAnalyzer {
     }
 
     /**
-     * Mirrors {@code materialize.ts#materializeLazyBuiltin}: for {@code @Each(array, varName,
-     * template)} and {@code @Render(binder..., template)}, push the binder names onto the scope
-     * stack ONLY while the non-binder args are walked (binder args themselves are never resolved as
-     * refs). Returns {@code false} when the call introduces no binder scope — e.g. too few args or
-     * a non-literal binder — so the caller falls back to the generic builtin walk.
+     * Mirrors {@code materialize.ts#materializeLazyBuiltin}: binder 名只在模板体内生效, binder 实参自身不作为
+     * 引用解析。参数角色与作用域由 {@link BuiltinAnalysis#walkArguments} 提供,本类不读模板下标。
      */
-    private boolean walkLazyBuiltin(AstNode.Comp comp, WalkCtx ctx) {
-        List<Integer> binderIndexes = LazyBuiltinBinders.binderIndexes(comp, builtins);
-        if (binderIndexes.isEmpty()) {
-            return false;
-        }
-        BuiltinSpec spec = builtins.spec(comp.name());
-        Set<String> binders = new LinkedHashSet<>();
-        for (int index : binderIndexes) {
-            String binderName = LazyBuiltinBinders.binderName(spec, comp, index);
-            if (binderName == null) {
-                return false;
-            }
-            binders.add(binderName);
-        }
-        // binder 只作用于 body(#77 §10.1):body 恒为最后一个实参,其余实参(Each 的 source)在外层作用域解析,
-        // source 里出现同名 binder 不得被压制。
-        int bodyIndex = LazyBuiltinBinders.bodyIndex(spec, comp);
-        for (int i = 0; i < comp.args().size(); i++) {
-            if (i != bodyIndex && !binderIndexes.contains(i)) {
-                walkExpr(comp.args().get(i), ctx);
-            }
-        }
-        ctx.scopeFrames.push(binders);
-        try {
-            walkExpr(comp.args().get(bodyIndex), ctx);
-        } finally {
-            ctx.scopeFrames.pop();
-        }
-        return true;
+    private void walkBuiltinArguments(AstNode.Comp comp, WalkCtx ctx) {
+        BuiltinAnalysis.walkArguments(
+                builtins,
+                comp,
+                BuiltinAnalysis.BinderPolicy.REQUIRE_ALL_VALID,
+                new BuiltinAnalysis.ArgumentVisitor() {
+                    @Override
+                    public void value(AstNode argument, String binderName) {
+                        if (binderName == null) {
+                            walkExpr(argument, ctx);
+                        }
+                    }
+
+                    @Override
+                    public void template(AstNode body, Set<String> binderNames) {
+                        ctx.scopeFrames.push(binderNames);
+                        try {
+                            walkExpr(body, ctx);
+                        } finally {
+                            ctx.scopeFrames.pop();
+                        }
+                    }
+                });
     }
 
     /** Resolve a Ref: inline from symbol table, track cycles + unresolved. Mirrors resolveRef. */

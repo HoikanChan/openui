@@ -145,14 +145,25 @@ class BaseContractFixtureTest {
     }
 
     @Test
-    void derivesBinderIndexesFromContractParams() {
+    void conciseTemplatesDeclareParamsWithoutScopeFields() {
         GenerationContract contract = GenerationContractLoader.loadDefault();
         Map<String, BuiltinSpec> byName = new LinkedHashMap<>();
         for (BuiltinSpec spec : contract.builtins()) {
             byName.put(spec.name(), spec);
         }
-        assertEquals(List.of(1), byName.get("Each").binderIndexes());
-        assertEquals(List.of(0, 1), byName.get("Render").binderIndexes());
+        // Each/Render 只声明展示参数;binder 位、input、callForms 由 Java builtin module 固定。
+        BuiltinSpec each = byName.get("Each");
+        assertEquals(3, each.params().size());
+        assertEquals("T[]", each.params().get(0).type());
+        assertEquals("string", each.params().get(1).type());
+        assertEquals("any", each.params().get(2).type());
+
+        BuiltinSpec render = byName.get("Render");
+        assertEquals(3, render.params().size());
+        assertEquals("string", render.params().get(0).type());
+        assertEquals("string", render.params().get(1).type());
+        assertTrue(render.params().get(1).optional(), "Render row must stay optional");
+        assertEquals("any", render.params().get(2).type());
     }
 
     @Test
@@ -163,9 +174,9 @@ class BaseContractFixtureTest {
                         () ->
                                 GenerationContractLoader.fromJson(
                                         "{\"builtins\":["
-                                                + builtinJson("A", "\"type\": \"any\"", null)
+                                                + builtinJson("A", "\"type\": \"any\"", "number")
                                                 + ","
-                                                + builtinJson("A", "\"type\": \"any\"", null)
+                                                + builtinJson("A", "\"type\": \"any\"", "number")
                                                 + "]}"));
         assertTrue(error.getMessage().contains("duplicate builtin name"), error.getMessage());
     }
@@ -181,7 +192,7 @@ class BaseContractFixtureTest {
                                                 + builtinJson(
                                                         "A",
                                                         "\"type\": \"any\", \"optional\": true}, {\"name\": \"b\", \"type\": \"number\"",
-                                                        null)
+                                                        "number")
                                                 + "]}"));
         assertTrue(
                 error.getMessage().contains("must not follow an optional parameter"),
@@ -199,7 +210,7 @@ class BaseContractFixtureTest {
                                                 + builtinJson(
                                                         "A",
                                                         "\"type\": \"any\", \"variadic\": true}, {\"name\": \"b\", \"type\": \"number\"",
-                                                        null)
+                                                        "number")
                                                 + "]}"));
         assertTrue(error.getMessage().contains("must be the last parameter"), error.getMessage());
     }
@@ -212,7 +223,8 @@ class BaseContractFixtureTest {
                         () ->
                                 GenerationContractLoader.fromJson(
                                         "{\"builtins\":["
-                                                + builtinJson("A", "\"type\": \"integer\"", null)
+                                                + builtinJson(
+                                                        "A", "\"type\": \"integer\"", "number")
                                                 + "]}"));
         assertTrue(error.getMessage().contains("A.a"), error.getMessage());
         assertTrue(error.getMessage().contains("integer"), error.getMessage());
@@ -229,19 +241,6 @@ class BaseContractFixtureTest {
                                                 + builtinJson("A", "\"type\": \"any\"", "T")
                                                 + "]}"));
         assertTrue(error.getMessage().contains("no parameter type binds it"), error.getMessage());
-    }
-
-    @Test
-    void failsFastOnOutOfRangeParamRef() {
-        GenerationSdkException error =
-                assertThrows(
-                        GenerationSdkException.class,
-                        () ->
-                                GenerationContractLoader.fromJson(
-                                        "{\"builtins\":["
-                                                + builtinJson("A", "\"type\": \"any\"", "param(2)")
-                                                + "]}"));
-        assertTrue(error.getMessage().contains("out of range"), error.getMessage());
     }
 
     @Test
@@ -270,7 +269,7 @@ class BaseContractFixtureTest {
                                         """
                                 {
                                   "builtins": [
-                                    {"name": "Join", "signature": "Join(a)", "description": "d", "params": [{"name": "a", "type": "any"}]}
+                                    {"name": "Join", "signature": "Join(a)", "description": "d", "templateBuiltin": false, "params": [{"name": "a", "type": "any"}], "returnType": "string"}
                                   ],
                                   "capabilityGaps": [
                                     {"id": "join", "kind": "data", "name": "关联", "aliases": ["Join"], "phrases": ["关联"], "fallback": "单表"}
@@ -342,9 +341,7 @@ class BaseContractFixtureTest {
             BuiltinSpec fromDefault = find(defaults, name);
             assertEquals(fromDefault.signature(), fromExport.signature(), name + " signature");
             assertEquals(fromDefault.returnType(), fromExport.returnType(), name + " returnType");
-            assertTrue(
-                    fromExport.typeRule() != null, name + " must carry a compiled structured rule");
-            assertEquals(fromDefault.typeRule(), fromExport.typeRule(), name + " typeRule");
+            assertEquals(fromDefault.params(), fromExport.params(), name + " params");
         }
 
         // 提示词中的 builtin 文本直接来自同一份加载结果:signature 与描述逐字一致。
@@ -389,7 +386,8 @@ class BaseContractFixtureTest {
                 .append(name)
                 .append("\", \"signature\": \"")
                 .append(name)
-                .append("(a)\", \"description\": \"d\", \"params\": [{\"name\": \"a\", ")
+                .append(
+                        "(a)\", \"description\": \"d\", \"templateBuiltin\": false, \"params\": [{\"name\": \"a\", ")
                 .append(firstParamTail)
                 .append("}]");
         if (returnType != null) {

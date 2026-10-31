@@ -110,6 +110,9 @@ public final class Checks {
         if (expectation instanceof Expectation.SequenceOf sequenceOf) {
             return checkSequenceOf(fact, sequenceOf, checkedPath);
         }
+        if (expectation instanceof Expectation.RecordValues recordValues) {
+            return checkRecordValues(fact, recordValues, checkedPath);
+        }
         if (expectation instanceof Expectation.AllOf allOf) {
             Set<Fact.Loss> reasons = new LinkedHashSet<>();
             for (Expectation part : allOf.expectations()) {
@@ -155,8 +158,10 @@ public final class Checks {
                     ? CheckResult.match()
                     : CheckResult.unproven(reasons, "inclusion proven but analysis incomplete");
         }
-        // 包含未证明:先查“全部可能值都不兼容”——数组情形须先证明当前确有元素(不能忽略空数组可能性)。
-        if (Relations.proveDisjoint(fact.type(), target) && existenceProven(fact, checkedPath)) {
+        // 包含未证明:先查“全部可能值都不兼容”——逐元素要求须先证明当前确有元素(不能忽略空数组可能性);
+        // 目标是对象/标量时判断的是整值本身,空数组同样不兼容,不需要元素证据。
+        if (Relations.proveDisjoint(fact.type(), target)
+                && existenceProven(fact, checkedPath, target)) {
             return CheckResult.mismatch(
                     "all possible values are disjoint from " + target.displayName());
         }
@@ -213,7 +218,7 @@ public final class Checks {
             return CheckResult.match();
         }
         if (Relations.proveDisjoint(valueFact.type(), target)
-                && existenceProven(valueFact, checkedPath)) {
+                && existenceProven(valueFact, checkedPath, target)) {
             return CheckResult.mismatch(
                     "all possible values are disjoint from " + target.displayName());
         }
@@ -236,8 +241,10 @@ public final class Checks {
                 continue;
             }
             if (Relations.proveDisjoint(branch, target)) {
-                // 数组分支允许零长度时,空数组不违反逐元素要求——不构成反例。
-                if (branch instanceof Type.Sequence sequence && sequence.minLength() == 0) {
+                // 目标要求逐元素时,零长度数组分支不违反要求——不构成反例;整值要求(对象/标量)下空数组同样不兼容。
+                if (branch instanceof Type.Sequence sequence
+                        && sequence.minLength() == 0
+                        && targetInvolvesSequences(target)) {
                     continue;
                 }
                 return true;
@@ -249,9 +256,12 @@ public final class Checks {
     private record Counterexample(String detail) {}
 
     /** 当前检查对象确实含有值(全不兼容判定的前提):类型非 Never,且不是“可能是空数组”的无元素情形。 */
-    private static boolean existenceProven(Fact fact, String checkedPath) {
+    private static boolean existenceProven(Fact fact, String checkedPath, Type target) {
         if (fact.type() instanceof Type.Never) {
             return false;
+        }
+        if (!targetInvolvesSequences(target)) {
+            return true;
         }
         for (Type branch : TypeOps.flatten(fact.type())) {
             if (branch instanceof Type.Sequence sequence && sequence.minLength() == 0) {
@@ -265,6 +275,17 @@ public final class Checks {
             }
         }
         return true;
+    }
+
+    /** 目标是否为逐元素要求:数组本身或含数组分支的联合。 */
+    private static boolean targetInvolvesSequences(Type target) {
+        if (target instanceof Type.Sequence) {
+            return true;
+        }
+        if (target instanceof Type.Union union) {
+            return union.alternatives().stream().anyMatch(Checks::targetInvolvesSequences);
+        }
+        return false;
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -288,7 +309,50 @@ public final class Checks {
                 fact, extraConstraint.declaredFields(), extraConstraint.expectation(), checkedPath);
     }
 
+    /** {@code Record<string, X>} 参数:所有值(已声明字段与开放尾部)都须满足 X;空对象不产生反例。 */
+    private static CheckResult checkRecordValues(
+            Fact fact, Expectation.RecordValues recordValues, String checkedPath) {
+        return checkRecordFields(
+                fact,
+                Set.of(),
+                recordValues.valueExpectation(),
+                checkedPath,
+                "observed object value violates record value requirement",
+                "object values cannot satisfy record value requirement");
+    }
+
+    /**
+     * 对象字段值检查:{@code declaredFields} 之外的字段与开放尾部都须满足 {@code requirement}。
+     *
+     * <p>先查观察到的实际对象值(真实反例),再按类型分支判定;存在必填字段确定违反即 MISMATCH,部分分支未证明或存在性未定时 UNPROVEN。
+     */
     private static CheckResult checkExtraFields(
+            Fact fact, Set<String> declaredFields, Expectation requirement, String checkedPath) {
+        return checkRecordFields(
+                fact,
+                declaredFields,
+                requirement,
+                checkedPath,
+                "observed undeclared field violates additionalProperties",
+                "required extra field violates additionalProperties");
+    }
+
+    private static CheckResult checkRecordFields(
+            Fact fact,
+            Set<String> declaredFields,
+            Expectation requirement,
+            String checkedPath,
+            String observedViolationDetail,
+            String structuralViolationDetail) {
+        if (observedEntryViolates(fact, declaredFields, requirement, checkedPath)) {
+            return CheckResult.mismatch(observedViolationDetail);
+        }
+        return checkRecordTypeBranches(
+                fact, declaredFields, requirement, structuralViolationDetail);
+    }
+
+    /** 观察到的实际对象值中,是否存在未声明字段(或不满足值要求的字段)构成真实反例。 */
+    private static boolean observedEntryViolates(
             Fact fact, Set<String> declaredFields, Expectation requirement, String checkedPath) {
         for (Fact.Evidence evidence : fact.evidence()) {
             if (evidence instanceof Fact.Evidence.ObservedValue observed
@@ -304,12 +368,20 @@ public final class Checks {
                                                     null)
                                             .verdict()
                                     == Verdict.MISMATCH) {
-                        return CheckResult.mismatch(
-                                "observed undeclared field violates additionalProperties");
+                        return true;
                     }
                 }
             }
         }
+        return false;
+    }
+
+    /** 按类型分支检查对象字段值与开放尾部;存在必填字段确定违反即 MISMATCH,其余未定即 UNPROVEN。 */
+    private static CheckResult checkRecordTypeBranches(
+            Fact fact,
+            Set<String> declaredFields,
+            Expectation requirement,
+            String structuralViolationDetail) {
         boolean sawPass = false;
         boolean sawFail = false;
         Set<Fact.Loss> reasons = lossesAsReasons(fact);
@@ -321,41 +393,18 @@ public final class Checks {
                 reasons.add(Fact.Loss.UNKNOWN_INPUT);
                 continue;
             }
-            boolean fails = false;
-            boolean uncertain = false;
-            for (Map.Entry<String, Type.Field> entry : record.fields().entrySet()) {
-                if (declaredFields.contains(entry.getKey())) {
-                    continue;
-                }
-                CheckResult result = check(Fact.of(entry.getValue().type()), requirement, null);
-                if (result.verdict() == Verdict.MISMATCH) {
-                    if (entry.getValue().presence() == Type.Presence.REQUIRED) {
-                        fails = true;
-                    } else {
-                        uncertain = true;
-                    }
-                } else if (result.verdict() == Verdict.UNPROVEN) {
-                    uncertain = true;
-                    reasons.addAll(result.reasons());
-                }
-            }
-            if (!record.extra().isClosed()) {
-                CheckResult tail = check(Fact.of(record.extra().valueType()), requirement, null);
-                if (tail.verdict() != Verdict.MATCH) {
-                    uncertain = true;
-                    reasons.addAll(tail.reasons());
-                }
-            }
-            if (fails) {
+            BranchCheck check = checkRecordBranch(record, declaredFields, requirement);
+            reasons.addAll(check.reasons());
+            if (check.fails()) {
                 sawFail = true;
-            } else if (uncertain) {
+            } else if (check.uncertain()) {
                 reasons.add(Fact.Loss.INSUFFICIENT_EVIDENCE);
             } else {
                 sawPass = true;
             }
         }
         if (sawFail && !sawPass && reasons.isEmpty()) {
-            return CheckResult.mismatch("required extra field violates additionalProperties");
+            return CheckResult.mismatch(structuralViolationDetail);
         }
         if (!sawFail && reasons.isEmpty()) {
             return CheckResult.match();
@@ -363,6 +412,45 @@ public final class Checks {
         reasons.add(Fact.Loss.INSUFFICIENT_EVIDENCE);
         return CheckResult.unproven(reasons, null);
     }
+
+    /** 单个对象分支:未声明字段与开放尾部的值检查结果。 */
+    private static BranchCheck checkRecordBranch(
+            Type.RecordType record, Set<String> declaredFields, Expectation requirement) {
+        boolean fails = false;
+        boolean uncertain = false;
+        Set<Fact.Loss> reasons = new LinkedHashSet<>();
+        for (Map.Entry<String, Type.Field> entry : record.fields().entrySet()) {
+            if (declaredFields.contains(entry.getKey())) {
+                continue;
+            }
+            CheckResult result = check(Fact.of(entry.getValue().type()), requirement, null);
+            if (result.verdict() == Verdict.MISMATCH) {
+                if (entry.getValue().presence() == Type.Presence.REQUIRED) {
+                    fails = true;
+                } else {
+                    uncertain = true;
+                }
+            } else if (result.verdict() == Verdict.UNPROVEN) {
+                uncertain = true;
+                reasons.addAll(result.reasons());
+            }
+        }
+        if (!record.extra().isClosed()) {
+            CheckResult tail = check(Fact.of(record.extra().valueType()), requirement, null);
+            if (tail.verdict() != Verdict.MATCH) {
+                uncertain = true;
+                reasons.addAll(tail.reasons());
+            }
+        }
+        return new BranchCheck(fails, uncertain, reasons);
+    }
+
+    /**
+     * 单个对象类型分支的字段检查结果。
+     *
+     * @since 0.1.0
+     */
+    private record BranchCheck(boolean fails, boolean uncertain, Set<Fact.Loss> reasons) {}
 
     // ───────────────────────────────────────────────────────────────────────
     // RequireField:字段存在性 + 嵌套值要求
@@ -773,6 +861,7 @@ public final class Checks {
                     : Verdict.UNPROVEN;
         }
         if (expectation instanceof Expectation.RequireField
+                || expectation instanceof Expectation.RecordValues
                 || expectation instanceof SchemaCompiler.ExtraClosed
                 || expectation instanceof SchemaCompiler.ExtraConstraint) {
             return check(Fact.of(type), expectation, null).verdict();

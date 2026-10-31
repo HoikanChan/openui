@@ -21,8 +21,7 @@ import java.util.Set;
  * DSL 语法保留字，不来自契约； 它们与 builtin 词表同处本类但判断入口各自独立（{@link #isActionName} / {@link #isReservedCall} 不并入
  * {@link #isBuiltin}）。
  *
- * <p>惰性/模板类（lazy）判定由契约 params 的 {@code binder} 标记派生——带 binder 参数的 builtin 即
- * lazy，其绑定名会为模板参数引入局部作用域（与提示词分节标记 templateBuiltin 是两个概念）。
+ * <p>模板构造的作用域由 builtin module 按名称维护,词表只提供不可变的定义集合,不再从 binder 元数据派生 lazy 名单。
  *
  * <p>无状态、线程安全；实例可自由共享。
  *
@@ -47,22 +46,16 @@ public final class BuiltinCatalog {
             new BuiltinCatalog(GenerationContractLoader.loadDefault().builtins());
 
     private final Set<String> names;
-    private final Set<String> lazyNames;
     private final Map<String, BuiltinSpec> specs;
 
     private BuiltinCatalog(Iterable<BuiltinSpec> builtins) {
         Set<String> collectedNames = new LinkedHashSet<>();
-        Set<String> collectedLazy = new LinkedHashSet<>();
         Map<String, BuiltinSpec> collectedSpecs = new LinkedHashMap<>();
         for (BuiltinSpec spec : builtins) {
             collectedNames.add(spec.name());
             collectedSpecs.put(spec.name(), spec);
-            if (!spec.binderIndexes().isEmpty()) {
-                collectedLazy.add(spec.name());
-            }
         }
         this.names = Set.copyOf(collectedNames);
-        this.lazyNames = Set.copyOf(collectedLazy);
         this.specs = Map.copyOf(collectedSpecs);
     }
 
@@ -129,16 +122,6 @@ public final class BuiltinCatalog {
     }
 
     /**
-     * 惰性/模板类内置函数——契约 params 带 binder 标记（当前为 Each/Render）。
-     *
-     * @param name 待判断的函数名
-     * @return 该函数引入 binder 作用域时为 {@code true}
-     */
-    public boolean isLazyBuiltin(String name) {
-        return lazyNames.contains(name);
-    }
-
-    /**
      * 按名取契约条目（无则 null）。
      *
      * @param name 函数名
@@ -146,14 +129,5 @@ public final class BuiltinCatalog {
      */
     public BuiltinSpec spec(String name) {
         return specs.get(name);
-    }
-
-    /**
-     * 契约条目全集（供类型求值器构造）。
-     *
-     * @return 全部 builtin 条目
-     */
-    public Iterable<BuiltinSpec> specsForTypeValidation() {
-        return specs.values();
     }
 }

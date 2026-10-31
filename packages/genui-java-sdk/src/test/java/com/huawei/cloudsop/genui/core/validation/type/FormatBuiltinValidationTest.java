@@ -24,8 +24,9 @@ import java.util.Map;
 /**
  * #88 格式化 builtin 的契约规则验收:FormatDate 标量/数组分别传播,其余四个不伪造固定 string。
  *
- * <p>规则全部来自契约 {@code typeRule}(词表与规则同源),测试只经公开 validator 断言。语义依据为 #79 运行时语义矩阵: FormatNumber
- * 的无效输入结果种类、FormatPercent/FormatDuration 的 null/无效输出未定义——这类结果按未证明 (UNKNOWN_INPUT)处理,不补成 string。
+ * <p>参数与返回类型来自契约的简洁签名,格式化形状细化由 Java builtin module 负责;测试只经公开 validator 断言。语义依据为 #79 运行时语义矩阵:
+ * FormatNumber 的无效输入结果种类、FormatPercent/FormatDuration 的 null/无效输出未定义——这类结果按未证明
+ * (UNKNOWN_INPUT)处理,不补成 string。
  */
 class FormatBuiltinValidationTest {
 

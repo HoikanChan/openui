@@ -176,21 +176,18 @@ class ArrayPipelineChartValidationTest {
     // ---- First / Last ----
 
     @Test
-    void firstOnEmptyArrayIsUnknownWithReasonNotNever() {
-        // 空数组的实际返回值未定：不能返回 Never（Never 会让任意要求都“通过”），也不补 null。
-        ValidationResult result =
-                validate("root = TextContent(@String(@Abs(@First([]))))", Map.of());
+    void firstOnKnownEmptyArrayIsNull() {
+        // #120 规格变更：First/Last 声明 T | null。已知为空时结果确定为 null，
+        // 不再记为“元素存在未证明”；null 不被 TextContent 接受，错误落在组件约束上。
+        ValidationResult result = validate("root = TextContent(@First([]))", Map.of());
 
         assertEquals(
-                ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
-        assertFalse(
-                hasCode(result, "builtin-argument-type-mismatch"),
+                "/text",
+                issue(result, "type-prop-mismatch").path(),
                 () -> String.valueOf(result.issues()));
-        assertTrue(
+        assertFalse(
                 unprovenReasons(result).contains("NO_ELEMENT_EVIDENCE="),
-                () ->
-                        "empty selection must carry the empty-result gap: "
-                                + result.metadata().extra());
+                () -> "已知为空时 null 已确定，不应再有元素存在缺口: " + result.metadata().extra());
     }
 
     @Test
@@ -208,22 +205,20 @@ class ArrayPipelineChartValidationTest {
     }
 
     @Test
-    void firstOnPossiblyEmptyInputCoversTheUnknownOutcome() {
-        // 输入含可能为空的分支（Filter 下界为 0）时同样必须覆盖空结果。
-        Map<String, Object> data = Map.of("rows", List.of(row("on", true)));
+    void firstOnPossiblyEmptyInputIncludesNull() {
+        // 输入含可能为空的分支（Filter 下界为 0）时，结果类型必须包含 null；
+        // Abs 只接受 number，null 分支必须在该调用处报出。
+        Map<String, Object> data = Map.of("rows", List.of(row("on", true, "value", 1)));
 
         ValidationResult result =
                 validate(
-                        "root = TextContent(@First(@Filter(data.rows, \"on\", \"==\", true)).value)",
+                        "root = TextContent(@String(@Abs(@First(@Filter(data.rows, \"on\", \"==\", true)))))",
                         data);
 
-        assertEquals(
-                ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+        ValidationIssue mismatch = issue(result, "builtin-argument-type-mismatch");
         assertTrue(
-                unprovenReasons(result).contains("NO_ELEMENT_EVIDENCE="),
-                () ->
-                        "possibly empty input must keep the unknown outcome: "
-                                + result.metadata().extra());
+                mismatch.message().contains("null"),
+                () -> "可能为空的选择结果必须包含 null: " + mismatch.message());
     }
 
     @Test
@@ -235,6 +230,24 @@ class ArrayPipelineChartValidationTest {
         assertEquals(
                 ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
         assertFalse(hasCode(result, "type-field-missing"), () -> String.valueOf(result.issues()));
+    }
+
+    @Test
+    void lastSharesTheSameSelectionSemantics() {
+        // Last 与 First 共用 T | null 语义：已知为空 -> null（在这里落到组件约束），
+        // 观察到的非空数据 -> 保留元素类型，字段访问可继续证明。
+        ValidationResult empty = validate("root = TextContent(@Last([]))", Map.of());
+        assertEquals(
+                "/text",
+                issue(empty, "type-prop-mismatch").path(),
+                () -> String.valueOf(empty.issues()));
+
+        Map<String, Object> data = Map.of("rows", List.of(row("name", "Ada")));
+        ValidationResult nonEmpty = validate("root = CardHeader(@Last(data.rows).name)", data);
+        assertEquals(
+                ValidationStatus.VALID, nonEmpty.status(), () -> String.valueOf(nonEmpty.issues()));
+        assertFalse(
+                hasCode(nonEmpty, "type-field-missing"), () -> String.valueOf(nonEmpty.issues()));
     }
 
     // ---- Chart：元素与长度分开检查 ----
@@ -334,6 +347,42 @@ class ArrayPipelineChartValidationTest {
                 () ->
                         "shared length-preserving source must not report a mismatch: "
                                 + result.issues());
+    }
+
+    @Test
+    void sortedEachSharesTheLengthSourceWithPlainEach() {
+        // labels 走 @Each(rows)，values 走 @Each(@Sort(rows, ...))：Each/Sort 都保持输入来源，
+        // 事实携带相同来源即可证明等长，消费方不再按函数名回溯 Each/Sort。
+        Map<String, Object> row = row("on", true, "label", "A", "value", 1);
+        row.put("k", 1);
+        Map<String, Object> data = Map.of("rows", List.of(row));
+
+        ValidationResult result =
+                validate(
+                        "root = BarChart(labels, [series])\n"
+                                + "rows = @Filter(data.rows, \"on\", \"==\", true)\n"
+                                + "labels = @Each(rows, \"r\", r.label)\n"
+                                + "series = Series(\"V\", @Each(@Sort(rows, \"k\"), \"r\", r.value))",
+                        data);
+
+        assertEquals(
+                ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+        assertFalse(
+                hasCode(result, "type-chart-length-mismatch"),
+                () -> "Each/Sort 保持同一输入数量，不能按表达式名判成不同来源: " + result.issues());
+    }
+
+    @Test
+    void projectedFieldPathsKeepTheSnapshotCardinality() {
+        // data.rows.value 的类型上界无界，但快照基数已知为 3：长度证据由事实携带，
+        // 与 2 个标签的区间互斥必须报长度错误（旧的按名称回溯补推数量已删除）。
+        Map<String, Object> data =
+                Map.of("rows", List.of(row("value", 1), row("value", 2), row("value", 3)));
+
+        ValidationResult result =
+                validate("root = BarChart([\"A\", \"B\"], [Series(\"V\", data.rows.value)])", data);
+
+        issue(result, "type-chart-length-mismatch");
     }
 
     @Test

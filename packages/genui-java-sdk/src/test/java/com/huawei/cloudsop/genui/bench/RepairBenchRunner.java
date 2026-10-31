@@ -6,7 +6,6 @@ package com.huawei.cloudsop.genui.bench;
 
 import com.huawei.cloudsop.genui.core.GenerationSdk;
 import com.huawei.cloudsop.genui.core.Json;
-import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerationResult;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerator;
@@ -32,11 +31,11 @@ import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.parser.Statement;
 import com.huawei.cloudsop.genui.core.validation.repair.RepairPromptBuilder;
 import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
-import com.huawei.cloudsop.genui.core.validation.semantic.LazyBuiltinBinders;
 import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalysis;
 import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalyzer;
 import com.huawei.cloudsop.genui.core.validation.semantic.RepairHints;
 import com.huawei.cloudsop.genui.core.validation.stream.RoundEndResult;
+import com.huawei.cloudsop.genui.core.validation.type.analysis.BuiltinAnalysis;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -537,44 +536,28 @@ final class RepairBenchRunner {
             Set<String> out,
             Deque<Set<String>> scopeFrames,
             BuiltinCatalog builtins) {
-        List<Integer> binderIndexes =
-                builtins.isBuiltin(comp.name())
-                        ? LazyBuiltinBinders.binderIndexes(comp, builtins)
-                        : List.of();
-        if (binderIndexes.isEmpty()) {
-            for (AstNode arg : comp.args()) {
-                collectRefs(arg, out, scopeFrames, builtins);
-            }
-            return;
-        }
-        BuiltinSpec spec = builtins.spec(comp.name());
-        Set<String> binders = new LinkedHashSet<>();
-        for (int index : binderIndexes) {
-            String binderName = LazyBuiltinBinders.binderName(spec, comp, index);
-            if (binderName == null) {
-                binders = null;
-                break;
-            }
-            binders.add(binderName);
-        }
-        if (binders == null) {
-            for (AstNode arg : comp.args()) {
-                collectRefs(arg, out, scopeFrames, builtins);
-            }
-            return;
-        }
-        int bodyIndex = LazyBuiltinBinders.bodyIndex(spec, comp);
-        for (int i = 0; i < comp.args().size(); i++) {
-            if (i != bodyIndex && !binderIndexes.contains(i)) {
-                collectRefs(comp.args().get(i), out, scopeFrames, builtins);
-            }
-        }
-        scopeFrames.push(binders);
-        try {
-            collectRefs(comp.args().get(bodyIndex), out, scopeFrames, builtins);
-        } finally {
-            scopeFrames.pop();
-        }
+        BuiltinAnalysis.walkArguments(
+                builtins,
+                comp,
+                BuiltinAnalysis.BinderPolicy.REQUIRE_ALL_VALID,
+                new BuiltinAnalysis.ArgumentVisitor() {
+                    @Override
+                    public void value(AstNode argument, String binderName) {
+                        if (binderName == null) {
+                            collectRefs(argument, out, scopeFrames, builtins);
+                        }
+                    }
+
+                    @Override
+                    public void template(AstNode body, Set<String> binderNames) {
+                        scopeFrames.push(binderNames);
+                        try {
+                            collectRefs(body, out, scopeFrames, builtins);
+                        } finally {
+                            scopeFrames.pop();
+                        }
+                    }
+                });
     }
 
     private static boolean inScope(Deque<Set<String>> scopeFrames, String name) {

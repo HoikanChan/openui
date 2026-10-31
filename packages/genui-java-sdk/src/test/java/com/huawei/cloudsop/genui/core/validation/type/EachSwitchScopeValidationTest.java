@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
@@ -499,6 +498,86 @@ class EachSwitchScopeValidationTest {
                 ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
     }
 
+    @Test
+    void switchNamedCasesReferenceContributesValueTypes() {
+        // cases 是命名对象引用:值类型从已求值的实参事实解出,string 分支必须在下游 number 参数位被证明为错。
+        String dsl =
+                "cases = {on: \"bad\", off: 0}\n"
+                        + "root = Point(@Switch(data.state, cases, 0), 0)";
+        ValidationResult result = validate(dsl, Map.of("state", "on"));
+
+        ValidationIssue issue = issue(result, "type-prop-mismatch");
+        assertEquals("Point", issue.component());
+        assertEquals("/x", issue.path());
+    }
+
+    @Test
+    void switchNamedCasesReferenceMergesAllBranchTypes() {
+        // 引用解出的各分支值类型与 default 合并:全部是 string 时下游 TextContent 合法。
+        String dsl =
+                "cases = {on: \"yes\", off: \"no\"}\n"
+                        + "root = TextContent(@Switch(data.state, cases, \"none\"))";
+        ValidationResult result = validate(dsl, Map.of("state", "on"));
+
+        assertEquals(
+                ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+    }
+
+    @Test
+    void switchLiteralDuplicateKeysUseLastBranchType() {
+        // 后一个重名键为 string,下游 number 参数仍必须报错。
+        String dsl = "root = Point(@Switch(data.state, {a: 1, a: \"bad\"}, 0), 0)";
+        ValidationResult result = validate(dsl, Map.of("state", "a"));
+
+        ValidationIssue issue = issue(result, "type-prop-mismatch");
+        assertEquals("/x", issue.path());
+    }
+
+    @Test
+    void switchLiteralOverwrittenStringDoesNotAffectResult() {
+        ValidationResult result =
+                validate(
+                        "root = Point(@Switch(data.state, {a: \"bad\", a: 1}, 0), 0)",
+                        Map.of("state", "a"));
+        assertEquals(
+                ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+    }
+
+    @Test
+    void switchOverwrittenBranchStillReportsErrorsInEachScope() {
+        ValidationResult result =
+                validate(
+                        "root = Stack(@Each(data.rows, row, TextContent(@String(@Switch(row.state, {a: @Round(row.name), a: 1}, 0)))))",
+                        Map.of("rows", List.of(Map.of("state", "a", "name", "bad"))));
+        issue(result, "builtin-argument-type-mismatch");
+    }
+
+    @Test
+    void switchDuplicateKeysUseEachScopeForWinningBranch() {
+        ValidationResult result =
+                validate(
+                        "root = Stack(@Each(data.rows, row, Point(@Switch(row.state, {a: \"bad\", a: row.value}, 0), 0)))",
+                        Map.of("rows", List.of(Map.of("state", "a", "value", 1))));
+        assertEquals(
+                ValidationStatus.VALID, result.status(), () -> String.valueOf(result.issues()));
+    }
+
+    @Test
+    void switchUnresolvedCasesReferenceStaysUnproven() {
+        // cases 引用无法解出对象值类型:结果保持未知,不得据此制造下游类型反例。
+        String dsl = "root = Point(@Switch(data.state, data.cases, 0), 0)";
+        ValidationResult result = validate(dsl, Map.of("state", "on"));
+
+        assertFalse(
+                result.issues().stream()
+                        .anyMatch(candidate -> "type-prop-mismatch".equals(candidate.code())),
+                () -> "未知 cases 不得伪装成可证明的类型: " + result.issues());
+        assertTrue(
+                Long.parseLong(result.metadata().extra().getOrDefault("typeChecks.unproven", "0"))
+                        >= 1,
+                () -> "未知 cases 结果必须按未证明统计: " + result.metadata().extra());
+    }
+
     // ── 多使用位置与公开 validator 口径 ───────────────────────────────────
 
     @Test
@@ -528,35 +607,28 @@ class EachSwitchScopeValidationTest {
     }
 
     @Test
-    void binderLayoutComesFromContractDeclaration() {
-        // binder 布局由契约声明并编译进 BuiltinSpec:params 的 binder/nameSyntax、input 与 callForms。
-        // 语义层(ProgramAnalyzer/StatementRelations)与类型层(AnalysisSession)共用同一份编译布局
-        // (LazyBuiltinBinders),不各自重述 Each/Render 的形态特判。
-        BuiltinSpec each =
-                GenerationContractLoader.loadDefault().builtins().stream()
-                        .filter(spec -> "Each".equals(spec.name()))
-                        .findFirst()
-                        .orElseThrow();
-        assertEquals(List.of(1), each.binderIndexes());
-        assertEquals("string-or-identifier", each.params().get(1).nameSyntax());
-        assertEquals(0, each.inputIndex());
-        assertEquals(List.of(1), each.activeBinderIndexes(3));
-        assertEquals(2, each.bodyIndex(3));
-        BuiltinSpec render =
-                GenerationContractLoader.loadDefault().builtins().stream()
-                        .filter(spec -> "Render".equals(spec.name()))
-                        .findFirst()
-                        .orElseThrow();
-        assertEquals(List.of(0, 1), render.binderIndexes());
-        assertEquals(List.of(0), render.activeBinderIndexes(2));
-        assertEquals(List.of(0, 1), render.activeBinderIndexes(3));
-        assertEquals(1, render.bodyIndex(2));
+    void eachAndRenderBindingLayoutIsOwnedByBuiltinModule() {
+        // 简洁契约不再声明 binder/input/callForms:Each/Render 的布局由 builtin module 固定,
+        // 语义层(ProgramAnalyzer/AstReferenceWalker)与类型层(AnalysisSession)共用同一份遍历/分析能力。
+        assertEquals(
+                ValidationStatus.VALID,
+                validate(
+                                "root = Stack(@Each(data.rows, row, TextContent(row.id)))",
+                                Map.of("rows", List.of(Map.of("id", "a"))))
+                        .status());
+        assertEquals(
+                ValidationStatus.VALID,
+                validate(
+                                "root = Table([nameCol], data.rows)\n"
+                                        + "nameCol = Col(\"Name\", \"name\", {cell: @Render(\"v\", \"row\", TextContent(v))})",
+                                Map.of("rows", List.of(Map.of("name", "a"))))
+                        .status());
     }
 
     @Test
     void bareIdentifierBinderBindsRowLikeStringLiteral() {
-        // 契约 nameSyntax string-or-identifier:裸标识符与字符串字面量同为合法 binder 形态,
-        // 语义层与类型层一致绑定——缺字段检查不得因形态不同被静默跳过。
+        // binder 名允许字符串字面量与裸标识符两种形态:语义层与类型层一致绑定,
+        // 缺字段检查不得因形态不同被静默跳过。
         String dsl = "root = Stack(@Each(data.rows, row, TextContent(row.missing)))";
         ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("id", "a"))));
 
@@ -582,12 +654,17 @@ class EachSwitchScopeValidationTest {
     }
 
     @Test
-    void numericBinderIsRejectedUnderDeclaredNameSyntax() {
-        // 数字实参不在 nameSyntax 允许的形态内:类型层按契约形态报错,而不是把它当变量名引入作用域。
+    void numericBinderIsRejectedUnderFixedSyntax() {
+        // 数字实参不是允许的 binder 形态:类型层报形态错,而不是把它当变量名引入作用域。
         String dsl = "root = Stack(@Each(data.rows, 42, TextContent(\"x\")))";
         ValidationResult result = validate(dsl, Map.of("rows", List.of(Map.of("name", "a"))));
 
-        issue(result, "builtin-argument-type-mismatch");
+        ValidationIssue issue = issue(result, "builtin-argument-type-mismatch");
+        // 诊断文案必须与实际接受范围一致:字符串字面量与裸标识符都合法。
+        assertTrue(
+                issue.message().contains("string literal")
+                        && issue.message().contains("identifier"),
+                () -> "binder 形态诊断必须同时提到字符串与裸标识符: " + issue.message());
     }
 
     @Test
