@@ -6,7 +6,9 @@
 
 ## 证据版本与复现
 
-核对基点：`bfc9c760f3b3feaa09a2ad8b23d5c357193b0574`。默认资源：`src/main/resources/openui/base-contract.json`，`contractVersion = @cloudsop/openui-react-ui-dsl@1.1.6`，SHA-256 `fcacf88ca74858ba653975aa05889bf839686972afe8b0cd82dc086d2e0c9fc2`，Git blob `f4f70c7c5747acfae078db0ad3b994eb6aebd134`。行号均指此版本。#83 资源新增 binder 布局字段（`input`/`nameSyntax`/`callForms`）；Sum 的可执行规则保持 number[] 输入与 number 输出。当前 SHA-256 为 `4b78c6d26d542d32347ea3a0f6ca214ec066f86ab75df822c30ff59aa8d42d97`（contractVersion 未变，仍为 1.1.6 词汇）。
+核对基点：`bfc9c760f3b3feaa09a2ad8b23d5c357193b0574`。默认资源：`src/main/resources/openui/base-contract.json`，`contractVersion = @cloudsop/openui-react-ui-dsl@1.1.6`，最初 SHA-256 `fcacf88ca74858ba653975aa05889bf839686972afe8b0cd82dc086d2e0c9fc2`，Git blob `f4f70c7c5747acfae078db0ad3b994eb6aebd134`。行号均指该版本。
+
+#83 曾在资源中新增 `input`/`nameSyntax`/`callForms` 等 binder 布局字段；#117–#122 改用简洁签名后这些字段已删除，Each/Render/Switch 的布局由 Java `BuiltinAnalysis` 固定。当前（#122 收口）SHA-256 为 `35c2bd9190e751d45a29797bb68ff9a5a9775c9cd02977a8c378cc71b267c819`，Git blob `5ff5ddb57bb1575187babd5f004d39479454c736`，contractVersion 未变。
 
 从仓库根目录运行：
 
@@ -28,9 +30,13 @@ java --class-path $evidenceClasspath packages/genui-java-sdk/docs/examples/Contr
 {"contractVersion":"@cloudsop/openui-react-ui-dsl@1.1.6","sha256":"4b78c6d26d542d32347ea3a0f6ca214ec066f86ab75df822c30ff59aa8d42d97","builtins":29,"evidence":"contract-only; no runtime execution"}
 ```
 
-`callForms` 按准确实参数量声明 `arity`、body 实参下标 `body` 与 binder 实参下标 `binders`。Each 声明 `{arity:3, body:2, binders:[1]}`；Render 分别声明两参和三参形式。加载器拒绝重复数量、缺失形式、越界或与 binder/input 冲突的位置；语义、依赖和类型分析共用编译结果，不再按最后一个实参猜 body。
+#117–#122 改为简洁签名后重跑，末行实测输出（2026-10-31，退出码 0）：
 
-`input` 对 binder builtin 是必填键：整数指向元素来源实参；显式 `null` 表示"没有元素来源"（Render）。省略键视为漏声明并在加载期失败，避免 Each 的元素级检查静默退化成 `MISSING_CONTEXT`。声明了 `T[]` 元素数组参数的 binder builtin（Each）不得用 `null` 拒绝命名来源，同样在加载期拒绝。
+```json
+{"contractVersion":"@cloudsop/openui-react-ui-dsl@1.1.6","sha256":"35c2bd9190e751d45a29797bb68ff9a5a9775c9cd02977a8c378cc71b267c819","builtins":29,"evidence":"contract-only; no runtime execution"}
+```
+
+最终契约不再声明 `callForms` 或 `input`。Each 固定为三参 `(array, binder, body)`、元素来源为第 0 参、模板为第 2 参；Render 的两参形式为 `(binder, body)`、三参形式为 `(binder, row, body)`。这些角色由 `BuiltinAnalysis` 的 `Layout` 在 Java 侧固定，语义遍历、依赖收集和类型分析共用同一份布局，不读取契约下标。加载器只校验简洁参数表；残留 `input`/`callForms` 会让加载失败并指出函数与字段。省略/未知元素来源不会静默退化成 `MISSING_CONTEXT`，因为来源角色已由布局本身确定。
 
 Each 只在源元素存在已证明时把 body 观察值包回输出数组。存在性证明要求实际观察到非空数组，或输入的**每个**可能分支长度下界都 ≥1；联合里单个非空分支不构成证明（#77 §6.5）。空源或 Filter 后未证明保留任何行的源不能产生这些观察值；body 内独立错误仍检查。本地关闭对象的缺字段由结构证明，不要求快照观察值。
 
@@ -62,7 +68,7 @@ Each 只在源元素存在已证明时把 body 观察值包回输出数组。存
 | Flatten | array[]；1 | array；展平一层。description 定义 null/非数组容错为 []。混合元素（标量/null/数组）的策略未定，不能假定 JS flat、过滤或递归展平。 |
 | ObjectEntries | Record<string,T>；1 | {key:string,value:T}[]；有序键值行，原字段只在 value 下。空对象 → []；null/数组/不支持输入容错 → []。类型迁移保留每个 key/value 对应关系。 |
 | ObjectKeys | Record<string,any>；1 | string[]；有序键，空对象 → []；null/数组/不支持输入容错 → []。具体数字键排序规则未写明。 |
-| ObjectValues | Record<string,any>；1 | any[]；有序值，空对象 → []；null/数组/不支持输入容错 → []。新结构规则应保留已知字段值的类型，不能将空对象推成含 null 元素。 |
+| ObjectValues | Record<string,any>；1 | any[]；有序值，空对象 → []；null/数组/不支持输入容错 → []。新签名类型行为应保留已知字段值的类型，不能将空对象推成含 null 元素。 |
 | Round | number, number?；1–2 | number；小数位默认 0。负位数、非整数精度、舍入平局规则未定。 |
 | Abs | number；1 | number；绝对值。无非数字转换承诺。 |
 | Floor | number；1 | number；向下取整。无非数字转换承诺。 |
@@ -103,23 +109,23 @@ nameCol = Col("Device Name", "name")
 
 契约未定义缺字段/null 元素是保留 null、保留缺失、跳过还是失败。输入 `{"rows":[{"x":1},{},{"x":null},null]}` 的 `data.rows.x` **没有可确认的精确输出**。迁移须保留每个分支的字段存在性，不能省略缺失分支后宣称所有行有 x。已知空数组不提供字段证据；字段值为 null 与不存在不能合并成同一个字段事实。精确投影结果规则等待契约补充，不阻塞其他结构运算。
 
-## 权威导出与结构规则传递
+## 权威导出与简洁签名传递
 
 当前验证和提示词的权威输入是生效契约，默认由 `GenerationContractLoader.loadDefault()` 读取 classpath `openui/base-contract.json`。仓库修复语料也直接读取同一默认资源，不保存 Case Contract 副本。外部案例包可显式覆盖（案例级 > 包级 > SDK 默认）；显式契约无效时终止，不因缺规则偷偷回退另一份默认词表。Base Supplement/Extension 的合并语义不变。
 
-历史前端导出入口可以精确定位：`258997028bd79cb49a3207c692cb5f16d9ad379c:packages/react-ui-dsl/scripts/generate-base-contract.mts`，运行入口为该包 `generate:base-contract`。它调用 `dslLibrary.toSpec()`，再将 `getBuiltinsManifest()` 放到顶层 builtins，同时写前端 generated JSON 和 SDK resource。`react-lang@0.2.0` 从 workspace `lang-core` 重新导出 manifest；lockfile 是 workspace link，没有独立 registry 锁定版本。该历史 manifest 仅有 signature/description/templateBuiltin，不能承载默认资源现有的 name/params/returnType，更不能承载 #77 新规则。该脚本随前端移除，当前工作树不能运行它。
+历史前端导出入口可以精确定位：`258997028bd79cb49a3207c692cb5f16d9ad379c:packages/react-ui-dsl/scripts/generate-base-contract.mts`，运行入口为该包 `generate:base-contract`。它调用 `dslLibrary.toSpec()`，再将 `getBuiltinsManifest()` 放到顶层 builtins，同时写前端 generated JSON 和 SDK resource。`react-lang@0.2.0` 从 workspace `lang-core` 重新导出 manifest；lockfile 是 workspace link，没有独立 registry 锁定版本。该历史 manifest 仅有 signature/description/templateBuiltin，不能承载默认资源现有的 name/params/returnType，更不能承载后来短暂的 `typeRule` 规则。该脚本随前端移除，当前工作树不能运行它。
 
-因此只能确认**历史入口**，不能称它已是支持新结构的可运行导出器。后续迁移必须在维护该接口的权威导出端传递：
+#122 收口后，权威导出端只需传递**简洁签名**（#117 第 2 节）：
 
 ```text
-权威接口源（29 builtin、调用形式、binder、结果规则、规则版本）
-  → 导出器保留结构字段（不得退成只有展示文本的 manifest）
+权威接口源（29 builtin 的 name/signature/description/templateBuiltin/params/returnType）
+  → 导出器保留结构化 params 与 returnType（不得退成只有展示文本的 manifest）
   → 前端导出 JSON 与 SDK resource 同一内容/版本
-  → GenerationContractLoader / ContractCompiler
+  → GenerationContractLoader
   → 同一生效契约的 parser、语义、类型分析、提示词
 ```
 
-新字段具体 JSON schema 由契约编译任务交付，不在 #79 虚构可运行字段。加载未知规则必须失败，不能丢弃。导出验收要求：29 名称完整、结构字段往返不丢失、两端规则版本一致、未知 op 加载失败、新 Identity<T> 可只改契约组合已有运算。未提供权威新导出器及往返证据前，**结构化规则发布链路未验收**；这是接口迁移缺口，不是缺 TS 实现造成的阻塞。
+加载器对旧字段（`typeRule`/`typeRulesVersion`/`input`/`callForms`/参数 `binder`/`nameSyntax`）和旧类型语法（`param(n)`/`when`/`else`）明确失败并指出函数与字段，不静默忽略。导出验收要求：29 名称完整、params/returnType 往返不丢失、两端契约内容与摘要一致、旧字段清理干净。前端尚未适配时，该发布链路仍属**未验收**；这是接口迁移缺口，不是缺 TS 实现造成的阻塞，本票不改前端。
 
 ## 仍需裁定的精确规则
 
@@ -132,11 +138,11 @@ nameCol = Col("Device Name", "name")
 | 缺字段/null 投影 | 有数组 pluck，无异常分支规则 | 精确值与数量，缺失分支不能删除 |
 | MergeObject 容错是否扩展政策 | params ≥2 object，描述可跳过/无对象回 {} | 不自动改政策；若产品要接受 0/1/非对象，须显式改调用形式 |
 | Each 文本冲突 | ADR 与公开测试已接受跨语句 | 文档按 ADR 保留；后续权威导出须删除 inline-only 文本 |
-| 新规则导出 | 历史入口只传展示 manifest | 新规则端到端发布必须补导出器/往返证据 |
+| 新签名导出 | 历史入口只传展示 manifest | 简洁签名的端到端发布仍需前端导出器与往返证据 |
 
 以上精确规则待接口维护方裁定。对缺失或冲突的结果保证，目标分析记录 **UNPROVEN（未证明：现有接口信息不足）** 精度缺口；不猜返回值，不以这个缺口单独产生修复错误，也不把它计成完整 MATCH。独立、明确的 params 违规仍可报错，例如 Flatten 混合数组中的已知 number 元素；聚合函数的 number 类型声明仍可使用，只对未给出的精确空值保持未证明。迁移内核继续实现已确认的结构语义；缺 TS 实现不是 Java 开发阻塞。
 
-TS 后续工作集中跟踪于 [#91：权威契约导出与模板接口同步](https://github.com/HoikanChan/openui/issues/91)，关联 #77/#79/[#88](https://github.com/HoikanChan/openui/issues/88)。已去重：[#73](https://github.com/HoikanChan/openui/issues/73)完整覆盖 capabilityGaps 导出，本次复用该票；已关闭 #49 是 Java 资源回填，未覆盖权威 TS 导出。#91 只跟踪接口/导出缺口，本任务不修改 TS runtime/export 源码。
+TS 侧的契约导出工作曾跟踪于 [#91](https://github.com/HoikanChan/openui/issues/91)，关联 #77/#79/[#88](https://github.com/HoikanChan/openui/issues/88)。其中“导出 `typeRule` 与模板作用域配置”的要求已被父规格 #117 与 [ADR 0006](adr/0006-concise-builtin-signature-contract.md) 取代；保留的目标是导出完整签名与展示文案。本票不修改或关闭 #91，也不修改 TS runtime/export 源码。已去重：[#73](https://github.com/HoikanChan/openui/issues/73)完整覆盖 capabilityGaps 导出；已关闭 #49 是 Java 资源回填。
 
 ## #79 验收映射
 
@@ -161,15 +167,15 @@ TS 后续工作集中跟踪于 [#91：权威契约导出与模板接口同步](h
 
 | 项 | 终态 | 证据 |
 | --- | --- | --- |
-| 类型分析路径 | `TypeAnalysis.analyze` → `type/analysis` 内核（Type/Fact/TypeOps/Checks/CoverageReport）+ `contract.RuleEvaluator` | `DefaultOpenuiLangValidator` FINAL 分支；`StaticTypeValidationTest` |
+| 类型分析路径 | `TypeAnalysis.analyze` → `type/analysis` 内核（Type/Fact/TypeOps/Checks/CoverageReport）+ `BuiltinAnalysis` | `DefaultOpenuiLangValidator` FINAL 分支；`StaticTypeValidationTest` |
 | builtin 词表 | 契约 `builtins` 派生；Query/Mutation/Action 等语句关键字单独判断 | `BuiltinCatalog.fromContract` 和语法保留字判断 |
-| 求值规则 | `typeRule`（`RuleCompiler` 加载期封闭文法 + `RuleEvaluator` 运行期） | `RuleCompilerTest`、`ContractBuiltinRulesTest` |
-| 已删除 | `ValueType`/`ValueTypes`/旧 `DataPath*`、`TypeTranslator`、`returnType`+`params` 泛型求值（`genericResult`/`collectLowerBounds`/`instantiate`） | 全局搜索无引用；`DataPathResolverTest` 改用新 `Type` |
+| 求值规则 | 简洁签名（`params` + `returnType`）：`SignatureInference` 做通用检查/绑定/实例化，`BuiltinAnalysis` 做 Java 特殊语义 | `ContractBuiltinRulesTest`、`SignatureBuiltinValidationTest`、`BuiltinDefinitionValidationTest` |
+| 已删除 | `ValueType`/`ValueTypes`/旧 `DataPath*`、`TypeTranslator`、`returnType`+`params` 泛型求值（`genericResult`/`collectLowerBounds`/`instantiate`）；#122 另删 `RulePlan`/`RuleCompiler`/`RuleEvaluator`/`RuleCompilationException`、`TypeExprEquals`、`LazyBuiltinBinders` 及 `param(n)`/`when`/`else` | 生产/测试源码无引用（历史文档仍可能提及）；`DataPathResolverTest` 改用新 `Type` |
 | 参数检查覆盖 | 每次规则模式检查登记 MATCH/MISMATCH/UNPROVEN；只有 MISMATCH 且无上游错误上报 | `typeChecks.*` 元数据；`StaticTypeValidationTest` |
 | 修复触发 | 只有 `ValidationStatus.INVALID`（确定 ERROR）进入增量修复；仅 UNPROVEN 的 VALID 结果不触发 | `GenUiGeneratorTypeTriggerTest`（sync + streaming） |
 | 语料行为 | `repair-cases/` 校验结论不变（25 例 code 集合逐例一致）；仓库语料统一读取 `base-contract.json`，不维护 Case Contract 副本 | validation-only bench 对比；`RepairCorpus*RulesTest` |
 | 集成行为 | 同名覆盖/遮蔽、入口不可达语句不报当前错误、取消隔离、校验不改调用方 dataModel | `StaticTypeValidationTest`、`EachSwitchScopeValidationTest`、`TypeEngineIntegrationBehaviourTest`、`CancellationIsolationTest` |
 
-Each/Render/Switch 仍是语言模板构造：binder 布局（`callForms`/`binders`/`body`/`input`/`nameSyntax`）从契约读取，模板作用域与分支语义留在 Java 侧。它们不构成第二份 builtin 类型词表，也不产生第二条类型分析路径。
+Each/Render/Switch 仍是语言模板构造：参数角色由 `BuiltinAnalysis` 在 Java 侧固定（不再由契约声明布局），模板作用域与分支语义也留在该 module。它们不构成第二份 builtin 类型词表，也不产生第二条类型分析路径。
 
 未包含在 #90：有界分析预算与截断策略（#89 已拆分跟踪为 #94）；AST 关联与展示集成由 #59 保持既有归属。

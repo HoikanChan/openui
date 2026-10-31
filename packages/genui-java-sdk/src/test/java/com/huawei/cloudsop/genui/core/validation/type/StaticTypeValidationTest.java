@@ -574,6 +574,34 @@ class StaticTypeValidationTest {
                 "覆盖后的新定义造成下游 Table 不匹配必须被发现: " + result.issues());
     }
 
+    @Test
+    void switchCasesAreAnalyzedOncePerCall() {
+        // cases 对象字面量在实参求值中已整体分析一次;结果推导复用同一事实,不逐项重算。
+        // 预算恰好容纳两次对象覆盖运算:逐项重算会翻倍消耗并触发截断。
+        var validator =
+                new DefaultOpenuiLangValidator(
+                        new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(
+                                2, 64, 16, 256, 2048));
+        ValidationResult result =
+                validator.validate(
+                        ValidationRequest.builder()
+                                .dsl(
+                                        "root = TextContent(@Switch(data.state, "
+                                                + "{a: @MergeObject({x: 1}, {y: 2}), "
+                                                + "b: @MergeObject({z: 3}, {w: 4})}, \"z\"))")
+                                .contract(GenerationContractLoader.loadDefault())
+                                .dataModel(Map.of("state", "a"))
+                                .build());
+
+        assertEquals(
+                "true",
+                result.metadata().extra().get("typeChecks.analysisComplete"),
+                () -> "cases 被重复分析会翻倍消耗预算: " + result.metadata().extra());
+        assertFalse(
+                result.metadata().extra().containsKey("typeChecks.precisionLosses"),
+                () -> "cases 只应分析一次: " + result.metadata().extra());
+    }
+
     private static ValidationIssue issue(ValidationResult result, String code) {
         ValidationIssue issue =
                 result.issues().stream()

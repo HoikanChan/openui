@@ -4,9 +4,9 @@
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
 
-import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
+import com.huawei.cloudsop.genui.core.validation.type.analysis.BuiltinAnalysis;
 
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -26,8 +26,8 @@ import java.util.Set;
  *       Assign} 的值参与遍历。
  * </ul>
  *
- * <p>共有部分只有节点分派、作用域叠加和 body 位切换;布局全部来自 {@link LazyBuiltinBinders} 的契约解析。调用方通过 {@link RefSink}
- * 决定收不收某个未被遮蔽的引用。
+ * <p>共有部分只有节点分派、作用域叠加;实参角色(binder 声单位、模板位、普通实参)与 binder 名解析归 {@link
+ * BuiltinAnalysis#walkArguments},调用方通过 {@link RefSink} 决定收不收某个未被遮蔽的引用。
  *
  * @since 2026
  */
@@ -50,20 +50,22 @@ public final class AstReferenceWalker {
     }
 
     /**
-     * 遍历规则差异:是否跳过 binder 位实参、是否要求 binder 名全合法、是否遍历赋值右侧。
+     * 遍历规则差异:是否跳过 binder 位实参、binder 名非法的容错策略、是否遍历赋值右侧。
      *
      * @since 2026
      */
     private record Policy(
             boolean skipBinderArguments,
-            boolean requireAllBindersValid,
+            BuiltinAnalysis.BinderPolicy binderPolicy,
             boolean traverseAssignmentValues) {}
 
-    /** 类型分析可达收集的既有规则。 */
-    private static final Policy REACHABILITY = new Policy(false, false, false);
+    /** 类型分析可达收集的既有规则:非法 binder 跳过但有效名仍建立作用域。 */
+    private static final Policy REACHABILITY =
+            new Policy(false, BuiltinAnalysis.BinderPolicy.SKIP_INVALID, false);
 
-    /** 语句依赖收集的既有规则。 */
-    private static final Policy DEPENDENCIES = new Policy(true, true, true);
+    /** 语句依赖收集的既有规则:任一 binder 名非法则整个调用不建立作用域。 */
+    private static final Policy DEPENDENCIES =
+            new Policy(true, BuiltinAnalysis.BinderPolicy.REQUIRE_ALL_VALID, true);
 
     private AstReferenceWalker() {}
 
@@ -142,42 +144,26 @@ public final class AstReferenceWalker {
             RefSink sink,
             Policy policy,
             Set<AstNode> visited) {
-        List<Integer> binderIndexes = LazyBuiltinBinders.binderIndexes(comp, builtins);
-        if (!binderIndexes.isEmpty()) {
-            BuiltinSpec spec = builtins.spec(comp.name());
-            int bodyIndex = spec == null ? -1 : LazyBuiltinBinders.bodyIndex(spec, comp);
-            Set<String> binders = new LinkedHashSet<>();
-            boolean valid = spec != null && bodyIndex >= 0 && bodyIndex < comp.args().size();
-            if (valid) {
-                for (int index : binderIndexes) {
-                    String binder = LazyBuiltinBinders.binderName(spec, comp, index);
-                    if (binder == null) {
-                        if (policy.requireAllBindersValid()) {
-                            valid = false;
-                            break;
+        BuiltinAnalysis.walkArguments(
+                builtins,
+                comp,
+                policy.binderPolicy(),
+                new BuiltinAnalysis.ArgumentVisitor() {
+                    @Override
+                    public void value(AstNode argument, String binderName) {
+                        if (binderName != null && policy.skipBinderArguments()) {
+                            return;
                         }
-                        continue;
+                        walk(argument, builtins, scope, sink, policy, visited);
                     }
-                    binders.add(binder);
-                }
-            }
-            if (valid) {
-                for (int index = 0; index < comp.args().size(); index++) {
-                    if (index == bodyIndex
-                            || (policy.skipBinderArguments() && binderIndexes.contains(index))) {
-                        continue;
+
+                    @Override
+                    public void template(AstNode body, Set<String> binderNames) {
+                        Set<String> bodyScope = new LinkedHashSet<>(scope);
+                        bodyScope.addAll(binderNames);
+                        walk(body, builtins, bodyScope, sink, policy, visited);
                     }
-                    walk(comp.args().get(index), builtins, scope, sink, policy, visited);
-                }
-                Set<String> bodyScope = new LinkedHashSet<>(scope);
-                bodyScope.addAll(binders);
-                walk(comp.args().get(bodyIndex), builtins, bodyScope, sink, policy, visited);
-                return;
-            }
-        }
-        for (AstNode argument : comp.args()) {
-            walk(argument, builtins, scope, sink, policy, visited);
-        }
+                });
     }
 
     private static List<AstNode> children(AstNode node) {

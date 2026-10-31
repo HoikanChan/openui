@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted (2026-10-13 grill session; amended 2026-10-14 — D2 reversed, lang-core sync descoped)
+Accepted (2026-10-13 grill session; amended 2026-10-14 — D2 reversed, lang-core sync descoped).
+D3's first layer (arity/return typing parsed from `signature` strings) is superseded by
+[ADR 0006](0006-concise-builtin-signature-contract.md); D1/D2/D4 and D3's second layer
+(Java-only semantic rules keyed by name) still stand.
 
 ## Context
 

@@ -176,22 +176,7 @@ class ContractBuiltinRulesTest {
     void identityBuiltinWorksFromContractAlone() {
         GenerationContract base = GenerationContractLoader.loadDefault();
         List<BuiltinSpec> builtins = new ArrayList<>(base.builtins());
-        Map<String, Object> identityRule =
-                Map.of(
-                        "typeRulesVersion",
-                        1,
-                        "arity",
-                        Map.of("min", 1, "max", 1),
-                        "parameters",
-                        List.of(
-                                Map.of(
-                                        "name",
-                                        "value",
-                                        "accept",
-                                        Map.of("tag", "variable", "name", "T"))),
-                        "result",
-                        Map.of("variable", "T"));
-        // params 的 typeExpr 使 builtin 词表/解析与类型规则来自同一条目;类型规则由编译器加载期编译。
+        // 简洁声明即可:参数与返回共用命名类型变量 T,不需要任何 Java 专用分支。
         com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr identityParamType =
                 com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExprParser.parse(
                         "T", "Identity.value");
@@ -203,10 +188,8 @@ class ContractBuiltinRulesTest {
                         false,
                         List.of(
                                 new BuiltinSpec.ParamSpec(
-                                        "value", "T", identityParamType, false, false, false)),
-                        null,
-                        com.huawei.cloudsop.genui.core.validation.contract.RuleCompiler.compile(
-                                "Identity", identityRule)));
+                                        "value", "T", identityParamType, false, false)),
+                        identityParamType));
         GenerationContract contract =
                 new GenerationContract(
                         base.contractVersion(),

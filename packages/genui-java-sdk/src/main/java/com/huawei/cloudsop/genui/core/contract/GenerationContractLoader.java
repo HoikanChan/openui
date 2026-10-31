@@ -8,8 +8,7 @@ import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExprParser;
-import com.huawei.cloudsop.genui.core.validation.contract.RuleCompiler;
-import com.huawei.cloudsop.genui.core.validation.contract.RulePlan.TypeRule;
+import com.huawei.cloudsop.genui.core.validation.type.analysis.BuiltinAnalysis;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,6 +29,19 @@ import java.util.Set;
 public final class GenerationContractLoader {
     private static final String DEFAULT_RESOURCE = "openui/base-contract.json";
     private static final Set<String> ALLOWED_GAP_KINDS = Set.of("data", "component");
+
+    /** 已删除的 builtin 条目字段;残留即加载失败,不静默忽略。 */
+    private static final Set<String> REMOVED_BUILTIN_FIELDS =
+            Set.of(
+                    "typeRule",
+                    "typeRulesVersion",
+                    "inference",
+                    "resultBehavior",
+                    "input",
+                    "callForms");
+
+    /** 已删除的参数级字段;残留即加载失败。 */
+    private static final Set<String> REMOVED_PARAM_FIELDS = Set.of("binder", "nameSyntax");
 
     private GenerationContractLoader() {}
 
@@ -232,204 +244,100 @@ public final class GenerationContractLoader {
         return result;
     }
 
-    /** 解析单个 builtin 条目并做结构校验（name 重复、optional 排必填前、variadic 不在末位、类型串解析）。 */
+    /**
+     * 解析单个 builtin 条目并做结构校验:必填字段、名称唯一、已删除字段、optional 排必填前、variadic 不在末位、 类型串解析。
+     *
+     * <p>必填字段缺失或类型错误直接失败并指出函数与字段(#117 第 2.2 节);仅 Each/Render 允许省略 returnType。
+     */
     private static BuiltinSpec builtin(Map<String, Object> entry, java.util.Set<String> seenNames) {
-        String name = string(entry.get("name"));
-        if (name == null || name.isBlank()) {
-            throw new GenerationSdkException("builtin entry is missing 'name': " + entry);
+        Object nameRaw = entry.get("name");
+        if (!(nameRaw instanceof String name) || name.isBlank()) {
+            throw new GenerationSdkException("builtin entry missing field 'name'");
         }
         if (!seenNames.add(name)) {
             throw new GenerationSdkException("duplicate builtin name in contract: " + name);
         }
+        requireNoRemovedFields(name, entry.keySet(), REMOVED_BUILTIN_FIELDS, "builtin");
+        String signature = requiredString(entry, "signature", name);
+        String description = requiredString(entry, "description", name);
+        boolean templateBuiltin = requiredBoolean(entry, "templateBuiltin", name);
         List<BuiltinSpec.ParamSpec> params = builtinParams(entry.get("params"), name);
-        boolean seenPlainOptional = false;
-        for (int i = 0; i < params.size(); i++) {
-            BuiltinSpec.ParamSpec param = params.get(i);
-            if (param.optional()) {
-                if (!param.binder()) {
+        // Each/Render 的参数布局由 builtin module 拥有（Render 的中段 row 可省），
+        // 加载器不再为它们套普通可选/变长位置规则，也不在这里列出函数名。
+        if (!BuiltinAnalysis.ownsCallLayout(name)) {
+            boolean seenPlainOptional = false;
+            for (int i = 0; i < params.size(); i++) {
+                BuiltinSpec.ParamSpec param = params.get(i);
+                if (param.optional()) {
                     seenPlainOptional = true;
+                } else if (seenPlainOptional) {
+                    throw new GenerationSdkException(
+                            "builtin '"
+                                    + name
+                                    + "': required parameter '"
+                                    + param.name()
+                                    + "' must not follow an optional parameter");
                 }
-            } else if (seenPlainOptional) {
-                // binder 参数豁免：其 optional 语义是"该作用域绑定可省略"（Render 的 2/3 参双形式），
-                // 后随的 template 仍是必填。
-                throw new GenerationSdkException(
-                        "builtin '"
-                                + name
-                                + "': required parameter '"
-                                + param.name()
-                                + "' must not follow an optional parameter");
-            }
-            if (param.variadic() && i != params.size() - 1) {
-                throw new GenerationSdkException(
-                        "builtin '"
-                                + name
-                                + "': variadic parameter '"
-                                + param.name()
-                                + "' must be the last parameter");
+                if (param.variadic() && i != params.size() - 1) {
+                    throw new GenerationSdkException(
+                            "builtin '"
+                                    + name
+                                    + "': variadic parameter '"
+                                    + param.name()
+                                    + "' must be the last parameter");
+                }
             }
         }
         TypeExpr returnType = null;
         Object returnTypeRaw = entry.get("returnType");
         if (returnTypeRaw != null) {
             returnType = TypeExprParser.parse(string(returnTypeRaw), name + ".returnType");
+        } else if (!BuiltinAnalysis.ownsCallLayout(name)) {
+            throw new GenerationSdkException("builtin '" + name + "' missing field 'returnType'");
         }
         requireBoundTypeVars(params, returnType, name);
-        // 结构化类型规则与词表同一次解析：未知 op/非法引用在此加载期失败（RuleCompilationException）。
-        TypeRule typeRule = null;
-        Object typeRuleRaw = entry.get("typeRule");
-        if (typeRuleRaw != null) {
-            typeRule =
-                    RuleCompiler.compile(
-                            name, Json.asObject(typeRuleRaw, "typeRule of builtin " + name));
-        }
-        // 元素输入来源必须显式声明: binder builtin 缺省 input 视为漏声明并在加载期失败;
-        // 显式 null 才表示"没有元素来源"(如 Render)。否则缺字段会静默退化成 MISSING_CONTEXT,
-        // 把本该确定报出的元素级错误降级为"未证明"。
-        boolean hasBinders = params.stream().anyMatch(BuiltinSpec.ParamSpec::binder);
-        boolean inputDeclared = entry.containsKey("input");
-        Object inputRaw = entry.get("input");
-        if (hasBinders && !inputDeclared) {
-            throw new GenerationSdkException(
-                    "builtin '"
-                            + name
-                            + "': binder builtin must declare 'input' (use null only when it has no element source)");
-        }
-        int inputIndex = -1;
-        if (inputRaw != null) {
-            int raw = exactIndex(inputRaw, name, "input");
-            if (raw < 0 || raw >= params.size()) {
-                throw new GenerationSdkException(
-                        "builtin '"
-                                + name
-                                + "': 'input' index "
-                                + raw
-                                + " is out of range for "
-                                + params.size()
-                                + " parameter(s)");
-            }
-            inputIndex = (int) raw;
-            if (params.get(inputIndex).binder()) {
-                throw new GenerationSdkException(
-                        "builtin '"
-                                + name
-                                + "': 'input' must not point to binder parameter '"
-                                + name
-                                + "."
-                                + params.get(inputIndex).name()
-                                + "'");
-            }
-            if (params.stream().noneMatch(BuiltinSpec.ParamSpec::binder)) {
-                throw new GenerationSdkException(
-                        "builtin '" + name + "': 'input' is only meaningful for a binder builtin");
-            }
-        } else if (hasBinders) {
-            // 显式 null 只允许用于确实没有元素来源的 binder builtin(Render);声明了元素数组参数
-            // (含具体元素类型的数组)却拒绝声明来源,等于用 null 绕过元素级检查,加载期直接拒绝。
-            for (BuiltinSpec.ParamSpec param : params) {
-                if (param.typeExpr() instanceof TypeExpr.ArrayOf) {
-                    throw new GenerationSdkException(
-                            "builtin '"
-                                    + name
-                                    + "': parameter '"
-                                    + param.name()
-                                    + "' declares an element array, so 'input' must name its source index (not null)");
-                }
-            }
-        }
-        return new BuiltinSpec(
-                name,
-                string(entry.get("signature")),
-                string(entry.get("description")),
-                Boolean.TRUE.equals(entry.get("templateBuiltin")),
-                params,
-                returnType,
-                typeRule,
-                inputIndex,
-                callForms(entry.get("callForms"), params, inputIndex, name));
+        BuiltinSpec spec =
+                new BuiltinSpec(name, signature, description, templateBuiltin, params, returnType);
+        // 特殊函数的最低布局前提与返回声明覆盖由 builtin module 统一校验(#117 第 3.1 节)。
+        BuiltinAnalysis.validateDefinition(spec);
+        return spec;
     }
 
-    private static List<BuiltinSpec.CallForm> callForms(
-            Object raw, List<BuiltinSpec.ParamSpec> params, int input, String name) {
-        boolean hasBinders = params.stream().anyMatch(BuiltinSpec.ParamSpec::binder);
-        if (!hasBinders && raw == null) {
-            return List.of();
-        }
-        if (!hasBinders || raw == null) {
+    /** 必填字符串字段:缺失或空白都报 {@code builtin 'X' missing field 'Y'}。 */
+    private static String requiredString(Map<String, Object> entry, String field, String name) {
+        Object raw = entry.get(field);
+        if (!(raw instanceof String text) || text.isBlank()) {
             throw new GenerationSdkException(
-                    "builtin '" + name + "': binder callForms must be declared");
+                    "builtin '" + name + "' missing field '" + field + "'");
         }
-        List<BuiltinSpec.CallForm> forms = new ArrayList<>();
-        Set<Integer> arities = new LinkedHashSet<>();
-        int min = (int) params.stream().filter(p -> !p.optional() && !p.variadic()).count();
-        for (Object item : Json.asList(raw, "callForms")) {
-            Map<String, Object> form = Json.asObject(item, "callForm");
-            int arity = exactIndex(form.get("arity"), name, "arity");
-            int body = exactIndex(form.get("body"), name, "body");
-            if (arity < min
-                    || arity > params.size()
-                    || !arities.add(arity)
-                    || body < 0
-                    || body >= arity) {
-                throw new GenerationSdkException(
-                        "builtin '" + name + "': invalid or ambiguous callForms body/arity");
-            }
-            List<Integer> binders = new ArrayList<>();
-            for (Object binder : Json.asList(form.get("binders"), "callForm.binders")) {
-                int index = exactIndex(binder, name, "binder");
-                if (index < 0
-                        || index >= arity
-                        || index == body
-                        || !params.get(index).binder()
-                        || binders.contains(index)) {
-                    throw new GenerationSdkException(
-                            "builtin '" + name + "': invalid callForms binder index");
-                }
-                binders.add(index);
-            }
-            for (int index = 0; index < params.size(); index++) {
-                BuiltinSpec.ParamSpec param = params.get(index);
-                if (param.binder() && !param.optional() && !binders.contains(index)) {
-                    throw new GenerationSdkException(
-                            "builtin '" + name + "': callForms omits required binder");
-                }
-            }
-            if (binders.isEmpty() || input >= arity || input == body) {
-                throw new GenerationSdkException(
-                        "builtin '" + name + "': input must not point to body or absent argument");
-            }
-            forms.add(new BuiltinSpec.CallForm(arity, body, binders));
-        }
-        for (int arity = min; arity <= params.size(); arity++) {
-            if (!arities.contains(arity)) {
-                throw new GenerationSdkException(
-                        "builtin '" + name + "': callForms missing arity " + arity);
-            }
-        }
-        return List.copyOf(forms);
+        return text;
     }
 
-    private static int exactIndex(Object value, String name, String field) {
-        try {
-            if (value instanceof Number) {
-                return new java.math.BigDecimal(value.toString()).intValueExact();
-            }
-        } catch (ArithmeticException | NumberFormatException ignored) {
-            // Reject fractions and overflow without a floating-point conversion.
+    /** 必填 JSON boolean 字段:缺失按 missing field 报错,其他类型指出必须是 boolean。 */
+    private static boolean requiredBoolean(Map<String, Object> entry, String field, String name) {
+        Object raw = entry.get(field);
+        if (raw == null) {
+            throw new GenerationSdkException(
+                    "builtin '" + name + "' missing field '" + field + "'");
         }
-        throw new GenerationSdkException(
-                "builtin '"
-                        + name
-                        + "': '"
-                        + field
-                        + "' must be an integral parameter index, got "
-                        + value);
+        if (!(raw instanceof Boolean value)) {
+            throw new GenerationSdkException(
+                    "builtin '" + name + "' field '" + field + "' must be a JSON boolean");
+        }
+        return value;
     }
 
     private static List<BuiltinSpec.ParamSpec> builtinParams(Object value, String builtinName) {
         if (value == null) {
-            throw new GenerationSdkException("builtin '" + builtinName + "' is missing 'params'");
+            throw new GenerationSdkException(
+                    "builtin '" + builtinName + "' missing field 'params'");
+        }
+        if (!(value instanceof List<?>)) {
+            throw new GenerationSdkException(
+                    "builtin '" + builtinName + "' field 'params' must be a JSON array");
         }
         ArrayList<BuiltinSpec.ParamSpec> result = new ArrayList<>();
+        Set<String> names = new LinkedHashSet<>();
         for (Object item : Json.asList(value, "params of builtin " + builtinName)) {
             Map<String, Object> param = Json.asObject(item, "param of builtin " + builtinName);
             String name = string(param.get("name"));
@@ -438,90 +346,60 @@ public final class GenerationContractLoader {
                 throw new GenerationSdkException(
                         "builtin '" + builtinName + "': param entry requires 'name' and 'type'");
             }
+            if (name.isBlank()) {
+                throw new GenerationSdkException(
+                        "builtin '" + builtinName + "': parameter field 'name' must not be blank");
+            }
+            if (!names.add(name)) {
+                throw new GenerationSdkException(
+                        "builtin '"
+                                + builtinName
+                                + "': duplicate parameter field 'name': '"
+                                + name
+                                + "'");
+            }
+            requireNoRemovedFields(
+                    builtinName + "." + name, param.keySet(), REMOVED_PARAM_FIELDS, "parameter");
             result.add(
                     new BuiltinSpec.ParamSpec(
                             name,
                             type,
                             TypeExprParser.parse(type, builtinName + "." + name),
                             Boolean.TRUE.equals(param.get("optional")),
-                            Boolean.TRUE.equals(param.get("variadic")),
-                            Boolean.TRUE.equals(param.get("binder")),
-                            nameSyntax(param, builtinName, name)));
+                            Boolean.TRUE.equals(param.get("variadic"))));
         }
         return result;
     }
 
-    /** binder 名语法:仅 binder 参数可声明;声明值经枚举校验(未知值加载期失败);缺省按双形态(与既有行为一致)。 */
-    private static String nameSyntax(
-            Map<String, Object> param, String builtinName, String paramName) {
-        Object raw = param.get("nameSyntax");
-        boolean binder = Boolean.TRUE.equals(param.get("binder"));
-        if (raw == null) {
-            return binder ? "string-or-identifier" : null;
-        }
-        if (!binder) {
-            throw new GenerationSdkException(
-                    "builtin '"
-                            + builtinName
-                            + "': non-binder parameter '"
-                            + paramName
-                            + "' must not declare nameSyntax");
-        }
-        String value = string(raw);
-        BuiltinSpec.NameSyntax.fromContract(value);
-        return value;
-    }
-
-    /** returnType 里的 {@code T} 必须能在某个参数类型中解出绑定；param(n) 引用必须在参数表范围内。 */
+    /** returnType 里的每个命名类型变量必须能在某个参数类型中解出绑定。错误信息同时指出函数与变量名,便于契约作者定位 (#119)。 */
     private static void requireBoundTypeVars(
             List<BuiltinSpec.ParamSpec> params, TypeExpr returnType, String builtinName) {
-        boolean paramsBindT = params.stream().anyMatch(param -> containsTypeVar(param.typeExpr()));
-        if (returnType != null && !paramsBindT && containsTypeVar(returnType)) {
-            throw new GenerationSdkException(
-                    "builtin '"
-                            + builtinName
-                            + "': returnType references T but no parameter type binds it");
+        java.util.Set<String> parameterVars = new java.util.TreeSet<>();
+        for (BuiltinSpec.ParamSpec param : params) {
+            collectTypeVars(param.typeExpr(), parameterVars);
         }
-        int paramCount = params.size();
-        visit(
-                returnType,
-                typeExpr -> {
-                    if (typeExpr instanceof TypeExpr.ParamRef ref
-                            && (ref.index() < 0 || ref.index() >= paramCount)) {
-                        throw new GenerationSdkException(
-                                "builtin '"
-                                        + builtinName
-                                        + "': param("
-                                        + ref.index()
-                                        + ") is out of range for "
-                                        + paramCount
-                                        + " parameter(s)");
-                    }
-                });
+        java.util.Set<String> returnVars = new java.util.TreeSet<>();
+        collectTypeVars(returnType, returnVars);
+        for (String variable : returnVars) {
+            if (!parameterVars.contains(variable)) {
+                throw new GenerationSdkException(
+                        "builtin '"
+                                + builtinName
+                                + "': returnType references type variable '"
+                                + variable
+                                + "' but no parameter type binds it");
+            }
+        }
     }
 
-    private static boolean containsTypeVar(TypeExpr type) {
-        if (type instanceof TypeExpr.TypeVar) {
-            return true;
-        }
-        if (type instanceof TypeExpr.ArrayOf arrayOf) {
-            return containsTypeVar(arrayOf.element());
-        }
-        if (type instanceof TypeExpr.RecordOf record) {
-            return containsTypeVar(record.value());
-        }
-        if (type instanceof TypeExpr.ObjectLiteral literal) {
-            return literal.fields().stream().anyMatch(field -> containsTypeVar(field.type()));
-        }
-        if (type instanceof TypeExpr.UnionOf union) {
-            return union.alternatives().stream()
-                    .anyMatch(GenerationContractLoader::containsTypeVar);
-        }
-        if (type instanceof TypeExpr.Conditional conditional) {
-            return containsTypeVar(conditional.whenArray())
-                    || containsTypeVar(conditional.otherwise());
-        }
-        return false;
+    private static void collectTypeVars(TypeExpr type, java.util.Set<String> names) {
+        visit(
+                type,
+                typeExpr -> {
+                    if (typeExpr instanceof TypeExpr.TypeVar variable) {
+                        names.add(variable.name());
+                    }
+                });
     }
 
     private interface Visitor {
@@ -545,9 +423,21 @@ public final class GenerationContractLoader {
             for (TypeExpr alternative : union.alternatives()) {
                 visit(alternative, visitor);
             }
-        } else if (type instanceof TypeExpr.Conditional conditional) {
-            visit(conditional.whenArray(), visitor);
-            visit(conditional.otherwise(), visitor);
+        }
+    }
+
+    private static void requireNoRemovedFields(
+            String owner, Set<String> keys, Set<String> removed, String kind) {
+        for (String field : removed) {
+            if (keys.contains(field)) {
+                throw new GenerationSdkException(
+                        kind
+                                + " '"
+                                + owner
+                                + "' declares removed field '"
+                                + field
+                                + "'; the concise builtin contract has no rule or scope fields");
+            }
         }
     }
 

@@ -13,11 +13,9 @@
 <suppressions>
   <!-- 契约加载：按 JSON 节点类型分派的解析器 -->
   <suppress-xpath files="GenerationContractLoader\.java" checks="CyclomaticComplexity"
-            query="//METHOD_DEF[./IDENT[@text='validateCapabilityGaps'] or ./IDENT[@text='builtin'] or ./IDENT[@text='callForms']]/descendant-or-self::node()"/>
+            query="//METHOD_DEF[./IDENT[@text='validateCapabilityGaps'] or ./IDENT[@text='builtin']]/descendant-or-self::node()"/>
 
-  <!-- 类型表达式：相等性与语法解析 -->
-  <suppress-xpath files="TypeExprEquals\.java" checks="CyclomaticComplexity"
-            query="//METHOD_DEF[./IDENT[@text='equals']]/descendant-or-self::node()"/>
+  <!-- 类型表达式：语法解析 -->
   <suppress-xpath files="TypeExprParser\.java" checks="CyclomaticComplexity"
             query="//METHOD_DEF[./IDENT[@text='lex']]/descendant-or-self::node()"/>
 
@@ -28,8 +26,6 @@
             query="//METHOD_DEF[./IDENT[@text='assemble'] or ./IDENT[@text='componentSignatures']]/descendant-or-self::node()"/>
   <suppress-xpath files="PromptRenderer\.java" checks="CyclomaticComplexity"
             query="//METHOD_DEF[./IDENT[@text='classify']]/descendant-or-self::node()"/>
-  <suppress-xpath files="RuleCompiler\.java" checks="CyclomaticComplexity"
-            query="//METHOD_DEF[./IDENT[@text='rule']]/descendant-or-self::node()"/>
   <suppress-xpath files="RepairGuidance\.java" checks="CyclomaticComplexity"
             query="//METHOD_DEF[./IDENT[@text='select']]/descendant-or-self::node()"/>
 
@@ -47,7 +43,7 @@
 
   <!-- 类型分析核心：AnalysisSession 是语义分析的主循环 -->
   <suppress-xpath files="AnalysisSession\.java" checks="CyclomaticComplexity"
-            query="//METHOD_DEF[./IDENT[@text='synth'] or ./IDENT[@text='synthBuiltin'] or ./IDENT[@text='eachResult'] or ./IDENT[@text='validateTable']]/descendant-or-self::node()"/>
+            query="//METHOD_DEF[./IDENT[@text='synth'] or ./IDENT[@text='validateTable']]/descendant-or-self::node()"/>
   <suppress-xpath files="AnalysisSession\.java" checks="ParameterNumber"
             query="//METHOD_DEF[./IDENT[@text='checkComponentParam'] or ./IDENT[@text='checkObligation'] or ./IDENT[@text='checkTableColumn']]/descendant-or-self::node()"/>
   <suppress-xpath files="AnalysisSession\.java" checks="ClassDataAbstractionCoupling"

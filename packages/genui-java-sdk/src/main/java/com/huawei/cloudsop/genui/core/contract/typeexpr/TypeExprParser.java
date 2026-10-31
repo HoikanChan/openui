@@ -14,16 +14,16 @@ import java.util.Set;
  * TS 风格类型串解析器：词法 + 递归下降，文法封闭为——
  *
  * <pre>
- * expr    := conditional
- * conditional := term ("|" term)* ("when" "param" "(" int ")" "is" "array" "," "else" expr)?
+ * expr    := term ("|" term)*
  * term    := factor ("[]")*
- * factor  := base | "Record" "&lt;" "string" "," expr "&gt;" | "{" fields "}" | "T" | "param" "(" int ")"
+ * factor  := base | "Record" "&lt;" "string" "," expr "&gt;" | "{" fields "}" | UPPER
+ * UPPER   := 单个大写字母(命名泛型变量,如 T、D)
  * base    := any | number | string | boolean | null | object | array
  * fields  := (ident ":" expr ("," ident ":" expr)*)? ","?
  * </pre>
  *
- * <p>条件形态仅支持 {@code A when param(n) is array, else B}——按第 n 实参是否为数组分流（FormatDate
- * 的数组映射语义），不开放通用条件系统。
+ * <p>已删除的 {@code param(n)} 与 {@code A when param(n) is array, else B} 不在文法内;出现时按未知 token 或 多余 token
+ * 在加载期失败,错误信息带条目名与原始串。
  *
  * <p>文法之外的构造（未知 token、括号不配对、非递归下降可接受的形状）在解析期抛出 {@link GenerationSdkException}，错误信息带条目名与原始串——契约加载期
  * fail-fast 的基础。
@@ -75,7 +75,7 @@ public final class TypeExprParser {
                     i++;
                     continue;
                 }
-                if ("|[]{},:<>()".indexOf(c) >= 0) {
+                if ("|[]{},:<>".indexOf(c) >= 0) {
                     tokens.add(String.valueOf(c));
                     i++;
                     continue;
@@ -83,14 +83,6 @@ public final class TypeExprParser {
                 if (Character.isJavaIdentifierStart(c)) {
                     int start = i;
                     while (i < n && Character.isJavaIdentifierPart(source.charAt(i))) {
-                        i++;
-                    }
-                    tokens.add(source.substring(start, i));
-                    continue;
-                }
-                if (Character.isDigit(c)) {
-                    int start = i;
-                    while (i < n && Character.isDigit(source.charAt(i))) {
                         i++;
                     }
                     tokens.add(source.substring(start, i));
@@ -137,25 +129,6 @@ public final class TypeExprParser {
                 }
                 combined = new TypeExpr.UnionOf(alternatives);
             }
-            if (peek().equals("when")) {
-                next();
-                expect("param");
-                expect("(");
-                String digits = next();
-                int index;
-                try {
-                    index = Integer.parseInt(digits);
-                } catch (NumberFormatException error) {
-                    throw error("param() index must be an integer, got \"" + digits + "\"");
-                }
-                expect(")");
-                expect("is");
-                expect("array");
-                expect(",");
-                expect("else");
-                TypeExpr otherwise = parseExpr();
-                return new TypeExpr.Conditional(index, combined, otherwise);
-            }
             return combined;
         }
 
@@ -181,25 +154,20 @@ public final class TypeExprParser {
                     return new TypeExpr.RecordOf(value);
                 case "{":
                     return parseObjectLiteral();
-                case "T":
-                    return new TypeExpr.TypeVar();
-                case "param":
-                    expect("(");
-                    String digits = next();
-                    int index;
-                    try {
-                        index = Integer.parseInt(digits);
-                    } catch (NumberFormatException error) {
-                        throw error("param() index must be an integer, got \"" + digits + "\"");
-                    }
-                    expect(")");
-                    return new TypeExpr.ParamRef(index);
                 default:
                     if (BASE_TYPES.contains(token)) {
                         return new TypeExpr.Base(token);
                     }
+                    if (isTypeVariableName(token)) {
+                        return new TypeExpr.TypeVar(token);
+                    }
                     throw error("unknown type token \"" + token + "\"");
             }
+        }
+
+        /** 命名泛型变量:单个大写字母(T、D 等),与基础类型名和 Record/param 关键字不冲突。 */
+        private static boolean isTypeVariableName(String token) {
+            return token.length() == 1 && Character.isUpperCase(token.charAt(0));
         }
 
         private TypeExpr parseObjectLiteral() {

@@ -1632,23 +1632,7 @@
           "type": "array"
         }
       ],
-      "returnType": "number",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "array",
-            "accept": "array"
-          }
-        ],
-        "result": {
-          "type": "number"
-        }
-      }
+      "returnType": "number"
     },
     {
       "name": "First",
@@ -1661,28 +1645,7 @@
           "type": "T[]"
         }
       ],
-      "returnType": "T",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "array",
-            "accept": "array"
-          }
-        ],
-        "result": {
-          "op": "sequence.select",
-          "operands": [
-            {
-              "argument": 0
-            }
-          ]
-        }
-      }
+      "returnType": "T | null"
     },
     {
       "name": "Last",
@@ -1695,28 +1658,7 @@
           "type": "T[]"
         }
       ],
-      "returnType": "T",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "array",
-            "accept": "array"
-          }
-        ],
-        "result": {
-          "op": "sequence.select",
-          "operands": [
-            {
-              "argument": 0
-            }
-          ]
-        }
-      }
+      "returnType": "T | null"
     },
     {
       "name": "Sum",
@@ -1729,26 +1671,7 @@
           "type": "number[]"
         }
       ],
-      "returnType": "number",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "array",
-            "accept": {
-              "tag": "sequence",
-              "element": "number"
-            }
-          }
-        ],
-        "result": {
-          "type": "number"
-        }
-      }
+      "returnType": "number"
     },
     {
       "name": "Avg",
@@ -1761,26 +1684,7 @@
           "type": "number[]"
         }
       ],
-      "returnType": "number",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "array",
-            "accept": {
-              "tag": "sequence",
-              "element": "number"
-            }
-          }
-        ],
-        "result": {
-          "type": "number"
-        }
-      }
+      "returnType": "number"
     },
     {
       "name": "Min",
@@ -1793,26 +1697,7 @@
           "type": "number[]"
         }
       ],
-      "returnType": "number",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "array",
-            "accept": {
-              "tag": "sequence",
-              "element": "number"
-            }
-          }
-        ],
-        "result": {
-          "type": "number"
-        }
-      }
+      "returnType": "number"
     },
     {
       "name": "Max",
@@ -1825,26 +1710,7 @@
           "type": "number[]"
         }
       ],
-      "returnType": "number",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "array",
-            "accept": {
-              "tag": "sequence",
-              "element": "number"
-            }
-          }
-        ],
-        "result": {
-          "type": "number"
-        }
-      }
+      "returnType": "number"
     },
     {
       "name": "Sort",
@@ -1866,45 +1732,7 @@
           "optional": true
         }
       ],
-      "returnType": "T[]",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 2,
-          "max": 3
-        },
-        "parameters": [
-          {
-            "name": "array",
-            "accept": {
-              "tag": "sequence",
-              "element": {
-                "tag": "variable",
-                "name": "T"
-              }
-            }
-          },
-          {
-            "name": "field",
-            "accept": "string"
-          },
-          {
-            "name": "direction",
-            "accept": "string"
-          }
-        ],
-        "result": {
-          "op": "sequence.preserve",
-          "operands": [
-            {
-              "argument": 0
-            }
-          ],
-          "options": {
-            "keepsElementPresence": "true"
-          }
-        }
-      }
+      "returnType": "T[]"
     },
     {
       "name": "Filter",
@@ -1929,46 +1757,7 @@
           "type": "any"
         }
       ],
-      "returnType": "T[]",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 4,
-          "max": 4
-        },
-        "parameters": [
-          {
-            "name": "array",
-            "accept": {
-              "tag": "sequence",
-              "element": {
-                "tag": "variable",
-                "name": "T"
-              }
-            }
-          },
-          {
-            "name": "field",
-            "accept": "string"
-          },
-          {
-            "name": "operator",
-            "accept": "string"
-          },
-          {
-            "name": "value",
-            "accept": "any"
-          }
-        ],
-        "result": {
-          "op": "sequence.subset",
-          "operands": [
-            {
-              "argument": 0
-            }
-          ]
-        }
-      }
+      "returnType": "T[]"
     },
     {
       "name": "Flatten",
@@ -1978,37 +1767,10 @@
       "params": [
         {
           "name": "array",
-          "type": "array[]"
+          "type": "T[][]"
         }
       ],
-      "returnType": "array",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "array",
-            "accept": {
-              "tag": "sequence",
-              "element": {
-                "tag": "sequence",
-                "element": "any"
-              }
-            }
-          }
-        ],
-        "result": {
-          "op": "sequence.flattenOne",
-          "operands": [
-            {
-              "argument": 0
-            }
-          ]
-        }
-      }
+      "returnType": "T[]"
     },
     {
       "name": "ObjectEntries",
@@ -2021,13 +1783,7 @@
           "type": "Record<string, T>"
         }
       ],
-      "returnType": "{key: string, value: T}[]",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {"min": 1, "max": 1},
-        "parameters": [{"name": "obj", "accept": "object"}],
-        "result": {"op": "record.entries", "operands": [{"argument": 0}]}
-      }
+      "returnType": "{key: string, value: T}[]"
     },
     {
       "name": "ObjectKeys",
@@ -2040,13 +1796,7 @@
           "type": "Record<string, any>"
         }
       ],
-      "returnType": "string[]",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {"min": 1, "max": 1},
-        "parameters": [{"name": "obj", "accept": "object"}],
-        "result": {"op": "record.keys", "operands": [{"argument": 0}]}
-      }
+      "returnType": "string[]"
     },
     {
       "name": "ObjectValues",
@@ -2056,16 +1806,10 @@
       "params": [
         {
           "name": "obj",
-          "type": "Record<string, any>"
+          "type": "Record<string, T>"
         }
       ],
-      "returnType": "any[]",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {"min": 1, "max": 1},
-        "parameters": [{"name": "obj", "accept": "object"}],
-        "result": {"op": "record.values", "operands": [{"argument": 0}]}
-      }
+      "returnType": "T[]"
     },
     {
       "name": "Round",
@@ -2083,27 +1827,7 @@
           "optional": true
         }
       ],
-      "returnType": "number",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 2
-        },
-        "parameters": [
-          {
-            "name": "number",
-            "accept": "number"
-          },
-          {
-            "name": "decimals",
-            "accept": "number"
-          }
-        ],
-        "result": {
-          "type": "number"
-        }
-      }
+      "returnType": "number"
     },
     {
       "name": "Abs",
@@ -2116,23 +1840,7 @@
           "type": "number"
         }
       ],
-      "returnType": "number",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "number",
-            "accept": "number"
-          }
-        ],
-        "result": {
-          "type": "number"
-        }
-      }
+      "returnType": "number"
     },
     {
       "name": "Floor",
@@ -2145,23 +1853,7 @@
           "type": "number"
         }
       ],
-      "returnType": "number",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "number",
-            "accept": "number"
-          }
-        ],
-        "result": {
-          "type": "number"
-        }
-      }
+      "returnType": "number"
     },
     {
       "name": "Ceil",
@@ -2174,23 +1866,7 @@
           "type": "number"
         }
       ],
-      "returnType": "number",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "number",
-            "accept": "number"
-          }
-        ],
-        "result": {
-          "type": "number"
-        }
-      }
+      "returnType": "number"
     },
     {
       "name": "Number",
@@ -2203,23 +1879,7 @@
           "type": "any"
         }
       ],
-      "returnType": "number",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "value",
-            "accept": "any"
-          }
-        ],
-        "result": {
-          "type": "number"
-        }
-      }
+      "returnType": "number"
     },
     {
       "name": "Switch",
@@ -2237,11 +1897,11 @@
         },
         {
           "name": "default",
-          "type": "any",
+          "type": "D",
           "optional": true
         }
       ],
-      "returnType": "T | param(2)"
+      "returnType": "T | D"
     },
     {
       "name": "FormatDate",
@@ -2264,36 +1924,7 @@
           "optional": true
         }
       ],
-      "returnType": "string[] when param(0) is array, else string",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 3
-        },
-        "parameters": [
-          {
-            "name": "value",
-            "accept": "any"
-          },
-          {
-            "name": "style",
-            "accept": "string"
-          },
-          {
-            "name": "locale",
-            "accept": "string"
-          }
-        ],
-        "result": {
-          "op": "shape.mapScalarOrArray",
-          "operands": [
-            {
-              "argument": 0
-            }
-          ]
-        }
-      }
+      "returnType": "string | string[]"
     },
     {
       "name": "FormatBytes",
@@ -2306,23 +1937,7 @@
           "type": "any"
         }
       ],
-      "returnType": "string",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "value",
-            "accept": "any"
-          }
-        ],
-        "result": {
-          "type": "any"
-        }
-      }
+      "returnType": "any"
     },
     {
       "name": "FormatNumber",
@@ -2345,31 +1960,7 @@
           "optional": true
         }
       ],
-      "returnType": "string",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 3
-        },
-        "parameters": [
-          {
-            "name": "value",
-            "accept": "any"
-          },
-          {
-            "name": "decimals",
-            "accept": "number"
-          },
-          {
-            "name": "locale",
-            "accept": "string"
-          }
-        ],
-        "result": {
-          "type": "any"
-        }
-      }
+      "returnType": "any"
     },
     {
       "name": "FormatPercent",
@@ -2392,31 +1983,7 @@
           "optional": true
         }
       ],
-      "returnType": "string",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 3
-        },
-        "parameters": [
-          {
-            "name": "value",
-            "accept": "any"
-          },
-          {
-            "name": "decimals",
-            "accept": "number"
-          },
-          {
-            "name": "locale",
-            "accept": "string"
-          }
-        ],
-        "result": {
-          "type": "any"
-        }
-      }
+      "returnType": "any"
     },
     {
       "name": "FormatDuration",
@@ -2439,31 +2006,7 @@
           "optional": true
         }
       ],
-      "returnType": "string",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 3
-        },
-        "parameters": [
-          {
-            "name": "value",
-            "accept": "any"
-          },
-          {
-            "name": "unit",
-            "accept": "string"
-          },
-          {
-            "name": "locale",
-            "accept": "string"
-          }
-        ],
-        "result": {
-          "type": "any"
-        }
-      }
+      "returnType": "any"
     },
     {
       "name": "MergeObject",
@@ -2485,29 +2028,7 @@
           "variadic": true
         }
       ],
-      "returnType": "object",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 2,
-          "max": "unbounded"
-        },
-        "parameters": [
-          {
-            "name": "objects",
-            "rest": true,
-            "accept": "object"
-          }
-        ],
-        "result": {
-          "op": "record.overlay",
-          "operands": [
-            {
-              "argumentsFrom": 0
-            }
-          ]
-        }
-      }
+      "returnType": "object"
     },
     {
       "name": "Join",
@@ -2525,27 +2046,7 @@
           "optional": true
         }
       ],
-      "returnType": "string",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 2
-        },
-        "parameters": [
-          {
-            "name": "array",
-            "accept": "array"
-          },
-          {
-            "name": "separator",
-            "accept": "string"
-          }
-        ],
-        "result": {
-          "type": "string"
-        }
-      }
+      "returnType": "string"
     },
     {
       "name": "String",
@@ -2558,33 +2059,13 @@
           "type": "any"
         }
       ],
-      "returnType": "string",
-      "typeRule": {
-        "typeRulesVersion": 1,
-        "arity": {
-          "min": 1,
-          "max": 1
-        },
-        "parameters": [
-          {
-            "name": "value",
-            "accept": "any"
-          }
-        ],
-        "result": {
-          "type": "string"
-        }
-      }
+      "returnType": "string"
     },
     {
       "name": "Each",
       "signature": "Each(array, varName, template)",
       "description": "Evaluate template for each element. varName is the loop variable - use it ONLY inside the template expression (inline). Do NOT create a separate statement for the template.",
       "templateBuiltin": true,
-      "input": 0,
-      "callForms": [
-        {"arity": 3, "body": 2, "binders": [1]}
-      ],
       "params": [
         {
           "name": "array",
@@ -2592,9 +2073,7 @@
         },
         {
           "name": "varName",
-          "type": "string",
-          "binder": true,
-          "nameSyntax": "string-or-identifier"
+          "type": "string"
         },
         {
           "name": "template",
@@ -2607,24 +2086,15 @@
       "signature": "Render(\"v\", expr) / Render(\"v\", \"row\", expr)",
       "description": "Create a deferred render template for prop values. Binder names are string literals and are only in scope inside the template body.",
       "templateBuiltin": true,
-      "input": null,
-      "callForms": [
-        {"arity": 2, "body": 1, "binders": [0]},
-        {"arity": 3, "body": 2, "binders": [0, 1]}
-      ],
       "params": [
         {
           "name": "v",
-          "type": "string",
-          "binder": true,
-          "nameSyntax": "string-or-identifier"
+          "type": "string"
         },
         {
           "name": "row",
           "type": "string",
-          "optional": true,
-          "binder": true,
-          "nameSyntax": "string-or-identifier"
+          "optional": true
         },
         {
           "name": "template",

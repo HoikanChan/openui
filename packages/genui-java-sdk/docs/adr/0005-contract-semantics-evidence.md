@@ -4,6 +4,8 @@
 
 Accepted for #79 evidence and acceptance scope (2026-10-22); the migration target in item 4 was completed by #90 (2026-10-23). Concrete rules marked unresolved remain undecided; this record does not accept an implementation of #77.
 
+**Item 4 is superseded by [ADR 0006](0006-concise-builtin-signature-contract.md) (2026-10-31).** The `typeRule` single-evaluation-target design and contract-carried binder layout were replaced by concise signatures plus `BuiltinAnalysis`. **Item 6 is likewise superseded by ADR 0006**: "authoritative export must preserve the new structural rules and version" no longer applies, because the exported shape is the concise signature (name/signature/description/templateBuiltin/params/returnType) rather than a versioned rule language. The semantic evidence matrix below remains the behavioural record.
+
 ## Context
 
 默认 Base Contract 已定义 29 个 builtin 的 params、返回声明与文字行为。lang-core 可以落后（ADR 0003 D4），不能以它作为迁移的唯一语义依据。用户本次明确要求以 base-contract 接口定义为准，无需关注 TS 实现。若用某个本地求值器填补契约空白，后续类型运算可能对错误的运行语义作出证明。

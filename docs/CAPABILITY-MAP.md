@@ -93,7 +93,7 @@ Java 21,fastjson2 2.0.60。能力按包分六层。
 - **GenUIExtension**:下游组件/工具契约,description + propsSchema 包装(非裸 schema)。
 - **GenUIBaseSupplement**:宿主全局增补——build 时一次性合并进 base,合并结果即 Effective Base Contract(prompt 与碰撞检查只见它)。
 - **DataModelSpec** / **ToolSpec** / **ComponentPromptSpec** / **ComponentPropsSchema**:数据模型、工具、组件规格。
-- **`typeexpr/`**(工作区新增,#42):契约 builtins 条目中 TS 风格类型串的解析(`TypeExpr` sealed interface + `TypeExprParser` + `TypeExprEquals` 结构等值比较)。
+- **`typeexpr/`**(工作区新增,#42):契约 builtins 条目中 TS 风格类型串的解析(`TypeExpr` sealed interface + `TypeExprParser`);#122 收口后只保留简洁文法,已删除 `param(n)`/`when`/`else` 与 `TypeExprEquals`。
 
 ### 3.2 Prompt 组装 `core/prompt`
 

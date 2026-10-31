@@ -138,55 +138,52 @@ class ValidationSnapshotTest {
 
     @Test
     void usesTheSameCurrentBuiltinContractForParsingAndTypeChecking() {
-        List<BuiltinSpec.ParamSpec> params =
-                new ArrayList<>(
-                        List.of(
-                                new BuiltinSpec.ParamSpec(
-                                        "value",
-                                        "number",
-                                        new TypeExpr.Base("number"),
-                                        false,
-                                        false,
-                                        false)));
         GenerationContract base = contract(Map.of("type", "string"));
-        GenerationContract contract =
-                new GenerationContract(
-                        "custom",
-                        base.root(),
-                        base.components(),
-                        List.of(),
-                        List.of(),
-                        List.of(),
-                        List.of(),
-                        List.of(
-                                new BuiltinSpec(
-                                        "Identity",
-                                        "",
-                                        "",
-                                        false,
-                                        params,
-                                        new TypeExpr.Base("string"))),
-                        List.of());
-        ValidationRequest request =
-                ValidationRequest.builder()
-                        .dsl("root = Header(@Identity(data.name))")
-                        .contract(contract)
-                        .dataModel(Map.of("name", "Ada"))
-                        .build();
-        ValidationResult invalid = DefaultOpenuiLangValidator.INSTANCE.validate(request);
+        ValidationResult invalid = validateIdentity(identityContract(base, "number"));
         assertTrue(
                 invalid.issues().stream()
                         .anyMatch(issue -> issue.code().equals("builtin-argument-type-mismatch")));
         assertFalse(
                 invalid.issues().stream()
                         .anyMatch(issue -> issue.code().equals("unknown-component")));
-        params.set(
-                0,
-                new BuiltinSpec.ParamSpec(
-                        "value", "string", new TypeExpr.Base("string"), false, false, false));
         assertEquals(
                 ValidationStatus.VALID,
-                DefaultOpenuiLangValidator.INSTANCE.validate(request).status());
+                validateIdentity(identityContract(base, "string")).status());
+    }
+
+    private static GenerationContract identityContract(GenerationContract base, String paramType) {
+        return new GenerationContract(
+                "custom",
+                base.root(),
+                base.components(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(
+                        new BuiltinSpec(
+                                "Identity",
+                                "",
+                                "",
+                                false,
+                                List.of(
+                                        new BuiltinSpec.ParamSpec(
+                                                "value",
+                                                paramType,
+                                                new TypeExpr.Base(paramType),
+                                                false,
+                                                false)),
+                                new TypeExpr.Base("string"))),
+                List.of());
+    }
+
+    private static ValidationResult validateIdentity(GenerationContract contract) {
+        return DefaultOpenuiLangValidator.INSTANCE.validate(
+                ValidationRequest.builder()
+                        .dsl("root = Header(@Identity(data.name))")
+                        .contract(contract)
+                        .dataModel(Map.of("name", "Ada"))
+                        .build());
     }
 
     @Test
@@ -206,9 +203,8 @@ class ValidationSnapshotTest {
     }
 
     @Test
-    void snapshotRetainsCompiledBinderCallFormsAndInputSource() {
-        // #83:快照复制 BuiltinSpec 时必须连同编译后的 callForms/inputIndex 一起复制,
-        // 否则快照内的语义/类型分析与请求契约不一致。
+    void snapshotRetainsConciseBuiltinDefinitions() {
+        // 快照复制 BuiltinSpec 时必须保留简洁声明,否则快照内的语义/类型分析与请求契约不一致。
         ValidationSnapshot snapshot =
                 ValidationSnapshot.build(
                         ValidationRequest.builder()
@@ -218,18 +214,21 @@ class ValidationSnapshotTest {
                                 .build());
 
         BuiltinSpec each = snapshot.builtins().spec("Each");
-        assertEquals(0, each.inputIndex());
-        assertEquals(2, each.bodyIndex(3));
-        assertEquals(List.of(1), each.activeBinderIndexes(3));
-        assertEquals(List.of(new BuiltinSpec.CallForm(3, 2, List.of(1))), each.callForms());
+        BuiltinSpec defaultEach =
+                GenerationContractLoader.loadDefault().builtins().stream()
+                        .filter(spec -> "Each".equals(spec.name()))
+                        .findFirst()
+                        .orElseThrow();
+        assertEquals(defaultEach.params(), each.params());
+        assertEquals(defaultEach.returnType(), each.returnType());
 
         BuiltinSpec render = snapshot.builtins().spec("Render");
-        assertEquals(-1, render.inputIndex());
-        assertEquals(
-                List.of(
-                        new BuiltinSpec.CallForm(2, 1, List.of(0)),
-                        new BuiltinSpec.CallForm(3, 2, List.of(0, 1))),
-                render.callForms());
+        BuiltinSpec defaultRender =
+                GenerationContractLoader.loadDefault().builtins().stream()
+                        .filter(spec -> "Render".equals(spec.name()))
+                        .findFirst()
+                        .orElseThrow();
+        assertEquals(defaultRender.params(), render.params());
     }
 
     private GenerationContract contract(Map<String, Object> title) {

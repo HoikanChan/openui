@@ -4,12 +4,8 @@
 
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
 
-import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
-import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
-import com.huawei.cloudsop.genui.core.validation.contract.RuleEvaluator;
-import com.huawei.cloudsop.genui.core.validation.contract.RulePlan;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
@@ -18,20 +14,18 @@ import com.huawei.cloudsop.genui.core.validation.parser.Statement;
 import com.huawei.cloudsop.genui.core.validation.semantic.AstReferenceWalker;
 import com.huawei.cloudsop.genui.core.validation.semantic.ComponentDef;
 import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
-import com.huawei.cloudsop.genui.core.validation.semantic.LazyBuiltinBinders;
 import com.huawei.cloudsop.genui.core.validation.semantic.ParamDef;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Deque;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.Set;
 
 /**
@@ -94,18 +88,6 @@ public final class AnalysisSession {
     public record Output(List<ValidationIssue> issues, CoverageReport coverage) {}
 
     /**
-     * Render 延迟模板产物(#77 第 10.3 节):body 位置、声明环境与声明语句保存在会话内,通用类型代数只保留 {@link Type.Template} 形状,不把 AST
-     * 与环境塞进类型。
-     *
-     * @since 2026
-     */
-    private record DeferredTemplate(
-            AstNode.Comp call,
-            String statementId,
-            LexicalEnvironment declarationEnv,
-            int bodyIndex) {}
-
-    /**
      * 模板使用位置的诊断身份:诊断归属实际使用处(语句与路径),模板声明语句另行保留可追溯位置 (#77 第 10.3/11.3 节)。同一模板的不同使用位置不得共用去重身份。
      *
      * @since 2026
@@ -119,16 +101,13 @@ public final class AnalysisSession {
     private final Input input;
     private final AnalysisBudget.Tracker budget;
     private final TypeOps ops;
+    private final BuiltinAnalysis builtinAnalysis;
     private final DataPathResolver pathResolver = new DataPathResolver();
     private final CoverageReport coverage = new CoverageReport();
     private final List<ValidationIssue> issues = new ArrayList<>();
     private final Map<String, AstNode> symbols = new LinkedHashMap<>();
     private final Map<String, SourceSpan> spans = new LinkedHashMap<>();
     private final Map<String, String> emitted = new LinkedHashMap<>();
-    private final Map<AstNode, DeferredTemplate> templates = new IdentityHashMap<>();
-    private final List<DeferredTemplate> templateOrder = new ArrayList<>();
-    private final Set<AstNode> contextCheckedTemplates =
-            Collections.newSetFromMap(new IdentityHashMap<>());
     private final Deque<TemplateUseSite> templateUseSites = new ArrayDeque<>();
     private int errorSequence;
 
@@ -136,6 +115,7 @@ public final class AnalysisSession {
         this.input = input;
         this.budget = input.budget().tracker();
         this.ops = new TypeOps(budget);
+        this.builtinAnalysis = new BuiltinAnalysis(input.builtins(), this);
         for (Statement statement : input.program().statements()) {
             spans.put(statement.id(), statement.span());
         }
@@ -179,30 +159,8 @@ public final class AnalysisSession {
             }
             synth(expr, id, rootEnv, new LinkedHashSet<>());
         }
-        checkTemplatesWithoutUseSite();
-    }
-
-    /**
-     * 未在任何使用位置提供上下文的模板:仍以声明环境检查 body 的独立表达式,依赖 v/row 的部分保持 missing-context 并计入覆盖(#77 第 10.3
-     * 节),不能整段跳过。
-     */
-    private void checkTemplatesWithoutUseSite() {
-        // 按下标遍历:body 内可能还有未分析的模板,追加到 templateOrder 的本轮继续处理,不能并发修改。
-        for (int index = 0; index < templateOrder.size(); index++) {
-            DeferredTemplate template = templateOrder.get(index);
-            if (contextCheckedTemplates.contains(template.call())) {
-                continue;
-            }
-            if (!budget.tryConsumeCheck()) {
-                coverage.markTraversalTruncated();
-                return;
-            }
-            synth(
-                    template.call().args().get(template.bodyIndex()),
-                    template.statementId(),
-                    template.declarationEnv(),
-                    new LinkedHashSet<>());
-        }
+        // 根遍历结束后由 builtin module 补查未消费的延迟模板;补查中新发现的模板继续处理。
+        builtinAnalysis.finish();
     }
 
     /**
@@ -423,7 +381,9 @@ public final class AnalysisSession {
             return Fact.unknown(Fact.Loss.UNKNOWN_INPUT);
         }
         try {
-            return synth(symbols.get(name), name, env, resolving);
+            // 符号引用即一个数量来源:消费方比较同一符号派生的数组数量时不需要再回溯表达式(#121)。
+            return synth(symbols.get(name), name, env, resolving)
+                    .withEvidence(new Fact.Evidence.LengthSource("ref:" + name));
         } finally {
             resolving.remove(name);
         }
@@ -552,7 +512,13 @@ public final class AnalysisSession {
         }
         DataPathResolution resolution = pathResolver.resolve(input.dataModel(), path);
         if (resolution instanceof DataPathResolution.Resolved resolved) {
-            return factFromObserved(path.source(), resolved);
+            Fact fact =
+                    factFromObserved(path.source(), resolved)
+                            .withEvidence(new Fact.Evidence.LengthSource("path:" + path.source()));
+            OptionalInt cardinality = pathResolver.resolveCardinality(input.dataModel(), path);
+            return cardinality.isPresent()
+                    ? fact.withEvidence(new Fact.Evidence.KnownLength(cardinality.getAsInt()))
+                    : fact;
         }
         // 空数组路径:类型已知(空数组),不产生诊断;组件槽位等使用位置按既有政策提示。
         return emitPathIssue(resolution, statementId);
@@ -754,7 +720,25 @@ public final class AnalysisSession {
     private static Set<Fact.Evidence> mergeEvidence(Fact left, Fact right) {
         Set<Fact.Evidence> merged = new LinkedHashSet<>(left.evidence());
         merged.addAll(right.evidence());
+        // 长度来源是单值证据:分支来源不同时联合结果不能冒充其中任一分支的来源,必须一并丢弃。
+        Set<Fact.Evidence> leftLength = lengthEvidence(left);
+        Set<Fact.Evidence> rightLength = lengthEvidence(right);
+        if (!leftLength.equals(rightLength)) {
+            merged.removeAll(leftLength);
+            merged.removeAll(rightLength);
+        }
         return merged;
+    }
+
+    private static Set<Fact.Evidence> lengthEvidence(Fact fact) {
+        Set<Fact.Evidence> length = new LinkedHashSet<>();
+        for (Fact.Evidence item : fact.evidence()) {
+            if (item instanceof Fact.Evidence.LengthSource
+                    || item instanceof Fact.Evidence.KnownLength) {
+                length.add(item);
+            }
+        }
+        return length;
     }
 
     private static Set<Fact.Loss> mergeLosses(Fact left, Fact right) {
@@ -775,9 +759,10 @@ public final class AnalysisSession {
 
     private Fact synthCall(
             AstNode.Comp comp, String statementId, LexicalEnvironment env, Set<String> resolving) {
-        BuiltinSpec spec = input.builtins().spec(comp.name());
-        if (spec != null) {
-            return synthBuiltin(spec, comp, statementId, env, resolving);
+        if (input.builtins().isBuiltin(comp.name())) {
+            // builtin 的全部特殊语义(分派、参数时机、作用域、模板)归 module;这里只交付未求值的调用。
+            return builtinAnalysis.analyze(
+                    comp, new BuiltinAnalysis.AnalysisContext(this, statementId, env, resolving));
         }
         ComponentDef definition = input.catalog().get(comp.name());
         if (definition == null) {
@@ -983,7 +968,8 @@ public final class AnalysisSession {
         return false;
     }
 
-    private Checks.CheckResult checkObligation(
+    /** builtin module 协作入口:登记一次参数检查,并沿用当前模板使用位置的覆盖身份。 */
+    Checks.CheckResult checkObligation(
             String statementId,
             String useSite,
             String kind,
@@ -1008,6 +994,48 @@ public final class AnalysisSession {
         return result;
     }
 
+    // ───────────────────────────────────────────────────────────────────────
+    // builtin module 协作:共享预算、覆盖、诊断身份与符号解析
+    // ───────────────────────────────────────────────────────────────────────
+
+    /** 本次会话的类型运算入口(携带同一份预算)。 */
+    TypeOps ops() {
+        return ops;
+    }
+
+    /** 登记一条 builtin 参数检查结论,与组件/模板检查共用覆盖口径。 */
+    void recordCoverage(CoverageReport.Obligation obligation, Checks.CheckResult result) {
+        coverage.record(
+                new CoverageReport.Entry(
+                        obligation, result.verdict(), List.copyOf(result.reasons())));
+    }
+
+    /** 消费一次检查预算;耗尽时不再展开新的模板。 */
+    boolean consumeCheck() {
+        return budget.tryConsumeCheck();
+    }
+
+    /** 把覆盖报告标记为遍历截断。 */
+    void markTraversalTruncated() {
+        coverage.markTraversalTruncated();
+    }
+
+    /** 进入模板使用位置:诊断与覆盖身份归属实际使用处。 */
+    void pushTemplateUseSite(
+            String pathPrefix,
+            String coverageUseSite,
+            String statementId,
+            String declarationStatementId) {
+        templateUseSites.push(
+                new TemplateUseSite(
+                        pathPrefix, coverageUseSite, statementId, declarationStatementId));
+    }
+
+    /** 离开模板使用位置。 */
+    void popTemplateUseSite() {
+        templateUseSites.pop();
+    }
+
     private static String displayExpectation(Expectation expectation) {
         if (expectation instanceof Expectation.Accept accept) {
             return accept.type().displayName();
@@ -1028,465 +1056,6 @@ public final class AnalysisSession {
                     .orElse("any");
         }
         return expectation.getClass().getSimpleName();
-    }
-
-    // ───────────────────────────────────────────────────────────────────────
-    // builtin 调用:契约 params + 运算分派
-    // ───────────────────────────────────────────────────────────────────────
-
-    private Fact synthBuiltin(
-            BuiltinSpec spec,
-            AstNode.Comp call,
-            String statementId,
-            LexicalEnvironment env,
-            Set<String> resolving) {
-        // 契约声明了结构化类型规则时,调用形式与参数模式由 typeRule 独占;params 只服务未迁移的
-        // 模板类(Each/Render/Switch)——两处规则同时执行会让同一实参被检查两次。
-        boolean hasRule = spec.typeRule() != null;
-        if (!hasRule) {
-            int minimum = spec.minArity();
-            Integer maximum = spec.maxArity().orElse(null);
-            if (call.args().size() < minimum || (maximum != null && call.args().size() > maximum)) {
-                String expected =
-                        maximum == null
-                                ? "at least " + minimum
-                                : minimum == maximum
-                                        ? String.valueOf(minimum)
-                                        : minimum + "-" + maximum;
-                emit(
-                        "builtin-argument-count-mismatch",
-                        "@"
-                                + call.name()
-                                + " expects "
-                                + expected
-                                + " argument(s), but received "
-                                + call.args().size()
-                                + ".",
-                        statementId,
-                        null,
-                        "/args",
-                        "Use the documented @" + call.name() + " signature.");
-            }
-        }
-        // 逐实参推断并检查;各调用形式的 binder/body 位置来自同一契约编译布局。
-        List<Fact> arguments = new ArrayList<>();
-        List<BuiltinSpec.ParamSpec> params = spec.params();
-        boolean lazyBuiltin = !spec.binderIndexes().isEmpty();
-        List<Integer> activeBinders =
-                lazyBuiltin ? spec.activeBinderIndexes(call.args().size()) : List.of();
-        int bodyIndex = LazyBuiltinBinders.bodyIndex(spec, call);
-        for (int index = 0; index < call.args().size(); index++) {
-            AstNode argument = call.args().get(index);
-            if (activeBinders.contains(index)) {
-                arguments.add(checkBinderArgument(spec, call, index, statementId, env, resolving));
-                continue;
-            }
-            if (lazyBuiltin && index == bodyIndex) {
-                // 带 binder 的 builtin(Each/Render):body/模板位只能合成一次,且必须用绑定后的词法环境
-                // (eachResult/renderResult 内);此处按外层环境预合成会把同名内层引用错绑到外层行,
-                // 并与绑定后的合成重复报错。占位 Fact 保持 arguments 下标与实参位对齐。
-                arguments.add(Fact.unknown(Fact.Loss.MISSING_CONTEXT));
-                continue;
-            }
-            Fact actual = synth(argument, statementId, env, resolving);
-            arguments.add(actual);
-            // 带 binder 的 builtin:body/模板位参数不按普通 params 检查,由使用位置另行检查;
-            // 未声明结构化规则的 builtin 每个实参按 params 检查(variadic 不封顶)。
-            if (!hasRule && index < params.size() && (!lazyBuiltin || index != bodyIndex)) {
-                checkBuiltinParam(spec, call, index, actual, statementId);
-            }
-        }
-        // 结构化类型规则是普通 builtin 的唯一规则源:调用形式、参数模式与结果运算全部来自同一次契约
-        // 解析,按运算种类分派到 TypeOps,不按函数名分派(#81/#90;词表与类型规则同源)。
-        if (hasRule) {
-            return RuleEvaluator.evaluate(
-                    spec.typeRule(),
-                    call.args().size(),
-                    new RuleEvaluator.CallSite() {
-                        @Override
-                        public Fact argument(int index) {
-                            return index < arguments.size()
-                                    ? arguments.get(index)
-                                    : Fact.unknown(Fact.Loss.MISSING_CONTEXT);
-                        }
-
-                        @Override
-                        public TypeOps ops() {
-                            return ops;
-                        }
-
-                        @Override
-                        public void reportArgumentMismatch(
-                                int index, String expectedPattern, Fact actual) {
-                            emit(
-                                    "builtin-argument-type-mismatch",
-                                    "@"
-                                            + call.name()
-                                            + " argument "
-                                            + index
-                                            + " expects "
-                                            + expectedPattern
-                                            + ", but received "
-                                            + actual.type().displayName()
-                                            + ".",
-                                    statementId,
-                                    null,
-                                    "/args/" + index,
-                                    "Use a value compatible with " + expectedPattern + ".");
-                        }
-
-                        @Override
-                        public void recordArgumentCheck(
-                                int index,
-                                RulePlan.TypePattern pattern,
-                                Fact actual,
-                                Checks.CheckResult result) {
-                            // 结构化规则的参数结论与组件/模板检查共用覆盖口径:MATCH/UNPROVEN 都登记,
-                            // 未证明不会被隐藏;同一规则模式只按实参位置计一条要求。
-                            coverage.record(
-                                    new CoverageReport.Entry(
-                                            new CoverageReport.Obligation(
-                                                    statementId,
-                                                    "@" + call.name() + "/args/" + index,
-                                                    "param",
-                                                    "/builtins/"
-                                                            + call.name()
-                                                            + "/typeRule/parameters/"
-                                                            + index),
-                                            result.verdict(),
-                                            List.copyOf(result.reasons())));
-                        }
-
-                        @Override
-                        public void reportArityViolation(int min, OptionalInt max, int actual) {
-                            String expected =
-                                    max.isEmpty()
-                                            ? "at least " + min
-                                            : min == max.getAsInt()
-                                                    ? String.valueOf(min)
-                                                    : min + "-" + max.getAsInt();
-                            emit(
-                                    "builtin-argument-count-mismatch",
-                                    "@"
-                                            + call.name()
-                                            + " expects "
-                                            + expected
-                                            + " argument(s), but received "
-                                            + actual
-                                            + ".",
-                                    statementId,
-                                    null,
-                                    "/args",
-                                    "Use the documented @" + call.name() + " signature.");
-                        }
-                    });
-        }
-        return switch (call.name()) {
-            case "Each" -> eachResult(call, arguments, statementId, env, resolving);
-            case "Render" -> renderResult(call, arguments, statementId, env, resolving);
-            // 模板类语言构造由 Java 承载语义(绑定作用域超出规则表达力),不是第二份函数词表:
-            // 三个名字都必须先在契约词表中命中才会走到这里。
-            case "Switch" -> switchResult(call, arguments, statementId, env, resolving);
-            // 契约没有声明结构化规则、也不是模板构造的 builtin:结果记为未证明并进入覆盖统计,
-            // 不按 returnType 兜底推断(returnType 不再是求值规则)。
-            default -> Fact.unknown(Fact.Loss.UNSUPPORTED_RULE);
-        };
-    }
-
-    /**
-     * binder 参数(#83):合法形态由契约 nameSyntax 声明(字符串字面量,以及 string-or-identifier 下的裸标识符)——
-     * 合法形态不产出类型事实(binder 不是表达式值,绑定发生在 eachResult/renderResult); 非法形态按普通表达式推断并报 binder 形态错。
-     */
-    private Fact checkBinderArgument(
-            BuiltinSpec spec,
-            AstNode.Comp call,
-            int index,
-            String statementId,
-            LexicalEnvironment env,
-            Set<String> resolving) {
-        AstNode argument = call.args().get(index);
-        if (LazyBuiltinBinders.binderName(spec, call, index) != null) {
-            return Fact.of(Types.scalar(Type.ScalarKind.STRING));
-        }
-        Fact actual = synth(argument, statementId, env, resolving);
-        if (!actual.hasUpstreamErrors()) {
-            emit(
-                    "builtin-argument-type-mismatch",
-                    "@"
-                            + call.name()
-                            + " argument "
-                            + index
-                            + " expects binder string literal, but received "
-                            + actual.type().displayName()
-                            + ".",
-                    statementId,
-                    null,
-                    "/args/" + index,
-                    "Use a string literal binder name.");
-        }
-        return actual;
-    }
-
-    /** 未迁移模板构造的非 binder 参数检查(契约 params 的 TypeExpr 编译为检查要求)。 */
-    private void checkBuiltinParam(
-            BuiltinSpec spec, AstNode.Comp call, int index, Fact actual, String statementId) {
-        BuiltinSpec.ParamSpec param = spec.params().get(index);
-        Expectation expectation = builtinParamExpectation(param.typeExpr());
-        if (expectation == null) {
-            return;
-        }
-        Checks.CheckResult result =
-                checkObligation(
-                        statementId,
-                        "@" + call.name() + "/args/" + index,
-                        "param",
-                        "/builtins/" + call.name() + "/params/" + index,
-                        actual,
-                        expectation,
-                        null,
-                        null,
-                        "/args/" + index);
-        if (result.verdict() == Checks.Verdict.MISMATCH) {
-            emit(
-                    "builtin-argument-type-mismatch",
-                    "@"
-                            + call.name()
-                            + " argument "
-                            + index
-                            + " expects "
-                            + param.type()
-                            + ", but received "
-                            + actual.type().displayName()
-                            + ".",
-                    statementId,
-                    null,
-                    "/args/" + index,
-                    "Use a value compatible with " + param.type() + ".");
-        }
-    }
-
-    /** 契约参数 TypeExpr → 检查要求;涉及泛型变量的入口检查由调用处完成,此处返回 null 表示无静态入口要求。 */
-    private static Expectation builtinParamExpectation(TypeExpr expr) {
-        if (expr instanceof TypeExpr.Base base) {
-            return switch (base.name()) {
-                case "any" -> new Expectation.Accept(Type.Unknown.INSTANCE);
-                case "number" -> new Expectation.Accept(Types.scalar(Type.ScalarKind.NUMBER));
-                case "string" -> new Expectation.Accept(Types.scalar(Type.ScalarKind.STRING));
-                case "boolean" -> new Expectation.Accept(Types.scalar(Type.ScalarKind.BOOLEAN));
-                case "object" -> new Expectation.Accept(Types.openRecord());
-                case "array" -> new Expectation.Accept(Types.unknownSequence());
-                default -> null;
-            };
-        }
-        if (expr instanceof TypeExpr.ArrayOf array) {
-            if (array.element() instanceof TypeExpr.Base element) {
-                Expectation elementExpectation = builtinParamExpectation(element);
-                Type elementType =
-                        elementExpectation instanceof Expectation.Accept accept
-                                ? accept.type()
-                                : null;
-                if (elementType != null) {
-                    return new Expectation.Accept(
-                            Types.sequence(elementType, 0L, Type.Sequence.UNBOUNDED));
-                }
-            }
-            return new Expectation.Accept(Types.unknownSequence());
-        }
-        // RecordOf/ObjectLiteral/UnionOf/TypeVar/ParamRef/Conditional:入口检查在结果代入或调用级完成。
-        return null;
-    }
-
-    /** Each:元素绑定 binder 检查 body,数量保留;空输入仍检查 body 中独立错误,元素依赖记 no-element-evidence。 */
-    private Fact eachResult(
-            AstNode.Comp call,
-            List<Fact> arguments,
-            String statementId,
-            LexicalEnvironment env,
-            Set<String> resolving) {
-        BuiltinSpec spec = input.builtins().spec(call.name());
-        if (spec.bodyIndex(call.args().size()) < 0
-                || arguments.isEmpty()
-                || spec.inputIndex() < 0
-                || spec.inputIndex() >= arguments.size()) {
-            return Fact.unknown(Fact.Loss.MISSING_CONTEXT);
-        }
-        Fact inputFact = arguments.get(spec.inputIndex());
-        Fact element = ops.element(inputFact);
-        boolean emptyPossible = lengthMayBeZero(inputFact);
-        // 元素存在已证明:直接观察到元素行,或字段读取的证据关联保留了快照中的嵌套行(#77 §6.5)。
-        // 无任何损失不等于观察到元素——Filter 删除保留行后元素类型仍在但存在性未证明(§6.2/§7.5),
-        // subset 会显式打上 NO_ELEMENT_EVIDENCE。
-        boolean elementExistenceProven = !element.evidence().isEmpty();
-        if (!elementExistenceProven
-                && !inputFact.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)) {
-            for (Fact.Evidence item : inputFact.evidence()) {
-                if (item instanceof Fact.Evidence.ObservedValue observed
-                        && observed.value() instanceof List<?> values
-                        && !values.isEmpty()) {
-                    elementExistenceProven = true;
-                }
-            }
-        }
-        boolean elementExistenceUnproven = emptyPossible && !elementExistenceProven;
-        Fact boundElement =
-                element.type() instanceof Type.Never
-                        ? Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE)
-                        : elementExistenceUnproven
-                                ? element.withLoss(Fact.Loss.NO_ELEMENT_EVIDENCE)
-                                : element;
-        // 保留元素存在性标记以约束缺字段诊断;标量类型误用仍可按安全上界检查。
-        Fact checkElement = stripExistenceLosses(boundElement);
-        LexicalEnvironment bodyEnv = env;
-        List<Integer> binders = spec.activeBinderIndexes(call.args().size());
-        for (int position = 0; position < binders.size(); position++) {
-            String name = LazyBuiltinBinders.binderName(spec, call, binders.get(position));
-            if (name != null) {
-                // 元素绑定到第一个 binder;binder 位恒在输入来源之后(加载期校验,#83)。
-                Fact bound = position == 0 ? checkElement : Fact.unknown(Fact.Loss.MISSING_CONTEXT);
-                bodyEnv = bodyEnv.bind(name, bound);
-            }
-        }
-        Fact body =
-                synth(
-                        call.args().get(LazyBuiltinBinders.bodyIndex(spec, call)),
-                        statementId,
-                        bodyEnv,
-                        resolving);
-        if (emptyPossible) {
-            body = body.withLoss(Fact.Loss.NO_ELEMENT_EVIDENCE);
-        }
-        return ops.map(inputFact, body);
-    }
-
-    /** 去掉输入层面的未知标记,保留元素存在性标记与逐元素精度损失。 存在性未证明时证据一并清空:那些证据来自未证明存在的行(Filter 后不保证任何行保留),不可信。 */
-    private static Fact stripExistenceLosses(Fact fact) {
-        if (!fact.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)
-                && !fact.losses().contains(Fact.Loss.UNKNOWN_INPUT)) {
-            return fact;
-        }
-        Set<Fact.Loss> losses = new LinkedHashSet<>(fact.losses());
-        boolean existenceUnproven = losses.contains(Fact.Loss.NO_ELEMENT_EVIDENCE);
-        losses.remove(Fact.Loss.UNKNOWN_INPUT);
-        return new Fact(
-                fact.type(),
-                existenceUnproven ? Set.of() : fact.evidence(),
-                losses,
-                fact.upstreamErrors());
-    }
-
-    private static boolean lengthMayBeZero(Fact sequence) {
-        for (Type branch : TypeOps.flatten(sequence.type())) {
-            if (branch instanceof Type.Sequence seq && seq.minLength() == 0) {
-                return true;
-            }
-            if (branch instanceof Type.Unknown) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Render:产生延迟模板产物;body 推迟到使用位置(或没有使用位置时按声明环境)检查,类型只保留 Template 形状。声明环境在这里捕获,Render 自身 binder
-     * 遮蔽捕获的同名绑定(#77 第 10.3 节、ADR 0006)。
-     */
-    private Fact renderResult(
-            AstNode.Comp call,
-            List<Fact> arguments,
-            String statementId,
-            LexicalEnvironment env,
-            Set<String> resolving) {
-        BuiltinSpec spec = input.builtins().spec(call.name());
-        int bodyIndex = spec.bodyIndex(call.args().size());
-        if (bodyIndex < 0) {
-            return Fact.unknown(Fact.Loss.MISSING_CONTEXT);
-        }
-        LexicalEnvironment declared = env;
-        for (int binderIndex : spec.activeBinderIndexes(call.args().size())) {
-            String name = LazyBuiltinBinders.binderName(spec, call, binderIndex);
-            if (name != null) {
-                declared = declared.bind(name, Fact.unknown(Fact.Loss.MISSING_CONTEXT));
-            }
-        }
-        DeferredTemplate template = new DeferredTemplate(call, statementId, declared, bodyIndex);
-        if (templates.putIfAbsent(call, template) == null) {
-            templateOrder.add(template);
-        }
-        return Fact.of(Type.Template.INSTANCE);
-    }
-
-    /**
-     * Render 在使用位置按提供的上下文检查 body:以声明环境为底座叠加使用位置绑定(ADR 0006 的跨语句继承), Render 自身 binder
-     * 再覆盖同名捕获;诊断与覆盖身份按使用位置区分,前一使用位置不得遮蔽后一使用位置 (#77 第 10.3/11.3 节)。
-     */
-    void checkTemplateAtUseSite(
-            AstNode.Comp render,
-            Map<String, Fact> context,
-            String statementId,
-            LexicalEnvironment useSiteEnv,
-            Set<String> resolving,
-            String useSite,
-            String useSitePath) {
-        BuiltinSpec spec = input.builtins().spec(render.name());
-        int bodyIndex = spec.bodyIndex(render.args().size());
-        if (bodyIndex < 0) {
-            return;
-        }
-        DeferredTemplate template = templates.get(render);
-        LexicalEnvironment base =
-                template == null ? useSiteEnv : useSiteEnv.over(template.declarationEnv());
-        LexicalEnvironment useEnv = base;
-        for (int binderIndex : spec.activeBinderIndexes(render.args().size())) {
-            String name = LazyBuiltinBinders.binderName(spec, render, binderIndex);
-            if (name != null) {
-                Fact provided = context.getOrDefault(name, Fact.unknown(Fact.Loss.MISSING_CONTEXT));
-                // 使用位置提供的上下文事实不携带数组层面的存在性丢失:逐元素判定只看值上界,
-                // 存在性由数组层(列存在性/长度检查)另行判定——与 Each 绑定同一剔除口径。
-                useEnv = useEnv.bind(name, stripExistenceLosses(provided));
-            }
-        }
-        contextCheckedTemplates.add(render);
-        templateUseSites.push(
-                new TemplateUseSite(
-                        useSitePath,
-                        useSite,
-                        statementId,
-                        template == null ? null : template.statementId()));
-        try {
-            synth(render.args().get(bodyIndex), statementId, useEnv, resolving);
-        } finally {
-            templateUseSites.pop();
-        }
-    }
-
-    /** Switch:cases 在当前环境推断,结果为 cases 值与 default 的联合;未传 default 并入 null(#79 矩阵)。 */
-    private Fact switchResult(
-            AstNode.Comp call,
-            List<Fact> arguments,
-            String statementId,
-            LexicalEnvironment env,
-            Set<String> resolving) {
-        if (call.args().size() < 2 || !(call.args().get(1) instanceof AstNode.Obj cases)) {
-            return Fact.unknown(Fact.Loss.MISSING_CONTEXT);
-        }
-        List<Type> results = new ArrayList<>();
-        Set<Fact.Loss> losses = new LinkedHashSet<>();
-        Set<String> upstream = new LinkedHashSet<>();
-        for (AstNode.Obj.Entry entry : cases.entries()) {
-            Fact caseFact = synth(entry.value(), statementId, env, resolving);
-            results.add(caseFact.type());
-            losses.addAll(caseFact.losses());
-            upstream.addAll(caseFact.upstreamErrors());
-        }
-        if (call.args().size() > 2) {
-            Fact defaultFact = arguments.get(2);
-            results.add(defaultFact.type());
-            losses.addAll(defaultFact.losses());
-            upstream.addAll(defaultFact.upstreamErrors());
-        } else {
-            results.add(Types.scalar(Type.ScalarKind.NULL));
-        }
-        return new Fact(Types.union(results), Set.of(), losses, upstream);
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -1635,36 +1204,18 @@ public final class AnalysisSession {
                         .map(AstNode.Obj.Entry::value)
                         .findFirst()
                         .orElse(null);
-        AstNode resolvedCell = resolveNode(cell, new LinkedHashSet<>());
-        if (!(resolvedCell instanceof AstNode.Comp render)
-                || !"Render".equals(render.name())
-                || render.args().size() < 2) {
-            return;
-        }
-        // 每个使用位置分别检查:v 绑定列字段事实,row 绑定行事实。
-        BuiltinSpec spec = input.builtins().spec(render.name());
-        Map<String, Fact> context = new LinkedHashMap<>();
-        List<String> binders = new ArrayList<>();
-        for (int binderIndex : spec.activeBinderIndexes(render.args().size())) {
-            String name = LazyBuiltinBinders.binderName(spec, render, binderIndex);
-            if (name != null) {
-                binders.add(name);
-            }
-        }
-        if (!binders.isEmpty()) {
-            context.put(binders.get(0), cellFact);
-        }
-        if (binders.size() > 1) {
-            context.put(binders.get(1), rowFact);
-        }
-        checkTemplateAtUseSite(
-                render,
-                context,
-                columnStatementId,
-                env,
-                resolving,
-                "Table.cell[" + field + "]",
-                "/columns/" + field + "/cell");
+        // 表格只提供原 cell 表达式、单元格值与整行值;识别模板、绑定名称与使用位置检查归 builtin module。
+        builtinAnalysis.checkCellTemplate(
+                cell,
+                cellFact,
+                rowFact,
+                new BuiltinAnalysis.AnalysisContext(
+                        this,
+                        columnStatementId,
+                        env,
+                        resolving,
+                        "Table.cell[" + field + "]",
+                        "/columns/" + field + "/cell"));
     }
 
     private void validateChart(
@@ -1683,7 +1234,7 @@ public final class AnalysisSession {
                 chartLabelsExpectation(),
                 "/labels",
                 statementId);
-        long[] labelRange = lengthRangeOf(labelsNode, labels, env, resolving);
+        long[] labelRange = lengthRangeOf(labels);
         int seriesIndex = 0;
         for (AstNode seriesNode : arrayElements(chart.args().get(1))) {
             AstNode resolvedSeries = resolveNode(seriesNode, new LinkedHashSet<>());
@@ -1703,15 +1254,9 @@ public final class AnalysisSession {
                     chartSeriesValuesExpectation(),
                     "/series/" + seriesIndex + "/values",
                     statementId);
-            long[] valueRange = lengthRangeOf(valuesNode, values, env, resolving);
+            long[] valueRange = lengthRangeOf(values);
             checkChartLengthRelation(
-                    chart,
-                    labelsNode,
-                    labelRange,
-                    valuesNode,
-                    valueRange,
-                    seriesIndex,
-                    statementId);
+                    chart, labelRange, labels, valueRange, values, seriesIndex, statementId);
             if ("LineChart".equals(chart.name())
                     && valueRange != null
                     && valueRange[1] < 2
@@ -1792,15 +1337,15 @@ public final class AnalysisSession {
     }
 
     /**
-     * 长度关系独立检查(#77 §11.1):区间互斥可证明长度不等;精确长度相同,或两侧来自同一个已证明保长度的
+     * 长度关系独立检查(#77 §11.1):区间互斥可证明长度不等;精确长度相同,或两侧事实携带同一个已证明保长度的
      * 来源,才证明相等。区间相同但非精确不足以证明相等——记为未证明,不报错也不宣称通过。
      */
     private void checkChartLengthRelation(
             AstNode.Comp chart,
-            AstNode labelsNode,
             long[] labelRange,
-            AstNode valuesNode,
+            Fact labels,
             long[] valueRange,
+            Fact values,
             int seriesIndex,
             String statementId) {
         Checks.CheckResult result;
@@ -1821,7 +1366,7 @@ public final class AnalysisSession {
                                     + ".."
                                     + valueRange[1]
                                     + "]");
-        } else if (provenSameLength(labelsNode, labelRange, valuesNode, valueRange)) {
+        } else if (provenSameLength(labelRange, labels, valueRange, values)) {
             result = Checks.CheckResult.match();
         } else {
             result =
@@ -1861,59 +1406,28 @@ public final class AnalysisSession {
         }
     }
 
-    /** 精确长度相同,或两侧来自同一个已证明保长度的来源(Each/Sort 保留输入数量),才证明长度相等。 */
+    /**
+     * 精确长度相同,或两侧事实携带同一组长度来源(Each/Sort 已把输入来源传递到结果),才证明长度相等。
+     *
+     * <p>长度来源由表达式分析写入 {@link Fact.Evidence.LengthSource};这里不再按函数名回溯表达式。
+     */
     static boolean provenSameLength(
-            AstNode labelsNode, long[] labelRange, AstNode valuesNode, long[] valueRange) {
+            long[] labelRange, Fact labels, long[] valueRange, Fact values) {
         if (labelRange[0] == labelRange[1] && valueRange[0] == valueRange[1]) {
             return labelRange[0] == valueRange[0];
         }
-        String labelsSource = lengthPreservingSource(labelsNode);
-        String valuesSource = lengthPreservingSource(valuesNode);
-        return labelsSource != null && labelsSource.equals(valuesSource);
+        Set<String> labelSources = labels.lengthSourceIdentities();
+        return !labelSources.isEmpty() && labelSources.equals(values.lengthSourceIdentities());
     }
 
-    /** 去掉 Each/Sort 这类已证明保长度的运算后,同一符号引用或数据路径即同一数量来源。 */
-    private static String lengthPreservingSource(AstNode node) {
-        if (node instanceof AstNode.Comp comp
-                && !comp.args().isEmpty()
-                && ("Each".equals(comp.name()) || "Sort".equals(comp.name()))) {
-            return lengthPreservingSource(comp.args().get(0));
-        }
-        if (node instanceof AstNode.Ref ref) {
-            return "ref:" + ref.n();
-        }
-        String path = dataPathSource(node);
-        return path == null ? null : "path:" + path;
-    }
-
-    /**
-     * 长度区间:类型事实的数量区间若精确(上界有限)直接使用;无界(元素依赖表达式结构未知)时回退到既有 表达式级基数规则(字面量、数据路径快照基数、Each/Sort 保留输入数量)。
-     */
-    private long[] lengthRangeOf(
-            AstNode node, Fact fact, LexicalEnvironment env, Set<String> resolving) {
+    /** 长度区间:类型事实的数量区间若精确(上界有限)直接使用;无界时使用事实已知的精确数量(数据路径快照基数), 否则保持无界。 */
+    private long[] lengthRangeOf(Fact fact) {
         long[] range = ops.lengthRange(fact);
         if (range != null && range[1] != Type.Sequence.UNBOUNDED) {
             return range;
         }
-        OptionalInt known = knownArraySize(node, new LinkedHashSet<>());
-        return known.isPresent() ? new long[] {known.getAsInt(), known.getAsInt()} : range;
-    }
-
-    private OptionalInt knownArraySize(AstNode node, Set<String> resolving) {
-        AstNode resolved = resolveNode(node, resolving);
-        if (resolved instanceof AstNode.Arr array) {
-            return OptionalInt.of(array.els().size());
-        }
-        Optional<DataPath> path = dataPathOf(resolved);
-        if (path.isPresent() && input.dataModel() != null) {
-            return pathResolver.resolveCardinality(input.dataModel(), path.get());
-        }
-        if (resolved instanceof AstNode.Comp builtin
-                && ("Each".equals(builtin.name()) || "Sort".equals(builtin.name()))
-                && !builtin.args().isEmpty()) {
-            return knownArraySize(builtin.args().get(0), resolving);
-        }
-        return OptionalInt.empty();
+        OptionalLong known = fact.knownLength();
+        return known.isPresent() ? new long[] {known.getAsLong(), known.getAsLong()} : range;
     }
 
     /** 既有产品检查:同一 series 内重复派生序列表达式(独立于类型层,不可遗漏)。 */
@@ -1956,7 +1470,7 @@ public final class AnalysisSession {
         return resolved instanceof AstNode.Arr array ? array.els() : List.of();
     }
 
-    private AstNode resolveNode(AstNode node, Set<String> resolving) {
+    AstNode resolveNode(AstNode node, Set<String> resolving) {
         if (node instanceof AstNode.Ref ref
                 && symbols.containsKey(ref.n())
                 && resolving.add(ref.n())) {
@@ -2030,7 +1544,7 @@ public final class AnalysisSession {
         return "err-" + errorSequence;
     }
 
-    private void emit(
+    void emit(
             String code,
             String message,
             String statementId,

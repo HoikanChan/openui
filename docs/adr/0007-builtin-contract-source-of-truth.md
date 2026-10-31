@@ -4,6 +4,8 @@ status: accepted
 
 # Builtin 函数契约化：base-contract.json 是唯一真实来源
 
+> **已被取代（2026-10-31，#117–#122）**：本决定末尾的 `typeRule` 求值终态被 SDK [ADR 0006](../../packages/genui-java-sdk/docs/adr/0006-concise-builtin-signature-contract.md) 以“简洁签名 + `BuiltinAnalysis`”取代。下文保留历史记录，不代表现行实现；契约仍是唯一真实来源这一结论不变。
+
 GenUI Java SDK 的 builtin 函数输入输出规则曾双轨并行：base-contract.json 的 builtins 数组只有 signature 自由文本（仅喂提示词），校验链走 Java 硬编码——Builtins.java 的 20+2 函数名词表 + BuiltinTypeRegistry 的 22 组 arity/类型规则。两边已经漂移（契约缺 FormatNumber/FormatPercent，代码侧自认 known-stale）。本决定把全部结构化规则搬进契约，校验链从契约派生，函数的"是什么、怎么用"只剩一个可信来源。
 
 **终态（#90，2026-10-23）**：本决定经历两段实现。第一段把 `params`/`returnType` 从契约读入，但仍用 Java 的类型串解析器和泛型组合子求值；第二段（#77/#80/#81/#85/#86/#88 到 #90）用版本化结构规则 `typeRule` 取代了该求值器。现在生产类型分析只有一条路径：`TypeAnalysis` 内核 + `contract.RuleEvaluator`，`typeRule` 是唯一求值规则。旧的 `ValueType`/`ValueTypes` 类型代数、`TypeTranslator` 桥接、`returnType`+`params` 求值代码（含 `genericResult`/`collectLowerBounds` 及旧求值器上的 `instantiate`）已删除；现存同名方法 `RuleEvaluator.instantiate` 是契约规则代入，不是旧路径。`returnType` 仅作为展示字段保留，不参与结果推断（加载期仍会解析其语法并校验类型变量绑定与 `param(n)` 下标）；`params` 保留 binder/variadic 布局，以及模板构造（Each/Render/Switch）非 binder 参数检查所用的 `TypeExpr`——两者都不再参与 builtin 结果推断。加载期**没有** `params` 与 `typeRule.arity` 的自动交叉核对，默认 29 条的一致性靠人工核对与测试验证。下文保留第一段的历史说明，并在“求值器语义约定”一节改写为终态。

@@ -4,7 +4,9 @@
 
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.OptionalLong;
 import java.util.Set;
 
 /**
@@ -90,6 +92,44 @@ public record Fact(
     }
 
     /**
+     * 该事实携带的长度来源身份集合。
+     *
+     * <p>来源由表达式位置写入(符号引用、数据路径),只有明确保持数量的运算(Each、Sort)才传递它。 两个数组事实的来源集合相同才能证明数量相等;集合为空表示没有可用来源。
+     *
+     * @return 长度来源身份集合;无来源时为空集合
+     * @since 2026
+     */
+    public Set<String> lengthSourceIdentities() {
+        Set<String> identities = new LinkedHashSet<>();
+        for (Evidence item : evidence) {
+            if (item instanceof Evidence.LengthSource source) {
+                identities.add(source.identity());
+            }
+        }
+        return Set.copyOf(identities);
+    }
+
+    /**
+     * 该事实已知的精确元素个数(数据路径基数等直接观察)。
+     *
+     * @return 唯一已知长度;没有已知长度或证据互相矛盾时为空
+     * @since 2026
+     */
+    public OptionalLong knownLength() {
+        OptionalLong known = OptionalLong.empty();
+        for (Evidence item : evidence) {
+            if (!(item instanceof Evidence.KnownLength length)) {
+                continue;
+            }
+            if (known.isPresent() && known.getAsLong() != length.length()) {
+                return OptionalLong.empty();
+            }
+            known = OptionalLong.of(length.length());
+        }
+        return known;
+    }
+
+    /**
      * 分析证据(#77 第 6.5 节,只允许三类依据)。
      *
      * @since 2026
@@ -134,6 +174,38 @@ public record Fact(
          * @since 2026
          */
         record ElementPresence() implements Evidence {}
+
+        /**
+         * 数组长度来源:该事实的数组数量来自这个已证明保长度的表达式位置。
+         *
+         * <p>由符号引用与数据路径写入,并只经 Each/Sort 这类保持数量的运算传递。两个事实的来源相同才能证明数量相等, 不需要消费方再按函数名回溯表达式。
+         *
+         * @param identity 来源身份(如 {@code ref:rows}、{@code path:data.rows})
+         * @since 2026
+         */
+        record LengthSource(String identity) implements Evidence {}
+
+        /**
+         * 已知精确元素个数:数据路径快照基数等直接观察。
+         *
+         * <p>用于类型区间无界但快照已给出确切数量的场景(如数组字段投影);经保持数量的运算继续传递。
+         *
+         * @param length 已证明的元素个数,非负
+         * @since 2026
+         */
+        record KnownLength(long length) implements Evidence {
+
+            /**
+             * 紧凑构造方法:长度必须非负。
+             *
+             * @throws IllegalArgumentException 长度为负时
+             */
+            public KnownLength {
+                if (length < 0) {
+                    throw new IllegalArgumentException("known length must be non-negative");
+                }
+            }
+        }
     }
 
     /**

@@ -26,8 +26,8 @@ import java.util.Set;
 /**
  * 真实修复语料使用 SDK 默认契约的 sequence 规则回归。
  *
- * <p>Flatten/First/Last 的结构传播来自默认契约的 typeRule，检查真实缺失列仍被发现，存在的 metricValue 列不被误报。 语料目录按仓库根定位，因此不依赖
- * mvn 的启动目录。
+ * <p>Flatten/First/Last 的结构传播来自默认契约的简洁签名与 Java 特殊推导，检查真实缺失列仍被发现，存在的 metricValue 列不被误报。
+ * 语料目录按仓库根定位，因此不依赖 mvn 的启动目录。
  *
  * @since 2026
  */

@@ -154,6 +154,14 @@ byte-for-byte port of `packages/lang-core/src/parser/prompt.ts`'s `generatePromp
 Builtin docs come from the contract's top-level `builtins` manifest (exported by the
 frontend); all other sections are transcribed from `prompt.ts`.
 
+Each builtin entry is a concise signature — `name`, display-only `signature`/`description`,
+`templateBuiltin`, ordered `params` and `returnType`. The SDK derives argument checks and
+ordinary result types from those fields; sorting/filtering evidence, object merge,
+enumeration, format-date shape refinement, and Each/Render template scope and deferred
+analysis live in `BuiltinAnalysis`, keyed by name. Removed legacy fields (`typeRule`,
+`typeRulesVersion`, `input`, `callForms`, parameter `binder`/`nameSyntax`) and the removed
+`param(n)`/`when`/`else` type syntax fail at load instead of being ignored.
+
 Cross-language prompt alignment was previously pinned by `PromptGoldenTest`; it was
 removed on the validation-iteration branch (2026-10-14) because the contract's
 builtins manifest is now internal truth while lang-core's manifest lags — the

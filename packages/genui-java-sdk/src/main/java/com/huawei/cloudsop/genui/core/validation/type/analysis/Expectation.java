@@ -24,6 +24,7 @@ public sealed interface Expectation
                 Expectation.ExactlyOne,
                 Expectation.EnumValues,
                 Expectation.SequenceOf,
+                Expectation.RecordValues,
                 Expectation.Unsupported,
                 SchemaCompiler.ExtraClosed,
                 SchemaCompiler.ExtraConstraint {
@@ -44,6 +45,28 @@ public sealed interface Expectation
         public SequenceOf {
             if (elementExpectation == null) {
                 throw new IllegalArgumentException("sequenceOf requires an element expectation");
+            }
+        }
+    }
+
+    /**
+     * 对象映射值要求:{@code Record<string, X>} 的每个已声明值与开放尾部都须满足 X。
+     *
+     * <p>空对象满足任何逐值要求(没有值可违反);对象整体形状由调用方另行要求。未知值只能得到未证明,不得伪报反例。
+     *
+     * @param valueExpectation 每个值须满足的嵌套要求
+     * @since 2026
+     */
+    record RecordValues(Expectation valueExpectation) implements Expectation {
+
+        /**
+         * 紧凑构造方法:拒绝 null 值要求。
+         *
+         * @throws IllegalArgumentException 值要求为 null 时
+         */
+        public RecordValues {
+            if (valueExpectation == null) {
+                throw new IllegalArgumentException("recordValues requires a value expectation");
             }
         }
     }

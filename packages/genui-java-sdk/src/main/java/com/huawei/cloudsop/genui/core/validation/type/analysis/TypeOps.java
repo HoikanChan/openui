@@ -467,6 +467,13 @@ public final class TypeOps {
         // 仅在输入元素存在已证明时传播 body 的观察值,并包回输出数组这一层。
         // body 自身的长度/字段证据不描述输出数组,不得直接复制到输出层。
         Set<Fact.Evidence> evidence = new LinkedHashSet<>();
+        // Each 保持输入数量:输入的长度来源与已知长度随结果传递,消费方据此证明数量相等(#121)。
+        for (Fact.Evidence item : sequence.evidence()) {
+            if (item instanceof Fact.Evidence.LengthSource
+                    || item instanceof Fact.Evidence.KnownLength) {
+                evidence.add(item);
+            }
+        }
         List<Object> observedElements = new ArrayList<>();
         for (Fact.Evidence item : body.evidence()) {
             if (item instanceof Fact.Evidence.ObservedValue observed) {
@@ -527,31 +534,37 @@ public final class TypeOps {
     }
 
     /**
-     * First/Last 选择:可证明非空时保留元素上界;否则返回 Unknown + {@link Fact.Loss#NO_ELEMENT_EVIDENCE}。
+     * First/Last 选择:已知空数组返回 {@code null},可证明非空时保留元素上界,可能为空时结果是 {@code element | null}。
      *
-     * <p>空输入的实际返回值契约未定(#79 未决矩阵):不能把空数组的元素 {@code Never} 当成真实返回值(那会 让下游把"没有值"误当"任意要求都满足"),也不能补
-     * null/undefined。可能为空的分支同样必须覆盖该未知 结果——单个分支非空不足以证明运行时拿到的是元素。直接观察到非空数组时按快照证据判定。
+     * <p>空数组的实际返回值已由规格核实为 {@code null}(#117 第 5 节):不能把空数组的元素 {@code Never}
+     * 当成真实返回值(那会让下游把"没有值"误当"任意要求都满足")。单个分支非空不足以证明运行时拿到的是元素—— 可能为空的分支必须把 {@code null}
+     * 计入结果联合。直接观察到非空数组时按快照证据判定。
      *
      * @param sequence 待选择元素的序列事实
-     * @return 元素事实;所有分支确定非空或观察到非空数组时取元素上界,否则 Unknown 并附 {@link Fact.Loss#NO_ELEMENT_EVIDENCE}
+     * @return 元素事实;已知空数组为 {@code null},可能为空时为元素与 {@code null} 的联合
      */
     public Fact select(Fact sequence) {
         if (sequence.hasUpstreamErrors() || sequence.type() instanceof Type.Unknown) {
             return element(sequence);
         }
         boolean emptyPossible = false;
+        boolean emptyProven = true;
         for (Type branch : flatten(sequence.type())) {
             if (branch instanceof Type.Sequence seq) {
                 if (seq.minLength() == 0) {
                     emptyPossible = true;
                 }
+                if (seq.maxLength() != 0) {
+                    emptyProven = false;
+                }
             } else {
-                // 非数组分支(含 Unknown)没有元素上界可保留。
+                // 非数组分支(含 Unknown)没有元素上界可保留,也不能证明一定为空。
                 emptyPossible = true;
+                emptyProven = false;
             }
         }
-        if (!emptyPossible) {
-            return element(sequence);
+        if (emptyProven) {
+            return Fact.of(Types.scalar(Type.ScalarKind.NULL));
         }
         boolean observedNonEmpty =
                 sequence.evidence().stream()
@@ -564,12 +577,15 @@ public final class TypeOps {
                                                         && observed.value()
                                                                 instanceof List<?> values
                                                         && !values.isEmpty());
-        if (observedNonEmpty) {
+        if (!emptyPossible || observedNonEmpty) {
             return element(sequence);
         }
-        return Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE)
-                .withLosses(sequence.losses())
-                .withUpstreamErrors(sequence.upstreamErrors());
+        Fact element = element(sequence);
+        return new Fact(
+                Types.union(List.of(element.type(), Types.scalar(Type.ScalarKind.NULL))),
+                element.evidence(),
+                element.losses(),
+                element.upstreamErrors());
     }
 
     /**

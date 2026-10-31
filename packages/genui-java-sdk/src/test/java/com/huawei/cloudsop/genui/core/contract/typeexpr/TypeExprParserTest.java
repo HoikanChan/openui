@@ -12,7 +12,6 @@ import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr.ArrayOf;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr.Base;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr.ObjectLiteral;
-import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr.ParamRef;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr.RecordOf;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr.TypeVar;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr.UnionOf;
@@ -55,7 +54,8 @@ class TypeExprParserTest {
 
     @Test
     void parsesRecord() {
-        assertEquals(new RecordOf(new TypeVar()), TypeExprParser.parse("Record<string, T>", "e"));
+        assertEquals(
+                new RecordOf(new TypeVar("T")), TypeExprParser.parse("Record<string, T>", "e"));
         assertEquals(
                 new RecordOf(new ArrayOf(new Base("number"))),
                 TypeExprParser.parse("Record<string, number[]>", "e"));
@@ -78,7 +78,7 @@ class TypeExprParserTest {
         assertEquals(2, literal.fields().size());
         assertEquals("key", literal.fields().get(0).name());
         assertEquals(new Base("string"), literal.fields().get(0).type());
-        assertEquals(new TypeVar(), literal.fields().get(1).type());
+        assertEquals(new TypeVar("T"), literal.fields().get(1).type());
     }
 
     @Test
@@ -118,15 +118,34 @@ class TypeExprParserTest {
     }
 
     @Test
-    void parsesTypeVarAndParamRef() {
-        assertEquals(new TypeVar(), TypeExprParser.parse("T", "e"));
-        assertEquals(new ParamRef(2), TypeExprParser.parse("param(2)", "e"));
+    void parsesNamedTypeVars() {
+        assertEquals(new TypeVar("T"), TypeExprParser.parse("T", "e"));
+        assertEquals(new TypeVar("D"), TypeExprParser.parse("D", "e"));
     }
 
     @Test
-    void rejectsBadParamRef() {
+    void rejectsRemovedParamSyntax() {
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () -> TypeExprParser.parse("T | param(2)", "Switch.returnType"));
+        assertTrue(error.getMessage().contains("Switch.returnType"), error.getMessage());
+        assertTrue(error.getMessage().contains("param(2)"), error.getMessage());
         assertThrows(GenerationSdkException.class, () -> TypeExprParser.parse("param(x)", "e"));
         assertThrows(GenerationSdkException.class, () -> TypeExprParser.parse("param(1", "e"));
+    }
+
+    @Test
+    void rejectsRemovedConditionalSyntax() {
+        GenerationSdkException error =
+                assertThrows(
+                        GenerationSdkException.class,
+                        () ->
+                                TypeExprParser.parse(
+                                        "string[] when param(0) is array, else string",
+                                        "FormatDate.returnType"));
+        assertTrue(error.getMessage().contains("FormatDate.returnType"), error.getMessage());
+        assertTrue(error.getMessage().contains("when"), error.getMessage());
     }
 
     @Test
@@ -150,37 +169,5 @@ class TypeExprParserTest {
                         () -> TypeExprParser.parse("bad type", "ObjectEntries.obj"));
         assertTrue(error.getMessage().contains("'ObjectEntries.obj'"), error.getMessage());
         assertTrue(error.getMessage().contains("bad type"), error.getMessage());
-    }
-
-    @Test
-    void semanticEqualsIgnoresWhitespaceOnlyDifferences() {
-        // 解析器已归一空白；同一构造的两次解析结构等值。
-        assertTrue(
-                TypeExprEquals.equals(
-                        TypeExprParser.parse("{key: string, value: T}[]", "a"),
-                        TypeExprParser.parse("{key: string, value: T}[]", "b")));
-    }
-
-    @Test
-    void semanticEqualsMatchesObjectFieldsByName() {
-        assertTrue(
-                TypeExprEquals.equals(
-                        TypeExprParser.parse("{a: number, b: string}", "x"),
-                        TypeExprParser.parse("{b: string, a: number}", "y")));
-    }
-
-    @Test
-    void semanticEqualsDistinguishesStructure() {
-        org.junit.jupiter.api.Assertions.assertFalse(
-                TypeExprEquals.equals(
-                        TypeExprParser.parse("number[]", "x"),
-                        TypeExprParser.parse("string[]", "y")));
-        org.junit.jupiter.api.Assertions.assertFalse(
-                TypeExprEquals.equals(
-                        TypeExprParser.parse("T", "x"), TypeExprParser.parse("number", "y")));
-        org.junit.jupiter.api.Assertions.assertFalse(
-                TypeExprEquals.equals(
-                        TypeExprParser.parse("param(0)", "x"),
-                        TypeExprParser.parse("param(1)", "y")));
     }
 }

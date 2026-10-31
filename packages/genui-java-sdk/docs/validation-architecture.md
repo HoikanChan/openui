@@ -49,12 +49,12 @@ flowchart TD
 | --- | --- | --- | --- |
 | 预处理和语法解析 | 模型文本、解析模式、builtin 名称 | `OpenuiPreprocessor` → `OpenuiLexer` → `StatementSplitter` → `ExpressionParser` → `Program`；结果供语义及类型分析使用 | 基础解析 2026-07-01 `71d623e5` |
 | 组件、参数、引用和根校验 | `Program`、`GenerationContract`、外部引用 | `ContractCatalog`、`ProgramAnalyzer`、`ComponentContractValidator`；输出 `ProgramAnalysis` 和诊断 | 基础语义 2026-07-01 `e0aa053d` |
-| builtin 词表和规则契约化 | 生效契约、默认契约 | `BuiltinCatalog` 提供名称和签名；加载器调用 `RuleCompiler` 编译规则，类型分析通过 `RuleEvaluator` 使用 | 【10月】`ad15baaf`、`735bae7c`、`392ec944` |
-| 类型及数据路径检查 | 可达语句、组件 schema、builtin 规则、可选数据模型 | `AnalysisSession`、`DataPathResolver`、`SnapshotFacts`、`Checks`；输出诊断和 `CoverageReport` | 数据感知基础 2026-08-28 `eab65c38`；【10月】统一分析引擎 `88053ee1`、`392ec944` |
+| builtin 词表和简洁签名契约化 | 生效契约、默认契约 | `BuiltinCatalog` 只提供名称与签名；加载器校验 `params`/`returnType` 并把特殊布局前提委托 `BuiltinAnalysis.validateDefinition`；类型分析用 `SignatureInference` 做通用推导 | 【10月】`ad15baaf`、`735bae7c`、`392ec944`；#122 删除旧规则 |
+| 类型及数据路径检查 | 可达语句、组件 schema、builtin 签名、可选数据模型 | `AnalysisSession`、`DataPathResolver`、`SnapshotFacts`、`Checks`；输出诊断和 `CoverageReport` | 数据感知基础 2026-08-28 `eab65c38`；【10月】统一分析引擎 `88053ee1`、`392ec944` |
 | schema 和预算 | 契约 schema、分析预算 | `SchemaCompiler` 转为 `Expectation`；`AnalysisBudget` 限制分析工作，`CoverageReport` 记录未证明与截断 | 【10月】`88053ee1`、`cbc55558`、`636ed8e2` |
-| Each / Render 等绑定作用域 | 契约的 binder、input 和 callForms；实际调用参数 | `LazyBuiltinBinders`、`AnalysisSession`；识别变量作用域与元素来源，避免把空数组或未知元素当作已观察数据 | 【10月】`33a0e509`、`db2204a8`、`a6bdf42e` |
-| 对象枚举与数组流水线 | `ObjectKeys/Values/Entries`、数组处理 builtin 的契约规则与输入事实 | `RuleEvaluator`、`TypeOps`、`AnalysisSession`；向下游传播键值、元素及长度信息，检查图表等使用要求 | 【10月】`b2683d84`、`f579f92b` |
-| 格式化 builtin | 契约类型规则、实际调用 | `RuleCompiler` → `RuleEvaluator`；对参数和返回进行类型分析 | 【10月】`c8357e18` |
+| Each / Render 等绑定作用域 | Java 固定的调用布局；实际调用参数 | `BuiltinAnalysis`；按实参角色识别变量作用域与元素来源，避免把空数组或未知元素当作已观察数据 | 【10月】`33a0e509`、`db2204a8`、`a6bdf42e` |
+| 对象枚举与数组流水线 | `ObjectKeys/Values/Entries`、数组处理 builtin 的签名与输入事实 | `BuiltinAnalysis`、`TypeOps`、`AnalysisSession`；向下游传播键值、元素及长度信息，检查图表等使用要求 | 【10月】`b2683d84`、`f579f92b` |
+| 格式化 builtin | 简洁签名、实际调用 | `SignatureInference` + `BuiltinAnalysis`（FormatDate 形状细化）；对参数和返回进行类型分析 | 【10月】`c8357e18` |
 | Table 与 Render 使用点 | 表格数据、列字段和模板使用点 | 类型引擎检查行形状、字段和模板作用域；表列字段存在性按任意一行满足判断 | 【10月】`c0c827a7`、`b135e271` |
 | 诊断整理与定向指导 | 完整 `ValidationIssue`、当前契约能力缺口 | `ValidationIssueReducer` 去噪；`RepairHints`、`RepairGuidance` 路由专项指导，供修复提示使用 | 去噪基础 2026-08-28 `0cd04700`；【10月】能力边界 `bfc9c760`、数据/表列指导 `d17f15b7` |
 | 流式轮末校验 | 模型 delta、契约、数据、注入校验器 | `StatementBoundaryScanner` → `ProgramRoundSession` → FINAL 校验 → `RoundEndResult` | 【10月】`8c2b1882`、`84cf6078` |
@@ -67,22 +67,22 @@ flowchart TD
 
 修复指导按**当前**可操作错误选择，不沿用已经被覆盖的历史错误标签。`StatementRelations` 帮助提示词关联相关定义；模板位于 `src/main/resources/prompts/repair/`。修复次数上限为 0 时没有单独的次数上限，由会话截止条件控制；也可显式指定次数上限。
 
-### 契约加载和类型规则依赖
+### 契约加载与 builtin 签名
 
 ```mermaid
 flowchart LR
     JSON[base-contract.json 或生效契约] --> Loader[GenerationContractLoader]
-    Loader --> Compiler[RuleCompiler]
-    Compiler --> Plan[RulePlan.TypeRule]
-    Plan --> Spec[BuiltinSpec]
+    Loader --> Spec[BuiltinSpec：params + returnType]
     Spec --> Catalog[BuiltinCatalog 和 ValidationSnapshot]
     Catalog --> Analysis[AnalysisSession]
-    Analysis --> Eval[RuleEvaluator]
-    Eval --> Ops[TypeOps 和 Checks]
+    Analysis --> Signature[SignatureInference]
+    Analysis --> Builtin[BuiltinAnalysis]
+    Signature --> Ops[TypeOps 和 Checks]
+    Builtin --> Ops
     Ops --> Coverage[CoverageReport 与 ValidationIssue]
 ```
 
-规则在契约加载时编译，在调用点分析时求值；非法规则结构在加载期失败。组件 schema 的检查要求则由 `SchemaCompiler` 编译。契约的 `templateBuiltin` 用于提示词分组，绑定作用域依据 binder 和调用布局，不应混为一谈。细节见 [runtime-semantics-contract.md](runtime-semantics-contract.md)。
+加载器只做结构校验：必填字段、名称唯一、`TypeExpr` 文法、命名类型变量有参数来源、普通可选/变长布局；Each/Render/Switch 的布局前提由 `BuiltinAnalysis.validateDefinition` 检查，加载器不维护第二份函数名单。`SignatureInference` 在调用点把 `params` 变成入口检查、按名绑定类型变量并实例化 `returnType`；`BuiltinAnalysis` 负责 Java 特殊语义与模板生命周期。非法类型语法、残留旧字段或声明与处理器可证明冲突都在加载期失败。组件 schema 的检查要求由 `SchemaCompiler` 编译。契约的 `templateBuiltin` 只用于提示词分组，不决定特殊处理。细节见 [runtime-semantics-contract.md](runtime-semantics-contract.md)。
 
 ## 10 月起新增的类
 
@@ -92,9 +92,9 @@ flowchart LR
 | --- | --- | --- |
 | 10-15 `ad15baaf` | `parser/BuiltinCatalog` | 从生效契约建立 builtin 词表，供解析、语义和类型分析使用。 |
 | 10-19 `8c2b1882` | `stream/ProgramRoundSession`、`stream/RoundEndResult` | 接收生成器的流式输出，轮末调用校验器并记录结果。 |
-| 10-20 `d67cdce5` | `repair/RepairGuidance`、`semantic/LazyBuiltinBinders`、`semantic/StatementRelations` | 分别连接诊断到指导、契约绑定布局到作用域分析、语句关系到修复提示。 |
+| 10-20 `d67cdce5` | `repair/RepairGuidance`、`semantic/StatementRelations` | 分别连接诊断到指导、语句关系到修复提示。 |
 | 10-22 `1b959b8d` | `ValidationSnapshot` | 接收校验请求，向解析、语义和类型分析提供分析输入。 |
-| 10-22 `735bae7c` | `contract/RuleCompilationException`、`RuleCompiler`、`RuleEvaluator`、`RulePlan` | 连接契约加载与 builtin 类型规则求值。 |
+| 10-31 `#118`–`#122` | `type/analysis/BuiltinAnalysis`、`type/analysis/SignatureInference` | 收拢 builtin 特殊语义与简洁签名推导；同期的旧规则类（`contract/*`）已删除，不列入现存类。 |
 | 10-23 `88053ee1` | `type/analysis/AnalysisBudget`、`AnalysisSession`、`Checks`、`CoverageReport`、`Expectation`、`Fact`、`Relations`、`SchemaCompiler`、`SnapshotFacts`、`Type`、`TypeAnalysis`、`TypeOps`、`Types` | 构成类型分析内核：接收程序、契约和数据，输出类型诊断及覆盖信息。 |
 | 10-28 `b78dc0c4` | `repair/RepairPromptBuilder` | 接收当前轮诊断与程序，渲染 Markdown 模板供生成器发起修复。 |
 
@@ -129,7 +129,7 @@ flowchart LR
 | `OpenuiParser` | 组合预处理、lexer、splitter 和表达式解析，产出 `Program`。 |
 | `AstNode` / `Statement` / `Program` | 语法树、语句和程序模型；供语义、类型及修复关系分析使用。 |
 | `SourceSpan` / `ParseDiagnostic` / `ParseErrorCode` / `ParseMode` | 源码位置、解析诊断、错误码及解析模式。 |
-| `BuiltinCatalog` | 【10月功能】从生效契约建立 builtin 词表和绑定信息；另行判断 DSL 语法保留调用名称。 |
+| `BuiltinCatalog` | 【10月功能】从生效契约建立 builtin 名称与签名视图；另行判断 DSL 语法保留调用名称。 |
 
 ### semantic
 
@@ -138,7 +138,7 @@ flowchart LR
 | `ProgramAnalyzer` / `ProgramAnalysis` | 从入口分析当前定义、引用和组件，输出语义问题。 |
 | `ContractCatalog` / `ComponentDef` / `ParamDef` | 从契约建立组件及位置参数目录，供语义和类型检查使用。 |
 | `ComponentContractValidator` | 根据组件目录检查必填、参数数量和属性约束。 |
-| `LazyBuiltinBinders` | 【10月功能】依据契约布局处理延迟 builtin 的变量绑定。 |
+| `BuiltinAnalysis` | 【10月功能】固定 Each/Render/Switch 的调用布局,处理实参角色、binder 作用域、Java 特殊结果推导与延迟模板;定义期校验也由它提供。 |
 | `RepairHints` | 根据引用、未知组件及能力缺口构造修复提示。 |
 | `StatementRelations` / `AstReferenceWalker` | 分析语句和作用域依赖；共享引用遍历供类型分析和修复提示使用。 |
 
@@ -154,15 +154,11 @@ flowchart LR
 | `AnalysisBudget` / `CoverageReport` | 限制分析工作并记录检查结果、截断和无法证明的原因。 |
 | `DataPath` / `DataPathResolution` / `DataPathResolver` | 解析数据路径，在数据模型中区分已解析、缺失、非法遍历和无法证明。 |
 | `SnapshotFacts` | 将数据模型的实际值转成受预算约束的类型事实。 |
+| `SignatureInference` | 由 `params`/`returnType` 的 `TypeExpr` 生成入口检查要求、按名绑定类型变量并实例化返回类型；只被 `BuiltinAnalysis` 调用。 |
 
 ### contract
 
-| 类 | 职责及上下游 |
-| --- | --- |
-| `RuleCompiler` | 【10月功能】契约加载时编译并校验 builtin 的结构化类型规则。 |
-| `RulePlan` | 已编译规则的数据模型，存入 `BuiltinSpec`。 |
-| `RuleCompilationException` | 规则编译失败时向契约加载调用方报告。 |
-| `RuleEvaluator` | 【10月功能】在类型分析调用点检查参数并执行规则，调用类型操作与检查器。 |
+契约包只保留数据形状（`GenerationContract`、`BuiltinSpec`、`CapabilityGapSpec` 等）与加载器；旧规则编译/求值类已在 #122 删除。
 
 ### stream
 

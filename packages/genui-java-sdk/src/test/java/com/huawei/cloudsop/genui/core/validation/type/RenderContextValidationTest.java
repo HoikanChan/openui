@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
@@ -28,20 +27,25 @@ class RenderContextValidationTest {
     // ── 契约布局与 Template/Component 种类 ────────────────────────────────
 
     @Test
-    void renderCallFormsComeFromContract() {
-        BuiltinSpec render =
-                GenerationContractLoader.loadDefault().builtins().stream()
-                        .filter(spec -> "Render".equals(spec.name()))
-                        .findFirst()
-                        .orElseThrow();
+    void renderTwoAndThreeArgumentFormsBindTheirFixedLayout() {
+        // 布局前提由 builtin module 校验:两参只引入 v,三参引入 v/row;契约只展示最长的三参形式。
+        ValidationResult twoArity =
+                validate(
+                        "root = Table([c], data.rows)\n"
+                                + "c = Col(\"C\", \"name\", {cell: @Render(\"v\", TextContent(v))})",
+                        Map.of("rows", List.of(Map.of("name", "Ada"))));
+        assertEquals(
+                ValidationStatus.VALID, twoArity.status(), () -> String.valueOf(twoArity.issues()));
 
-        // 两参形式只引入 v;三参形式引入 v/row,body 下标随调用形式变化。
-        assertEquals(List.of(0), render.activeBinderIndexes(2));
-        assertEquals(1, render.bodyIndex(2));
-        assertEquals(List.of(0, 1), render.activeBinderIndexes(3));
-        assertEquals(2, render.bodyIndex(3));
-        assertEquals("string-or-identifier", render.params().get(0).nameSyntax());
-        assertEquals("string-or-identifier", render.params().get(1).nameSyntax());
+        ValidationResult threeArity =
+                validate(
+                        "root = Table([c], data.rows)\n"
+                                + "c = Col(\"C\", \"name\", {cell: @Render(\"v\", \"row\", TextContent(row.name))})",
+                        Map.of("rows", List.of(Map.of("name", "Ada"))));
+        assertEquals(
+                ValidationStatus.VALID,
+                threeArity.status(),
+                () -> String.valueOf(threeArity.issues()));
     }
 
     @Test

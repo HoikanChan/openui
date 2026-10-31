@@ -4,10 +4,8 @@
 
 package com.huawei.cloudsop.genui.core.validation;
 
-import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
 import com.huawei.cloudsop.genui.core.contract.ComponentPromptSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
-import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiPreprocessor;
@@ -43,10 +41,9 @@ public final class ValidationSnapshot {
     private ValidationSnapshot(ValidationRequest request) {
         GenerationContract contract = copyContract(request.contract());
         dataModel = request.dataModel();
-        builtins =
-                BuiltinCatalog.of(
-                        copyBuiltins(
-                                BuiltinCatalog.fromContract(contract).specsForTypeValidation()));
+        // 简洁定义一经加载即不可变(BuiltinSpec/ParamSpec/TypeExpr 复制构造),直接派生词表:
+        // 不再"取出规则再复制一遍、重建第二次 catalog",也不牺牲快照隔离。
+        builtins = BuiltinCatalog.fromContract(contract);
         catalog = ContractCatalog.from(contract);
         String dsl = request.dsl() == null ? "" : request.dsl();
         OpenuiPreprocessor.Result preprocessed = OpenuiPreprocessor.process(dsl, ParseMode.FINAL);
@@ -154,69 +151,8 @@ public final class ValidationSnapshot {
                 List.of(),
                 List.of(),
                 List.of(),
-                copyBuiltins(source.builtins()),
+                source.builtins(),
                 source.capabilityGaps());
-    }
-
-    private static List<BuiltinSpec> copyBuiltins(Iterable<BuiltinSpec> source) {
-        List<BuiltinSpec> copiedBuiltins = new ArrayList<>();
-        for (BuiltinSpec spec : source) {
-            List<BuiltinSpec.ParamSpec> params =
-                    spec.params().stream()
-                            .map(
-                                    param ->
-                                            new BuiltinSpec.ParamSpec(
-                                                    param.name(),
-                                                    param.type(),
-                                                    copyType(param.typeExpr()),
-                                                    param.optional(),
-                                                    param.variadic(),
-                                                    param.binder(),
-                                                    param.nameSyntax()))
-                            .toList();
-            // 结构化类型规则与 binder 布局随词表一并进入快照（#81/#83）：同一次契约解析，不在快照层剥离。
-            copiedBuiltins.add(
-                    new BuiltinSpec(
-                            spec.name(),
-                            spec.signature(),
-                            spec.description(),
-                            spec.templateBuiltin(),
-                            params,
-                            copyType(spec.returnType()),
-                            spec.typeRule(),
-                            spec.inputIndex(),
-                            spec.callForms()));
-        }
-        return List.copyOf(copiedBuiltins);
-    }
-
-    private static TypeExpr copyType(TypeExpr type) {
-        if (type == null) {
-            return null;
-        }
-        return switch (type) {
-            case TypeExpr.ArrayOf array -> new TypeExpr.ArrayOf(copyType(array.element()));
-            case TypeExpr.RecordOf record -> new TypeExpr.RecordOf(copyType(record.value()));
-            case TypeExpr.ObjectLiteral object ->
-                    new TypeExpr.ObjectLiteral(
-                            object.fields().stream()
-                                    .map(
-                                            field ->
-                                                    new TypeExpr.ObjectLiteral.Field(
-                                                            field.name(), copyType(field.type())))
-                                    .toList());
-            case TypeExpr.UnionOf union ->
-                    new TypeExpr.UnionOf(
-                            union.alternatives().stream()
-                                    .map(ValidationSnapshot::copyType)
-                                    .toList());
-            case TypeExpr.Conditional conditional ->
-                    new TypeExpr.Conditional(
-                            conditional.paramIndex(),
-                            copyType(conditional.whenArray()),
-                            copyType(conditional.otherwise()));
-            default -> type;
-        };
     }
 
     private static Map<String, Object> copyMap(Map<String, Object> source) {
