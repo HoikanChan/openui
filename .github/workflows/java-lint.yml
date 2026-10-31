@@ -8,6 +8,9 @@ on:
       - "packages/genui-eval-cli/**"
       - "config/checkstyle/**"
       - "config/spotbugs/**"
+      - "config/pmd/**"
+      - "tools/lint-rules/**"
+      - "tools/lint-regression/**"
       - "pom.xml"
       - ".github/workflows/java-lint.yml"
   pull_request:
@@ -16,6 +19,9 @@ on:
       - "packages/genui-eval-cli/**"
       - "config/checkstyle/**"
       - "config/spotbugs/**"
+      - "config/pmd/**"
+      - "tools/lint-rules/**"
+      - "tools/lint-regression/**"
       - "pom.xml"
       - ".github/workflows/java-lint.yml"
 
@@ -25,7 +31,7 @@ concurrency:
 
 jobs:
   lint:
-    name: Checkstyle / SpotBugs / fmt
+    name: Checkstyle / SpotBugs / PMD / fmt
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -52,7 +58,23 @@ jobs:
             -Dversion=25.590.54 \
             -Dpackaging=jar
 
-      # verify 阶段绑定三项检查：checkstyle、spotbugs、fmt。
+      # verify 阶段绑定四项检查：checkstyle、spotbugs、PMD、fmt。
       # 只跑静态检查，跳过测试；测试仍由本地或后续的 test workflow 执行。
       - name: Run lint checks
         run: mvn -B -DskipTests verify
+
+  regression:
+    name: Lint rule regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # 正反例覆盖 6 条 Checkstyle 规则与 3 条 PMD 语义规则；脚本自行安装规则 jar。
+      - name: Run fixture regression
+        run: python3 tools/lint-regression/run_regression.py

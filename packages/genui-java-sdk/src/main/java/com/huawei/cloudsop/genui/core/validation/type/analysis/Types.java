@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
@@ -30,12 +30,22 @@ public final class Types {
 
     private Types() {}
 
-    /** 基础标量。 */
+    /**
+     * 构造基础标量类型。
+     *
+     * @param kind 标量种类
+     * @return 对应种类的标量类型
+     */
     public static Type scalar(Type.ScalarKind kind) {
         return new Type.Scalar(kind);
     }
 
-    /** 字符串字面值集合;空集合按契约归一为 {@link Type.Never}。 */
+    /**
+     * 构造字符串字面值集合;空集合按契约归一为 {@link Type.Never}。
+     *
+     * @param values 允许出现的字符串值;{@code null} 视为空集合
+     * @return 非空时为字面值集合类型,{@code null} 或空集合时为 {@link Type.Never}
+     */
     public static Type stringLiterals(Set<String> values) {
         return values == null || values.isEmpty()
                 ? Type.Never.INSTANCE
@@ -45,39 +55,68 @@ public final class Types {
     /**
      * 数组类型,执行 Never 元素归一规则: {@code Sequence(never, 0, max)} → {@code Sequence(never, 0, 0)}(确知空数组);
      * {@code Sequence(never, min>0, max)} → {@link Type.Never}。
+     *
+     * @param element 元素类型上界;为 {@link Type.Never} 时只可能得到空数组或 Never
+     * @param minLength 长度下界,非负
+     * @param maxLength 长度上界,非负或 {@link Type.Sequence#UNBOUNDED} 表示无界
+     * @return 归一后的数组类型;元素非 Never 且区间非法时抛出异常而不是修复区间
+     * @throws IllegalArgumentException 元素为 null,或元素非 Never 且长度区间非法(负值或下界大于上界)时
      */
     public static Type sequence(Type element, long minLength, long maxLength) {
         if (element == null) {
             throw new IllegalArgumentException("sequence element type is required");
         }
         if (element instanceof Type.Never) {
-            return minLength > 0 ? Type.Never.INSTANCE : new Type.Sequence(element, 0, 0);
+            return minLength > 0 ? Type.Never.INSTANCE : new Type.Sequence(element, 0L, 0L);
         }
         return new Type.Sequence(element, minLength, maxLength);
     }
 
-    /** 确知空数组。 */
+    /**
+     * 确知空数组:元素为 {@link Type.Never}、长度固定为 0。
+     *
+     * @return 只含空数组的序列类型
+     */
     public static Type emptySequence() {
-        return new Type.Sequence(Type.Never.INSTANCE, 0, 0);
+        return new Type.Sequence(Type.Never.INSTANCE, 0L, 0L);
     }
 
-    /** 元素与数量均未知的数组。 */
+    /**
+     * 元素与数量均未知的数组:元素为 {@link Type.Unknown},长度区间为 {@code [0, 无界]}。
+     *
+     * @return 覆盖任意数组值的序列类型
+     */
     public static Type unknownSequence() {
-        return new Type.Sequence(Type.Unknown.INSTANCE, 0, Type.Sequence.UNBOUNDED);
+        return new Type.Sequence(Type.Unknown.INSTANCE, 0L, Type.Sequence.UNBOUNDED);
     }
 
-    /** 结构对象;{@code extra} 为 null 时按关闭处理。 */
+    /**
+     * 构造结构对象;{@code extra} 为 null 时按关闭处理。
+     *
+     * @param fields 字段映射;{@code null} 视为空对象
+     * @param extra 额外字段约束;{@code null} 视为关闭
+     * @return 字段与尾部约束组装出的结构对象类型
+     */
     public static Type record(Map<String, Type.Field> fields, Type.Extra extra) {
         return new Type.RecordType(
                 fields == null ? Map.of() : fields, extra == null ? Type.Extra.closed() : extra);
     }
 
-    /** 开放结构对象:无已声明字段,额外字段任意。 */
+    /**
+     * 开放结构对象:无已声明字段,额外字段任意。
+     *
+     * @return 空字段集加 {@link Type.Unknown} 额外字段值类型的对象类型
+     */
     public static Type openRecord() {
         return record(Map.of(), Type.Extra.open(Type.Unknown.INSTANCE));
     }
 
-    /** 精确联合:展平、去 Never、按结构去重;全 Never → Never;含 Unknown → Unknown;可被证明包含的成员删除; 结果按稳定结构键排序。 */
+    /**
+     * 精确联合:展平、去 Never、按结构去重;全 Never → Never;含 Unknown → Unknown;可被证明包含的成员删除; 结果按稳定结构键排序。
+     *
+     * @param alternatives 候选分支;{@code null} 或空列表按 Never 处理,{@code null} 成员被忽略
+     * @return 归一后的类型;单分支退化为该分支,多分支返回按结构键排序的 {@link Type.Union}
+     */
     public static Type union(List<? extends Type> alternatives) {
         if (alternatives == null || alternatives.isEmpty()) {
             return Type.Never.INSTANCE;
@@ -116,7 +155,13 @@ public final class Types {
         return new Type.Union(flat);
     }
 
-    /** 两个类型的联合。 */
+    /**
+     * 两个类型的联合,按 {@link #union(List)} 的规则归一。
+     *
+     * @param left 左侧类型
+     * @param right 右侧类型
+     * @return 归一后的联合类型
+     */
     public static Type union(Type left, Type right) {
         return union(List.of(left, right));
     }

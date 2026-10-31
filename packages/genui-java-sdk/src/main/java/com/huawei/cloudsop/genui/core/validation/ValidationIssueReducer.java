@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation;
@@ -13,7 +13,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Produces a stable, low-noise issue view while preserving complete raw validator diagnostics. */
+/**
+ * 生成稳定、低噪声的问题视图，同时保留校验器的完整原始诊断。
+ *
+ * @since 2026
+ */
 public final class ValidationIssueReducer {
 
     private static final Set<String> ROOT_TAIL_CODES =
@@ -22,10 +26,12 @@ public final class ValidationIssueReducer {
     private ValidationIssueReducer() {}
 
     /**
-     * Return the actionable subset of {@code rawIssues} in original order.
+     * 按原始顺序返回 {@code rawIssues} 中可操作的那部分问题。
      *
-     * <p>The result is immutable. This operation never invents diagnostics and never changes
-     * validation status; callers that need parser parity should continue using the raw issue list.
+     * <p>结果不可变。本操作从不凭空产生诊断，也不改变校验状态；需要解析器对齐的调用方应继续使用原始问题列表。
+     *
+     * @param rawIssues 原始问题列表，可为 {@code null}
+     * @return 去重并抑制级联噪声后的问题列表；无输入时为空列表
      */
     public static List<ValidationIssue> actionable(List<ValidationIssue> rawIssues) {
         if (rawIssues == null || rawIssues.isEmpty()) {

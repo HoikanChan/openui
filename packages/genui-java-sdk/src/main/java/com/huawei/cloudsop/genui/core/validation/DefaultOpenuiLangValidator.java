@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation;
@@ -29,7 +29,11 @@ public final class DefaultOpenuiLangValidator implements OpenuiLangValidator {
         this(null);
     }
 
-    /** 使用指定的单次分析预算;null 使用默认预算。 */
+    /**
+     * 使用指定的单次分析预算;null 使用默认预算。
+     *
+     * @param analysisBudget 单次分析预算；{@code null} 表示使用默认预算
+     */
     public DefaultOpenuiLangValidator(AnalysisBudget analysisBudget) {
         this.analysisBudget = analysisBudget;
     }

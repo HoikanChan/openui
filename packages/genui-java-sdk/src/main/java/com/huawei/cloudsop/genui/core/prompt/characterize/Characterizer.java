@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.prompt.characterize;
@@ -35,6 +35,10 @@ public final class Characterizer {
      *   <li>Otherwise, delegates to {@link ShapeWalker#walk(Object, CharacterizationConfig, int)}
      *       at depth 0.
      * </ol>
+     *
+     * @param raw the raw data-model map to inspect; {@code null} or empty passes through unchanged
+     * @param cfg the gate and sampling configuration; must not be {@code null}
+     * @return the sample/shape pair, with a {@code null} shape when the gate passed through
      */
     public static Characterized characterize(Map<String, Object> raw, CharacterizationConfig cfg) {
         if (raw == null || raw.isEmpty()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
@@ -47,7 +47,14 @@ public final class StatementRelations {
         return related(currentDsl, issues, BuiltinCatalog.getDefault());
     }
 
-    /** 按指定 {@link BuiltinCatalog} 计算被诊断语句 id 的传递上下游语句。 */
+    /**
+     * 按指定 {@link BuiltinCatalog} 计算被诊断语句 id 的传递上下游语句。
+     *
+     * @param currentDsl 当前有效定义文本；{@code null}/空文本返回空 map
+     * @param issues 最新轮诊断；仅使用可归属到语句 id 的问题
+     * @param builtins builtin 词表；{@code null} 时使用默认词表
+     * @return 语句 id → 关联 id 列表（上游在前、下游在后）；被诊断但无关联时为空列表
+     */
     public static Map<String, List<String>> related(
             String currentDsl, List<ValidationIssue> issues, BuiltinCatalog builtins) {
         if (currentDsl == null || currentDsl.isBlank() || issues == null || issues.isEmpty()) {
@@ -80,7 +87,11 @@ public final class StatementRelations {
         return Collections.unmodifiableMap(result);
     }
 
-    /** A named template can have different dependencies at different lexical use sites. */
+    /**
+     * A named template can have different dependencies at different lexical use sites.
+     *
+     * @since 2026
+     */
     private record ScopedStatement(String id, Set<String> bindings) {
         private ScopedStatement {
             bindings = Set.copyOf(bindings);

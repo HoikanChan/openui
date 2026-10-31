@@ -17,11 +17,15 @@
     <spotbugs.plugin.version>4.8.6.6</spotbugs.plugin.version>
     <findsecbugs.version>1.13.0</findsecbugs.version>
     <fmt.plugin.version>2.25</fmt.plugin.version>
+    <pmd.plugin.version>3.26.0</pmd.plugin.version>
+    <pmd.version>7.7.0</pmd.version>
     <!-- 子模块覆盖为 ${project.basedir}/../../config -->
     <lint.config.dir>${project.basedir}/config</lint.config.dir>
   </properties>
 
   <modules>
+    <!-- 自定义 PMD 规则必须先于被检查模块构建，maven-pmd-plugin 从 reactor 加载规则类。 -->
+    <module>tools/lint-rules</module>
     <module>packages/genui-java-sdk</module>
     <module>packages/genui-eval-cli</module>
   </modules>
@@ -52,6 +56,8 @@
           <!-- 提到插件级，使手动 checkstyle:check 与 verify 判定的告警级别一致 -->
           <violationSeverity>warning</violationSeverity>
           <configLocation>${lint.config.dir}/checkstyle/checkstyle.xml</configLocation>
+          <!-- 让规则集内的 ${lint.config.dir} 可解析（SuppressionXpathFilter 的豁免文件路径） -->
+          <propertyExpansion>lint.config.dir=${lint.config.dir}</propertyExpansion>
           <suppressionsLocation>${lint.config.dir}/checkstyle/suppressions.xml</suppressionsLocation>
           <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
           <consoleOutput>true</consoleOutput>
@@ -120,6 +126,34 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+
+      <!--
+        PMD 负责 Checkstyle 做不了的类型语义规则：G.FMT.20（字面量后缀）、
+        G.OBJ.04（局部变量遮蔽字段）、G.CTL.05（循环体内改循环变量）。
+        插件依赖自定义规则模块；执行绑定在各子模块，避免聚合 pom 与规则模块
+        在自身构建阶段解析尚未产出的规则 jar。
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>${pmd.plugin.version}</version>
+        <configuration>
+          <rulesets>
+            <ruleset>${lint.config.dir}/pmd/pmd-ruleset.xml</ruleset>
+          </rulesets>
+          <typeResolution>true</typeResolution>
+          <includeTests>false</includeTests>
+          <printFailingErrors>true</printFailingErrors>
+          <failOnViolation>true</failOnViolation>
+        </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>com.huawei.cloudsop</groupId>
+            <artifactId>genui-lint-rules</artifactId>
+            <version>${project.version}</version>
+          </dependency>
+        </dependencies>
       </plugin>
     </plugins>
   </build>

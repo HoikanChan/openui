@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.contract;
@@ -30,14 +30,33 @@ import java.util.Set;
  */
 public sealed interface RulePlan {
 
-    /** 顶层结构化规则：调用形式（arity + 参数布局）与结果规则。 */
+    /**
+     * 顶层结构化规则：调用形式（arity + 参数布局）与结果规则。
+     *
+     * @param arity 实参数量约束
+     * @param parameters 参数布局
+     * @param result 结果规则
+     * @since 2026
+     */
     record TypeRule(Arity arity, List<ParamLayout> parameters, Rule result) implements RulePlan {
+        /** 复制参数布局为不可变列表。 */
         public TypeRule {
             parameters = List.copyOf(parameters);
         }
 
-        /** 调用形式数量约束；{@code max} 为空表示 variadic 不封顶。 */
+        /**
+         * 调用形式数量约束；{@code max} 为空表示 variadic 不封顶。
+         *
+         * @param min 最少实参数
+         * @param max 最多实参数；空表示不封顶
+         * @since 2026
+         */
         public record Arity(int min, OptionalInt max) {
+            /**
+             * 校验数量约束自洽。
+             *
+             * @throws IllegalArgumentException {@code min} 为负，或 {@code max} 存在且小于 {@code min}
+             */
             public Arity {
                 if (min < 0 || (max.isPresent() && max.getAsInt() < min)) {
                     throw new IllegalArgumentException(
@@ -49,17 +68,41 @@ public sealed interface RulePlan {
         /**
          * 参数布局：展示名、{@code rest}（接收该下标起的全部剩余实参）与可选的 accept 模式。 accept 为 null 表示该参数不做结构化模式检查（沿用既有契约
          * params 检查）。
+         *
+         * @param name 参数展示名
+         * @param rest 是否为接收剩余实参的 rest 参数
+         * @param accept 实参模式；{@code null} 表示不做结构化模式检查
+         * @since 2026
          */
         public record ParamLayout(String name, boolean rest, TypePattern accept) {}
     }
 
-    /** 实参检查的有限类型模式；变量在单次调用内求解。 */
+    /**
+     * 实参检查的有限类型模式；变量在单次调用内求解。
+     *
+     * @since 2026
+     */
     sealed interface TypePattern extends RulePlan {
-        /** 明确声明的粗类型输出：合法降精度（结果 Unknown 记 loss，影响对覆盖可见）。 */
+        /**
+         * 明确声明的粗类型输出：合法降精度（结果 Unknown 记 loss，影响对覆盖可见）。
+         *
+         * @since 2026
+         */
         record Unknown() implements TypePattern {}
 
+        /**
+         * 标量模式。
+         *
+         * @param kind 标量种类
+         * @since 2026
+         */
         record Scalar(ScalarKind kind) implements TypePattern {}
 
+        /**
+         * 标量种类及其规则文本展示名。
+         *
+         * @since 2026
+         */
         enum ScalarKind {
             NUMBER("number"),
             STRING("string"),
@@ -72,44 +115,124 @@ public sealed interface RulePlan {
                 this.displayName = displayName;
             }
 
+            /**
+             * 该种类在规则文本与诊断中的展示名。
+             *
+             * @return 展示名，如 {@code number}
+             */
             public String displayName() {
                 return displayName;
             }
         }
 
-        /** 任意对象（字段不受限）。 */
+        /**
+         * 任意对象（字段不受限）。
+         *
+         * @since 2026
+         */
         record AnyRecord() implements TypePattern {}
 
-        /** 任意数组（元素与数量不受限）。 */
+        /**
+         * 任意数组（元素与数量不受限）。
+         *
+         * @since 2026
+         */
         record AnySequence() implements TypePattern {}
 
+        /**
+         * 元素满足给定模式的数组。
+         *
+         * @param element 元素模式
+         * @since 2026
+         */
         record SequenceOf(TypePattern element) implements TypePattern {}
 
+        /**
+         * 值为给定模式的有序对象。
+         *
+         * @param value 值模式
+         * @since 2026
+         */
         record RecordOf(TypePattern value) implements TypePattern {}
 
+        /**
+         * 单次调用内求解的类型变量。
+         *
+         * @param name 变量名
+         * @since 2026
+         */
         record Variable(String name) implements TypePattern {}
 
-        /** 明确接受任意值——可被证明满足（与"无要求"不同）。 */
+        /**
+         * 明确接受任意值——可被证明满足（与"无要求"不同）。
+         *
+         * @since 2026
+         */
         record Any() implements TypePattern {}
     }
 
-    /** 返回/中间求值规则。 */
+    /**
+     * 返回/中间求值规则。
+     *
+     * @since 2026
+     */
     sealed interface Rule extends RulePlan {
+        /**
+         * 固定类型常量规则。
+         *
+         * @param pattern 结果模式
+         * @since 2026
+         */
         record Constant(TypePattern pattern) implements Rule {}
 
+        /**
+         * 读取指定下标实参的规则。
+         *
+         * @param index 实参下标
+         * @since 2026
+         */
         record Argument(int index) implements Rule {}
 
+        /**
+         * 实参存在时读取该下标，否则回退到 {@code fallback}。
+         *
+         * @param index 实参下标
+         * @param fallback 该下标越界时使用的规则
+         * @since 2026
+         */
         record ArgumentOr(int index, Rule fallback) implements Rule {}
 
+        /**
+         * 读取已求解类型变量的规则。
+         *
+         * @param name 变量名
+         * @since 2026
+         */
         record VariableRef(String name) implements Rule {}
 
+        /**
+         * 多个候选规则的并集。
+         *
+         * @param alternatives 候选规则；构造时复制为不可变列表
+         * @since 2026
+         */
         record UnionOfRules(List<Rule> alternatives) implements Rule {
+            /** 复制候选规则列表为不可变视图。 */
             public UnionOfRules {
                 alternatives = List.copyOf(alternatives);
             }
         }
 
+        /**
+         * 有限类型运算。
+         *
+         * @param op 运算种类
+         * @param operands 操作数列表
+         * @param options 证据声明选项；{@code null} 视为空 map
+         * @since 2026
+         */
         record Apply(Op op, List<Operand> operands, Map<String, String> options) implements Rule {
+            /** 复制操作数与选项，{@code null} 选项归一为空 map。 */
             public Apply {
                 operands = List.copyOf(operands);
                 options = options == null ? Map.of() : Map.copyOf(options);
@@ -117,16 +240,34 @@ public sealed interface RulePlan {
         }
     }
 
-    /** 运算操作数：单条规则，或把某下标起的实参序列整体传给运算。 */
+    /**
+     * 运算操作数：单条规则，或把某下标起的实参序列整体传给运算。
+     *
+     * @since 2026
+     */
     sealed interface Operand extends RulePlan {
+        /**
+         * 以单条规则作为运算操作数。
+         *
+         * @param rule 操作数规则
+         * @since 2026
+         */
         record RuleOperand(Rule rule) implements Operand {}
 
+        /**
+         * 把从指定下标起的全部实参作为操作数序列。
+         *
+         * @param index 起始实参下标
+         * @since 2026
+         */
         record ArgumentsFrom(int index) implements Operand {}
     }
 
     /**
      * 有限类型运算的封闭枚举；编译期按名字解析，未知名字加载期失败。每个 op 直接对应 {@code validation.type.analysis.TypeOps}
      * 的一个语义入口——Java 只按运算种类分派。
+     *
+     * @since 2026
      */
     enum Op {
         /** 保留元素、数量与元素存在证据（Sort → TypeOps.preserve）。 */
@@ -154,6 +295,12 @@ public sealed interface RulePlan {
             this.wireName = wireName;
         }
 
+        /**
+         * 按规则文本中的运算名解析运算种类。
+         *
+         * @param name wire 名（如 {@code sequence.preserve}）
+         * @return 对应运算；未知名字返回空 Optional
+         */
         public static Optional<Op> byWireName(String name) {
             for (Op op : values()) {
                 if (op.wireName.equals(name)) {

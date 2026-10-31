@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.repair;
@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 增量修复专项指导的诊断路由；完整文案在 {@code prompts/repair/system.md} 中维护。
@@ -41,6 +42,16 @@ public final class RepairGuidance {
 
     private static final String SYNTAX = "syntax";
     private static final String REFERENCE = "reference";
+
+    /** 指向「调用签名不匹配」一类诊断的规则码。 */
+    private static final Set<String> SIGNATURE_CODES =
+            Set.of(
+                    "excess-args",
+                    "missing-required",
+                    "null-required",
+                    "invalid-prop",
+                    "empty-component-slot",
+                    "component-slot-type-mismatch");
 
     private RepairGuidance() {}
 
@@ -91,13 +102,7 @@ public final class RepairGuidance {
             return;
         }
 
-        if (code.startsWith("builtin-")
-                || "excess-args".equals(code)
-                || "missing-required".equals(code)
-                || "null-required".equals(code)
-                || "invalid-prop".equals(code)
-                || "empty-component-slot".equals(code)
-                || "component-slot-type-mismatch".equals(code)) {
+        if (code.startsWith("builtin-") || SIGNATURE_CODES.contains(code)) {
             selected.add("needsSignatureGuidance");
             return;
         }

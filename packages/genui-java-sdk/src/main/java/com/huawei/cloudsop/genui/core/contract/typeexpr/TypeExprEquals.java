@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.contract.typeexpr;
@@ -17,7 +17,15 @@ public final class TypeExprEquals {
 
     private TypeExprEquals() {}
 
-    /** 结构等值比较。 */
+    /**
+     * 按结构比较两个类型表达式是否等值；{@code null} 与任何值（包括 {@code null}）都不等值。
+     *
+     * <p>对象字面量按字段名配对，忽略字段声明顺序；union 分支按声明顺序逐项比较。
+     *
+     * @param a 左侧类型
+     * @param b 右侧类型
+     * @return 结构等值时为 {@code true}
+     */
     public static boolean equals(TypeExpr a, TypeExpr b) {
         if (a instanceof TypeExpr.Base base) {
             return b instanceof TypeExpr.Base other && base.name().equals(other.name());

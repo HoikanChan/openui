@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 package com.huawei.cloudsop.genui.core.llm;
 
@@ -19,7 +19,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.function.Consumer;
 
-/** Explicit Markdown request path; no DSL validation, repair or inherited DSL deadline. */
+/**
+ * 显式 Markdown 请求路径:不做 DSL 校验、修复,也不继承 DSL 会话的预算。
+ *
+ * @since 2026
+ */
 final class MarkdownGeneration {
     private final GenUiLlmConfig config;
     private final LlmTransport transport;

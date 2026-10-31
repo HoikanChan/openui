@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.contract;
@@ -43,21 +43,53 @@ public final class RuleEvaluator {
 
     private RuleEvaluator() {}
 
-    /** 宿主调用现场：实参事实、运算入口与诊断上报。 */
+    /**
+     * 宿主调用现场：实参事实、运算入口与诊断上报。
+     *
+     * @since 2026
+     */
     public interface CallSite {
-        /** 第 index 个实参的内核事实。 */
+        /**
+         * 第 index 个实参的内核事实。
+         *
+         * @param index 实参下标
+         * @return 该实参的事实
+         */
         Fact argument(int index);
 
-        /** 内核类型运算入口（携带本次会话预算）。 */
+        /**
+         * 内核类型运算入口（携带本次会话预算）。
+         *
+         * @return 本次求值使用的类型运算会话
+         */
         TypeOps ops();
 
-        /** 实参 index 不满足调用形式的 accept 模式（pattern 按规则文本渲染）。 */
+        /**
+         * 实参 index 不满足调用形式的 accept 模式（pattern 按规则文本渲染）。
+         *
+         * @param index 实参下标
+         * @param expectedPattern 规则文本形式的期望模式
+         * @param actual 实参事实
+         */
         void reportArgumentMismatch(int index, String expectedPattern, Fact actual);
 
-        /** 实参数量不满足调用形式。 */
+        /**
+         * 实参数量不满足调用形式。
+         *
+         * @param minimum 最少实参数
+         * @param maximum 最多实参数；空表示不封顶
+         * @param actual 实际实参数
+         */
         void reportArityViolation(int minimum, OptionalInt maximum, int actual);
 
-        /** 登记一条参数模式的检查结论(含 MATCH/UNPROVEN),供覆盖统计使用;默认忽略,便于轻量调用方。 */
+        /**
+         * 登记一条参数模式的检查结论(含 MATCH/UNPROVEN),供覆盖统计使用;默认忽略,便于轻量调用方。
+         *
+         * @param index 实参下标
+         * @param pattern 该位置的参数模式
+         * @param actual 实参事实
+         * @param result 模式检查结论
+         */
         default void recordArgumentCheck(
                 int index, TypePattern pattern, Fact actual, Checks.CheckResult result) {}
     }
@@ -65,6 +97,9 @@ public final class RuleEvaluator {
     /**
      * 对一次调用求值：数量检查 → 逐参模式检查 → 变量下界合并 → 代入结果规则。
      *
+     * @param rule 调用形式编译产物
+     * @param argumentCount 实际传入的实参数量
+     * @param callSite 宿主调用现场，提供实参事实与诊断上报
      * @return 结果事实；信息不足时为 Unknown + 对应 loss，不是无类型
      */
     public static Fact evaluate(TypeRule rule, int argumentCount, CallSite callSite) {
@@ -360,7 +395,12 @@ public final class RuleEvaluator {
         return TypeOps.flatten(type);
     }
 
-    /** 模式文本,用于诊断与覆盖登记(由规则求值器统一渲染,调用方不重复实现)。 */
+    /**
+     * 模式文本,用于诊断与覆盖登记(由规则求值器统一渲染,调用方不重复实现)。
+     *
+     * @param pattern 待渲染的模式
+     * @return 规则文本形式的模式名
+     */
     public static String displayPattern(TypePattern pattern) {
         if (pattern instanceof TypePattern.Scalar scalar) {
             return scalar.kind().displayName();

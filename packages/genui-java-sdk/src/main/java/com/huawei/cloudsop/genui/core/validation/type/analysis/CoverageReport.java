@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
@@ -21,7 +21,15 @@ import java.util.Set;
  */
 public final class CoverageReport {
 
-    /** 一条检查要求的稳定身份:语句/表达式路径 + 使用位置 + 要求种类 + 契约路径。 */
+    /**
+     * 一条检查要求的稳定身份:语句/表达式路径 + 使用位置 + 要求种类 + 契约路径。
+     *
+     * @param statementId 检查所属语句 id
+     * @param useSite 表达式在语句内的使用位置
+     * @param kind 要求种类
+     * @param contractPath 契约 schema 内的路径
+     * @since 2026
+     */
     public record Obligation(String statementId, String useSite, String kind, String contractPath) {
 
         /** 稳定身份键(同一次分析内去重)。 */
@@ -30,9 +38,17 @@ public final class CoverageReport {
         }
     }
 
-    /** 单条检查要求的结论记录。 */
+    /**
+     * 单条检查要求的结论记录。
+     *
+     * @param obligation 检查要求的稳定身份
+     * @param verdict 三态结论
+     * @param reasons 未证明原因;为 null 时归一化为空列表
+     * @since 2026
+     */
     public record Entry(Obligation obligation, Checks.Verdict verdict, List<Fact.Loss> reasons) {
 
+        /** 紧凑构造方法:把 null 原因列表归一化为不可变空列表。 */
         public Entry {
             reasons = reasons == null ? List.of() : List.copyOf(reasons);
         }
@@ -48,7 +64,11 @@ public final class CoverageReport {
         markTraversalTruncated();
     }
 
-    /** 登记一条检查结论;同一身份重复登记时保留首条(同一检查不因重试重复计数)。 */
+    /**
+     * 登记一条检查结论;同一身份重复登记时保留首条(同一检查不因重试重复计数)。
+     *
+     * @param entry 待登记的结论;原因含 PRECISION_BUDGET 时同时标记遍历截断
+     */
     public void record(Entry entry) {
         entries.putIfAbsent(entry.obligation().identity(), entry);
         if (entry.reasons().contains(Fact.Loss.PRECISION_BUDGET)) {
@@ -61,18 +81,38 @@ public final class CoverageReport {
         this.traversalTruncated = true;
     }
 
+    /**
+     * 已发现并登记的检查要求条数。
+     *
+     * @return 去重后的检查要求数
+     */
     public int discovered() {
         return entries.size();
     }
 
+    /**
+     * 结论为 MATCH 的检查要求数。
+     *
+     * @return 已证明满足的要求数
+     */
     public long matched() {
         return count(Checks.Verdict.MATCH);
     }
 
+    /**
+     * 结论为 MISMATCH 的检查要求数。
+     *
+     * @return 已证明违反的要求数
+     */
     public long mismatched() {
         return count(Checks.Verdict.MISMATCH);
     }
 
+    /**
+     * 结论为 UNPROVEN 的检查要求数。
+     *
+     * @return 证据不足、无法判定的要求数
+     */
     public long unproven() {
         return count(Checks.Verdict.UNPROVEN);
     }
@@ -81,12 +121,20 @@ public final class CoverageReport {
         return entries.values().stream().filter(e -> e.verdict() == verdict).count();
     }
 
-    /** 分析是否完整:遍历未截断即完整(未证明项不影响完整性,它们已被显式发现)。 */
+    /**
+     * 分析是否完整:遍历未截断即完整(未证明项不影响完整性,它们已被显式发现)。
+     *
+     * @return 遍历未因预算或访问限制截断时为 true
+     */
     public boolean analysisComplete() {
         return !traversalTruncated;
     }
 
-    /** 未证明原因计数;同一要求可计入多个原因,不依赖集合遍历顺序。 */
+    /**
+     * 未证明原因计数;同一要求可计入多个原因,不依赖集合遍历顺序。
+     *
+     * @return 以损失原因为键的计数视图,不可修改
+     */
     public Map<Fact.Loss, Long> unprovenReasons() {
         Map<Fact.Loss, Long> counts = new EnumMap<>(Fact.Loss.class);
         for (Entry entry : entries.values()) {
@@ -101,7 +149,11 @@ public final class CoverageReport {
         return Collections.unmodifiableMap(counts);
     }
 
-    /** 进入 {@code ValidationMetadata.extra} 的简要计数(字符串值)。 */
+    /**
+     * 进入 {@code ValidationMetadata.extra} 的简要计数(字符串值)。
+     *
+     * @return 覆盖计数、完整性标志与未证明原因明细,按固定键顺序排列
+     */
     public Map<String, String> metadataSummary() {
         Map<String, String> summary = new LinkedHashMap<>();
         summary.put("typeChecks.discovered", String.valueOf(discovered()));

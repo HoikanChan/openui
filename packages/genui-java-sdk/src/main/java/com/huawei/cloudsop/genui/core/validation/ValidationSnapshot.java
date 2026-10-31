@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation;
@@ -26,8 +26,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Internal validation input. Only the validation pipeline can build a complete, consistent
- * snapshot.
+ * 校验管线的内部输入：只由校验流程构造完整且自洽的快照。
+ *
+ * @since 2026
  */
 public final class ValidationSnapshot {
     private final Program program;
@@ -64,30 +65,65 @@ public final class ValidationSnapshot {
         return new ValidationSnapshot(request);
     }
 
+    /**
+     * 预处理并解析后的程序。
+     *
+     * @return 语法分析产物
+     */
     public Program program() {
         return program;
     }
 
+    /**
+     * 组件契约目录。
+     *
+     * @return 从请求契约派生的组件目录
+     */
     public ContractCatalog catalog() {
         return catalog;
     }
 
+    /**
+     * 本次校验使用的 builtin 词表。
+     *
+     * @return 从请求契约派生的词表
+     */
     public BuiltinCatalog builtins() {
         return builtins;
     }
 
+    /**
+     * 语义分析结果（含问题与入口语句）。
+     *
+     * @return 程序分析产物
+     */
     public ProgramAnalysis analysis() {
         return analysis;
     }
 
+    /**
+     * 渲染数据模型。
+     *
+     * @return 请求提供的数据模型；未提供时为 {@code null}
+     */
     public Map<String, Object> dataModel() {
         return dataModel;
     }
 
+    /**
+     * 根组件名。
+     *
+     * @return 请求指定的根组件名；未指定时为 {@code null}
+     */
     public String rootName() {
         return rootName;
     }
 
+    /**
+     * 外部引用名集合。
+     *
+     * @return 外部引用名；提供数据模型时包含 {@code data}
+     */
     public Set<String> externalRefs() {
         return externalRefs;
     }
@@ -123,7 +159,7 @@ public final class ValidationSnapshot {
     }
 
     private static List<BuiltinSpec> copyBuiltins(Iterable<BuiltinSpec> source) {
-        List<BuiltinSpec> builtins = new ArrayList<>();
+        List<BuiltinSpec> copiedBuiltins = new ArrayList<>();
         for (BuiltinSpec spec : source) {
             List<BuiltinSpec.ParamSpec> params =
                     spec.params().stream()
@@ -139,7 +175,7 @@ public final class ValidationSnapshot {
                                                     param.nameSyntax()))
                             .toList();
             // 结构化类型规则与 binder 布局随词表一并进入快照（#81/#83）：同一次契约解析，不在快照层剥离。
-            builtins.add(
+            copiedBuiltins.add(
                     new BuiltinSpec(
                             spec.name(),
                             spec.signature(),
@@ -151,7 +187,7 @@ public final class ValidationSnapshot {
                             spec.inputIndex(),
                             spec.callForms()));
         }
-        return List.copyOf(builtins);
+        return List.copyOf(copiedBuiltins);
     }
 
     private static TypeExpr copyType(TypeExpr type) {

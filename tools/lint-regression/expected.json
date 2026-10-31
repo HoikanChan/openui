@@ -1,0 +1,88 @@
+{
+  "checkstyle": {
+    "com/huawei/cloudsop/genui/lint/fixtures/BooleanExpressionComplexityPositive.java": [
+      ["BooleanExpressionComplexity", 10]
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/HeaderNegative.java": [
+      ["RegexpHeader", 1]
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/JavadocThrowsPositive.java": [
+      ["JavadocMethod", 20]
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/MissingJavadocMethodPositive.java": [
+      ["MissingJavadocMethod", 13]
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/SinceTagPositive.java": [
+      ["WriteTag", 10]
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/SummaryJavadocPositive.java": [
+      ["SummaryJavadoc", 8]
+    ]
+  },
+  "pmd": {
+    "com/huawei/cloudsop/genui/lint/fixtures/LoopModificationPositive.java": [
+      ["AvoidReassigningLoopVariables", 12],
+      ["AvoidReassigningLoopVariables", 18],
+      ["AvoidReassigningLoopVariables", 24]
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/NumericSuffixPositive.java": [
+      ["MissingNumericSuffix", 8],
+      ["MissingNumericSuffix", 9],
+      ["MissingNumericSuffix", 16],
+      ["MissingNumericSuffix", 20],
+      ["MissingNumericSuffix", 24],
+      ["MissingNumericSuffix", 25],
+      ["MissingNumericSuffix", 26],
+      ["MissingNumericSuffix", 27],
+      ["MissingNumericSuffix", 28],
+      ["MissingNumericSuffix", 29],
+      ["MissingNumericSuffix", 30],
+      ["MissingNumericSuffix", 30],
+      ["MissingNumericSuffix", 31],
+      ["MissingNumericSuffix", 31],
+      ["MissingNumericSuffix", 32]
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/ShadowFieldPositive.java": [
+      ["LocalVariableShadowsField", 17],
+      ["LocalVariableShadowsField", 18],
+      ["LocalVariableShadowsField", 22],
+      ["LocalVariableShadowsField", 30],
+      ["LocalVariableShadowsField", 36],
+      ["LocalVariableShadowsField", 42]
+    ]
+  },
+  "negativeCheckstyle": {
+    "com/huawei/cloudsop/genui/lint/fixtures/BooleanExpressionComplexityNegative.java": [
+      "BooleanExpressionComplexity"
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/HeaderOtherYearNegative.java": [
+      "RegexpHeader"
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/HeaderPositive.java": [
+      "RegexpHeader"
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/JavadocThrowsNegative.java": [
+      "JavadocMethod"
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/MissingJavadocMethodNegative.java": [
+      "MissingJavadocMethod"
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/SinceTagNegative.java": [
+      "WriteTag"
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/SummaryJavadocNegative.java": [
+      "SummaryJavadoc"
+    ]
+  },
+  "negativePmd": {
+    "com/huawei/cloudsop/genui/lint/fixtures/LoopModificationNegative.java": [
+      "AvoidReassigningLoopVariables"
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/NumericSuffixNegative.java": [
+      "MissingNumericSuffix"
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/ShadowFieldNegative.java": [
+      "LocalVariableShadowsField"
+    ]
+  }
+}

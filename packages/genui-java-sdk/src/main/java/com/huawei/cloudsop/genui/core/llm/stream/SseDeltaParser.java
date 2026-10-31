@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.llm.stream;
@@ -15,11 +15,27 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+/**
+ * 增量解析 OpenAI 兼容的 SSE 流：把每个非空 delta 正文推给接收器并累积返回完整内容。
+ *
+ * <p>帧以空行（LF 或 CRLF）分隔，只处理 {@code data:} 行，多行 data 以换行拼接。格式错误的帧被 跳过而不中断流；上游 error 帧、非 stop 的
+ * finish_reason、以及未以 stop/[DONE] 结束的流都会 抛出异常。
+ *
+ * @since 2026
+ */
 public final class SseDeltaParser {
     private static final int READ_BUFFER_SIZE = 1024;
 
     private SseDeltaParser() {}
 
+    /**
+     * 解析整条 SSE 流。收到 {@code [DONE]} 或 finish_reason=stop 即结束；流读完仍无结束标记时 视为失败。读取使用 UTF-8。
+     *
+     * @param sseStream SSE 字节流
+     * @param sink 每段 delta 正文的接收器
+     * @return 累积的完整内容
+     * @throws IOException 上游 error 帧、finish_reason 非 stop、流未以 stop/[DONE] 结束， 或底层读取失败
+     */
     public static String parse(InputStream sseStream, Consumer<String> sink) throws IOException {
         Objects.requireNonNull(sseStream, "sseStream must not be null");
         Objects.requireNonNull(sink, "sink must not be null");

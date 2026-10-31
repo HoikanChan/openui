@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
@@ -202,17 +202,31 @@ public final class SchemaCompiler {
         return requirements;
     }
 
-    /** 额外字段关闭要求(内部标记,分析层映射为结构检查)。 */
+    /**
+     * 额外字段关闭要求(内部标记,分析层映射为结构检查)。
+     *
+     * @param schemaPath 该 additionalProperties 在契约中的路径,供诊断定位
+     * @param declaredFields properties 中显式声明的字段名;显式字段不受关闭额外字段的限制
+     * @since 2026
+     */
     public record ExtraClosed(String schemaPath, java.util.Set<String> declaredFields)
             implements Expectation {
+        /** 复制显式字段名集合为不可变集合。 */
         public ExtraClosed {
             declaredFields = java.util.Set.copyOf(declaredFields);
         }
     }
 
-    /** 额外字段受约束要求(内部标记)。 */
+    /**
+     * 额外字段受约束要求(内部标记)。
+     *
+     * @param expectation 编译后的额外字段值 schema 要求
+     * @param declaredFields properties 中显式声明的字段名;显式字段不受额外字段约束
+     * @since 2026
+     */
     public record ExtraConstraint(Expectation expectation, java.util.Set<String> declaredFields)
             implements Expectation {
+        /** 复制显式字段名集合为不可变集合。 */
         public ExtraConstraint {
             declaredFields = java.util.Set.copyOf(declaredFields);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.prompt.characterize;
@@ -17,6 +17,8 @@ import java.util.Set;
  * the column degrades to free-text {@code string}), the occurrence count (rows where the key was
  * present), and the null count (rows where the key was present but the value was {@code null}).
  * Missing-row tracking is exposed separately so the caller can derive {@code optional}.
+ *
+ * @since 2026
  */
 final class ColumnAccumulator {
     private final int distinctCap;

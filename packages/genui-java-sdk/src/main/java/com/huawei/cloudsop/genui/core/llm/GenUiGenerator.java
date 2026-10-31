@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.llm;
@@ -43,7 +43,11 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 
-/** 公开生成入口。同步生成直接返回提取结果;流式生成实时转发,轮末校验当前完整程序, 失败时默认增量修复,修复失败或模型请求失败时整页降级为 Markdown。 */
+/**
+ * 公开生成入口。同步生成直接返回提取结果;流式生成实时转发,轮末校验当前完整程序,失败时默认增量修复, 修复失败或模型请求失败时整页降级为 Markdown。
+ *
+ * @since 2026
+ */
 public final class GenUiGenerator {
     private final GenerationSdk sdk;
     private final GenUiLlmConfig config;
@@ -72,10 +76,21 @@ public final class GenUiGenerator {
         this(sdk, config, transport, null, null);
     }
 
+    /**
+     * 使用默认配置与内置 HTTP transport 创建生成器。
+     *
+     * @return 使用 {@link GenUiLlmConfig#defaults()} 的生成器实例
+     */
     public static GenUiGenerator create() {
         return create(GenUiLlmConfig.defaults());
     }
 
+    /**
+     * 使用指定配置与内置 HTTP transport 创建生成器。
+     *
+     * @param config LLM 配置,为 null 时使用 {@link GenUiLlmConfig#defaults()}
+     * @return 使用内置 transport 的生成器实例
+     */
     public static GenUiGenerator create(GenUiLlmConfig config) {
         GenUiLlmConfig effectiveConfig = config == null ? GenUiLlmConfig.defaults() : config;
         return new GenUiGenerator(
@@ -84,10 +99,17 @@ public final class GenUiGenerator {
                 new HttpClientLlmTransport(effectiveConfig));
     }
 
+    /**
+     * 使用指定特征化配置与内置 HTTP transport 创建生成器。
+     *
+     * @param config LLM 配置,为 null 时使用 {@link GenUiLlmConfig#defaults()}
+     * @param characterization 特征化配置,为 null 时使用 {@link CharacterizationConfig#defaults()}
+     * @return 使用内置 transport 的生成器实例
+     */
     public static GenUiGenerator create(
             GenUiLlmConfig config, CharacterizationConfig characterization) {
         GenUiLlmConfig effectiveConfig = config == null ? GenUiLlmConfig.defaults() : config;
-        GenerationSdk sdk =
+        GenerationSdk generationSdk =
                 GenerationSdk.builder()
                         .characterization(
                                 characterization == null
@@ -95,32 +117,56 @@ public final class GenUiGenerator {
                                         : characterization)
                         .build();
         return new GenUiGenerator(
-                sdk, effectiveConfig, new HttpClientLlmTransport(effectiveConfig));
+                generationSdk, effectiveConfig, new HttpClientLlmTransport(effectiveConfig));
     }
 
+    /**
+     * 使用调用方提供的 transport 创建生成器,例如在测试中替换模型请求。
+     *
+     * @param config LLM 配置,为 null 时使用 {@link GenUiLlmConfig#defaults()}
+     * @param transport 模型传输实现,不能为 null
+     * @return 绑定该 transport 的生成器实例
+     */
     public static GenUiGenerator withTransport(GenUiLlmConfig config, LlmTransport transport) {
         return new GenUiGenerator(GenerationSdk.create(), config, transport);
     }
 
+    /**
+     * 使用指定特征化配置和自定义 transport 创建生成器。
+     *
+     * <p>{@code characterization} 为 null 时使用 {@link CharacterizationConfig#defaults()}; {@code
+     * config} 为 null 时使用 {@link GenUiLlmConfig#defaults()}。
+     *
+     * @param config LLM 配置,可为 null
+     * @param characterization 特征化配置,可为 null
+     * @param transport 模型传输实现,不能为 null
+     * @return 绑定上述依赖的生成器实例
+     */
     public static GenUiGenerator withTransport(
             GenUiLlmConfig config,
             CharacterizationConfig characterization,
             LlmTransport transport) {
-        GenerationSdk sdk =
+        GenerationSdk generationSdk =
                 GenerationSdk.builder()
                         .characterization(
                                 characterization == null
                                         ? CharacterizationConfig.defaults()
                                         : characterization)
                         .build();
-        return new GenUiGenerator(sdk, config, transport);
+        return new GenUiGenerator(generationSdk, config, transport);
     }
 
     /**
-     * Create a generator backed by a fake/test transport, a custom validation config, and an
-     * optional custom validator. If {@code validationConfig} is null, defaults to {@link
-     * GenUiValidationConfig#incremental()}. If {@code validator} is null, defaults to {@link
-     * DefaultOpenuiLangValidator}.
+     * 使用自定义 transport 与显式校验/修复配置创建生成器,便于测试或宿主自管连接。
+     *
+     * <p>{@code validationConfig} 为 null 时使用 {@link GenUiValidationConfig#incremental()}; {@code
+     * validator} 为 null 时使用 {@link DefaultOpenuiLangValidator}。
+     *
+     * @param config LLM 配置,为 null 时使用 {@link GenUiLlmConfig#defaults()}
+     * @param transport 模型传输实现,不能为 null
+     * @param validationConfig 校验/修复配置,可为 null
+     * @param validator DSL 校验器,可为 null
+     * @return 绑定上述依赖的生成器实例
      */
     public static GenUiGenerator withTransport(
             GenUiLlmConfig config,
@@ -131,13 +177,29 @@ public final class GenUiGenerator {
                 GenerationSdk.create(), config, transport, validationConfig, validator);
     }
 
-    /** 使用调用方自建的 {@link GenerationSdk}(例如注入外部 base contract)与自定义 transport 创建生成器。 */
+    /**
+     * 使用调用方自建的 {@link GenerationSdk}(例如注入外部 base contract)与自定义 transport 创建生成器。
+     *
+     * @param sdk 已配置的生成 SDK,不能为 null
+     * @param config LLM 配置,为 null 时使用 {@link GenUiLlmConfig#defaults()}
+     * @param transport 模型传输实现,不能为 null
+     * @return 绑定上述依赖的生成器实例
+     */
     public static GenUiGenerator withTransport(
             GenerationSdk sdk, GenUiLlmConfig config, LlmTransport transport) {
         return new GenUiGenerator(sdk, config, transport);
     }
 
-    /** 使用调用方自建 SDK 与显式校验/修复配置创建生成器(测试或宿主关闭修复时使用)。 */
+    /**
+     * 使用调用方自建 SDK 与显式校验/修复配置创建生成器(测试或宿主关闭修复时使用)。
+     *
+     * @param sdk 已配置的生成 SDK,不能为 null
+     * @param config LLM 配置,为 null 时使用 {@link GenUiLlmConfig#defaults()}
+     * @param transport 模型传输实现,不能为 null
+     * @param validationConfig 校验/修复配置,为 null 时使用 {@link GenUiValidationConfig#incremental()}
+     * @param validator DSL 校验器,为 null 时使用 {@link DefaultOpenuiLangValidator}
+     * @return 绑定上述依赖的生成器实例
+     */
     public static GenUiGenerator withTransport(
             GenerationSdk sdk,
             GenUiLlmConfig config,
@@ -147,12 +209,27 @@ public final class GenUiGenerator {
         return new GenUiGenerator(sdk, config, transport, validationConfig, validator);
     }
 
+    /**
+     * 向底层 SDK 注册扩展契约,后续生成都会带上该扩展。
+     *
+     * @param extension 扩展定义,不能为 null
+     * @return 当前实例,便于链式调用
+     */
     public GenUiGenerator register(GenUIExtension extension) {
         sdk.register(extension);
         return this;
     }
 
-    /** 同步生成:单次模型请求后直接返回提取的 DSL,不校验、不修复、不自动降级。 */
+    /**
+     * 同步生成:单次模型请求后直接返回提取的 DSL,不校验、不修复、不自动降级。
+     *
+     * <p>{@code request} 为 null 时按空请求处理。{@code renderComponentsKey} 为 {@code "Markdown"} 时改走独立
+     * Markdown 路径,不发起 DSL 请求。
+     *
+     * @param request 生成请求,可为 null
+     * @return 提取出的 DSL 与请求回显的数据模型
+     * @throws GenerationSdkException 模型请求失败时抛出,原始异常作为 cause 保留
+     */
     public GenUiGenerationResult generate(UiGenerationRequest request) {
         UiGenerationRequest effective =
                 request == null ? UiGenerationRequest.builder().build() : request;
@@ -170,14 +247,28 @@ public final class GenUiGenerator {
         }
     }
 
-    /** Configure before use. Copies share the SDK's registered contracts, not invocation state. */
+    /**
+     * 设置时钟与预算调度器,返回共享同一 SDK 和配置的新实例。
+     *
+     * <p>副本共享 SDK 已注册的契约,但不共享调用期状态。请在开始生成前配置。
+     *
+     * @param value 时钟与调度器,不能为 null
+     * @return 使用该计时配置的新生成器实例
+     */
     public GenUiGenerator withTiming(GenerationTiming value) {
         GenUiGenerator copy = scoped(transport);
         copy.timing = Objects.requireNonNull(value);
         return copy;
     }
 
-    /** Host-supplied system prompt, e.g. the reference service's debug override. */
+    /**
+     * 覆盖装配出的 system prompt,供宿主做调试注入。
+     *
+     * <p>返回新实例,当前实例不受影响;{@code prompt} 为 null 表示继续使用 SDK 装配结果。
+     *
+     * @param prompt 宿主提供的 system prompt,可为 null
+     * @return 使用该 prompt 的新生成器实例
+     */
     public GenUiGenerator withSystemPrompt(String prompt) {
         GenUiGenerator copy = scoped(transport);
         copy.systemPromptOverride = prompt;
@@ -231,13 +322,21 @@ public final class GenUiGenerator {
         return buildBodyFromMessages(messages);
     }
 
-    /** Executes one repair model request; {@code body} is the full chat-completion JSON. */
+    /**
+     * Executes one repair model request; {@code body} is the full chat-completion JSON.
+     *
+     * @since 2026
+     */
     @FunctionalInterface
     private interface RepairRoundExecutor {
         void execute(String body, String previousOutput) throws LlmTransportException;
     }
 
-    /** Inputs for the stream incremental-repair loop. */
+    /**
+     * Inputs for the stream incremental-repair loop.
+     *
+     * @since 2026
+     */
     private record RepairLoop(
             String originalSystemPrompt,
             UiGenerationRequest request,
@@ -290,6 +389,8 @@ public final class GenUiGenerator {
 
     /**
      * Mutable per-invocation markers shared with the failure snapshot; guarded by its own monitor.
+     *
+     * @since 2026
      */
     private static final class RepairLoopState {
         private boolean inFlight;
@@ -343,10 +444,14 @@ public final class GenUiGenerator {
     }
 
     /**
-     * Stream realtime DSL, allowing the initial generation and first repair to finish. The
-     * 20-second budget gates subsequent repairs only. On budget exhaustion with invalid DSL or
-     * model failure, emit a whole-page {@code replace} and invoke the independent Markdown path.
-     * One {@code done} ends the entire invocation; Markdown failure emits {@code error} before it.
+     * 流式生成 DSL,默认在失败时降级到内置 Markdown 路径。
+     *
+     * <p>首次生成与第一次修复允许跑完,20 秒预算只约束后续修复。预算耗尽且 DSL 仍无效、或模型 请求失败时,发送整页 {@code replace} 帧并转入独立 Markdown
+     * 流程。整个调用只以一个 {@code done} 结束;Markdown 请求失败会先发送 {@code error}。
+     *
+     * @param request 生成请求,为 null 时按空请求处理
+     * @param sink 渲染帧接收器,不能为 null
+     * @return 本次生成的最终结果;降级成功时保留 DSL 会话的轮次记录
      */
     public GenUiGenerationResult generateStream(
             UiGenerationRequest request, Consumer<RenderStreamEnvelope> sink) {
@@ -356,7 +461,17 @@ public final class GenUiGenerator {
                 (original, reason, output) -> markdown().generateStream(original, output));
     }
 
-    /** The host may hand off to its existing independent Markdown flow at this public seam. */
+    /**
+     * 流式生成,DSL 会话失败时调用 {@code fallback} 完成整页 Markdown 替换。
+     *
+     * <p>{@code sink} 与 {@code fallback} 不能为 null;{@code request} 为 null 时按空请求处理。{@code
+     * renderComponentsKey} 为 {@code "Markdown"} 时直接走独立 Markdown 路径,不经过 DSL 生成。
+     *
+     * @param request 生成请求,可为 null
+     * @param sink 渲染帧接收器,不能为 null
+     * @param fallback DSL 失败后的整页降级实现,不能为 null
+     * @return 本次生成的最终结果
+     */
     public GenUiGenerationResult generateStream(
             UiGenerationRequest request,
             Consumer<RenderStreamEnvelope> sink,

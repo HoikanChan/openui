@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
@@ -41,7 +41,13 @@ public final class LazyBuiltinBinders {
         return spec.activeBinderIndexes(comp.args().size());
     }
 
-    /** body/模板实参下标:委托契约编译产物 {@link BuiltinSpec#bodyIndex(int)}。 */
+    /**
+     * body/模板实参下标:委托契约编译产物 {@link BuiltinSpec#bodyIndex(int)}。
+     *
+     * @param spec 编译后的 builtin 声明
+     * @param comp 被检查的调用
+     * @return body 实参下标；调用形式无 body 或实参数量不足时为 {@code -1}
+     */
     public static int bodyIndex(BuiltinSpec spec, AstNode.Comp comp) {
         return spec.bodyIndex(comp.args().size());
     }

@@ -6,8 +6,8 @@
 <!--
     SmartCanvas Checkstyle 配置（verify 阶段强制检查）
     等效替代 CodeCheckCLI 中的 fixbotengine-java + cMetrics 部分规则。
-    与 lint-config 模板的差异：版权头沿用仓库既有格式；移除不存在的 DelegationAssert；
-    SuppressionFilter 指向 config/checkstyle/suppressions.xml。
+    此文件是 Maven/CI 唯一启用的 Checkstyle 规则集。
+    华为规则中的类型语义检查由 PMD 补充；不要维护未被构建引用的平行规则集。
 -->
 <module name="Checker">
     <property name="charset" value="UTF-8"/>
@@ -37,6 +37,50 @@
     </module>
 
     <module name="TreeWalker">
+        <!-- 方法级豁免：按类名+方法名匹配，见 suppressions-xpath.xml -->
+        <module name="SuppressionXpathFilter">
+            <property name="file" value="${lint.config.dir}/checkstyle/suppressions-xpath.xml"/>
+        </module>
+
+        <!-- G.CMT.02 / G.CMT.03：文档存在性、功能说明、参数/返回值/异常标签 -->
+        <module name="MissingJavadocType">
+            <property name="scope" value="public"/>
+        </module>
+        <module name="JavadocType">
+            <property name="scope" value="public"/>
+        </module>
+        <!--
+          G.CMT.02 只要求顶层 public 类型带 @since；这里对所有已写 Javadoc 的类型统一要求，
+          比规范更严格一档：嵌套类型同样对外可见，单独豁免需要按 AST 节点过滤，
+          而 WriteTag 的违规挂点不支持 XPath 豁免（实测无效），维护两套判定反而更脆。
+        -->
+        <module name="WriteTag">
+            <property name="tag" value="@since"/>
+            <property name="tagFormat" value="\S.*"/>
+            <property name="tagSeverity" value="ignore"/>
+        </module>
+        <module name="MissingJavadocMethod">
+            <property name="scope" value="protected"/>
+        </module>
+        <module name="JavadocMethod">
+            <property name="accessModifiers" value="public,protected"/>
+            <property name="validateThrows" value="true"/>
+        </module>
+        <!-- 功能说明：首句必须存在并以标点结束；中文句号同样算数 -->
+        <module name="JavadocStyle">
+            <property name="scope" value="protected"/>
+            <property name="checkFirstSentence" value="true"/>
+            <property name="checkEmptyJavadoc" value="true"/>
+            <property name="endOfSentenceFormat"
+                      value="([.?!。][ \t\n\r\f&lt;])|([.?!。:]$)"/>
+        </module>
+
+        <!-- G.CTL.01：每个布尔表达式最多五个逻辑运算符 -->
+        <module name="BooleanExpressionComplexity">
+            <property name="max" value="5"/>
+        </module>
+        <module name="UpperEll"/>
+
         <!-- ========== 命名规范 ========== -->
         <module name="ConstantName"/>
         <module name="LocalFinalVariableName"/>

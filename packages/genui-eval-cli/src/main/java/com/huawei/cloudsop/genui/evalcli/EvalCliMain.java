@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.evalcli;
@@ -36,6 +36,8 @@ import java.util.Map;
  * </pre>
  *
  * LLM 连接配置经环境变量:LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / HTTPS_PROXY(print-prompt 均不需要)。
+ *
+ * @since 2026
  */
 public final class EvalCliMain {
     /** 与 Node 侧 prompt-artifact 约定一致的规范 prompt 占位 dataModel。 */
@@ -50,6 +52,11 @@ public final class EvalCliMain {
 
     private EvalCliMain() {}
 
+    /**
+     * CLI 入口：执行 generate 或 print-prompt。参数用法错误以退出码 2 结束，其他异常以退出码 1 结束。
+     *
+     * @param args 命令行参数
+     */
     public static void main(String[] args) {
         // stdout 承载 prompt/DSL 内容,必须无条件 UTF-8,不随平台控制台编码漂移
         PrintStream out =
@@ -130,7 +137,11 @@ public final class EvalCliMain {
         }
     }
 
-    /** 参数解析结果。command 为 generate 或 print-prompt。 */
+    /**
+     * 参数解析结果。command 为 generate 或 print-prompt。
+     *
+     * @since 2026
+     */
     record CliArgs(String command, String baseContractPath, String jobsPath, int concurrency) {
         static CliArgs parse(String[] args) {
             if (args == null || args.length == 0) {
@@ -184,7 +195,11 @@ public final class EvalCliMain {
         }
     }
 
-    /** 单个生成用例:{id, userInput, dataModel}。 */
+    /**
+     * 单个生成用例:{id, userInput, dataModel}。
+     *
+     * @since 2026
+     */
     record GenerationJob(String id, String userInput, Map<String, Object> dataModel) {
         @SuppressWarnings("unchecked")
         static List<GenerationJob> parseAll(String jobsJson) {

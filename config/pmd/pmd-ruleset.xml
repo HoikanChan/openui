@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="openui-java-pmd"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+    <description>
+        Huawei Java rules that need type resolution. Checkstyle keeps the purely syntactic rules.
+    </description>
+
+    <!--
+        G.OBJ.04: local variables must not shadow a field of an enclosing class.
+        Scope is local-variable-like declarations: locals, foreach variables, catch parameters,
+        try-with-resources variables, and lambda parameters. Method/constructor parameters are
+        excluded so renaming a local never forces a Javadoc edit.
+    -->
+    <rule name="LocalVariableShadowsField"
+          language="java"
+          message="G.OBJ.04: local variable shadows a field with the same name"
+          class="net.sourceforge.pmd.lang.rule.xpath.XPathRule">
+        <description>
+            A local variable that reuses a field name hides the field and invites wrong references.
+            The query compares names against fields declared directly in every enclosing class.
+        </description>
+        <priority>3</priority>
+        <properties>
+            <property name="xpath">
+                <value>
+                    <![CDATA[
+//VariableId[
+    (ancestor::LocalVariableDeclaration
+        or ancestor::ForeachStatement
+        or ancestor::CatchParameter
+        or ancestor::Resource
+        or ancestor::LambdaParameter)
+    and @Name = ancestor::ClassDeclaration
+            /ClassBody
+            /FieldDeclaration
+            /VariableDeclarator
+            /VariableId
+            /@Name
+]
+                    ]]>
+                </value>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- G.CTL.05: never reassign the loop control variable inside the loop body. -->
+    <rule ref="category/java/bestpractices.xml/AvoidReassigningLoopVariables">
+        <properties>
+            <property name="forReassign" value="deny"/>
+            <property name="foreachReassign" value="deny"/>
+        </properties>
+    </rule>
+
+    <!-- G.FMT.20: type-resolved rule, implemented in tools/lint-rules. -->
+    <rule name="MissingNumericSuffix"
+          language="java"
+          message="G.FMT.20: numeric literal is missing its type suffix"
+          class="com.huawei.cloudsop.genui.lint.MissingNumericSuffixRule">
+        <description>
+            A numeric literal converted to long needs an L suffix; one converted to float needs
+            an F suffix. The rule reads PMD's conversion context, so it covers variable
+            initializers, assignments, return values, invocation arguments, and array values.
+        </description>
+        <priority>3</priority>
+    </rule>
+</ruleset>

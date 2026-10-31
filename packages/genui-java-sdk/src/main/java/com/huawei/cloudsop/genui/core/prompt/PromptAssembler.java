@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.prompt;
@@ -44,11 +44,26 @@ public final class PromptAssembler {
      * Test/legacy convenience overload without {@code capabilityGaps} (defaults to empty).
      * Production code must call {@link #assemble(PromptInput, List, List)} so {@code
      * capabilityGaps} are included.
+     *
+     * @param input the assembled inputs selecting mode flags and contract sections
+     * @param builtins the builtin docs merged from the frontend manifest
+     * @return the complete openui-lang prompt text
      */
     public static String assemble(PromptInput input, List<BuiltinSpec> builtins) {
         return assemble(input, builtins, List.of());
     }
 
+    /**
+     * Assembles the full prompt from the given inputs, builtin manifest and capability boundaries.
+     *
+     * <p>A {@code null} {@code capabilityGaps} is treated as empty. Mode flags follow their
+     * tri-state defaults: tool calls are assumed when tools exist, and bindings follow tool calls.
+     *
+     * @param input the assembled inputs selecting mode flags and contract sections
+     * @param builtins the builtin docs merged from the frontend manifest
+     * @param capabilityGaps capability boundaries to render, or {@code null} for none
+     * @return the complete openui-lang prompt text
+     */
     public static String assemble(
             PromptInput input, List<BuiltinSpec> builtins, List<CapabilityGapSpec> capabilityGaps) {
         String rootName = input.root() == null ? "Root" : input.root();
@@ -886,6 +901,24 @@ public final class PromptAssembler {
             - When the user asks a question, respond with text only — NO code. The dashboard stays unchanged.
             - The parser extracts code from fences automatically. Text outside fences is shown as chat.""";
 
+    /**
+     * Inputs for {@link #assemble(PromptInput, List, List)}, mirroring the TypeScript {@code
+     * PromptSpec} fields.
+     *
+     * @param preamble custom prompt preamble; {@code null} uses the SDK default
+     * @param root name of the root component; {@code null} defaults to {@code Root}
+     * @param components component prompt specs keyed by component name
+     * @param componentGroups groups used to organize component signatures
+     * @param dataModel host data model rendered as a data-model section, or {@code null}
+     * @param tools tools exposed to the model
+     * @param examples example snippets appended to the prompt
+     * @param additionalRules extra rules appended after the built-in rules
+     * @param editMode when {@code true}, append the edit-mode instructions
+     * @param inlineMode when {@code true}, append the inline-mode instructions
+     * @param toolCalls tool-call flag; {@code null} derives it from whether {@code tools} is empty
+     * @param bindings bindings flag; {@code null} derives it from {@code toolCalls}
+     * @since 2026
+     */
     public record PromptInput(
             String preamble,
             String root,

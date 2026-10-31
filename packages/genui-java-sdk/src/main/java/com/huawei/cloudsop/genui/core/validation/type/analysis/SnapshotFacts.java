@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
@@ -24,12 +24,27 @@ public final class SnapshotFacts {
 
     private SnapshotFacts() {}
 
-    /** 把一个 JSON 值类型化为事实。{@code path} 用于观察证据关联;{@code depth} 为当前对象深度(预算截断用)。 */
+    /**
+     * 把一个 JSON 值类型化为事实。{@code path} 用于观察证据关联;{@code depth} 为当前对象深度(预算截断用)。
+     *
+     * @param value JSON 值;{@code null} 类型化为 null 标量
+     * @param path 该值在快照中的路径;{@code null} 表示不记录观察证据
+     * @param depth 当前对象深度,超过默认预算上限时截断为 Unknown
+     * @return 该值的类型上界与观察证据;预算截断时附带 {@link Fact.Loss#PRECISION_BUDGET}
+     */
     public static Fact typeOfValue(Object value, String path, int depth) {
         return typeOfValue(value, path, depth, AnalysisBudget.defaults().tracker());
     }
 
-    /** 带预算的深度截断版本;超过预算的对象/数组/采样进入 Unknown 上界并记录预算损失。 */
+    /**
+     * 带预算的深度截断版本;超过预算的对象/数组/采样进入 Unknown 上界并记录预算损失。
+     *
+     * @param value JSON 值;{@code null} 类型化为 null 标量
+     * @param path 该值在快照中的路径;{@code null} 表示不记录观察证据
+     * @param depth 当前对象深度,超过 {@code budget} 的上限时截断为 Unknown
+     * @param budget 分析预算,用于深度上限与数组采样上限
+     * @return 该值的类型上界与观察证据;发生截断时附带 {@link Fact.Loss#PRECISION_BUDGET}
+     */
     public static Fact typeOfValue(
             Object value, String path, int depth, AnalysisBudget.Tracker budget) {
         Set<Fact.Evidence> evidence = new LinkedHashSet<>();

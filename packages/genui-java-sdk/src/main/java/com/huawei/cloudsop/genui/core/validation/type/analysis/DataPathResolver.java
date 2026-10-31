@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
@@ -29,6 +29,15 @@ public final class DataPathResolver {
 
     private static final int MAX_STRING_DOMAIN_SIZE = 32;
 
+    /**
+     * 在单次快照上解析一条字面量数据路径。
+     *
+     * <p>逐段遍历并记录字段存在性,最后把观察值提升为 {@link Type};数组字段投影会包成无界数组。
+     *
+     * @param dataModel Render Data Model 快照;null 时按空对象处理
+     * @param path 待解析的路径
+     * @return 成功解析的类型与证据,或缺失/非法遍历/不可证明的失败结果
+     */
     public DataPathResolution resolve(Map<String, Object> dataModel, DataPath path) {
         List<Object> values = new ArrayList<>();
         values.add(dataModel == null ? Map.of() : dataModel);
@@ -47,7 +56,7 @@ public final class DataPathResolver {
 
         Type type = inferValues(values);
         for (int i = 0; i < pluckDepth; i++) {
-            type = Types.sequence(type, 0, Type.Sequence.UNBOUNDED);
+            type = Types.sequence(type, 0L, Type.Sequence.UNBOUNDED);
         }
         // 非投影路径只剩一个值;投影结果是数组,旧快照查值在数组字段投影处返回空,故不保留。
         Object observedValue = pluckDepth == 0 && values.size() == 1 ? values.get(0) : null;
@@ -55,8 +64,11 @@ public final class DataPathResolver {
     }
 
     /**
-     * Return a proven array cardinality for a literal data path, or empty when traversal is
-     * uncertain.
+     * 为字面量数据路径返回已证明的数组长度;遍历不确定时返回空。
+     *
+     * @param dataModel Render Data Model 快照;null 时任何非空路径都无法证明
+     * @param path 待遍历的数据路径
+     * @return 路径最终值为数组时的元素数;路径缺失、越界或不是数组时为空
      */
     public OptionalInt resolveCardinality(Map<String, Object> dataModel, DataPath path) {
         Object current = dataModel;
@@ -221,7 +233,7 @@ public final class DataPathResolver {
             if (list.isEmpty()) {
                 return Types.emptySequence();
             }
-            return Types.sequence(inferValues(new ArrayList<>(list)), 0, Type.Sequence.UNBOUNDED);
+            return Types.sequence(inferValues(new ArrayList<>(list)), 0L, Type.Sequence.UNBOUNDED);
         }
         if (value instanceof Map<?, ?> map) {
             Map<String, Type.Field> fields = new LinkedHashMap<>();

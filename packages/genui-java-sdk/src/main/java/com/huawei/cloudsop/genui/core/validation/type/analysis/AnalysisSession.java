@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
@@ -52,7 +52,17 @@ public final class AnalysisSession {
 
     private static final int COLUMN_MIN_ARGS_FOR_OPTIONS = COLUMN_OPTIONS_ARG_INDEX + 1;
 
-    /** 会话输入:程序、组件目录、builtin 词表、Render Data Model 快照(可空)、根语句 id、预算。 */
+    /**
+     * 会话输入:程序、组件目录、builtin 词表、Render Data Model 快照(可空)、根语句 id、预算。
+     *
+     * @param program 已解析的取值程序
+     * @param catalog 组件目录
+     * @param builtins builtin 词表
+     * @param dataModel Render Data Model 快照;null 表示无快照,数据依赖部分记 UNKNOWN_INPUT
+     * @param entryId 入口语句 id;null 或不存在时没有可达起点
+     * @param budget 会话预算;null 时使用 {@link AnalysisBudget#defaults()}
+     * @since 2026
+     */
     public record Input(
             Program program,
             ContractCatalog catalog,
@@ -61,6 +71,11 @@ public final class AnalysisSession {
             String entryId,
             AnalysisBudget budget) {
 
+        /**
+         * 紧凑构造方法:校验程序与两个目录非 null,并补齐默认预算。
+         *
+         * @throws IllegalArgumentException 程序、组件目录或 builtin 词表为 null 时
+         */
         public Input {
             if (program == null || catalog == null || builtins == null) {
                 throw new IllegalArgumentException("program, catalog and builtins are required");
@@ -69,12 +84,20 @@ public final class AnalysisSession {
         }
     }
 
-    /** 会话输出:诊断(仅 MISMATCH)与覆盖报告。 */
+    /**
+     * 会话输出:诊断(仅 MISMATCH)与覆盖报告。
+     *
+     * @param issues 由 MISMATCH 产生的诊断,按发现顺序排列
+     * @param coverage 本轮检查要求的覆盖统计
+     * @since 2026
+     */
     public record Output(List<ValidationIssue> issues, CoverageReport coverage) {}
 
     /**
      * Render 延迟模板产物(#77 第 10.3 节):body 位置、声明环境与声明语句保存在会话内,通用类型代数只保留 {@link Type.Template} 形状,不把 AST
      * 与环境塞进类型。
+     *
+     * @since 2026
      */
     private record DeferredTemplate(
             AstNode.Comp call,
@@ -82,7 +105,11 @@ public final class AnalysisSession {
             LexicalEnvironment declarationEnv,
             int bodyIndex) {}
 
-    /** 模板使用位置的诊断身份:诊断归属实际使用处(语句与路径),模板声明语句另行保留可追溯位置 (#77 第 10.3/11.3 节)。同一模板的不同使用位置不得共用去重身份。 */
+    /**
+     * 模板使用位置的诊断身份:诊断归属实际使用处(语句与路径),模板声明语句另行保留可追溯位置 (#77 第 10.3/11.3 节)。同一模板的不同使用位置不得共用去重身份。
+     *
+     * @since 2026
+     */
     private record TemplateUseSite(
             String pathPrefix,
             String coverageUseSite,
@@ -121,7 +148,14 @@ public final class AnalysisSession {
         }
     }
 
-    /** 执行一次完整分析。 */
+    /**
+     * 执行一次完整分析。
+     *
+     * <p>遍历入口可达的取值语句并登记检查结论;会话预算发生过精度损失时,同步把覆盖报告标记为 遍历截断。
+     *
+     * @param input 会话输入
+     * @return 仅 MISMATCH 产生的诊断与覆盖报告
+     */
     public static Output analyze(Input input) {
         AnalysisSession session = new AnalysisSession(input);
         session.run();
@@ -209,7 +243,11 @@ public final class AnalysisSession {
     // 词法环境
     // ───────────────────────────────────────────────────────────────────────
 
-    /** 不可变父子链词法环境;binder 只影响声明的 body,嵌套同名正常遮蔽。 */
+    /**
+     * 不可变父子链词法环境;binder 只影响声明的 body,嵌套同名正常遮蔽。
+     *
+     * @since 2026
+     */
     static final class LexicalEnvironment {
         private final LexicalEnvironment parent;
         private final String name;
@@ -1249,7 +1287,7 @@ public final class AnalysisSession {
                                 : null;
                 if (elementType != null) {
                     return new Expectation.Accept(
-                            Types.sequence(elementType, 0, Type.Sequence.UNBOUNDED));
+                            Types.sequence(elementType, 0L, Type.Sequence.UNBOUNDED));
                 }
             }
             return new Expectation.Accept(Types.unknownSequence());
@@ -1272,15 +1310,16 @@ public final class AnalysisSession {
                 || spec.inputIndex() >= arguments.size()) {
             return Fact.unknown(Fact.Loss.MISSING_CONTEXT);
         }
-        Fact input = arguments.get(spec.inputIndex());
-        Fact element = ops.element(input);
-        boolean emptyPossible = lengthMayBeZero(input);
+        Fact inputFact = arguments.get(spec.inputIndex());
+        Fact element = ops.element(inputFact);
+        boolean emptyPossible = lengthMayBeZero(inputFact);
         // 元素存在已证明:直接观察到元素行,或字段读取的证据关联保留了快照中的嵌套行(#77 §6.5)。
         // 无任何损失不等于观察到元素——Filter 删除保留行后元素类型仍在但存在性未证明(§6.2/§7.5),
         // subset 会显式打上 NO_ELEMENT_EVIDENCE。
         boolean elementExistenceProven = !element.evidence().isEmpty();
-        if (!elementExistenceProven && !input.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)) {
-            for (Fact.Evidence item : input.evidence()) {
+        if (!elementExistenceProven
+                && !inputFact.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)) {
+            for (Fact.Evidence item : inputFact.evidence()) {
                 if (item instanceof Fact.Evidence.ObservedValue observed
                         && observed.value() instanceof List<?> values
                         && !values.isEmpty()) {
@@ -1316,7 +1355,7 @@ public final class AnalysisSession {
         if (emptyPossible) {
             body = body.withLoss(Fact.Loss.NO_ELEMENT_EVIDENCE);
         }
-        return ops.map(input, body);
+        return ops.map(inputFact, body);
     }
 
     /** 去掉输入层面的未知标记,保留元素存在性标记与逐元素精度损失。 存在性未证明时证据一并清空:那些证据来自未证明存在的行(Filter 后不保证任何行保留),不可信。 */
@@ -1738,9 +1777,9 @@ public final class AnalysisSession {
 
     private static Expectation chartLabelsExpectation() {
         Type stringElements =
-                Types.sequence(Types.scalar(Type.ScalarKind.STRING), 0, Type.Sequence.UNBOUNDED);
+                Types.sequence(Types.scalar(Type.ScalarKind.STRING), 0L, Type.Sequence.UNBOUNDED);
         Type numberElements =
-                Types.sequence(Types.scalar(Type.ScalarKind.NUMBER), 0, Type.Sequence.UNBOUNDED);
+                Types.sequence(Types.scalar(Type.ScalarKind.NUMBER), 0L, Type.Sequence.UNBOUNDED);
         return new Expectation.AnyOf(
                 List.of(
                         new Expectation.Accept(stringElements),

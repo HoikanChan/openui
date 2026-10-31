@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.contract;
@@ -13,6 +13,11 @@ import com.huawei.cloudsop.genui.core.GenerationSdkException;
  */
 public final class RuleCompilationException extends GenerationSdkException {
 
+    /**
+     * 以诊断消息构造加载期异常。
+     *
+     * @param message 包含 builtin 名与出错位置的诊断消息
+     */
     public RuleCompilationException(String message) {
         super(message);
     }

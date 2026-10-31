@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.contract;
@@ -39,6 +39,7 @@ public final class RuleCompiler {
      * @param builtinName 所属 builtin 名（诊断定位用）
      * @param raw 契约 JSON 对象；{@code null} 表示该 builtin 未声明结构化规则
      * @return 编译产物；raw 为 null 时返回 null
+     * @throws RuleCompilationException 版本不匹配、缺少 arity/parameters/result，或出现未知 tag/op、非法实参引用等布局冲突
      */
     public static TypeRule compile(String builtinName, Map<String, Object> raw) {
         if (raw == null) {

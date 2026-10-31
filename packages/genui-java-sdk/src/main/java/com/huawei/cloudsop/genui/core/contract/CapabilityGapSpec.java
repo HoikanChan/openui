@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.contract;
@@ -32,6 +32,12 @@ public record CapabilityGapSpec(
     public static final String NOTICE_STATEMENT_TEMPLATE =
             "capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\", \"暂不支持<name>，以下按原始数据展示\")";
 
+    /**
+     * 规范化构造：{@code null} 列表归一为空列表，其余列表改为不可变包装。
+     *
+     * <p>这里刻意允许列表内出现 {@code null} 元素，以便 {@code GenerationContractLoader.validateCapabilityGaps}
+     * 报出语义化错误，而非提前 NPE。
+     */
     public CapabilityGapSpec {
         // 使用允许 null 元素的不可变包装，确保含 null 元素的列表能走到 GenerationContractLoader.validateCapabilityGaps
         // 抛出语义化
@@ -46,19 +52,33 @@ public record CapabilityGapSpec(
                         : Collections.unmodifiableList(new ArrayList<>(phrases));
     }
 
-    /** 生成当前能力缺口对应的 {@code capabilityNotice} 声明语句（单一事实来源）。 */
+    /**
+     * 生成当前能力缺口对应的 {@code capabilityNotice} 声明语句。
+     *
+     * @return 含本条目名称的声明语句
+     */
     public String noticeStatement() {
         return formatNoticeStatement(name);
     }
 
-    /** 按给定缺口名称生成 {@code capabilityNotice} 声明语句。 */
+    /**
+     * 按给定缺口名称生成 {@code capabilityNotice} 声明语句。
+     *
+     * @param gapName 面向用户的能力名称
+     * @return 含该名称的声明语句
+     */
     public static String formatNoticeStatement(String gapName) {
         return "capabilityNotice = TextCallout(\"info\", \"部分需求暂不支持\", \"暂不支持"
                 + gapName
                 + "，以下按原始数据展示\")";
     }
 
-    /** 剥离可选前导 {@code @} 并去空白，供契约校验与修复路由共用。 */
+    /**
+     * 剥离可选前导 {@code @} 并去除首尾空白，供契约校验与修复路由共用。
+     *
+     * @param raw 原始调用名，可为 {@code null}
+     * @return 归一化后的名称；{@code raw} 为 {@code null} 时返回空串
+     */
     public static String normalizeAlias(String raw) {
         if (raw == null) {
             return "";

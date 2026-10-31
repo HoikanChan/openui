@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.parser;
@@ -66,12 +66,22 @@ public final class BuiltinCatalog {
         this.specs = Map.copyOf(collectedSpecs);
     }
 
-    /** 从契约 builtins 构造词表。 */
+    /**
+     * 从契约 builtins 构造词表。
+     *
+     * @param builtins 契约声明的 builtin 条目
+     * @return 词表实例
+     */
     public static BuiltinCatalog of(Iterable<BuiltinSpec> builtins) {
         return new BuiltinCatalog(builtins);
     }
 
-    /** 从当前生效契约派生词表；当契约为 {@code null} 或未声明 {@code builtins} 时回退到默认词表。 */
+    /**
+     * 从当前生效契约派生词表；当契约为 {@code null} 或未声明 {@code builtins} 时回退到默认词表。
+     *
+     * @param contract 当前生效契约，可为 {@code null}
+     * @return 契约声明的词表，或默认词表
+     */
     public static BuiltinCatalog fromContract(GenerationContract contract) {
         if (contract == null || contract.builtins() == null || contract.builtins().isEmpty()) {
             return DEFAULT;
@@ -79,37 +89,70 @@ public final class BuiltinCatalog {
         return of(contract.builtins());
     }
 
-    /** 默认词表：SDK 默认契约的 builtins 全集。 */
+    /**
+     * 默认词表：SDK 默认契约的 builtins 全集。
+     *
+     * @return 默认词表实例
+     */
     public static BuiltinCatalog getDefault() {
         return DEFAULT;
     }
 
-    /** 是否为契约内置函数（只认契约 builtins，不含语法保留字）。 */
+    /**
+     * 是否为契约内置函数（只认契约 builtins，不含语法保留字）。
+     *
+     * @param name 待判断的函数名
+     * @return 命中契约 builtins 时为 {@code true}
+     */
     public boolean isBuiltin(String name) {
         return names.contains(name);
     }
 
-    /** 判断 {@code name} 是否为 action 表达式（步骤或容器）——DSL 语法保留字，与契约 builtin 无关。 */
+    /**
+     * 判断 {@code name} 是否为 action 表达式（步骤或容器）——DSL 语法保留字，与契约 builtin 无关。
+     *
+     * @param name 待判断的调用名
+     * @return 属于 action 表达式名时为 {@code true}
+     */
     public static boolean isActionName(String name) {
         return ACTION_NAMES.contains(name);
     }
 
-    /** 判断 {@code name} 是否为保留的语句级调用（{@code Query}/{@code Mutation}）——DSL 语法保留字，与契约 builtin 无关。 */
+    /**
+     * 判断 {@code name} 是否为保留的语句级调用（{@code Query}/{@code Mutation}）——DSL 语法保留字，与契约 builtin 无关。
+     *
+     * @param name 待判断的调用名
+     * @return 属于保留调用时为 {@code true}
+     */
     public static boolean isReservedCall(String name) {
         return RESERVED_CALLS.contains(name);
     }
 
-    /** 惰性/模板类内置函数——契约 params 带 binder 标记（当前为 Each/Render）。 */
+    /**
+     * 惰性/模板类内置函数——契约 params 带 binder 标记（当前为 Each/Render）。
+     *
+     * @param name 待判断的函数名
+     * @return 该函数引入 binder 作用域时为 {@code true}
+     */
     public boolean isLazyBuiltin(String name) {
         return lazyNames.contains(name);
     }
 
-    /** 按名取契约条目（无则 null）。 */
+    /**
+     * 按名取契约条目（无则 null）。
+     *
+     * @param name 函数名
+     * @return 契约条目；未知函数为 {@code null}
+     */
     public BuiltinSpec spec(String name) {
         return specs.get(name);
     }
 
-    /** 契约条目全集（供类型求值器构造）。 */
+    /**
+     * 契约条目全集（供类型求值器构造）。
+     *
+     * @return 全部 builtin 条目
+     */
     public Iterable<BuiltinSpec> specsForTypeValidation() {
         return specs.values();
     }

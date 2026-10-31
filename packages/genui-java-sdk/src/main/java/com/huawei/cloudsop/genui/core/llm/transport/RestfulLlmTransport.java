@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.llm.transport;
@@ -13,12 +13,23 @@ import java.io.InputStream;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * 基于 BSP {@code RestfulFactory} 的传输，endpoint 是网关相对路径。流式请求额外附带 {@code
+ * SUPPORT_STREAM_CONTENT_FOR_SDK: true} 头；非 200 状态统一抛异常。
+ *
+ * @since 2026
+ */
 public final class RestfulLlmTransport implements LlmTransport {
     private static final int HTTP_OK = 200;
     private static final String STREAM_HEADER = "SUPPORT_STREAM_CONTENT_FOR_SDK";
 
     private final GenUiLlmConfig config;
 
+    /**
+     * 创建传输。config 为 null 时使用默认配置。
+     *
+     * @param config LLM 配置，可为 null
+     */
     public RestfulLlmTransport(GenUiLlmConfig config) {
         this.config = config == null ? GenUiLlmConfig.defaults() : config;
     }

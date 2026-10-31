@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.llm;
@@ -28,6 +28,14 @@ import java.util.Map;
  *
  * <p>{@code rounds}(#56)是逐轮记录:每轮的原始输出、当前定义、诊断、耗时、契约版本与退出原因,供后续增量修复(#58)与评测复用。正常完成轮末检查的轮 {@code
  * endReason} 为 {@code null}(结论见 {@code validationResult});中断轮记录会话终态原因。流中途失败仍保留已完成轮与中断轮,校验禁用时不产生轮记录。
+ *
+ * @param dsl 可渲染的 DSL 文本;同步生成时为模型输出提取结果,流式校验开启时为去重后的当前程序
+ * @param dataModel 请求 {@code response()} 的不可变拷贝;未提供数据时为空 map
+ * @param validationStatus 轮末最终校验状态;校验禁用或同步生成时为 {@code null}
+ * @param validationResult 轮末校验详情;校验禁用或同步生成时为 {@code null}
+ * @param endReason DSL 会话的结束原因;从未赋值时为 {@code UNCHECKED}
+ * @param rounds 逐轮记录;校验禁用时为空列表,异常终止时保留已完成轮与中断轮
+ * @since 2026
  */
 public record GenUiGenerationResult(
         String dsl,
@@ -36,6 +44,7 @@ public record GenUiGenerationResult(
         ValidationResult validationResult,
         GenerationEndReason endReason,
         List<RoundEndResult> rounds) {
+    /** 规范化构造:数据模型转为不可变 map,结束原因 null 视为 {@code UNCHECKED},轮次 null 视为空列表。 */
     public GenUiGenerationResult {
         dataModel = immutableOrderedMap(dataModel);
         endReason = endReason == null ? GenerationEndReason.UNCHECKED : endReason;
@@ -43,13 +52,24 @@ public record GenUiGenerationResult(
     }
 
     /**
-     * Backward-compatible constructor: no validation status/result available (e.g. validation
-     * disabled, or a call site predating validation support).
+     * 向后兼容构造函数:没有校验状态与详情可用时使用(例如校验关闭或旧调用点)。
+     *
+     * @param dsl 提取后的 DSL 文本
+     * @param dataModel 数据模型,会被复制为不可变 map
      */
     public GenUiGenerationResult(String dsl, Map<String, Object> dataModel) {
         this(dsl, dataModel, null, null);
     }
 
+    /**
+     * 以校验状态推导结束原因:通过为 {@code CHECK_PASSED},无效为 {@code VALIDATION_FAILED}, 其余(含未校验)为 {@code
+     * UNCHECKED};不携带轮次记录。
+     *
+     * @param dsl 提取后的 DSL 文本
+     * @param dataModel 数据模型,会被复制为不可变 map
+     * @param status 最终校验状态,可为 null
+     * @param validation 校验详情,可为 null
+     */
     public GenUiGenerationResult(
             String dsl,
             Map<String, Object> dataModel,
@@ -68,6 +88,12 @@ public record GenUiGenerationResult(
                 null);
     }
 
+    /**
+     * 替换结束原因,其余字段保持不变。
+     *
+     * @param reason 新的结束原因
+     * @return 使用该结束原因的新结果实例
+     */
     public GenUiGenerationResult withEndReason(GenerationEndReason reason) {
         return new GenUiGenerationResult(
                 dsl, dataModel, validationStatus, validationResult, reason, rounds);
