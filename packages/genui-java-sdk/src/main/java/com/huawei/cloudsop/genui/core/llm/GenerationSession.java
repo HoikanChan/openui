@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 package com.huawei.cloudsop.genui.core.llm;
 
@@ -20,7 +20,9 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * Per-invocation budget and output ownership; shared by all model calls including existing repairs.
+ * 单次调用的预算与输出所有权;所有模型调用(包括后续修复)都经由它。
+ *
+ * @since 2026
  */
 final class GenerationSession implements LlmTransport {
     record Outcome(GenUiGenerationResult result, GenerationEndReason failure) {}
@@ -222,6 +224,13 @@ final class GenerationSession implements LlmTransport {
         }
     }
 
+    /**
+     * 执行一次非流式模型请求,返回完整响应体。
+     *
+     * @param body 完整的 chat-completion 请求 JSON
+     * @return 响应体文本(UTF-8 解码)
+     * @throws LlmTransportException 会话已结束或底层请求失败时抛出
+     */
     @Override
     public String post(String body) throws LlmTransportException {
         LlmCall call = open(body, false);
@@ -235,6 +244,13 @@ final class GenerationSession implements LlmTransport {
         }
     }
 
+    /**
+     * 发起一次流式模型请求,返回需由调用方关闭的响应流。
+     *
+     * @param body 完整的 chat-completion 请求 JSON
+     * @return 响应流;关闭时释放底层调用并清除活动请求标记
+     * @throws LlmTransportException 会话已结束、已有未关闭请求或底层请求失败时抛出
+     */
     @Override
     public InputStream postStream(String body) throws LlmTransportException {
         LlmCall call = open(body, true);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.contract;
@@ -25,6 +25,8 @@ import java.util.Set;
  * supplementVersion} (informational, not reported anywhere), {@code components}, {@code
  * componentGroups}, {@code examples}, {@code additionalRules}, {@code capabilityGaps} — all
  * optional.
+ *
+ * @since 2026
  */
 public final class GenUIBaseSupplementLoader {
     private static final Set<String> ALLOWED_KEYS =
@@ -38,6 +40,13 @@ public final class GenUIBaseSupplementLoader {
 
     private GenUIBaseSupplementLoader() {}
 
+    /**
+     * 解析补充 JSON 文本；出现未声明的顶层键时直接失败。
+     *
+     * @param json 补充文档 JSON 文本
+     * @return 解析出的补充对象
+     * @throws GenerationSdkException 当 JSON 含未声明的顶层键时
+     */
     public static GenUIBaseSupplement fromJson(String json) {
         Map<String, Object> map = Json.asObject(Json.parse(json), "GenUIBaseSupplement");
         ArrayList<String> illegalKeys = new ArrayList<>();
@@ -67,6 +76,15 @@ public final class GenUIBaseSupplementLoader {
                 capabilityGaps);
     }
 
+    /**
+     * 从 classpath 资源加载补充 JSON。
+     *
+     * <p>优先使用线程上下文类加载器，缺失时回退到本类的类加载器。
+     *
+     * @param path classpath 资源路径
+     * @return 解析出的补充对象
+     * @throws GenerationSdkException 当资源不存在、读取失败或 JSON 解析失败时
+     */
     public static GenUIBaseSupplement fromResource(String path) {
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
         if (loader == null) {

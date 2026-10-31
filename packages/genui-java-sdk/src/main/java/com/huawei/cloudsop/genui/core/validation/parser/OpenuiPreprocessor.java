@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.parser;
@@ -34,7 +34,11 @@ public final class OpenuiPreprocessor {
      */
     public record Result(String text, boolean wasIncomplete) {}
 
-    /** 一次扫描的产物：去注释后的文本、结束时仍未闭合的引号，以及由内到外排列的待闭合括号。 */
+    /**
+     * 一次扫描的产物：去注释后的文本、结束时仍未闭合的引号，以及由内到外排列的待闭合括号。
+     *
+     * @since 2026
+     */
     private record Scan(String cleaned, char openQuote, String closers) {
 
         boolean wasIncomplete() {
@@ -135,7 +139,8 @@ public final class OpenuiPreprocessor {
         boolean autoEscaped = false;
         int lineStart = 0;
 
-        for (int i = 0; i < input.length(); i++) {
+        int i = 0;
+        while (i < input.length()) {
             char c = input.charAt(i);
 
             if (commentQuote == 0
@@ -150,6 +155,7 @@ public final class OpenuiPreprocessor {
                 while (i + 1 < input.length() && input.charAt(i + 1) != '\n') {
                     i++;
                 }
+                i++;
                 continue;
             }
 
@@ -190,6 +196,7 @@ public final class OpenuiPreprocessor {
             } else if (c == '}' && !brackets.isEmpty() && brackets.peek() == '{') {
                 brackets.pop();
             }
+            i++;
         }
 
         StringBuilder closers = new StringBuilder(brackets.size());

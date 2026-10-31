@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
@@ -33,13 +33,27 @@ import java.util.Set;
  */
 public final class AstReferenceWalker {
 
-    /** 未被 binder 遮蔽的 {@code Ref};{@code scope} 是当时已绑定的名字集合。 */
+    /**
+     * 未被 binder 遮蔽的 {@code Ref};{@code scope} 是当时已绑定的名字集合。
+     *
+     * @since 2026
+     */
     @FunctionalInterface
     public interface RefSink {
+        /**
+         * 接收一个未被 binder 遮蔽的引用。
+         *
+         * @param name 引用名
+         * @param scope 当时已绑定的名字集合
+         */
         void accept(String name, Set<String> scope);
     }
 
-    /** 遍历规则差异:是否跳过 binder 位实参、是否要求 binder 名全合法、是否遍历赋值右侧。 */
+    /**
+     * 遍历规则差异:是否跳过 binder 位实参、是否要求 binder 名全合法、是否遍历赋值右侧。
+     *
+     * @since 2026
+     */
     private record Policy(
             boolean skipBinderArguments,
             boolean requireAllBindersValid,
@@ -53,7 +67,13 @@ public final class AstReferenceWalker {
 
     private AstReferenceWalker() {}
 
-    /** 类型分析可达收集:从空作用域遍历一个表达式。 */
+    /**
+     * 类型分析可达收集:从空作用域遍历一个表达式。
+     *
+     * @param node 待遍历的表达式根节点
+     * @param builtins 当前 builtin 词表，用于解析惰性 binder
+     * @param sink 接收未被遮蔽的引用
+     */
     public static void walkReachability(AstNode node, BuiltinCatalog builtins, RefSink sink) {
         walk(
                 node,
@@ -64,7 +84,14 @@ public final class AstReferenceWalker {
                 Collections.newSetFromMap(new IdentityHashMap<>()));
     }
 
-    /** 语句依赖收集:在命名模板的使用位置绑定下遍历表达式。 */
+    /**
+     * 语句依赖收集:在命名模板的使用位置绑定下遍历表达式。
+     *
+     * @param node 待遍历的表达式根节点
+     * @param builtins 当前 builtin 词表，用于解析惰性 binder
+     * @param initialScope 使用位置已绑定的名字集合
+     * @param sink 接收未被遮蔽的引用
+     */
     public static void walkDependencies(
             AstNode node, BuiltinCatalog builtins, Set<String> initialScope, RefSink sink) {
         walk(

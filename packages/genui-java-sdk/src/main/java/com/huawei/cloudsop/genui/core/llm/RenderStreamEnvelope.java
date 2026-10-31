@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.llm;
@@ -25,8 +25,19 @@ import java.util.Map;
  *   <li>{@code done} —— 仅表示 SSE 流结束,不携带业务成功与否的语义;业务层面的最终校验状态由返回的 {@link
  *       GenUiGenerationResult#validationStatus()} 承载,而非 done 帧。
  * </ul>
+ *
+ * @param type 帧类型,取值为 {@link #TYPE_DATA_MODEL}、{@link #TYPE_DSL}、{@link #TYPE_ERROR}、 {@link
+ *     #TYPE_DONE} 或 {@link #TYPE_REPLACE}
+ * @param seq 帧序号;首帧 dataModel 固定为 0,其后从 1 递增
+ * @param content 帧负载,结构随 type 变化;done 帧为 null
+ * @since 2026
  */
 public record RenderStreamEnvelope(String type, int seq, Object content) {
+    /**
+     * 校验帧序号非负,否则拒绝构造。
+     *
+     * @throws IllegalArgumentException {@code seq} 小于 0 时抛出
+     */
     public RenderStreamEnvelope {
         if (seq < 0) {
             throw new IllegalArgumentException("seq must be >= 0, got: " + seq);
@@ -40,8 +51,11 @@ public record RenderStreamEnvelope(String type, int seq, Object content) {
     public static final String TYPE_REPLACE = "replace";
 
     /**
-     * Discard the entire previous page and parser state before consuming the independent Markdown
-     * DSL.
+     * 丢弃整页旧状态后再消费独立 Markdown DSL。
+     *
+     * @param seq 帧序号
+     * @param reason DSL 会话的失败原因,写入替换帧的 reason 字段
+     * @return 整页替换帧
      */
     public static RenderStreamEnvelope replace(int seq, GenerationEndReason reason) {
         return new RenderStreamEnvelope(
@@ -50,7 +64,12 @@ public record RenderStreamEnvelope(String type, int seq, Object content) {
                 Map.of("scope", "page", "format", "Markdown", "reason", reason.name()));
     }
 
-    /** 首帧:content 为请求 response 或空 map。 */
+    /**
+     * 首帧:content 为请求 response 或空 map。
+     *
+     * @param dataModel 数据模型,为 null 时使用空 map
+     * @return 数据模型帧,seq 固定为 0
+     */
     public static RenderStreamEnvelope dataModel(Map<String, Object> dataModel) {
         return new RenderStreamEnvelope(
                 TYPE_DATA_MODEL, 0, dataModel == null ? Map.of() : dataModel);
@@ -66,7 +85,15 @@ public record RenderStreamEnvelope(String type, int seq, Object content) {
         return new RenderStreamEnvelope(TYPE_DSL, seq, deltaText);
     }
 
-    /** 错误帧:content 为 {@code {code, message, retryable}}。 */
+    /**
+     * 错误帧:content 为 {@code {code, message, retryable}}。
+     *
+     * @param seq 帧序号
+     * @param code 错误码
+     * @param message 错误消息
+     * @param retryable 是否可重试
+     * @return 错误帧
+     */
     public static RenderStreamEnvelope error(
             int seq, String code, String message, boolean retryable) {
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -76,7 +103,12 @@ public record RenderStreamEnvelope(String type, int seq, Object content) {
         return new RenderStreamEnvelope(TYPE_ERROR, seq, payload);
     }
 
-    /** 结束帧:content 为 null,序列化时不应输出 content 字段。 */
+    /**
+     * 结束帧:content 为 null,序列化时不应输出 content 字段。
+     *
+     * @param seq 帧序号
+     * @return 结束帧
+     */
     public static RenderStreamEnvelope done(int seq) {
         return new RenderStreamEnvelope(TYPE_DONE, seq, null);
     }

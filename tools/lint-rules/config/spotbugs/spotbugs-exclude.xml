@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- 排除生成代码 -->
+    <Match>
+        <Source name="~.*generated-sources.*"/>
+    </Match>
+    <Match>
+        <Class name="~.*\.generated\..*"/>
+    </Match>
+
+    <!-- 排除测试代码（插件默认只分析 target/classes，此处兜底） -->
+    <Match>
+        <Source name="~.*(Test|IT)\.java$"/>
+    </Match>
+
+    <!-- 排除常见的低价值告警 -->
+    <Match>
+        <Bug pattern="DM_DEFAULT_ENCODING"/>
+    </Match>
+    <Match>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE"/>
+    </Match>
+
+    <!--
+        EI_EXPOSE_REP / EI_EXPOSE_REP2：契约 record 与请求/结果 DTO 的集合访问器。
+        这些类只在加载阶段构造一次，之后按只读值对象使用；逐个加 List.copyOf
+        会改变 null 与可变性语义并放大热点路径开销。暂按模式排除，后续若这些类型
+        对外暴露给可变调用方再单独收紧。
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!--
+        浮点相等比较：这几处都是"值是否为整数"的精确判定（d == Math.rint(d)），
+        换成 epsilon 比较反而会引入误判。仅按方法豁免，不放开整个类。
+    -->
+    <Match>
+        <Class name="com.huawei.cloudsop.genui.core.Json"/>
+        <Method name="normalizeForSerialization"/>
+        <Bug pattern="FE_FLOATING_POINT_EQUALITY"/>
+    </Match>
+    <Match>
+        <Class name="com.huawei.cloudsop.genui.core.validation.parser.ExpressionParser"/>
+        <Method name="numberText"/>
+        <Bug pattern="FE_FLOATING_POINT_EQUALITY"/>
+    </Match>
+    <Match>
+        <Class name="com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisSession"/>
+        <Method name="dataPathSource"/>
+        <Bug pattern="FE_FLOATING_POINT_EQUALITY"/>
+    </Match>
+    <Match>
+        <Class name="com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisSession"/>
+        <Method name="synthIndex"/>
+        <Bug pattern="FE_FLOATING_POINT_EQUALITY"/>
+    </Match>
+
+    <!-- 三态布尔：null 表示契约里缺该字段，调用方需要区分"缺省"与 false。 -->
+    <Match>
+        <Class name="com.huawei.cloudsop.genui.core.contract.GenerationContractLoader"/>
+        <Method name="bool"/>
+        <Bug pattern="NP_BOOLEAN_RETURN_NULL"/>
+    </Match>
+
+    <!--
+        findsecbugs 1.13 的 IMPROPER_UNICODE 对已显式传 Locale.ROOT 的 toLowerCase
+        仍然报错（误报），这两处已按建议写法处理。
+    -->
+    <Match>
+        <Class name="com.huawei.cloudsop.genui.core.llm.extract.OpenuiCodeExtractor"/>
+        <Bug pattern="IMPROPER_UNICODE"/>
+    </Match>
+    <Match>
+        <Class name="com.huawei.cloudsop.genui.core.llm.transport.HttpClientLlmTransport"/>
+        <Bug pattern="IMPROPER_UNICODE"/>
+    </Match>
+
+    <!-- lengthRange 用 null 表示"长度未知"，与"零长度"语义不同，调用方据此走 UNPROVEN。 -->
+    <Match>
+        <Class name="com.huawei.cloudsop.genui.core.validation.type.analysis.TypeOps"/>
+        <Method name="lengthRange"/>
+        <Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS"/>
+    </Match>
+</FindBugsFilter>

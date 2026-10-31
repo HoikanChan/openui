@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
@@ -28,16 +28,28 @@ public final class Checks {
 
     private Checks() {}
 
-    /** 公开检查结果三态。 */
+    /**
+     * 公开检查结果三态。
+     *
+     * @since 2026
+     */
     public enum Verdict {
         MATCH,
         MISMATCH,
         UNPROVEN
     }
 
-    /** 一次检查的结论;未证明原因直接复用 {@link Fact.Loss}(含检查层专有的 INSUFFICIENT_EVIDENCE)。 */
+    /**
+     * 一次检查的结论;未证明原因直接复用 {@link Fact.Loss}(含检查层专有的 INSUFFICIENT_EVIDENCE)。
+     *
+     * @param verdict 三态结论
+     * @param reasons 未证明原因;非 UNPROVEN 时为空集合
+     * @param detail MISMATCH 的说明文本;其他结论为 null
+     * @since 2026
+     */
     public record CheckResult(Verdict verdict, Set<Fact.Loss> reasons, String detail) {
 
+        /** 紧凑构造方法:把 null 原因集合归一化为空集合。 */
         public CheckResult {
             reasons = reasons == null ? Set.of() : Set.copyOf(reasons);
         }
@@ -55,7 +67,16 @@ public final class Checks {
         }
     }
 
-    /** 检查事实是否满足要求。{@code checkedPath} 是观察证据关联路径(如数据路径或 "literal");证据只在与检查 对象路径一致时参与判定。 */
+    /**
+     * 检查事实是否满足要求。
+     *
+     * <p>{@code checkedPath} 是观察证据关联路径(如数据路径或 "literal");证据只在与检查对象路径 一致时参与判定。
+     *
+     * @param fact 待检查的事实
+     * @param expectation 契约要求
+     * @param checkedPath 当前检查对象路径,用于筛选路径一致的观察证据
+     * @return MATCH、MISMATCH 或 UNPROVEN,并附带原因与说明
+     */
     public static CheckResult check(Fact fact, Expectation expectation, String checkedPath) {
         if (fact.hasUpstreamErrors()) {
             return CheckResult.unproven(Set.of(Fact.Loss.BLOCKED_BY_ERROR), null);
@@ -458,6 +479,8 @@ public final class Checks {
     /**
      * 字段存在性:DEFINITELY_PRESENT(全部分支必有)/ DEFINITELY_ABSENT(结构必无)/
      * OBSERVED_PARTIAL_MISSING(结构必有于部分分支、必无于其余——行级部分缺失)/ UNKNOWN。
+     *
+     * @since 2026
      */
     private enum Presence {
         DEFINITELY_PRESENT,

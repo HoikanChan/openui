@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.contract;
@@ -13,9 +13,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * 组件 propsSchema 的加载期校验与提示词签名格式化。
+ *
+ * <p>校验只覆盖未携带 {@code x-openui-signature} 的新式模式：{@code type} 必须为 {@code object}，{@code required}
+ * 中的每个名字必须已在 {@code properties} 中声明， 且必填字段必须全部排在可选字段之前。
+ *
+ * @since 2026
+ */
 public final class ComponentPropsSchema {
     private ComponentPropsSchema() {}
 
+    /**
+     * 校验组件 propsSchema 的结构约束。
+     *
+     * <p>空模式或携带 {@code x-openui-signature} 的旧式模式直接放行。
+     *
+     * @param componentName 组件名，仅用于错误消息
+     * @param component 待校验的组件提示词规格
+     * @throws GenerationSdkException 当 {@code type} 非 {@code object}、{@code required}
+     *     引用未声明字段，或必填字段出现在可选字段之后时
+     */
     public static void validate(String componentName, ComponentPromptSpec component) {
         Map<String, Object> schema = component.propsSchema();
         if (schema.isEmpty() || schema.containsKey("x-openui-signature")) {
@@ -55,6 +73,15 @@ public final class ComponentPropsSchema {
         }
     }
 
+    /**
+     * 生成组件的提示词签名；优先返回旧版 {@code x-openui-signature}。
+     *
+     * <p>否则按 propsSchema 的字段顺序拼出 {@code Name(prop: type, optional?: type)}， 可选字段以 {@code ?} 标记。
+     *
+     * @param componentName 组件名
+     * @param component 组件提示词规格
+     * @return 该组件的调用签名
+     */
     public static String formatSignature(String componentName, ComponentPromptSpec component) {
         String legacy = component.signature();
         if (legacy != null && !legacy.isBlank()) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
@@ -22,6 +22,11 @@ import java.util.Set;
 public record Fact(
         Type type, Set<Evidence> evidence, Set<Loss> losses, Set<String> upstreamErrors) {
 
+    /**
+     * 紧凑构造方法:校验类型非 null,并把证据、损失与上游错误集合归一化为不可变集合。
+     *
+     * @throws IllegalArgumentException 类型为 null 时
+     */
     public Fact {
         if (type == null) {
             throw new IllegalArgumentException("fact requires a type");
@@ -96,20 +101,38 @@ public record Fact(
          *
          * @param path 观察来源的数据路径
          * @param value 观察到的 JSON 值(已不可变快照)
+         * @since 2026
          */
         record ObservedValue(String path, Object value) implements Evidence {}
 
-        /** 字段存在性观察:present 数 / missing 数 / null 数 / 总行数。 */
+        /**
+         * 字段存在性观察:present 数 / missing 数 / null 数 / 总行数。
+         *
+         * @param path 观察来源的数据路径
+         * @param present 有非 null 值的成员数
+         * @param missing 缺该字段的成员数
+         * @param nulls 显式 null 值的成员数(null 不是缺失)
+         * @param total 参与该步的成员总数
+         * @since 2026
+         */
         record FieldPresence(String path, int present, int missing, int nulls, int total)
                 implements Evidence {
 
-            /** 是否观察到过至少一个确定缺失。 */
+            /**
+             * 是否观察到过至少一个确定缺失。
+             *
+             * @return 至少一行缺该字段时为 true
+             */
             public boolean hasMissingCounterexample() {
                 return missing > 0;
             }
         }
 
-        /** 元素存在证据:数组确定含至少一个元素(Sort 保留、Filter 删除)。 */
+        /**
+         * 元素存在证据:数组确定含至少一个元素(Sort 保留、Filter 删除)。
+         *
+         * @since 2026
+         */
         record ElementPresence() implements Evidence {}
     }
 

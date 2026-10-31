@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.contract.typeexpr;
@@ -37,7 +37,14 @@ public final class TypeExprParser {
 
     private TypeExprParser() {}
 
-    /** 解析 {@code source} 为 {@link TypeExpr}；{@code entry} 仅用于错误信息定位。 */
+    /**
+     * 解析 {@code source} 为 {@link TypeExpr};{@code entry} 仅用于错误信息定位。
+     *
+     * @param source 待解析的类型表达式原文
+     * @param entry 契约条目名,出错时拼入异常信息
+     * @return 解析后的类型表达式
+     * @throws GenerationSdkException 出现未知 token、括号不配对或存在多余 token
+     */
     public static TypeExpr parse(String source, String entry) {
         Lexer lexer = new Lexer(source, entry);
         List<String> tokens = lexer.lex();
@@ -68,8 +75,7 @@ public final class TypeExprParser {
                     i++;
                     continue;
                 }
-                if (c == '|' || c == '[' || c == ']' || c == '{' || c == '}' || c == ',' || c == ':'
-                        || c == '<' || c == '>' || c == '(' || c == ')') {
+                if ("|[]{},:<>()".indexOf(c) >= 0) {
                     tokens.add(String.valueOf(c));
                     i++;
                     continue;

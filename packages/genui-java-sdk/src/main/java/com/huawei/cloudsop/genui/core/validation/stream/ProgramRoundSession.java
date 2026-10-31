@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.stream;
@@ -39,7 +39,7 @@ import java.util.Set;
  */
 public final class ProgramRoundSession {
 
-    private static final long NANOS_PER_MILLI = 1_000_000;
+    private static final long NANOS_PER_MILLI = 1_000_000L;
 
     private StatementBoundaryScanner scanner = new StatementBoundaryScanner();
     private final OpenuiLangValidator validator;

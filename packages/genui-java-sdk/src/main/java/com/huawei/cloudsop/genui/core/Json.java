@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core;
@@ -16,12 +16,35 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * JSON helpers shared by the SDK: parsing into plain map/list/scalar trees, compact serialization,
+ * and a pretty-printer that mirrors {@code JSON.stringify(value, null, 2)}.
+ *
+ * <p>Parsing normalizes numbers so integers always become {@link Long} and decimals {@link Double},
+ * keeping prompt rendering deterministic across callers. This is a non-instantiable utility class.
+ *
+ * @since 2026
+ */
 public final class Json {
     /** Doubles beyond this magnitude cannot be represented exactly as a long. */
     private static final double MAX_EXACT_LONG_AS_DOUBLE = 1e15;
 
     private Json() {}
 
+    /**
+     * Parses a JSON document into plain Java values: objects become {@link LinkedHashMap} with
+     * string keys, arrays {@link ArrayList}, integers {@link Long} and decimals {@link Double};
+     * strings, booleans and {@code null} pass through unchanged.
+     *
+     * <p>Single-quoted strings are rejected. A syntactically invalid document, or an integer too
+     * large for a {@code long}, is reported as {@link GenerationSdkException} rather than a raw
+     * parser error.
+     *
+     * @param json the JSON text to parse
+     * @return the normalized value tree, or {@code null} when the text is the JSON literal {@code
+     *     null}
+     * @throws GenerationSdkException if the text is not valid JSON or an integer overflows a long
+     */
     public static Object parse(String json) {
         try {
             Object parsed =
@@ -35,17 +58,43 @@ public final class Json {
         }
     }
 
+    /**
+     * Serializes a value to compact JSON, writing explicit {@code null}s.
+     *
+     * <p>Values are normalized first: integral doubles narrow to {@code long} when exactly
+     * representable, non-finite numbers become {@code null}, and any other object falls back to
+     * {@link String#valueOf(Object)}.
+     *
+     * @param value the value to serialize; may be {@code null}
+     * @return the compact JSON text
+     */
     public static String stringify(Object value) {
         return JSON.toJSONString(normalizeForSerialization(value), JSONWriter.Feature.WriteNulls);
     }
 
-    /** Mirrors {@code JSON.stringify(value, null, 2)} for byte-for-byte prompt parity. */
+    /**
+     * Serializes a value to two-space-indented JSON matching {@code JSON.stringify(value, null, 2)}
+     * byte for byte, for prompt parity.
+     *
+     * <p>Key order follows the map's iteration order and non-finite numbers become {@code null}.
+     *
+     * @param value the value to serialize; may be {@code null}
+     * @return the pretty-printed JSON text
+     */
     public static String stringifyPretty(Object value) {
         StringBuilder out = new StringBuilder();
         writePretty(out, normalizeForSerialization(value), 0);
         return out.toString();
     }
 
+    /**
+     * Casts a parsed value to a JSON object.
+     *
+     * @param value the value to check
+     * @param label a caller-supplied name used in the error message
+     * @return the same map instance, unmodified
+     * @throws GenerationSdkException if {@code value} is not a {@link Map}
+     */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> asObject(Object value, String label) {
         if (value instanceof Map<?, ?> map) {
@@ -54,6 +103,14 @@ public final class Json {
         throw new GenerationSdkException(label + " must be a JSON object");
     }
 
+    /**
+     * Casts a parsed value to a JSON array.
+     *
+     * @param value the value to check
+     * @param label a caller-supplied name used in the error message
+     * @return the same list instance, unmodified
+     * @throws GenerationSdkException if {@code value} is not a {@link List}
+     */
     @SuppressWarnings("unchecked")
     public static List<Object> asList(Object value, String label) {
         if (value instanceof List<?> list) {

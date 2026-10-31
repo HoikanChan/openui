@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.prompt.characterize;
@@ -16,6 +16,17 @@ import java.util.Map;
 public final class TsTypeRenderer {
     private TsTypeRenderer() {}
 
+    /**
+     * Renders a shape tree as a TypeScript type declaration rooted at {@code data}.
+     *
+     * <p>Optional fields get a {@code ?} suffix, nullable fields a {@code | null} union, enum
+     * shapes a quoted literal union, and truncated arrays a trailing comment with the total count.
+     *
+     * @param root the inferred shape to render; must not be {@code null}
+     * @param sampleRows how many leading array elements the sample exposed, used in the item
+     *     comment
+     * @return a declaration such as {@code data: { id: number }}
+     */
     public static String render(ShapeNode root, int sampleRows) {
         StringBuilder out = new StringBuilder();
         out.append("data: ");

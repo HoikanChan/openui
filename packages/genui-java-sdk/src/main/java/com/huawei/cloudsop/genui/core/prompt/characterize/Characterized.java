@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.prompt.characterize;
@@ -10,6 +10,8 @@ package com.huawei.cloudsop.genui.core.prompt.characterize;
  *
  * <p>{@code shape} may be {@code null} when characterization did not run (pass-through case).
  *
+ * @param sample the possibly-downsampled tree, or the original value when the gate passed through
+ * @param shape the inferred schema, or {@code null} when characterization did not run
  * @since 2026
  */
 public record Characterized(Object sample, ShapeNode shape) {}

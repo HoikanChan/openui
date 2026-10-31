@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
@@ -46,14 +46,14 @@ public final class ContractCatalog {
      * @return 组件目录
      */
     public static ContractCatalog from(GenerationContract contract) {
-        Map<String, ComponentDef> byName = new LinkedHashMap<>();
+        Map<String, ComponentDef> componentsByName = new LinkedHashMap<>();
         if (contract != null) {
             for (Map.Entry<String, ComponentPromptSpec> entry : contract.components().entrySet()) {
-                byName.put(entry.getKey(), buildDef(entry.getKey(), entry.getValue()));
+                componentsByName.put(entry.getKey(), buildDef(entry.getKey(), entry.getValue()));
             }
         }
         List<CapabilityGapSpec> gaps = contract == null ? List.of() : contract.capabilityGaps();
-        return new ContractCatalog(Collections.unmodifiableMap(byName), gaps);
+        return new ContractCatalog(Collections.unmodifiableMap(componentsByName), gaps);
     }
 
     /**

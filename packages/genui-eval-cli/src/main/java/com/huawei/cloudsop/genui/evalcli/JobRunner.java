@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.evalcli;
@@ -16,7 +16,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-/** 有界线程池批量执行生成用例,按完成顺序向 stdout 逐行输出 JSONL。单用例失败输出 error 行、批次继续; 整批跑完即正常返回(exit 0),基础设施失败由调用方抛出。 */
+/**
+ * 有界线程池批量执行生成用例,按完成顺序向 stdout 逐行输出 JSONL。单用例失败输出 error 行、批次继续; 整批跑完即正常返回(exit 0),基础设施失败由调用方抛出。
+ *
+ * @since 2026
+ */
 final class JobRunner {
     private JobRunner() {}
 

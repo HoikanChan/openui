@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.contract;
@@ -21,12 +21,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * 契约 JSON 加载器:从 classpath 读取内置 {@code base-contract.json},或把调用方提供的 JSON 文本解析为 {@link
+ * GenerationContract},并在加载期完成结构校验。
+ *
+ * @since 2026
+ */
 public final class GenerationContractLoader {
     private static final String DEFAULT_RESOURCE = "openui/base-contract.json";
     private static final Set<String> ALLOWED_GAP_KINDS = Set.of("data", "component");
 
     private GenerationContractLoader() {}
 
+    /**
+     * 从当前线程上下文类加载器读取内置契约资源,上下文类加载器为空时回退到本类加载器。
+     *
+     * @return 解析并校验后的内置契约
+     * @throws GenerationSdkException 资源不存在、读取失败,或 JSON 解析/结构校验失败
+     */
     public static GenerationContract loadDefault() {
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
         if (loader == null) {
@@ -43,6 +55,13 @@ public final class GenerationContractLoader {
         }
     }
 
+    /**
+     * 把契约 JSON 文本解析为契约对象;浮点数字保留 {@code BigDecimal} 精度,直到加载期校验完成。
+     *
+     * @param json 契约 JSON 文本
+     * @return 解析并校验后的契约
+     * @throws GenerationSdkException JSON 非法,或契约结构校验失败
+     */
     public static GenerationContract fromJson(String json) {
         // Contract indexes must retain their exact decimal value until load-time validation.
         try {
@@ -97,8 +116,14 @@ public final class GenerationContractLoader {
     }
 
     /**
-     * Fail-fast validation for capabilityGaps: checks required fields, kind ("data" | "component"),
-     * duplicate ids, and alias collisions against components, builtins, or other capability gaps.
+     * 对 capabilityGaps 做 fail-fast 校验:必填字段、kind({@code data}|{@code component})、id
+     * 重复,以及别名与组件、builtins 或其他 gap 的冲突。
+     *
+     * @param gaps 待校验的能力缺口条目;为空时直接返回
+     * @param componentNames 契约中已声明的组件名,用于别名冲突检查
+     * @param builtins 契约中已声明的 builtin,用于别名冲突检查
+     * @param scope 出错信息中的来源标识(如 contract)
+     * @throws GenerationSdkException 条目为空、字段缺失/非法、id 重复或别名冲突
      */
     public static void validateCapabilityGaps(
             List<CapabilityGapSpec> gaps,
@@ -476,21 +501,27 @@ public final class GenerationContractLoader {
     }
 
     private static boolean containsTypeVar(TypeExpr type) {
-        return type != null
-                && (type instanceof TypeExpr.TypeVar
-                        || (type instanceof TypeExpr.ArrayOf arrayOf
-                                && containsTypeVar(arrayOf.element()))
-                        || (type instanceof TypeExpr.RecordOf record
-                                && containsTypeVar(record.value()))
-                        || (type instanceof TypeExpr.ObjectLiteral literal
-                                && literal.fields().stream()
-                                        .anyMatch(field -> containsTypeVar(field.type())))
-                        || (type instanceof TypeExpr.UnionOf union
-                                && union.alternatives().stream()
-                                        .anyMatch(GenerationContractLoader::containsTypeVar))
-                        || (type instanceof TypeExpr.Conditional conditional
-                                && (containsTypeVar(conditional.whenArray())
-                                        || containsTypeVar(conditional.otherwise()))));
+        if (type instanceof TypeExpr.TypeVar) {
+            return true;
+        }
+        if (type instanceof TypeExpr.ArrayOf arrayOf) {
+            return containsTypeVar(arrayOf.element());
+        }
+        if (type instanceof TypeExpr.RecordOf record) {
+            return containsTypeVar(record.value());
+        }
+        if (type instanceof TypeExpr.ObjectLiteral literal) {
+            return literal.fields().stream().anyMatch(field -> containsTypeVar(field.type()));
+        }
+        if (type instanceof TypeExpr.UnionOf union) {
+            return union.alternatives().stream()
+                    .anyMatch(GenerationContractLoader::containsTypeVar);
+        }
+        if (type instanceof TypeExpr.Conditional conditional) {
+            return containsTypeVar(conditional.whenArray())
+                    || containsTypeVar(conditional.otherwise());
+        }
+        return false;
     }
 
     private interface Visitor {

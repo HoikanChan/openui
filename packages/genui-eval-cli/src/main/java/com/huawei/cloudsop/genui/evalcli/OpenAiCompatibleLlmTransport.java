@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.evalcli;
@@ -21,10 +21,12 @@ import java.time.Duration;
 /**
  * OpenAI 兼容端点的 {@link LlmTransport}:JDK HttpClient,自持完整 URL(LLM_BASE_URL + /chat/completions), 忽略
  * GenUiLlmConfig.endpoint(那是 BSP 网关的相对路径)。写法对齐 genui-service 的 LlmClient。
+ *
+ * @since 2026
  */
 public final class OpenAiCompatibleLlmTransport implements LlmTransport {
-    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(15);
-    private static final Duration REQUEST_TIMEOUT = Duration.ofMinutes(10);
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(15L);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofMinutes(10L);
 
     /** Status codes are grouped in families of 100 (2xx = success). */
     private static final int HTTP_STATUS_CLASS_DIVISOR = 100;
@@ -38,6 +40,14 @@ public final class OpenAiCompatibleLlmTransport implements LlmTransport {
     private final String apiKey;
     private final HttpClient httpClient;
 
+    /**
+     * 创建传输。baseUrl 与 apiKey 必填；httpsProxy 非空时解析为代理地址。
+     *
+     * @param baseUrl OpenAI 兼容服务的基地址，末尾斜杠会被去掉
+     * @param apiKey 用于 {@code Authorization: Bearer} 的密钥
+     * @param httpsProxy 代理 URL，可为 null 或空白
+     * @throws IllegalArgumentException baseUrl 或 apiKey 为空白，或代理缺少主机时抛出
+     */
     public OpenAiCompatibleLlmTransport(String baseUrl, String apiKey, String httpsProxy) {
         if (baseUrl == null || baseUrl.isBlank()) {
             throw new IllegalArgumentException("LLM_BASE_URL is not set");

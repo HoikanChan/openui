@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.semantic;
@@ -180,12 +180,22 @@ public final class RepairHints {
         return null;
     }
 
-    /** 判断提示是否为“缺失前导 {@code @}”根因提示。 */
+    /**
+     * 判断提示是否为“缺失前导 {@code @}”根因提示。
+     *
+     * @param hint 提示文案，可为 {@code null}
+     * @return 以“缺失 @”前缀开头时为 {@code true}
+     */
     public static boolean isMissingAtHint(String hint) {
         return hint != null && hint.startsWith(DID_YOU_MEAN_PREFIX);
     }
 
-    /** 判断提示是否为“能力边界越界”根因提示。 */
+    /**
+     * 判断提示是否为“能力边界越界”根因提示。
+     *
+     * @param hint 提示文案，可为 {@code null}
+     * @return 包含能力缺口标记时为 {@code true}
+     */
     public static boolean isCapabilityGapHint(String hint) {
         return hint != null && hint.contains(CAPABILITY_GAP_MARKER);
     }

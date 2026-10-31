@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.llm;
@@ -18,9 +18,23 @@ import java.util.Map;
  * <p>{@link #renderComponentsKey}为渲染组件标识，当前仅支持 {@code "Markdown"}。 当值为 {@code "Markdown"} 时，走
  * markdown 渲染路径， 让模型直接生成 markdown 内容并包裹为 {@code root = Stack([MarkDownRenderer(...)])}。
  *
- * <p>includeBasic and specifiedComponents are carried for host compatibility. This SDK's DSL
- * generation does not implement component filtering and rejects explicit filter values.
+ * <p>{@code includeBasic} 与 {@code specifiedComponents} 仅为宿主兼容而保留。本 SDK 的 DSL 生成
+ * 不实现组件过滤,遇到显式过滤值会抛异常拒绝。
  *
+ * @param extensionId 扩展标识,对应宿主注册的扩展;可为 null
+ * @param userInput 用户输入文本
+ * @param request 请求上下文数据,序列化后作为 Request Context 拼入用户消息
+ * @param response 响应数据模型,作为 Render Data Model 使用,并在结果中原样回显
+ * @param suggestion 额外生成指令;空白时忽略
+ * @param locale 语言标识(如 zh/en)
+ * @param editMode 是否编辑模式
+ * @param inlineMode 是否内联模式
+ * @param toolCalls 是否启用工具调用
+ * @param bindings 是否启用数据绑定
+ * @param renderComponentsKey 渲染组件标识;当前仅识别 {@code "Markdown"}
+ * @param ext 宿主扩展入参,SDK 核心 LLM 链路不读取
+ * @param includeBasic 保留的组件过滤设置;本版本 DSL 生成拒绝显式值
+ * @param specifiedComponents 保留的组件白名单;非空时 DSL 生成拒绝
  * @since 2026-06-23
  */
 public record UiGenerationRequest(
@@ -38,6 +52,7 @@ public record UiGenerationRequest(
         Map<String, Object> ext,
         Boolean includeBasic,
         List<String> specifiedComponents) {
+    /** 规范化各组件的存储形式:map 字段的 null 视为空,并复制为保持插入顺序的不可变副本; 组件列表的 null 视为空列表。 */
     public UiGenerationRequest {
         request = immutableOrderedMap(request);
         response = immutableOrderedMap(response);
@@ -105,7 +120,11 @@ public record UiGenerationRequest(
         return new Builder();
     }
 
-    /** Keep the original intent, data and host extensions for an independent Markdown request. */
+    /**
+     * 保留原始意图、数据与宿主扩展,构造一个走 Markdown 渲染路径的请求副本。
+     *
+     * @return {@code renderComponentsKey} 为 {@code "Markdown"} 的新请求
+     */
     public UiGenerationRequest asMarkdown() {
         return new UiGenerationRequest(
                 extensionId,
@@ -124,7 +143,20 @@ public record UiGenerationRequest(
                 specifiedComponents);
     }
 
-    /** Compatibility with callers using the original ten-field request. */
+    /**
+     * 兼容旧调用方的十字段构造函数,渲染组件标识与扩展入参留空,组件过滤取默认值。
+     *
+     * @param extensionId 扩展标识
+     * @param userInput 用户输入
+     * @param request 请求上下文数据
+     * @param response 响应数据结构
+     * @param suggestion 建议内容
+     * @param locale 语言标识
+     * @param editMode 编辑模式
+     * @param inlineMode 内联模式
+     * @param toolCalls 工具调用
+     * @param bindings 绑定
+     */
     public UiGenerationRequest(
             String extensionId,
             String userInput,
@@ -153,7 +185,11 @@ public record UiGenerationRequest(
                 null);
     }
 
-    /** UI生成请求构建器。 */
+    /**
+     * UI生成请求构建器。
+     *
+     * @since 2026
+     */
     public static final class Builder {
         private String extensionId;
 
@@ -332,13 +368,23 @@ public record UiGenerationRequest(
             return this;
         }
 
-        /** Reserved component-filter setting; DSL generation rejects it in this SDK version. */
+        /**
+         * 保留的组件过滤设置;本版本的 DSL 生成不支持组件过滤,显式值会在生成时被拒绝。
+         *
+         * @param includeBasic 是否包含基础组件
+         * @return 当前构建器
+         */
         public Builder includeBasic(Boolean includeBasic) {
             this.includeBasic = includeBasic;
             return this;
         }
 
-        /** Reserved component-filter setting; nonempty filters are rejected by DSL generation. */
+        /**
+         * 保留的组件过滤设置;本版本的 DSL 生成不支持组件过滤,非空列表会在生成时被拒绝。
+         *
+         * @param specifiedComponents 指定组件名列表
+         * @return 当前构建器
+         */
         public Builder specifiedComponents(List<String> specifiedComponents) {
             this.specifiedComponents = specifiedComponents;
             return this;

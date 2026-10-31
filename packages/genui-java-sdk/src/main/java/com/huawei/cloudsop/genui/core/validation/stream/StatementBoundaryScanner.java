@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.stream;
@@ -39,6 +39,7 @@ public final class StatementBoundaryScanner {
      *
      * @param id 语句标识符
      * @param text 语句文本（已裁剪）
+     * @since 2026
      */
     record CompletedStatement(String id, String text) {}
 

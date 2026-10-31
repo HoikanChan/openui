@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.contract;
@@ -35,6 +35,13 @@ import java.util.Map;
  * with the same shape as base-contract.json restricted to the sections above). The canonical record
  * constructor is public only because the Java language requires it; direct instantiation is
  * reserved for tests.
+ *
+ * @param components 补充组件，按名整体替换基础契约中的同名条目
+ * @param componentGroups 补充分组，与同名基础分组取成员并集
+ * @param examples 追加到基础契约之后的示例
+ * @param additionalRules 追加到基础契约之后的额外规则
+ * @param capabilityGaps 按 {@code id} 原地替换或追加的能力缺口
+ * @since 2026
  */
 public record GenUIBaseSupplement(
         Map<String, ComponentPromptSpec> components,
@@ -42,6 +49,7 @@ public record GenUIBaseSupplement(
         List<String> examples,
         List<String> additionalRules,
         List<CapabilityGapSpec> capabilityGaps) {
+    /** 规范化构造：{@code null} 值归一为空集合，其余复制为不可变集合。 */
     public GenUIBaseSupplement {
         components =
                 components == null
@@ -53,7 +61,14 @@ public record GenUIBaseSupplement(
         capabilityGaps = capabilityGaps == null ? List.of() : List.copyOf(capabilityGaps);
     }
 
-    /** Backwards-compatible constructor without capabilityGaps. */
+    /**
+     * 不带能力缺口的兼容构造。
+     *
+     * @param components 补充组件
+     * @param componentGroups 补充分组
+     * @param examples 追加示例
+     * @param additionalRules 追加规则
+     */
     public GenUIBaseSupplement(
             Map<String, ComponentPromptSpec> components,
             List<ComponentGroup> componentGroups,
@@ -63,10 +78,13 @@ public record GenUIBaseSupplement(
     }
 
     /**
-     * Merges this supplement into {@code base}, producing the Effective Base Contract. See the
-     * class Javadoc for the per-section rules; {@code contractVersion}, {@code root}, {@code tools}
-     * and {@code builtins} are carried over from {@code base} untouched. Internal — called once by
-     * the {@code GenerationSdk} constructor; hosts never call this directly.
+     * 将本补充合并到 {@code base}，生成有效基础契约。
+     *
+     * <p>各分节的合并规则见类文档；{@code contractVersion}、{@code root}、{@code tools} 与 {@code builtins} 原样沿用
+     * {@code base}。内部方法，仅由 {@code GenerationSdk} 构造时调用一次， 宿主不应直接调用。
+     *
+     * @param base 基础契约
+     * @return 合并后的有效基础契约
      */
     public GenerationContract applyTo(GenerationContract base) {
         LinkedHashMap<String, ComponentPromptSpec> mergedComponents =

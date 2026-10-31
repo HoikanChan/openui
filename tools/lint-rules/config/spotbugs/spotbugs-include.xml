@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!--
+        SpotBugs 的 Source 匹配源文件名（如 Foo.java），不是仓库相对路径。
+        用 src/main/java 前缀作正则不会命中，include 语义下会排除全部源码；
+        因此这里匹配任意 .java，目录与生成代码交给 exclude 过滤器。
+    -->
+    <Match>
+        <Source name="~.*\.java$"/>
+    </Match>
+</FindBugsFilter>

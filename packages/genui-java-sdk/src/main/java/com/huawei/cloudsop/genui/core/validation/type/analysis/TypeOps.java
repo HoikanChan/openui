@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
@@ -23,6 +23,11 @@ public final class TypeOps {
 
     private final AnalysisBudget.Tracker budget;
 
+    /**
+     * 构造类型运算器,绑定一次分析共享的预算。
+     *
+     * @param budget 类型节点与联合分支预算追踪器;不做 null 校验,运算时解引用
+     */
     public TypeOps(AnalysisBudget.Tracker budget) {
         this.budget = budget;
     }
@@ -37,6 +42,10 @@ public final class TypeOps {
      *
      * <p>证据关联(#83 §6.5):字段值仍在当前快照里——从观察到的对象值逐行提取该字段的实际值作为结果的 ObservedValue
      * 证据(丢失来源路径,值经冻结);观察到的对象行确定缺该字段则该行的读取结果是"不存在"——不产生值证据, 也不虚构缺失反例(关闭类型上界已承载确定缺失判定)。
+     *
+     * @param object 被读取的对象事实;携带上游错误时直接返回阻塞结果
+     * @param name 字段名;不做格式校验,按 map 键精确匹配
+     * @return 字段值的事实;所有分支都确定缺失时返回 {@link Type.Never} 且无值证据
      */
     public Fact readField(Fact object, String name) {
         if (object.hasUpstreamErrors()) {
@@ -116,7 +125,7 @@ public final class TypeOps {
         operands.forEach(operand -> losses.addAll(operand.losses()));
         for (List<Type> combination : combinations) {
             results.add(overlayCombination(combination, losses));
-            if (!budget.tryConsumeTypeNodes(1)) {
+            if (!budget.tryConsumeTypeNodes(1L)) {
                 losses.add(Fact.Loss.PRECISION_BUDGET);
                 return new Fact(Type.Unknown.INSTANCE, Set.of(), losses, Set.of());
             }
@@ -192,17 +201,32 @@ public final class TypeOps {
     // ObjectKeys / Values / Entries
     // ───────────────────────────────────────────────────────────────────────
 
-    /** 对象键集合(#77 第 7.4 节):已知字段生成字符串字面值联合;开放尾部增加 string 标量;Closed 空对象产生 已知空数组;Open 不能误作空对象。 */
+    /**
+     * 对象键集合(#77 第 7.4 节):已知字段生成字符串字面值联合;开放尾部增加 string 标量;Closed 空对象产生 已知空数组;Open 不能误作空对象。
+     *
+     * @param object 对象事实;非对象分支进入 Unknown 并记未知输入损失
+     * @return 键的数组事实;元素为字段名字面值或 string,长度下界为必有字段数
+     */
     public Fact keys(Fact object) {
         return project(object, Projection.KEYS);
     }
 
-    /** 对象值集合:字段值取联合;开放尾部增加其值类型;字段为 Unknown 仍参与结果。 */
+    /**
+     * 对象值集合:字段值取联合;开放尾部增加其值类型;字段为 Unknown 仍参与结果。
+     *
+     * @param object 对象事实;非对象分支进入 Unknown 并记未知输入损失
+     * @return 值的数组事实;元素为各字段类型与开放尾部值类型的并集
+     */
     public Fact values(Fact object) {
         return project(object, Projection.VALUES);
     }
 
-    /** 键值行集合:每个字段生成独立 {key: 字面值, value: 对应类型} 分支,保留 key/value 关联。 */
+    /**
+     * 键值行集合:每个字段生成独立 {key: 字面值, value: 对应类型} 分支,保留 key/value 关联。
+     *
+     * @param object 对象事实;非对象分支进入 Unknown 并记未知输入损失
+     * @return 行的数组事实;每行为关闭的 {@code {key, value}} 对象类型
+     */
     public Fact entries(Fact object) {
         return project(object, Projection.ENTRIES);
     }
@@ -238,8 +262,8 @@ public final class TypeOps {
 
     private Type projectRecord(Type.RecordType record, Projection projection) {
         List<Type> alternatives = new ArrayList<>();
-        long min = 0;
-        long max = 0;
+        long min = 0L;
+        long max = 0L;
         boolean open = !record.extra().isClosed();
         for (var entry : record.fields().entrySet()) {
             boolean required = entry.getValue().presence() == Type.Presence.REQUIRED;
@@ -288,7 +312,12 @@ public final class TypeOps {
     // 数组元素、数量与证据传播
     // ───────────────────────────────────────────────────────────────────────
 
-    /** 取数组元素事实;非数组输入返回 Never + 未知输入损失;空数组元素为 Never(不制造零长度证据)。 */
+    /**
+     * 取数组元素事实;非数组输入返回 Unknown 并记未知输入损失;空数组元素为 Never(不制造零长度证据)。
+     *
+     * @param sequence 序列事实;携带上游错误时返回阻塞结果
+     * @return 元素事实;数组分支取元素上界,非数组分支为 Unknown,空数组为 Never
+     */
     public Fact element(Fact sequence) {
         if (sequence.hasUpstreamErrors()) {
             return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR)
@@ -319,13 +348,19 @@ public final class TypeOps {
         return new Fact(Types.union(elements), evidence, losses, sequence.upstreamErrors());
     }
 
-    /** 数量区间事实(供 Chart 长度等比较);来源不保持数量时返回 null 表示未知。 */
+    /**
+     * 数量区间事实(供 Chart 长度等比较);来源不保持数量时返回 null 表示未知。
+     *
+     * @param sequence 序列事实
+     * @return 长度为 2 的数组 {@code {下界, 上界}},无界上界为 {@link Type.Sequence#UNBOUNDED};含 Unknown、上游错误
+     *     或非序列分支时返回 {@code null}
+     */
     public long[] lengthRange(Fact sequence) {
         if (sequence.type() instanceof Type.Unknown || sequence.hasUpstreamErrors()) {
             return null;
         }
         long min = Long.MAX_VALUE;
-        long max = 0;
+        long max = 0L;
         for (Type branch : flatten(sequence.type())) {
             if (!(branch instanceof Type.Sequence seq)) {
                 return null;
@@ -336,12 +371,22 @@ public final class TypeOps {
         return min == Long.MAX_VALUE ? null : new long[] {min, max};
     }
 
-    /** Sort:元素类型不变,保留数量区间;保留元素存在证据,顺序证据失效(本模型不承载顺序证据)。 */
+    /**
+     * Sort:元素类型不变,保留数量区间;保留元素存在证据,顺序证据失效(本模型不承载顺序证据)。
+     *
+     * @param sequence 输入序列事实
+     * @return 与输入完全相同的事实;排序不改变类型上界与数量,故无需重算
+     */
     public Fact preserve(Fact sequence) {
         return sequence;
     }
 
-    /** Filter:元素类型为输入安全上界;下界降到 0;删除“某行必然保留”的存在证据。 */
+    /**
+     * Filter:元素类型为输入安全上界;下界降到 0;删除“某行必然保留”的存在证据。
+     *
+     * @param sequence 输入序列事实;携带上游错误时返回阻塞结果,类型为 Unknown 时原样返回
+     * @return 过滤结果;每个分支长度下界为 0,并附加 {@link Fact.Loss#NO_ELEMENT_EVIDENCE}
+     */
     public Fact subset(Fact sequence) {
         if (sequence.hasUpstreamErrors()) {
             return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR)
@@ -354,7 +399,7 @@ public final class TypeOps {
         Set<Fact.Loss> losses = new LinkedHashSet<>(sequence.losses());
         for (Type branch : flatten(sequence.type())) {
             if (branch instanceof Type.Sequence seq) {
-                results.add(Types.sequence(seq.element(), 0, seq.maxLength()));
+                results.add(Types.sequence(seq.element(), 0L, seq.maxLength()));
             } else {
                 losses.add(Fact.Loss.UNKNOWN_INPUT);
                 results.add(Type.Unknown.INSTANCE);
@@ -368,7 +413,13 @@ public final class TypeOps {
         return new Fact(Types.union(results), Set.of(), losses, sequence.upstreamErrors());
     }
 
-    /** Each 映射:保留输入数量区间,元素替换为模板 body 类型;空输入仍产生空序列。 */
+    /**
+     * Each 映射:保留输入数量区间,元素替换为模板 body 类型;空输入仍产生空序列。
+     *
+     * @param sequence 输入序列事实
+     * @param body 单个元素映射后的元素事实
+     * @return each 结果数组事实;输入可证明非空时摘除 {@link Fact.Loss#NO_ELEMENT_EVIDENCE} 并传播 body 观察值
+     */
     public Fact map(Fact sequence, Fact body) {
         if (sequence.hasUpstreamErrors() || body.hasUpstreamErrors()) {
             Set<String> upstream = new LinkedHashSet<>(sequence.upstreamErrors());
@@ -440,6 +491,9 @@ public final class TypeOps {
      *
      * <p>联合输入逐分支映射(#77 §10.4:不根据谓词推断实际选中的分支)——数组分支得到 {@code string[]},其余分支得到 {@code
      * string},混合联合因此同时保留两种返回形状,不把整个结果压成其中一种。格式化后的文本不是快照原值, 所以不传播观测值证据;数量区间随数组分支保留。
+     *
+     * @param input 输入事实;携带上游错误时返回阻塞结果
+     * @return 数组分支为 {@code string[]}(保留数量区间)、其余分支为单个 {@code string} 的联合
      */
     public Fact mapScalarOrArray(Fact input) {
         if (input.hasUpstreamErrors()) {
@@ -477,6 +531,9 @@ public final class TypeOps {
      *
      * <p>空输入的实际返回值契约未定(#79 未决矩阵):不能把空数组的元素 {@code Never} 当成真实返回值(那会 让下游把"没有值"误当"任意要求都满足"),也不能补
      * null/undefined。可能为空的分支同样必须覆盖该未知 结果——单个分支非空不足以证明运行时拿到的是元素。直接观察到非空数组时按快照证据判定。
+     *
+     * @param sequence 待选择元素的序列事实
+     * @return 元素事实;所有分支确定非空或观察到非空数组时取元素上界,否则 Unknown 并附 {@link Fact.Loss#NO_ELEMENT_EVIDENCE}
      */
     public Fact select(Fact sequence) {
         if (sequence.hasUpstreamErrors() || sequence.type() instanceof Type.Unknown) {
@@ -518,6 +575,10 @@ public final class TypeOps {
     /**
      * 字面量下标读取:精确长度区间排除该下标时,越界结果不是正常元素——返回 Unknown 并记元素存在性未 证明,不把元素类型伪装成越界读取的结果。其余情况沿用 {@link
      * #element(Fact)} 的安全上界。
+     *
+     * @param sequence 序列事实
+     * @param index 字面量下标;负数不触发越界判断,按普通下标沿用元素上界
+     * @return 元素事实;所有分支的有限长度上界都不够时返回 Unknown 并附 {@link Fact.Loss#NO_ELEMENT_EVIDENCE}
      */
     public Fact elementAt(Fact sequence, long index) {
         if (!sequence.hasUpstreamErrors() && !(sequence.type() instanceof Type.Unknown)) {
@@ -540,7 +601,12 @@ public final class TypeOps {
         return element(sequence);
     }
 
-    /** 动态键读取(非字符串字面量下标):所有已知字段值类型与开放尾部的并集。键是否存在未知,因此不能像确定 缺失那样返回 Never;关闭空对象没有任何可取的值,才收敛为 Never。 */
+    /**
+     * 动态键读取(非字符串字面量下标):所有已知字段值类型与开放尾部的并集。键是否存在未知,因此不能像确定 缺失那样返回 Never;关闭空对象没有任何可取的值,才收敛为 Never。
+     *
+     * @param object 对象事实;携带上游错误时返回阻塞结果
+     * @return 所有字段值与开放尾部值类型的并集;非对象分支进入 Unknown 并记未知输入损失
+     */
     public Fact readDynamicField(Fact object) {
         if (object.hasUpstreamErrors()) {
             return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR)
@@ -573,6 +639,9 @@ public final class TypeOps {
     /**
      * Flatten 一层(#79 矩阵:接受 array[],null/非数组容错为空数组;混合元素策略未定——严格 params 下可拒绝
      * 已知非数组元素,但类型上界不能把元素未知误作空数组)。
+     *
+     * @param sequence 输入事实;携带上游错误时返回阻塞结果
+     * @return 展平一层的数组事实;内层全为数组时合并元素并计算数量积,含非数组元素或外层非数组时退化为 Unknown 并记未知输入损失
      */
     public Fact flattenOne(Fact sequence) {
         if (sequence.hasUpstreamErrors()) {
@@ -621,8 +690,8 @@ public final class TypeOps {
                             : sequenceBranches.stream()
                                     .mapToLong(s -> ((Type.Sequence) s).minLength())
                                     .min()
-                                    .orElse(0);
-            long max = 0;
+                                    .orElse(0L);
+            long max = 0L;
             boolean unbounded = outer.maxLength() == Type.Sequence.UNBOUNDED;
             for (Type elementBranch : sequenceBranches) {
                 Type.Sequence innerSeq = (Type.Sequence) elementBranch;
@@ -645,7 +714,7 @@ public final class TypeOps {
 
     private static long safeMultiply(long left, long right) {
         if (left == 0 || right == 0) {
-            return 0;
+            return 0L;
         }
         long result = left * right;
         return result / left == right ? result : Type.Sequence.UNBOUNDED;
@@ -655,7 +724,12 @@ public final class TypeOps {
     // 联合分支工具
     // ───────────────────────────────────────────────────────────────────────
 
-    /** 展开联合为分支列表(非联合类型返回单元素列表)。公开供契约规则求值等运算消费方复用同一分支语义。 */
+    /**
+     * 展开联合为分支列表(非联合类型返回单元素列表)。公开供契约规则求值等运算消费方复用同一分支语义。
+     *
+     * @param type 待展开的类型;{@code null} 会由 {@link List#of} 拒绝
+     * @return 联合的分支列表,或只含该类型的单元素列表
+     */
     public static List<Type> flatten(Type type) {
         return type instanceof Type.Union union ? union.alternatives() : List.of(type);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.parser;
@@ -56,6 +56,13 @@ public final class OpenuiParser {
         return parse(OpenuiPreprocessor.process(input, mode), builtins);
     }
 
+    /**
+     * 解析已预处理的结果，并注入 builtin 词表。
+     *
+     * @param pre 预处理产物（清洗后的文本与完整性标记）
+     * @param builtins 当前契约派生的词表；{@code null} 时回退默认词表
+     * @return 解析得到的程序
+     */
     public static Program parse(OpenuiPreprocessor.Result pre, BuiltinCatalog builtins) {
         BuiltinCatalog effectiveBuiltins =
                 builtins == null ? BuiltinCatalog.getDefault() : builtins;

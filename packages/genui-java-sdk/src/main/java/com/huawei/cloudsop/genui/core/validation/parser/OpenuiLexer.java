@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.parser;
@@ -423,17 +423,20 @@ public final class OpenuiLexer {
         String body = raw.substring(1, raw.length() - 1);
         StringBuilder sb = new StringBuilder(body.length());
         try {
-            for (int i = 0; i < body.length(); i++) {
+            int i = 0;
+            while (i < body.length()) {
                 char c = body.charAt(i);
                 if (c != '\\') {
                     sb.append(c);
+                    i++;
                     continue;
                 }
-                i++;
-                if (i >= body.length()) {
+                int escapeIndex = i + 1;
+                if (escapeIndex >= body.length()) {
                     throw new IllegalArgumentException("dangling escape");
                 }
-                char esc = body.charAt(i);
+                char esc = body.charAt(escapeIndex);
+                int nextIndex = escapeIndex + 1;
                 switch (esc) {
                     case '"' -> sb.append('"');
                     case '\\' -> sb.append('\\');
@@ -444,16 +447,18 @@ public final class OpenuiLexer {
                     case 'b' -> sb.append('\b');
                     case 'f' -> sb.append('\f');
                     case 'u' -> {
-                        if (i + UNICODE_HEX_DIGITS >= body.length() + 1
-                                || i + UNICODE_HEX_DIGITS + 1 > body.length()) {
+                        if (escapeIndex + UNICODE_HEX_DIGITS + 1 > body.length()) {
                             throw new IllegalArgumentException("bad unicode escape");
                         }
-                        String hex = body.substring(i + 1, i + 1 + UNICODE_HEX_DIGITS);
+                        String hex =
+                                body.substring(
+                                        escapeIndex + 1, escapeIndex + 1 + UNICODE_HEX_DIGITS);
                         sb.append((char) Integer.parseInt(hex, HEX_RADIX));
-                        i += UNICODE_HEX_DIGITS;
+                        nextIndex = escapeIndex + 1 + UNICODE_HEX_DIGITS;
                     }
                     default -> throw new IllegalArgumentException("bad escape \\" + esc);
                 }
+                i = nextIndex;
             }
             return sb.toString();
         } catch (RuntimeException ex) {

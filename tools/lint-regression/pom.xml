@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.huawei.cloudsop</groupId>
+    <artifactId>openui-java</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>lint-regression-fixtures</artifactId>
+  <name>OpenUI Lint Regression Fixtures</name>
+  <description>
+    Deliberately violating sources consumed by run_regression.py. This project is not a module of
+    the root aggregator: the main lint build must never analyze these files.
+  </description>
+
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <lint.config.dir>${project.basedir}/../../config</lint.config.dir>
+  </properties>
+
+  <build>
+    <sourceDirectory>${project.basedir}/fixtures/src/main/java</sourceDirectory>
+    <plugins>
+      <!-- 只由脚本显式调用 report goal；禁止继承的 verify 阶段门禁在 fixture 上执行。 -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <configuration>
+          <configLocation>${project.basedir}/checkstyle-regression.xml</configLocation>
+          <suppressionsLocation>${project.basedir}/checkstyle-regression-suppressions.xml</suppressionsLocation>
+          <propertyExpansion>lint.config.dir=${project.basedir}</propertyExpansion>
+        </configuration>
+        <executions>
+          <execution>
+            <id>checkstyle-validation</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>spotbugs-check</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>com.spotify.fmt</groupId>
+        <artifactId>fmt-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>fmt-check</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

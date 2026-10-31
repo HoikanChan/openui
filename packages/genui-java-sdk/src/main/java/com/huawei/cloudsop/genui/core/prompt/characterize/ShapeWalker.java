@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.prompt.characterize;
@@ -28,6 +28,19 @@ public final class ShapeWalker {
     /** The single Unicode ellipsis character (U+2026) used to mark truncated strings. */
     private static final String ELLIPSIS = "…";
 
+    /**
+     * Reduces one JSON value to a same-shape sample plus an inferred shape.
+     *
+     * <p>Side-effect free and deterministic: strings longer than {@code cfg.maxStringLen()} are
+     * truncated with an ellipsis, arrays keep their leading {@code cfg.sampleRows()} elements, and
+     * object key order is preserved. {@code depth} only tracks recursion depth and does not change
+     * the result by itself.
+     *
+     * @param value the parsed JSON value to characterize; {@code null} yields a null shape
+     * @param cfg the sampling and enum-inference configuration
+     * @param depth the current recursion depth, normally {@code 0} at the root
+     * @return the sample/shape pair for {@code value}
+     */
     public static Characterized walk(Object value, CharacterizationConfig cfg, int depth) {
         if (value == null) {
             return new Characterized(null, new ScalarShape(ScalarType.NULL));
@@ -115,7 +128,7 @@ public final class ShapeWalker {
 
     private static ShapeNode scanStringArray(List<?> list, CharacterizationConfig cfg) {
         ColumnAccumulator accumulator = new ColumnAccumulator(cfg.enumMaxDistinct());
-        long total = 0;
+        long total = 0L;
         for (Object element : list) {
             if (!(element instanceof String s)) {
                 return new ScalarShape(ScalarType.UNKNOWN);
@@ -128,7 +141,7 @@ public final class ShapeWalker {
 
     private static ShapeNode scanObjectArray(List<?> list, CharacterizationConfig cfg, int depth) {
         LinkedHashMap<String, ColumnAccumulator> columns = new LinkedHashMap<>();
-        long n = 0;
+        long n = 0L;
 
         for (Object rawRow : list) {
             n++;
@@ -145,7 +158,7 @@ public final class ShapeWalker {
                             ColumnAccumulator accumulator =
                                     new ColumnAccumulator(cfg.enumMaxDistinct());
                             // Backfill: every earlier row lacked this key, so it was missing there.
-                            for (long i = 0; i < rowsSeenBeforeThis; i++) {
+                            for (long i = 0L; i < rowsSeenBeforeThis; i++) {
                                 accumulator.observeMissing();
                             }
                             return accumulator;

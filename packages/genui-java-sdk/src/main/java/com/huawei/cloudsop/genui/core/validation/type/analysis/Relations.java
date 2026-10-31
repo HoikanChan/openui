@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
@@ -23,12 +23,22 @@ public final class Relations {
      *
      * <p>规则要点:Unknown 只被 Unknown 接受;Never 被任何类型接受;StringLiterals ⊆ string 标量;字面值集合按子集
      * 判定;联合要求源联合全部分支被目标接受、目标联合允许任一分支;RecordType 按字段与额外约束结构判定; Component 按名义;Template 只接受 Template。
+     *
+     * @param source 被包含方(可能值的来源)
+     * @param target 包含方(接受这些值的类型)
+     * @return 能证明 γ(source) ⊆ γ(target) 时为 {@code true};{@code false} 只表示未证明,不代表值出错
      */
     public static boolean proveIncluded(Type source, Type target) {
         return included(source, target);
     }
 
-    /** 证明两者没有共同值(用于“全部不兼容”证据)。 */
+    /**
+     * 证明两者没有共同值(用于“全部不兼容”证据)。
+     *
+     * @param left 左侧类型
+     * @param right 右侧类型
+     * @return 能证明两者值域不相交时为 {@code true};{@code false} 表示未证明,可能仍有交集
+     */
     public static boolean proveDisjoint(Type left, Type right) {
         return disjoint(left, right);
     }

@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+  "-//Checkstyle//DTD SuppressionXpathFilter Experimental Configuration 1.2//EN"
+  "https://checkstyle.org/dtds/suppressions_1_2_xpath_experimental.dtd">
+<!--
+  由 checkstyle.xml 中 TreeWalker 的 SuppressionXpathFilter 读取。
+  按「类名 + 方法名」定位，不写行号：行号会随 Javadoc、空行等无关改动漂移，
+  导致豁免静默失效（该拦的没拦住），或反过来误伤挪到该行的新方法（不该拦的拦了）。
+
+  共同理由：这些方法承载 openui-lang 的词法/语法/类型规则，分支数量由语言文法本身决定；
+  拆分会把一张规则表切碎成多段跳转，反而更难对照规范审查，也容易在重构中改变判定顺序。
+-->
+<suppressions>
+  <!-- 契约加载：按 JSON 节点类型分派的解析器 -->
+  <suppress-xpath files="GenerationContractLoader\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='validateCapabilityGaps'] or ./IDENT[@text='builtin'] or ./IDENT[@text='callForms']]/descendant-or-self::node()"/>
+
+  <!-- 类型表达式：相等性与语法解析 -->
+  <suppress-xpath files="TypeExprEquals\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='equals']]/descendant-or-self::node()"/>
+  <suppress-xpath files="TypeExprParser\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='lex']]/descendant-or-self::node()"/>
+
+  <!-- 生成与提示词装配 -->
+  <suppress-xpath files="GenUiGenerator\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='generateStreamInternal']]/descendant-or-self::node()"/>
+  <suppress-xpath files="PromptAssembler\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='assemble'] or ./IDENT[@text='componentSignatures']]/descendant-or-self::node()"/>
+  <suppress-xpath files="PromptRenderer\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='classify']]/descendant-or-self::node()"/>
+  <suppress-xpath files="RuleCompiler\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='rule']]/descendant-or-self::node()"/>
+  <suppress-xpath files="RepairGuidance\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='select']]/descendant-or-self::node()"/>
+
+  <!-- 词法/表达式解析 -->
+  <suppress-xpath files="OpenuiLexer\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='tokenize'] or ./IDENT[@text='decodeDoubleQuoted']]/descendant-or-self::node()"/>
+  <suppress-xpath files="OpenuiLexer\.java" checks="MethodLength"
+            query="//METHOD_DEF[./IDENT[@text='tokenize']]/descendant-or-self::node()"/>
+  <suppress-xpath files="ExpressionParser\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='parsePrefix'] or ./IDENT[@text='parseInfix']]/descendant-or-self::node()"/>
+  <suppress-xpath files="OpenuiPreprocessor\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='scan']]/descendant-or-self::node()"/>
+  <suppress-xpath files="StatementSplitter\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='splitDetailed']]/descendant-or-self::node()"/>
+
+  <!-- 类型分析核心：AnalysisSession 是语义分析的主循环 -->
+  <suppress-xpath files="AnalysisSession\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='synth'] or ./IDENT[@text='synthBuiltin'] or ./IDENT[@text='eachResult'] or ./IDENT[@text='validateTable']]/descendant-or-self::node()"/>
+  <suppress-xpath files="AnalysisSession\.java" checks="ParameterNumber"
+            query="//METHOD_DEF[./IDENT[@text='checkComponentParam'] or ./IDENT[@text='checkObligation'] or ./IDENT[@text='checkTableColumn']]/descendant-or-self::node()"/>
+  <suppress-xpath files="AnalysisSession\.java" checks="ClassDataAbstractionCoupling"
+            query="//CLASS_DEF[./IDENT[@text='AnalysisSession']]"/>
+  <suppress-xpath files="Checks\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='check'] or ./IDENT[@text='checkExtraFields'] or ./IDENT[@text='checkSequenceOf'] or ./IDENT[@text='checkComposite'] or ./IDENT[@text='evaluateOnType']]/descendant-or-self::node()"/>
+  <suppress-xpath files="DataPath\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='parse']]/descendant-or-self::node()"/>
+  <suppress-xpath files="DataPathResolver\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='resolveStep']]/descendant-or-self::node()"/>
+  <suppress-xpath files="Relations\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='included'] or ./IDENT[@text='disjoint']]/descendant-or-self::node()"/>
+  <suppress-xpath files="SchemaCompiler\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='compile']]/descendant-or-self::node()"/>
+  <suppress-xpath files="TypeOps\.java" checks="CyclomaticComplexity"
+            query="//METHOD_DEF[./IDENT[@text='map']]/descendant-or-self::node()"/>
+
+  <!--
+    长参数列表：契约 record 的规范构造器/工厂直接镜像 base-contract.json 字段，
+    再包一层参数对象只会增加一层无名字段映射。
+  -->
+  <suppress-xpath files="BuiltinSpec\.java" checks="ParameterNumber"
+            query="//CTOR_DEF[./IDENT[@text='BuiltinSpec']]/descendant-or-self::node()"/>
+  <suppress-xpath files="GenerationContract\.java" checks="ParameterNumber"
+            query="//CTOR_DEF[./IDENT[@text='GenerationContract']]/descendant-or-self::node()"/>
+  <suppress-xpath files="UiGenerationRequest\.java" checks="ParameterNumber"
+            query="//CTOR_DEF[./IDENT[@text='UiGenerationRequest']]/descendant-or-self::node()"/>
+  <suppress-xpath files="ProgramAnalyzer\.java" checks="ParameterNumber"
+            query="//METHOD_DEF[./IDENT[@text='emit']]/descendant-or-self::node()"/>
+</suppressions>

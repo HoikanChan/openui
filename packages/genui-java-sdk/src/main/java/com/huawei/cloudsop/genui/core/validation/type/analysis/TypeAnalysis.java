@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
@@ -25,9 +25,16 @@ public final class TypeAnalysis {
 
     private TypeAnalysis() {}
 
-    /** 分析结果:诊断(仅已证明错误)与覆盖报告。 */
+    /**
+     * 分析结果:诊断(仅已证明错误)与覆盖报告。
+     *
+     * @param issues 已证明的错误诊断;{@code null} 归一为空列表
+     * @param coverage 本次分析覆盖的检查要求与结论
+     * @since 2026
+     */
     public record Result(List<ValidationIssue> issues, CoverageReport coverage) {
 
+        /** 复制诊断列表,把 {@code null} 归一为空列表。 */
         public Result {
             issues = issues == null ? List.of() : List.copyOf(issues);
         }

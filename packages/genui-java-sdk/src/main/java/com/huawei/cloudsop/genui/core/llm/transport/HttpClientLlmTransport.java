@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 package com.huawei.cloudsop.genui.core.llm.transport;
 
@@ -22,6 +22,8 @@ import java.util.concurrent.ExecutionException;
 /**
  * JDK transport for a complete HTTP(S) endpoint; injected clients retain host proxy/TLS
  * configuration.
+ *
+ * @since 2026
  */
 public final class HttpClientLlmTransport implements LlmTransport {
     private static final HttpClient DEFAULT_CLIENT = HttpClient.newHttpClient();
@@ -32,10 +34,22 @@ public final class HttpClientLlmTransport implements LlmTransport {
     private final GenUiLlmConfig config;
     private final HttpClient client;
 
+    /**
+     * 使用共享的默认 HttpClient 创建传输。
+     *
+     * @param config LLM 配置，endpoint 必须是完整的 HTTP(S) URL
+     */
     public HttpClientLlmTransport(GenUiLlmConfig config) {
         this(config, DEFAULT_CLIENT);
     }
 
+    /**
+     * 使用注入的 HttpClient 创建传输，保留其代理与 TLS 配置。
+     *
+     * @param config LLM 配置；其 endpoint 必须包含主机
+     * @param client HTTP 客户端
+     * @throws IllegalArgumentException endpoint 缺少主机，或协议不是 http/https 时抛出
+     */
     public HttpClientLlmTransport(GenUiLlmConfig config, HttpClient client) {
         this.config = Objects.requireNonNull(config);
         this.client = Objects.requireNonNull(client);

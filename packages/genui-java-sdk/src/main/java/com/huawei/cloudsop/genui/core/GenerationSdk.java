@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
  */
 
 package com.huawei.cloudsop.genui.core;
@@ -30,6 +30,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Facade for assembling openui-lang generation prompts from a base contract plus registered
+ * extensions.
+ *
+ * <p>The base contract is validated once at construction time. {@link #register(GenUIExtension)}
+ * adds extensions, while {@link #assemblePrompt(GenUIPromptRequest)} and {@link
+ * #mergedContract(GenUIPromptRequest)} compute the merged view for a single request without
+ * mutating the base contract. The SDK never calls an LLM; it only produces prompt text and metadata
+ * for a caller-supplied transport.
+ *
+ * @since 2026
+ */
 public final class GenerationSdk {
     private final GenerationContract baseContract;
     private final CharacterizationConfig characterization;
@@ -89,18 +101,48 @@ public final class GenerationSdk {
                 characterization == null ? CharacterizationConfig.defaults() : characterization;
     }
 
+    /**
+     * Creates an SDK from the bundled default contract with default characterization settings.
+     *
+     * <p>Equivalent to {@code builder().build()}.
+     *
+     * @return a ready-to-use SDK instance
+     */
     public static GenerationSdk create() {
         return builder().build();
     }
 
+    /**
+     * Returns a fresh builder for configuring a custom base contract or base supplement.
+     *
+     * @return a new builder with no base contract selected
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * Returns the base contract in effect, including any base supplement applied at build time.
+     *
+     * @return the effective base contract, never {@code null}
+     */
     public GenerationContract baseContract() {
         return baseContract;
     }
 
+    /**
+     * Registers a generation extension whose components, tools and capability gaps are merged into
+     * the base contract when a request names its {@code extensionId}.
+     *
+     * <p>Duplicate component names, tool names or capability gap ids, a blank extension id, an
+     * invalid component schema, or a component group referencing an unknown component all raise
+     * {@link GenerationSdkException} before anything is stored. Registering the same id twice
+     * replaces the earlier extension.
+     *
+     * @param generation the extension to register; must have a non-blank id
+     * @throws GenerationSdkException if the extension is {@code null}, its id is blank, or its
+     *     components, tools or gaps are invalid or collide with existing definitions
+     */
     public void register(GenUIExtension generation) {
         if (generation == null) {
             throw new GenerationSdkException("generation is required");
@@ -159,6 +201,10 @@ public final class GenerationSdk {
      * registered extension for the request's {@code extensionId}), exposed so callers such as the
      * validator can obtain the SAME contract the LLM was prompted with — ensuring component names
      * and props match exactly what the model was told.
+     *
+     * @param request the request whose {@code extensionId} selects the extension to merge; {@code
+     *     null} is treated as an empty request, yielding the base contract alone
+     * @return the merged contract, preserving the base version, root and builtins
      */
     public GenerationContract mergedContract(GenUIPromptRequest request) {
         GenUIPromptRequest effectiveRequest =
@@ -178,6 +224,16 @@ public final class GenerationSdk {
                 parts.capabilityGaps());
     }
 
+    /**
+     * Assembles the openui-lang prompt and its metadata for one request.
+     *
+     * <p>Merges the base contract with the extension named by {@link
+     * GenUIPromptRequest#extensionId()} (an unknown id contributes nothing), characterizes the
+     * request's data model, and renders the prompt via {@link PromptAssembler}.
+     *
+     * @param request the prompt request; {@code null} is treated as an empty request
+     * @return the rendered prompt plus metadata naming the contract versions and registered tools
+     */
     public GenUIPromptAssemblyResult assemblePrompt(GenUIPromptRequest request) {
         GenUIPromptRequest effectiveRequest =
                 request == null
@@ -274,7 +330,11 @@ public final class GenerationSdk {
                 capabilityGaps);
     }
 
-    /** Value object carrying the merged contract parts from {@link #merge}. */
+    /**
+     * Value object carrying the merged contract parts from {@link #merge}.
+     *
+     * @since 2026
+     */
     private record MergedParts(
             LinkedHashMap<String, ComponentPromptSpec> components,
             ArrayList<ComponentGroup> componentGroups,
@@ -369,6 +429,15 @@ public final class GenerationSdk {
         return result;
     }
 
+    /**
+     * Fluent builder for {@link GenerationSdk}.
+     *
+     * <p>Obtain one via {@link GenerationSdk#builder()}. When unset, the base contract defaults to
+     * {@link GenerationContractLoader#loadDefault()} and characterization to {@link
+     * CharacterizationConfig#defaults()}.
+     *
+     * @since 2026
+     */
     public static final class Builder {
         private GenerationContract baseContract;
         private GenUIBaseSupplement baseSupplement;
@@ -376,6 +445,12 @@ public final class GenerationSdk {
 
         private Builder() {}
 
+        /**
+         * Sets the base contract to build around; when unset, the bundled default is loaded.
+         *
+         * @param baseContract the base contract, or {@code null} to use the bundled default
+         * @return this builder
+         */
         public Builder baseContract(GenerationContract baseContract) {
             this.baseContract = baseContract;
             return this;
@@ -385,17 +460,33 @@ public final class GenerationSdk {
          * Global base supplement merged into the base contract at build time (at most one per SDK
          * instance). Load it with {@code GenUIBaseSupplementLoader}; see {@link
          * GenUIBaseSupplement} for the merge rules.
+         *
+         * @param baseSupplement the global supplement to merge, or {@code null} for none
+         * @return this builder
          */
         public Builder baseSupplement(GenUIBaseSupplement baseSupplement) {
             this.baseSupplement = baseSupplement;
             return this;
         }
 
+        /**
+         * Overrides characterization tuning; when unset, {@link CharacterizationConfig#defaults()}
+         * is used.
+         *
+         * @param characterization the configuration to use, or {@code null} for defaults
+         * @return this builder
+         */
         public Builder characterization(CharacterizationConfig characterization) {
             this.characterization = characterization;
             return this;
         }
 
+        /**
+         * Builds an SDK, loading the default contract when no base contract was set.
+         *
+         * @return a new SDK instance
+         * @throws GenerationSdkException if the base contract or base supplement is invalid
+         */
         public GenerationSdk build() {
             return new GenerationSdk(
                     baseContract == null ? GenerationContractLoader.loadDefault() : baseContract,
