@@ -176,18 +176,16 @@ render it. The validation data model lives under `core.validation`:
 - `ValidationStatus` (`VALID`, `INVALID`)
 - `ValidationSeverity` (`ERROR`, `WARNING`, `INFO`)
 - `ValidationIssue`, `ValidationResult`, `ValidationMetadata`, `ValidationRequest`
-- `ValidationConfigMode` (`INCREMENTAL`, `FINAL_ONLY`, `DISABLED`)
 - `GenUiValidationConfig`, the top-level generator config record
 
-`GenUiValidationConfig` exposes two axes: the validation strategy (incremental
-repair, final-only check, or disabled) and an optional cap on incremental repair
-rounds. Use the presets for the common modes:
+`GenUiValidationConfig` enables or disables streaming validation and repair together.
+An optional limit caps the number of repair rounds:
 
 ```java
-GenUiValidationConfig cfg = GenUiValidationConfig.incremental(); // default: elapsed-time repair budget
-GenUiValidationConfig capped = GenUiValidationConfig.incremental(3); // at most 3 repair rounds
-GenUiValidationConfig strict = GenUiValidationConfig.finalOnly(); // stream validates without repair
+GenUiValidationConfig cfg = GenUiValidationConfig.enabled(); // default: elapsed-time repair budget
+GenUiValidationConfig capped = GenUiValidationConfig.enabled(3); // at most 3 repair rounds
 GenUiValidationConfig off = GenUiValidationConfig.disabled();
+// Or configure directly: new GenUiValidationConfig(true, 3)
 ```
 
 `GenUiGenerator.generate()` makes one model request and returns the extracted
@@ -232,8 +230,8 @@ conservatively instead of guessing a type.
 
 ### Incremental repair (default, #58)
 
-Streaming generation defaults to `GenUiValidationConfig.incremental()`
-(`INCREMENTAL`): round-end validation plus incremental repair. After a round ends with blocking
+Streaming generation defaults to `GenUiValidationConfig.enabled()`: round-end validation
+plus incremental repair. After a round ends with blocking
 errors, the model is asked for **only overriding or new statements** (pure
 openui-lang, no full page/JSON/deletion). The SDK merges the patch into the same
 current program (last-wins by statement id), forwards the patch live on the stream,
@@ -248,11 +246,9 @@ model requests. Completed and interrupted rounds remain on `rounds()`.
 
 If a completed repair is still invalid and the budget has ended, the DSL session ends
 unsuccessfully and the public entry performs exactly one whole-page Markdown
-handoff (`replace` + `done` on the stream). Explicit
-`GenUiValidationConfig.finalOnly()` validates without repair and returns the
-validation result; `disabled()` bypasses validation and repair entirely.
+handoff (`replace` + `done` on the stream). `disabled()` bypasses both validation and repair.
 
-Pass `GenUiValidationConfig.incremental(n)` when a host needs a hard repair
+Pass `GenUiValidationConfig.enabled(n)` when a host needs a hard repair
 round cap. Whole-page DSL repair and its public APIs have been removed:
 `FINAL_REPAIR`, `RepairPolicy`, `RepairCoordinator`, and `ReaskPromptBuilder`
 are no longer available. Existing callers must use streaming incremental repair.
@@ -305,20 +301,17 @@ Includes, local views, metadata, expressions, object reflection, and method call
 `RenderStreamEnvelope.dataModel(...)` frame with `seq=0`. Generation itself is
 **never gated**: every model delta is forwarded live as a `dsl` envelope —
 nothing is withheld for validation, no per-statement repair runs, and no extra
-pre-generation model request is issued. The remaining behavior depends on
-`ValidationConfigMode`:
+pre-generation model request is issued. The remaining behavior depends on the validation switch:
 
-| Mode | Stream behavior |
+| Enabled | Stream behavior |
 |---|---|
-| `DISABLED` | Raw LLM deltas are emitted as `dsl` envelopes. No validation result is attached. |
-| `FINAL_ONLY` | Raw LLM deltas are emitted as `dsl` envelopes. When the model's output round ends cleanly, one unified validation runs over the **current effective program**; the status is carried by the returned `GenUiGenerationResult`, with no late `error` frame. |
-| `INCREMENTAL` | Same round-end check as `FINAL_ONLY`; when it fails, the model is asked for override/new statements and the merged program is re-checked, within the repair budget. |
+| `false` | Raw LLM deltas are emitted as `dsl` envelopes. No validation or repair is performed. |
+| `true` | Each completed round is checked. On failure, the model is asked for override/new statements and the merged program is checked again, within the repair budget. |
 
 The end-of-round check is maintained by `ProgramRoundSession` (the Program
-State & Validation module): complete statements are parsed as they arrive and
-kept in a **last-wins-by-name** map, so a re-issued `id = ...` statement
+State & Validation module): statements are collected into a **last-wins-by-name** map, so a re-issued `id = ...` statement
 overrides the previous definition and historical definitions stop producing
-current errors. The round-end validation runs once, in `FINAL` mode, over the
+current errors. The round-end validation runs once, without auto-closing incomplete input, over the
 current effective definitions — covering syntax, references, component and
 builtin contracts, params, data paths, static types, and page completeness
 using the request's effective contract and the full Render Data Model. Forward
@@ -346,11 +339,8 @@ and `done` envelopes.
 
 ### Rollback
 
-To roll back validation quickly, use `GenUiValidationConfig.disabled()` for
-bare-delta behavior. To keep raw streaming while still checking the final result,
-use `GenUiValidationConfig.finalOnly()`. A service can also revert its endpoint
-implementation to raw delta streaming if clients cannot yet consume
-`RenderStreamEnvelope` SSE frames.
+Use `GenUiValidationConfig.disabled()` to disable validation and repair while
+retaining raw delta streaming.
 
 ## Migrating from bare LLM delta streaming
 

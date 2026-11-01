@@ -30,50 +30,42 @@ public final class OpenuiParser {
      * @return 解析得到的程序
      */
     public static Program parse(String input) {
-        return parse(input, ParseMode.FINAL);
+        return parse(input, BuiltinCatalog.getDefault());
     }
 
     /**
-     * 按指定的 {@link ParseMode} 解析输入。
+     * Parse complete input using the given builtin catalog.
      *
-     * @param input 待解析的源字符串
-     * @param mode 解析模式
-     * @return 解析得到的程序
+     * @param input source text
+     * @param builtins builtin catalog, or null for the default
+     * @return parsed program and diagnostics
      */
-    public static Program parse(String input, ParseMode mode) {
-        return parse(input, mode, BuiltinCatalog.getDefault());
-    }
-
-    /**
-     * 按指定的 {@link ParseMode} 与 {@link BuiltinCatalog} 解析输入。
-     *
-     * @param input 待解析的源字符串
-     * @param mode 解析模式
-     * @param builtins 当前契约派生的 builtin 词表
-     * @return 解析得到的程序
-     */
-    public static Program parse(String input, ParseMode mode, BuiltinCatalog builtins) {
-        return parse(OpenuiPreprocessor.process(input, mode), builtins);
-    }
-
-    /**
-     * 解析已预处理的结果，并注入 builtin 词表。
-     *
-     * @param pre 预处理产物（清洗后的文本与完整性标记）
-     * @param builtins 当前契约派生的词表；{@code null} 时回退默认词表
-     * @return 解析得到的程序
-     */
-    public static Program parse(OpenuiPreprocessor.Result pre, BuiltinCatalog builtins) {
+    public static Program parse(String input, BuiltinCatalog builtins) {
+        String text = OpenuiPreprocessor.preprocess(input);
         BuiltinCatalog effectiveBuiltins =
                 builtins == null ? BuiltinCatalog.getDefault() : builtins;
         List<ParseDiagnostic> diagnostics = new ArrayList<>();
         List<Statement> statements = new ArrayList<>();
 
-        if (pre.text().isBlank()) {
-            return new Program(statements, diagnostics, pre.wasIncomplete());
+        if (text.isBlank()) {
+            return new Program(statements, diagnostics);
         }
 
-        List<Token> tokens = OpenuiLexer.tokenize(pre.text());
+        List<Token> tokens = OpenuiLexer.tokenize(text);
+        for (Token token : tokens) {
+            if (token.type() == TokenType.STR && !isClosedString(text, token)) {
+                diagnostics.add(
+                        ParseDiagnostic.at(
+                                ParseErrorCode.UNEXPECTED_TOKEN,
+                                "Unclosed string literal",
+                                null,
+                                new SourceSpan(
+                                        token.line(),
+                                        token.column(),
+                                        token.offset(),
+                                        Math.min(text.length(), token.offset() + token.length()))));
+            }
+        }
         StatementSplitter.SplitResult split = StatementSplitter.splitDetailed(tokens);
         diagnostics.addAll(split.diagnostics());
 
@@ -85,7 +77,20 @@ public final class OpenuiParser {
             statements.add(classify(raw, expr));
         }
 
-        return new Program(statements, diagnostics, pre.wasIncomplete());
+        return new Program(statements, diagnostics);
+    }
+
+    private static boolean isClosedString(String text, Token token) {
+        int start = token.offset();
+        int end = Math.min(text.length(), start + token.length());
+        if (end - start < 2 || text.charAt(start) != text.charAt(end - 1)) {
+            return false;
+        }
+        int escapes = 0;
+        for (int i = end - 2; i > start && text.charAt(i) == '\\'; i--) {
+            escapes++;
+        }
+        return escapes % 2 == 0;
     }
 
     /** 对原始语句与已解析表达式做分类，对应 {@code classifyStatement}。 */

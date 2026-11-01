@@ -87,7 +87,7 @@ class GenUiGeneratorValidationTest {
                 GenUiGenerator.withTransport(
                         GenUiLlmConfig.defaults(),
                         transport,
-                        GenUiValidationConfig.incremental(),
+                        GenUiValidationConfig.enabled(1),
                         validator);
 
         GenUiGenerationResult result =
@@ -111,7 +111,7 @@ class GenUiGeneratorValidationTest {
                 GenUiGenerator.withTransport(
                                 GenUiLlmConfig.defaults(),
                                 transport,
-                                GenUiValidationConfig.incremental(),
+                                GenUiValidationConfig.enabled(1),
                                 request -> {
                                     throw new AssertionError(
                                             "sync generate() must not invoke the validator");
@@ -131,7 +131,7 @@ class GenUiGeneratorValidationTest {
                 GenUiGenerator.withTransport(
                         GenUiLlmConfig.defaults(),
                         transport,
-                        GenUiValidationConfig.incremental(),
+                        GenUiValidationConfig.enabled(1),
                         null);
 
         GenerationSdkException error =
@@ -170,16 +170,14 @@ class GenUiGeneratorValidationTest {
     // ── 流式:轮末统一校验 ───────────────────────────────────────────────────
 
     @Test
-    void streamInvalidDslWithFinalOnlyReturnsInvalidWithoutRepair() {
-        String dsl = "root = BogusWidget()";
-        FakeTransport transport = FakeTransport.stream(streamOf(dsl));
+    void invalidStreamTriggersRepairAndFallbackWhenStillInvalid() {
+        FakeTransport transport = FakeTransport.stream(streamOf("root = BogusWidget()"));
         AtomicInteger handoffs = new AtomicInteger();
-
         GenUiGenerationResult result =
                 GenUiGenerator.withTransport(
                                 GenUiLlmConfig.defaults(),
                                 transport,
-                                GenUiValidationConfig.finalOnly(),
+                                GenUiValidationConfig.enabled(1),
                                 null)
                         .generateStream(
                                 UiGenerationRequest.builder().userInput("show bogus").build(),
@@ -189,20 +187,9 @@ class GenUiGeneratorValidationTest {
                                     return new GenUiGenerationResult(
                                             "fallback", original.response());
                                 });
-
-        assertEquals(ValidationStatus.INVALID, result.validationStatus());
-        assertEquals(GenerationEndReason.VALIDATION_FAILED, result.endReason());
-        assertTrue(result.validationResult().hasBlockingIssues());
-        assertTrue(
-                result.validationResult().issues().stream()
-                        .anyMatch(
-                                i ->
-                                        "unknown-component".equals(i.code())
-                                                && i.severity() == ValidationSeverity.ERROR),
-                "must have an unknown-component ERROR issue, got: "
-                        + result.validationResult().issues());
-        assertEquals(1, transport.streamCount.get(), "finalOnly must not issue a repair request");
-        assertEquals(0, handoffs.get());
+        assertEquals(2, transport.streamCount.get());
+        assertEquals(1, handoffs.get());
+        assertEquals("fallback", result.dsl());
     }
 
     @Test
@@ -231,15 +218,15 @@ class GenUiGeneratorValidationTest {
                 GenUiGenerator.withTransport(
                                 GenUiLlmConfig.defaults(),
                                 transport,
-                                GenUiValidationConfig.finalOnly(),
+                                GenUiValidationConfig.enabled(1),
                                 alwaysInvalid)
                         .generateStream(
                                 UiGenerationRequest.builder().userInput("x").build(),
                                 envelope -> {});
 
-        assertEquals(ValidationStatus.INVALID, result.validationStatus());
+        assertEquals(ValidationStatus.INVALID, result.rounds().get(0).validationResult().status());
         assertTrue(
-                result.validationResult().issues().stream()
+                result.rounds().get(0).validationResult().issues().stream()
                         .anyMatch(i -> "stub-error".equals(i.code())),
                 "custom stub error code must be present");
     }
@@ -257,7 +244,7 @@ class GenUiGeneratorValidationTest {
                 GenUiGenerator.withTransport(
                                 GenUiLlmConfig.defaults(),
                                 transport,
-                                GenUiValidationConfig.finalOnly(),
+                                GenUiValidationConfig.enabled(1),
                                 alwaysValid)
                         .generateStream(
                                 UiGenerationRequest.builder().userInput("x").build(),
@@ -282,7 +269,7 @@ class GenUiGeneratorValidationTest {
                 GenUiGenerator.withTransport(
                         GenUiLlmConfig.defaults(),
                         transport,
-                        GenUiValidationConfig.finalOnly(),
+                        GenUiValidationConfig.enabled(1),
                         capturingValidator);
 
         generator.generateStream(
@@ -316,7 +303,7 @@ class GenUiGeneratorValidationTest {
                 GenUiGenerator.withTransport(
                         GenUiLlmConfig.defaults(),
                         transport,
-                        GenUiValidationConfig.finalOnly(),
+                        GenUiValidationConfig.enabled(1),
                         capturingValidator);
 
         generator.generateStream(
@@ -343,7 +330,7 @@ class GenUiGeneratorValidationTest {
                 GenUiGenerator.withTransport(
                                 GenUiLlmConfig.defaults(),
                                 transport,
-                                GenUiValidationConfig.finalOnly(),
+                                GenUiValidationConfig.enabled(1),
                                 null)
                         .generateStream(
                                 UiGenerationRequest.builder()
@@ -367,18 +354,18 @@ class GenUiGeneratorValidationTest {
                 GenUiGenerator.withTransport(
                                 GenUiLlmConfig.defaults(),
                                 transport,
-                                GenUiValidationConfig.finalOnly(),
+                                GenUiValidationConfig.enabled(1),
                                 null)
                         .generateStream(
                                 UiGenerationRequest.builder().userInput("show device").build(),
                                 envelope -> {});
 
-        assertEquals(ValidationStatus.INVALID, result.validationStatus());
+        assertEquals(ValidationStatus.INVALID, result.rounds().get(0).validationResult().status());
         assertTrue(
-                result.validationResult().issues().stream()
+                result.rounds().get(0).validationResult().issues().stream()
                         .anyMatch(i -> "unresolved-ref".equals(i.code())),
                 "data must stay unresolved without a dataModel, got: "
-                        + result.validationResult().issues());
+                        + result.rounds().get(0).validationResult().issues());
     }
 
     // ── DefaultOpenuiLangValidator — standalone unit tests ────────────────────

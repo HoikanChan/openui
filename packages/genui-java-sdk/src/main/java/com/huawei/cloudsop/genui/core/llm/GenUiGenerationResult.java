@@ -21,8 +21,7 @@ import java.util.Map;
  *
  * <p>{@code validationStatus} / {@code validationResult} 携带轮末统一校验的最终状态与详情,供服务层 做缓存决策(仅最终 {@link
  * ValidationStatus#VALID} 才缓存;repair 成功以 VALID 加 metadata 标记表达,见 design Section 9)与日志记录。校验被禁用
- * ({@link com.huawei.cloudsop.genui.core.validation.ValidationConfigMode#DISABLED}) 或同步生成时二者均为
- * {@code null}。
+ * (校验关闭) 或同步生成时二者均为 {@code null}。
  *
  * <p>{@code endReason}(#57)区分检查通过、校验失败、未检查、超时与模型请求失败——DSL 会话结论在独立 Markdown 降级成功时仍保留。
  *

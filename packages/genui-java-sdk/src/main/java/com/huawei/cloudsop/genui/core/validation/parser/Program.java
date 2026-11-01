@@ -14,11 +14,9 @@ import java.util.List;
  *
  * @param statements 按源码顺序解析出的语句；不会为 {@code null}
  * @param diagnostics 结构化的语法诊断信息；不会为 {@code null}
- * @param incomplete 若为自动闭合修复了未闭合的括号/字符串（流式或截断输入）则为 {@code true}
  * @since 2026
  */
-public record Program(
-        List<Statement> statements, List<ParseDiagnostic> diagnostics, boolean incomplete) {
+public record Program(List<Statement> statements, List<ParseDiagnostic> diagnostics) {
 
     /** 紧凑构造方法，将各列表归一化为不可变列表。 */
     public Program {

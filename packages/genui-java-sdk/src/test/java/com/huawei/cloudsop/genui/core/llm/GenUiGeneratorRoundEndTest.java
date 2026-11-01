@@ -38,7 +38,7 @@ class GenUiGeneratorRoundEndTest {
 
     private static GenUiGenerator generator(FakeStream transport) {
         return GenUiGenerator.withTransport(
-                GenUiLlmConfig.defaults(), transport, GenUiValidationConfig.finalOnly(), null);
+                GenUiLlmConfig.defaults(), transport, GenUiValidationConfig.enabled(1), null);
     }
 
     private static UiGenerationRequest req() {
@@ -83,14 +83,17 @@ class GenUiGeneratorRoundEndTest {
     @Test
     void deltasAreForwardedLiveWithoutGatingAndNoExtraModelRequest() {
         // 未知组件 Bogus 也实时转发(轮末才统一校验);整轮只有一次 postStream(无生成前预判请求)。
-        FakeStream t = FakeStream.of(frame("root = Bogus(\"x\")\n"), SseFrames.done());
+        FakeStream t =
+                FakeStream.ofScripts(
+                        frame("root = Bogus(\"x\")\n") + SseFrames.done(),
+                        frame("root = Stack([])\n") + SseFrames.done());
         List<RenderStreamEnvelope> envelopes = run(generator(t), req());
 
-        assertEquals(1, t.streamCount(), "首次生成只发起一次模型请求");
+        assertEquals(2, t.streamCount(), "校验失败后发起一次修复请求");
         assertEquals("dataModel", envelopes.get(0).type());
         assertEquals(0, envelopes.get(0).seq());
         List<String> dsl = dslContents(envelopes);
-        assertEquals(List.of("root = Bogus(\"x\")\n"), dsl, "原始增量实时转发,不因校验扣留");
+        assertEquals(List.of("root = Bogus(\"x\")\n", "root = Stack([])\n"), dsl, "原始输出和修复实时转发");
         assertEquals("done", envelopes.get(envelopes.size() - 1).type());
         assertSeqStrictlyIncreasing(envelopes);
     }
@@ -98,7 +101,10 @@ class GenUiGeneratorRoundEndTest {
     @Test
     void noValidationErrorFrameWhenRoundEndFindsIssues() {
         // 轮末 INVALID 不发 error 帧(检查交给已有失败处理:结果标记 INVALID),流以 done 结束。
-        FakeStream t = FakeStream.of(frame("root = Bogus(\"x\")\n"), SseFrames.done());
+        FakeStream t =
+                FakeStream.ofScripts(
+                        frame("root = Bogus(\"x\")\n") + SseFrames.done(),
+                        frame("root = Stack([])\n") + SseFrames.done());
         ArrayList<RenderStreamEnvelope> envelopes = new ArrayList<>();
         GenUiGenerationResult result = generator(t).generateStream(req(), envelopes::add);
 
@@ -106,7 +112,8 @@ class GenUiGeneratorRoundEndTest {
                 types(envelopes).contains(RenderStreamEnvelope.TYPE_ERROR),
                 "轮末统一检查不对外发 error 帧: " + types(envelopes));
         assertEquals("done", envelopes.get(envelopes.size() - 1).type());
-        assertEquals(ValidationStatus.INVALID, result.validationStatus());
+        assertEquals(ValidationStatus.INVALID, result.rounds().get(0).validationResult().status());
+        assertEquals(ValidationStatus.VALID, result.validationStatus());
     }
 
     // ── 同名覆盖:前后端一致 ────────────────────────────────────────────────
@@ -145,14 +152,14 @@ class GenUiGeneratorRoundEndTest {
                         SseFrames.done());
         GenUiGenerationResult result = generator(t).generateStream(req(), e -> {});
 
-        assertEquals(ValidationStatus.INVALID, result.validationStatus());
+        assertEquals(ValidationStatus.INVALID, result.rounds().get(0).validationResult().status());
         assertTrue(
-                result.validationResult().issues().stream()
+                result.rounds().get(0).validationResult().issues().stream()
                         .anyMatch(
                                 i ->
                                         "unresolved-ref".equals(i.code())
                                                 && "a".equals(i.statementId())),
-                "覆盖后的当前定义造成下游错误必须被发现: " + result.validationResult().issues());
+                "覆盖后的当前定义造成下游错误必须被发现: " + result.rounds().get(0).validationResult().issues());
     }
 
     @Test
@@ -231,9 +238,11 @@ class GenUiGeneratorRoundEndTest {
                                 e -> {});
 
         assertEquals(
-                ValidationStatus.INVALID, without.validationStatus(), "无 dataModel 时 data 仍未解析");
+                ValidationStatus.INVALID,
+                without.rounds().get(0).validationResult().status(),
+                "无 dataModel 时 data 仍未解析");
         assertTrue(
-                without.validationResult().issues().stream()
+                without.rounds().get(0).validationResult().issues().stream()
                         .anyMatch(i -> "unresolved-ref".equals(i.code())));
     }
 
@@ -252,9 +261,9 @@ class GenUiGeneratorRoundEndTest {
                                         .build(),
                                 e -> {});
 
-        assertEquals(ValidationStatus.INVALID, result.validationStatus());
+        assertEquals(ValidationStatus.INVALID, result.rounds().get(0).validationResult().status());
         assertTrue(
-                result.validationResult().issues().stream()
+                result.rounds().get(0).validationResult().issues().stream()
                         .anyMatch(i -> "type-data-path-missing".equals(i.code())));
     }
 
@@ -266,7 +275,7 @@ class GenUiGeneratorRoundEndTest {
         GenUiGenerationResult result = generator(t).generateStream(req(), e -> {});
 
         List<RoundEndResult> rounds = result.rounds();
-        assertEquals(1, rounds.size(), "首次生成恰为一轮");
+        assertEquals(2, rounds.size(), "失败后记录修复轮");
         RoundEndResult round = rounds.get(0);
         assertTrue(round.rawOutput().contains("Bogus"), "记录本轮原始输出");
         assertEquals("root = Bogus(\"x\")", round.currentDefinitions(), "记录当前定义");
@@ -295,9 +304,12 @@ class GenUiGeneratorRoundEndTest {
         FakeStream t = FakeStream.of(SseFrames.done());
         GenUiGenerationResult result = generator(t).generateStream(req(), e -> {});
 
-        assertEquals(ValidationStatus.INVALID, result.validationStatus(), "空程序轮末 root-missing");
-        assertEquals("", result.dsl());
-        assertNull(result.validationResult().metadata().rootName());
+        assertEquals(
+                ValidationStatus.INVALID,
+                result.rounds().get(0).validationResult().status(),
+                "空程序轮末 root-missing");
+        assertEquals("", result.rounds().get(0).currentDefinitions());
+        assertNull(result.rounds().get(0).validationResult().metadata().rootName());
     }
 
     // ── 流失败:已有失败处理不变 ─────────────────────────────────────────────

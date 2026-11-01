@@ -6,7 +6,6 @@ package com.huawei.cloudsop.genui.core.validation.stream;
 
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiLexer;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiPreprocessor;
-import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
 import com.huawei.cloudsop.genui.core.validation.parser.StatementSplitter;
 import com.huawei.cloudsop.genui.core.validation.parser.Token;
 
@@ -105,16 +104,8 @@ public final class StatementBoundaryScanner {
     }
 
     private List<CompletedStatement> newlyComplete(boolean atEnd) {
-        // Mid-stream: preprocess WITHOUT auto-close so an unclosed tail stays a single
-        // (still-pending)
-        // statement and is not surfaced early. At end-of-stream: auto-close (STREAMING mode) so the
-        // final pending tail is repaired into a well-formed, FINAL-validatable statement.
         dirty = false;
-        String cleaned =
-                atEnd
-                        ? OpenuiPreprocessor.process(rawBuffer.toString(), ParseMode.STREAMING)
-                                .text()
-                        : OpenuiPreprocessor.preprocess(rawBuffer.toString());
+        String cleaned = OpenuiPreprocessor.preprocess(rawBuffer.toString());
         if (cleaned.isBlank()) {
             return List.of();
         }

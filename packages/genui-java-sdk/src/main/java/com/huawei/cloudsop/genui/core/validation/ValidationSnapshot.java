@@ -9,7 +9,6 @@ import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiPreprocessor;
-import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.semantic.ContractCatalog;
 import com.huawei.cloudsop.genui.core.validation.semantic.ProgramAnalysis;
@@ -46,8 +45,8 @@ public final class ValidationSnapshot {
         builtins = BuiltinCatalog.fromContract(contract);
         catalog = ContractCatalog.from(contract);
         String dsl = request.dsl() == null ? "" : request.dsl();
-        OpenuiPreprocessor.Result preprocessed = OpenuiPreprocessor.process(dsl, ParseMode.FINAL);
-        program = OpenuiParser.parse(preprocessed, builtins);
+        String preprocessed = OpenuiPreprocessor.preprocess(dsl);
+        program = OpenuiParser.parse(dsl, builtins);
         rootName = request.rootName();
         LinkedHashSet<String> refs = new LinkedHashSet<>(request.externalRefs());
         if (dataModel != null) {
@@ -55,7 +54,7 @@ public final class ValidationSnapshot {
         }
         externalRefs = Collections.unmodifiableSet(refs);
         analysis = new ProgramAnalyzer(catalog, builtins).analyze(program, rootName, externalRefs);
-        normalizedDsl = preprocessed.text();
+        normalizedDsl = preprocessed;
     }
 
     static ValidationSnapshot build(ValidationRequest request) {
