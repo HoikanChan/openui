@@ -1,0 +1,15 @@
+{
+  "title": "genui-java-sdk",
+  "pages": [
+    "index",
+    "---注册与请求---",
+    "extension-registration",
+    "request-model",
+    "---Prompt 组装---",
+    "prompt-assembly",
+    "characterization",
+    "---LLM 与流式---",
+    "llm-transport",
+    "streaming"
+  ]
+}
