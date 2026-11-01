@@ -1118,8 +1118,7 @@ public final class BuiltinAnalysis {
             if (contextCheckedTemplates.contains(template.call())) {
                 continue;
             }
-            if (!session.consumeCheck()) {
-                session.markTraversalTruncated();
+            if (!session.tryStartTraversal()) {
                 return;
             }
             session.synth(

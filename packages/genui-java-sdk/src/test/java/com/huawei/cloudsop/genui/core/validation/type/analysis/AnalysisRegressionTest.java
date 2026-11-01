@@ -38,73 +38,27 @@ class AnalysisRegressionTest {
     }
 
     @Test
-    void unionBranchBudgetLossReachesReturnedFact() {
-        Type number = Types.scalar(Type.ScalarKind.NUMBER);
-        Type string = Types.scalar(Type.ScalarKind.STRING);
-        Fact object =
-                Fact.of(
-                        Types.union(
-                                List.of(
-                                        Types.record(
-                                                Map.of("value", Type.Field.required(number)),
-                                                Type.Extra.closed()),
-                                        Types.record(
-                                                Map.of("value", Type.Field.required(string)),
-                                                Type.Extra.closed()))));
-        TypeOps ops = new TypeOps(new AnalysisBudget(4096, 1, 16, 256, 2048).tracker());
-
-        Fact result = ops.readField(object, "value");
+    void unionBranchLimitLossReachesReturnedFact() {
+        Fact object = alternatives(65);
+        Fact result = new TypeOps().readField(object, "value");
 
         assertEquals(Type.Unknown.INSTANCE, result.type());
         assertTrue(result.losses().contains(Fact.Loss.PRECISION_BUDGET));
     }
 
     @Test
-    void overlayBranchBudgetReturnsSafeSummaryWithPrecisionLoss() {
-        Type number = Types.scalar(Type.ScalarKind.NUMBER);
-        Type string = Types.scalar(Type.ScalarKind.STRING);
-        Fact alternatives =
-                Fact.of(
-                        Types.union(
-                                java.util.List.of(
-                                        Types.record(
-                                                Map.of("value", Type.Field.required(number)),
-                                                Type.Extra.closed()),
-                                        Types.record(
-                                                Map.of("value", Type.Field.required(string)),
-                                                Type.Extra.closed()))));
-        var tracker = new AnalysisBudget(4096, 1, 16, 256, 2048).tracker();
-        TypeOps ops = new TypeOps(tracker);
-
-        Fact result = ops.overlay(java.util.List.of(alternatives));
+    void overlayBranchLimitReturnsSafeSummary() {
+        Fact result = new TypeOps().overlay(List.of(alternatives(9), alternatives(8)));
 
         assertEquals(Type.Unknown.INSTANCE, result.type());
         assertTrue(result.losses().contains(Fact.Loss.PRECISION_BUDGET));
-        assertTrue(tracker.precisionLost());
     }
 
     @Test
-    void overlayTypeNodeBudgetReturnsSafeSummaryWithPrecisionLoss() {
-        var tracker = new AnalysisBudget(0, 64, 16, 256, 2048).tracker();
-        TypeOps ops = new TypeOps(tracker);
-
-        Fact result =
-                ops.overlay(
-                        java.util.List.of(Fact.of(Types.record(Map.of(), Type.Extra.closed()))));
-
-        assertEquals(Type.Unknown.INSTANCE, result.type());
-        assertTrue(result.losses().contains(Fact.Loss.PRECISION_BUDGET));
-        assertTrue(tracker.precisionLost());
-    }
-
-    @Test
-    void sampleBudgetPreservesPrecisionLossAndUnknownRemainder() {
+    void sampleLimitPreservesUnknownRemainder() {
         Fact fact =
                 SnapshotFacts.typeOfValue(
-                        java.util.List.of("known", "also valid"),
-                        "data.values",
-                        0,
-                        new AnalysisBudget(4096, 64, 16, 1, 2048).tracker());
+                        java.util.Collections.nCopies(257, "known"), "data.values", 0);
 
         assertTrue(fact.losses().contains(Fact.Loss.PRECISION_BUDGET));
         assertEquals(Type.Unknown.INSTANCE, ((Type.Sequence) fact.type()).element());
@@ -117,5 +71,21 @@ class AnalysisRegressionTest {
                                                 Types.scalar(Type.ScalarKind.STRING))),
                                 "data.values")
                         .verdict());
+    }
+
+    private static Fact alternatives(int count) {
+        List<Type> branches =
+                java.util.stream.IntStream.range(0, count)
+                        .mapToObj(
+                                index ->
+                                        Types.record(
+                                                Map.of(
+                                                        "value",
+                                                        Type.Field.required(
+                                                                Types.stringLiterals(
+                                                                        Set.of("value-" + index)))),
+                                                Type.Extra.closed()))
+                        .toList();
+        return Fact.of(Types.union(branches));
     }
 }

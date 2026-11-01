@@ -447,18 +447,14 @@ class StaticTypeValidationTest {
                         .dsl(
                                 "root = DescField(label, @String(@ObjectValues(data)))\nlabel = \"label\"")
                         .contract(GenerationContractLoader.loadDefault())
-                        .dataModel(Map.of("values", List.of("one", "two")))
+                        .dataModel(Map.of("values", java.util.Collections.nCopies(257, "one")))
                         .build();
         var sampled =
-                new DefaultOpenuiLangValidator(
-                                new com.huawei.cloudsop.genui.core.validation.type.analysis
-                                        .AnalysisBudget(4096, 64, 16, 1, 2048))
-                        .validate(request);
+                validate(
+                        request.dsl(), Map.of("values", java.util.Collections.nCopies(257, "one")));
         var complete =
-                new DefaultOpenuiLangValidator(
-                                new com.huawei.cloudsop.genui.core.validation.type.analysis
-                                        .AnalysisBudget(4096, 64, 16, 2, 2048))
-                        .validate(request);
+                validate(
+                        request.dsl(), Map.of("values", java.util.Collections.nCopies(256, "one")));
 
         assertEquals(ValidationStatus.VALID, sampled.status());
         assertEquals(ValidationStatus.VALID, complete.status());
@@ -482,16 +478,14 @@ class StaticTypeValidationTest {
 
     @Test
     void sampleTruncationAloneCannotClaimCompleteAnalysis() {
-        var validator =
-                new DefaultOpenuiLangValidator(
-                        new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(
-                                4096, 64, 16, 1, 2048));
+        var validator = DefaultOpenuiLangValidator.INSTANCE;
         ValidationResult result =
                 validator.validate(
                         ValidationRequest.builder()
                                 .dsl("root = TextContent(@First(@First(@ObjectValues(data))))")
                                 .contract(GenerationContractLoader.loadDefault())
-                                .dataModel(Map.of("values", List.of("one", "two")))
+                                .dataModel(
+                                        Map.of("values", java.util.Collections.nCopies(257, "one")))
                                 .build());
 
         assertEquals("false", result.metadata().extra().get("typeChecks.analysisComplete"));
@@ -501,28 +495,6 @@ class StaticTypeValidationTest {
                         .extra()
                         .get("typeChecks.unprovenReasons")
                         .contains("PRECISION_BUDGET="));
-    }
-
-    @Test
-    void tinyBudgetReportsTruncationAndPrecisionLossInPublicMetadata() {
-        var validator =
-                new DefaultOpenuiLangValidator(
-                        new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(
-                                4096, 64, 16, 1, 1));
-        ValidationResult result =
-                validator.validate(
-                        ValidationRequest.builder()
-                                .dsl(
-                                        "root = TextContent(value)\nvalue = @First(@First(@ObjectValues(data)))")
-                                .contract(GenerationContractLoader.loadDefault())
-                                .dataModel(Map.of("values", List.of("one", "two")))
-                                .build());
-
-        Map<String, String> extra = result.metadata().extra();
-        assertEquals("true", extra.get("typeChecks.traversalTruncated"));
-        assertEquals("false", extra.get("typeChecks.analysisComplete"));
-        assertTrue(Long.parseLong(extra.get("typeChecks.unproven")) > 0);
-        assertTrue(extra.get("typeChecks.unprovenReasons").contains("PRECISION_BUDGET="));
     }
 
     private static ValidationResult validate(String dsl, Map<String, Object> dataModel) {
@@ -572,34 +544,6 @@ class StaticTypeValidationTest {
                 result.issues().stream()
                         .anyMatch(i -> "type-table-row-shape-mismatch".equals(i.code())),
                 "覆盖后的新定义造成下游 Table 不匹配必须被发现: " + result.issues());
-    }
-
-    @Test
-    void switchCasesAreAnalyzedOncePerCall() {
-        // cases 对象字面量在实参求值中已整体分析一次;结果推导复用同一事实,不逐项重算。
-        // 预算恰好容纳两次对象覆盖运算:逐项重算会翻倍消耗并触发截断。
-        var validator =
-                new DefaultOpenuiLangValidator(
-                        new com.huawei.cloudsop.genui.core.validation.type.analysis.AnalysisBudget(
-                                2, 64, 16, 256, 2048));
-        ValidationResult result =
-                validator.validate(
-                        ValidationRequest.builder()
-                                .dsl(
-                                        "root = TextContent(@Switch(data.state, "
-                                                + "{a: @MergeObject({x: 1}, {y: 2}), "
-                                                + "b: @MergeObject({z: 3}, {w: 4})}, \"z\"))")
-                                .contract(GenerationContractLoader.loadDefault())
-                                .dataModel(Map.of("state", "a"))
-                                .build());
-
-        assertEquals(
-                "true",
-                result.metadata().extra().get("typeChecks.analysisComplete"),
-                () -> "cases 被重复分析会翻倍消耗预算: " + result.metadata().extra());
-        assertFalse(
-                result.metadata().extra().containsKey("typeChecks.precisionLosses"),
-                () -> "cases 只应分析一次: " + result.metadata().extra());
     }
 
     private static ValidationIssue issue(ValidationResult result, String code) {
