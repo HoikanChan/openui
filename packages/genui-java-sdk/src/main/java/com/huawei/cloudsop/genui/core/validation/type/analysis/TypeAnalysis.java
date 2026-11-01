@@ -17,7 +17,7 @@ import java.util.Map;
  *
  * <p>输入由 validation 层在同一次请求内绑定(程序、组件目录、builtin 词表、Render Data Model、入口语句), 调用方不能分别拼装独立的程序与契约。无
  * I/O、不执行 DSL、不修改输入;同样的输入与预算产生稳定结果。 类型检查不完整(UNPROVEN)不产生 {@link ValidationIssue},不单独触发修复或降级;VALID
- * 不能解读为完整 证明——完整性看 {@link CoverageReport}。
+ * 不能解读为完整 证明——完整性看 {@link TypeAnalysisReport}。
  *
  * @since 2026
  */
@@ -32,7 +32,7 @@ public final class TypeAnalysis {
      * @param coverage 本次分析覆盖的检查要求与结论
      * @since 2026
      */
-    public record Result(List<ValidationIssue> issues, CoverageReport coverage) {
+    public record Result(List<ValidationIssue> issues, TypeAnalysisReport coverage) {
 
         /** 复制诊断列表,把 {@code null} 归一为空列表。 */
         public Result {

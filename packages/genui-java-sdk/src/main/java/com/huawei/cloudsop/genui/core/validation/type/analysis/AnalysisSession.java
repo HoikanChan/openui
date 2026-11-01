@@ -35,7 +35,7 @@ import java.util.Set;
  * 0004)。无 Render Data Model 时仍检查字面量、调用数量、已知组件与 固定返回类型,数据依赖部分记 Unknown + UNKNOWN_INPUT。
  *
  * <p>检查纪律:MISMATCH 才产生 {@link ValidationIssue}(ERROR,沿用现有 code);UNPROVEN 只进 {@link
- * CoverageReport},不单独触发修复;上游错误身份关联的后续检查登记为 blocked,不产生独立反例。
+ * TypeAnalysisReport},不单独触发修复;上游错误身份关联的后续检查登记为 blocked,不产生独立反例。
  *
  * @since 2026
  */
@@ -85,7 +85,7 @@ public final class AnalysisSession {
      * @param coverage 本轮检查要求的覆盖统计
      * @since 2026
      */
-    public record Output(List<ValidationIssue> issues, CoverageReport coverage) {}
+    public record Output(List<ValidationIssue> issues, TypeAnalysisReport coverage) {}
 
     /**
      * 模板使用位置的诊断身份:诊断归属实际使用处(语句与路径),模板声明语句另行保留可追溯位置 (#77 第 10.3/11.3 节)。同一模板的不同使用位置不得共用去重身份。
@@ -103,7 +103,7 @@ public final class AnalysisSession {
     private final TypeOps ops;
     private final BuiltinAnalysis builtinAnalysis;
     private final DataPathResolver pathResolver = new DataPathResolver();
-    private final CoverageReport coverage = new CoverageReport();
+    private final TypeAnalysisReport coverage = new TypeAnalysisReport();
     private final List<ValidationIssue> issues = new ArrayList<>();
     private final Map<String, AstNode> symbols = new LinkedHashMap<>();
     private final Map<String, SourceSpan> spans = new LinkedHashMap<>();
@@ -983,8 +983,8 @@ public final class AnalysisSession {
         // 模板使用位置的检查要求带使用位置身份(#77 第 11.3 节):同一模板用于多列时各列独立计数。
         TemplateUseSite site = templateUseSites.peek();
         coverage.record(
-                new CoverageReport.Entry(
-                        new CoverageReport.Obligation(
+                new TypeAnalysisReport.Entry(
+                        new TypeAnalysisReport.Obligation(
                                 site == null ? statementId : site.statementId(),
                                 site == null ? useSite : site.coverageUseSite() + ":" + useSite,
                                 kind,
@@ -1004,9 +1004,9 @@ public final class AnalysisSession {
     }
 
     /** 登记一条 builtin 参数检查结论,与组件/模板检查共用覆盖口径。 */
-    void recordCoverage(CoverageReport.Obligation obligation, Checks.CheckResult result) {
+    void recordCoverage(TypeAnalysisReport.Obligation obligation, Checks.CheckResult result) {
         coverage.record(
-                new CoverageReport.Entry(
+                new TypeAnalysisReport.Entry(
                         obligation, result.verdict(), List.copyOf(result.reasons())));
     }
 
@@ -1158,8 +1158,8 @@ public final class AnalysisSession {
                             "no retained row counterexample");
         }
         coverage.record(
-                new CoverageReport.Entry(
-                        new CoverageReport.Obligation(
+                new TypeAnalysisReport.Entry(
+                        new TypeAnalysisReport.Obligation(
                                 statementId,
                                 "Table.columns[" + field + "]",
                                 "presentInAnyRow",
@@ -1376,8 +1376,8 @@ public final class AnalysisSession {
         }
         String useSite = chart.name() + ".series[" + seriesIndex + "].length";
         coverage.record(
-                new CoverageReport.Entry(
-                        new CoverageReport.Obligation(
+                new TypeAnalysisReport.Entry(
+                        new TypeAnalysisReport.Obligation(
                                 statementId,
                                 useSite,
                                 "chartLengthRelation",
