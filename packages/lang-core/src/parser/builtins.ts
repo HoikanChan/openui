@@ -503,7 +503,7 @@ export const LAZY_BUILTIN_DEFS: Record<string, LazyBuiltinDef> = {
   Each: {
     signature: "Each(array, varName, template)",
     description:
-      "Evaluate template for each element. varName is the loop variable - use it ONLY inside the template expression (inline). Do NOT create a separate statement for the template.",
+      "Evaluate a template once per array element. varName is the lexical iterator binding. The template may be inline or a named statement; named templates and their transitive statement dependencies may reference the iterator binding. Every iteration has an independent scope.",
     templateBuiltin: true,
   },
   Render: {
