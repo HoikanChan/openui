@@ -5,8 +5,6 @@
 package com.huawei.cloudsop.genui.core.validation.parser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -55,26 +53,8 @@ class OpenuiPreprocessorTest {
     }
 
     @Test
-    void autoCloseRepairsUnclosedBracketInStreamingMode() {
-        OpenuiPreprocessor.Result r =
-                OpenuiPreprocessor.process("root = Table([col", ParseMode.STREAMING);
-        assertTrue(r.wasIncomplete());
-        assertEquals("root = Table([col])", r.text());
-    }
-
-    @Test
-    void finalModeDoesNotAutoClose() {
-        OpenuiPreprocessor.Result r =
-                OpenuiPreprocessor.process("root = Table([col", ParseMode.FINAL);
-        assertFalse(r.wasIncomplete());
-        assertEquals("root = Table([col", r.text());
-    }
-
-    @Test
-    void autoCloseRepairsUnclosedString() {
-        OpenuiPreprocessor.Result r =
-                OpenuiPreprocessor.process("root = Title(\"hi", ParseMode.STREAMING);
-        assertTrue(r.wasIncomplete());
-        assertEquals("root = Title(\"hi\")", r.text());
+    void preprocessingDoesNotCloseIncompleteInput() {
+        assertEquals("root = Table([col", OpenuiPreprocessor.preprocess("root = Table([col"));
+        assertEquals("root = Title(\"hi", OpenuiPreprocessor.preprocess("root = Title(\"hi"));
     }
 }

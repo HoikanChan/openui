@@ -17,7 +17,6 @@ import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.ValidationIssueReducer;
 import com.huawei.cloudsop.genui.core.validation.ValidationSeverity;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
-import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
 
 import org.junit.jupiter.api.Test;
@@ -84,7 +83,7 @@ class SemanticValidationTest {
     }
 
     private static ProgramAnalysis analyze(String dsl) {
-        Program program = OpenuiParser.parse(dsl, ParseMode.FINAL);
+        Program program = OpenuiParser.parse(dsl);
         return new ProgramAnalyzer(catalog()).analyze(program, null, Set.of());
     }
 
@@ -158,7 +157,7 @@ class SemanticValidationTest {
 
     @Test
     void emptyProgramRootMissingFinal() {
-        Program program = OpenuiParser.parse("", ParseMode.FINAL);
+        Program program = OpenuiParser.parse("");
         ProgramAnalysis a = new ProgramAnalyzer(catalog()).analyze(program, null, Set.of());
         ValidationIssue i = issue(a, "root-missing");
         assertNotNull(i, "expected root-missing on empty program");
@@ -238,7 +237,7 @@ class SemanticValidationTest {
                 ContractCatalog.from(
                         new GenerationContract(
                                 "v1", "Box", comps, List.of(), List.of(), List.of(), List.of()));
-        Program program = OpenuiParser.parse("root = Box()", ParseMode.FINAL);
+        Program program = OpenuiParser.parse("root = Box()");
         ProgramAnalysis a = new ProgramAnalyzer(cat).analyze(program, null, Set.of());
         assertNull(
                 a.issues().stream()
@@ -256,7 +255,7 @@ class SemanticValidationTest {
                 ContractCatalog.from(
                         new GenerationContract(
                                 "v1", "Widget", comps, List.of(), List.of(), List.of(), List.of()));
-        Program program = OpenuiParser.parse("root = Widget()", ParseMode.FINAL);
+        Program program = OpenuiParser.parse("root = Widget()");
         ProgramAnalysis a = new ProgramAnalyzer(cat).analyze(program, null, Set.of());
         // Existence OK, no prop-level false positives.
         assertTrue(a.issues().stream().noneMatch(i -> i.code().equals("missing-required")));
@@ -374,10 +373,7 @@ class SemanticValidationTest {
 
         // Tier 1: Action step called without leading '@'
         ProgramAnalysis tier1 =
-                analyzer.analyze(
-                        OpenuiParser.parse("root = Set($count, 1)", ParseMode.FINAL),
-                        null,
-                        Set.of());
+                analyzer.analyze(OpenuiParser.parse("root = Set($count, 1)"), null, Set.of());
         ValidationIssue i1 = issue(tier1, "unknown-component");
         assertNotNull(i1);
         assertEquals("Unknown component \"Set\" — not found in catalog or builtins", i1.message());
@@ -390,8 +386,7 @@ class SemanticValidationTest {
         ProgramAnalysis tier2 =
                 analyzer.analyze(
                         OpenuiParser.parse(
-                                "grouped = @GroupBy(data.items, \"model\")\nroot = Stack([grouped])",
-                                ParseMode.FINAL),
+                                "grouped = @GroupBy(data.items, \"model\")\nroot = Stack([grouped])"),
                         "Stack",
                         Set.of("data"));
         ValidationIssue i2 = issue(tier2, "unknown-component");
@@ -407,10 +402,7 @@ class SemanticValidationTest {
 
         // Tier 3: ordinary unknown component name
         ProgramAnalysis tier3 =
-                analyzer.analyze(
-                        OpenuiParser.parse("root = ChartCard(\"T\")", ParseMode.FINAL),
-                        null,
-                        Set.of());
+                analyzer.analyze(OpenuiParser.parse("root = ChartCard(\"T\")"), null, Set.of());
         ValidationIssue i3 = issue(tier3, "unknown-component");
         assertNotNull(i3);
         assertEquals(
@@ -429,8 +421,7 @@ class SemanticValidationTest {
         // Statement `grouped` has both a JS arrow function syntax error (`=>`) AND `@GroupBy(...)`.
         Program program =
                 OpenuiParser.parse(
-                        "grouped = @GroupBy(data.items, item => item.model)\nroot = Stack([grouped])",
-                        ParseMode.FINAL);
+                        "grouped = @GroupBy(data.items, item => item.model)\nroot = Stack([grouped])");
         ProgramAnalysis analysis = analyzer.analyze(program, "Stack", Set.of("data"));
         List<ValidationIssue> actionable = ValidationIssueReducer.actionable(analysis.issues());
 

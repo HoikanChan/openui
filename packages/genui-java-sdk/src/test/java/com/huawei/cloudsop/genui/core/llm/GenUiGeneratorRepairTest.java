@@ -121,6 +121,24 @@ class GenUiGeneratorRepairTest {
     }
 
     @Test
+    void incompleteStringTriggersRepairAfterRoundEnds() {
+        ScriptedTransport transport =
+                ScriptedTransport.streams(
+                        frame("root = TextContent(\"unfinished") + SseFrames.done(),
+                        frame("root = TextContent(\"fixed\")") + SseFrames.done());
+        GenUiGenerationResult result =
+                GenUiGenerator.withTransport(GenUiLlmConfig.defaults(), transport)
+                        .generateStream(req(), envelope -> {});
+
+        assertEquals(ValidationStatus.INVALID, result.rounds().get(0).validationResult().status());
+        assertEquals(
+                "root = TextContent(\"unfinished", result.rounds().get(0).currentDefinitions());
+        assertEquals(ValidationStatus.VALID, result.validationStatus());
+        assertEquals("root = TextContent(\"fixed\")", result.dsl());
+        assertEquals(2, transport.streamCount);
+    }
+
+    @Test
     void streamKeepsNewHelperDefinitionFromPatch() {
         ScriptedTransport transport =
                 ScriptedTransport.streams(
@@ -425,7 +443,7 @@ class GenUiGeneratorRepairTest {
 
     @Test
     void streamRepairStartsFreshAfterDrainingLateFragment() {
-        // 首轮在语句中途结束:轮末 drain 自动闭合 late;Bogus 触发修复轮。
+        // 首轮在语句中途结束，轮末报告语法错误。
         // 修复请求必须从空缓冲区开始,不得把补丁拼接到上一请求的半句上。
         ScriptedTransport transport =
                 ScriptedTransport.streams(
@@ -445,7 +463,7 @@ class GenUiGeneratorRepairTest {
         assertEquals(
                 "root = Stack([late])\nlate = CardHeader(\"fixed\")",
                 result.dsl(),
-                "the late fragment is auto-closed in round 0; the patch is parsed from a fresh buffer");
+                "the incomplete fragment is replaced by the patch from a fresh buffer");
         assertEquals(2, result.rounds().size());
         assertFalse(
                 result.rounds().get(1).rawOutput().contains("Bogus"),

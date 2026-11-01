@@ -81,23 +81,24 @@ class ProgramRoundSessionTest {
     }
 
     @Test
-    void incompleteTailIsDrainedAndAutoClosedAtRoundEnd() {
-        // 轮中只有半条语句;轮末 drain 自动补齐括号后成为完整语句。
+    void incompleteTailIsValidatedWithoutAutoClosing() {
+        // 轮末保留原始半句并报告语法错误。
         ProgramRoundSession s = session(baseContract(), Set.of(), null);
         s.onDelta("root = Stack([CardHeader(\"A\")");
 
         RoundEndResult round = s.onRoundEnd();
-        assertTrue(round.currentDefinitions().contains("CardHeader"), "自动闭合后的尾部语句进入当前程序");
+        assertEquals("root = Stack([CardHeader(\"A\")", round.currentDefinitions());
+        assertEquals(ValidationStatus.INVALID, round.validationResult().status());
     }
 
     @Test
     void beginRoundStartsFreshBufferAndKeepsDrainedTailSeparate() {
-        // 首轮半句在轮末被 drain 自动闭合;新一轮是小请求的独立输出,不得拼接到上一请求的半句上。
+        // 未完成尾部原样保留，新一轮从独立缓冲区开始。
         ProgramRoundSession s = session(baseContract(), Set.of(), null);
         s.onDelta("keep = TextContent(\"k\")\nlate = Stack([");
         RoundEndResult first = s.onRoundEnd();
         assertTrue(
-                first.currentDefinitions().contains("late = Stack([])"),
+                first.currentDefinitions().contains("late = Stack(["),
                 "late fragment is drained at round end");
 
         s.beginRound();
@@ -109,7 +110,7 @@ class ProgramRoundSessionTest {
                 second.rawOutput(),
                 "a new request starts from an empty raw buffer");
         assertEquals(
-                "keep = TextContent(\"k\")\nlate = Stack([])\nroot = Stack([keep])",
+                "keep = TextContent(\"k\")\nlate = Stack([\nroot = Stack([keep])",
                 second.currentDefinitions(),
                 "prior program survives, while the new request's statements are parsed independently");
     }

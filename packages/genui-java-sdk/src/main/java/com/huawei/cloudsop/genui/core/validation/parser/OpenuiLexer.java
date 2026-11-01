@@ -199,6 +199,7 @@ public final class OpenuiLexer {
                 }
                 String raw = src.substring(start, Math.min(i, n));
                 String value = decodeDoubleQuoted(closed ? raw : raw + '"');
+                i = Math.min(i, n);
                 int len = i - start;
                 tokens.add(Token.ofText(TokenType.STR, value, startLine, startCol, startOff, len));
                 col += len;

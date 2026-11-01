@@ -26,7 +26,6 @@ import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
-import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.parser.Statement;
 import com.huawei.cloudsop.genui.core.validation.repair.RepairPromptBuilder;
@@ -234,7 +233,7 @@ final class RepairBenchRunner {
                         sdk,
                         repairConfig,
                         replay,
-                        GenUiValidationConfig.incremental(maxAttempts),
+                        GenUiValidationConfig.enabled(maxAttempts),
                         null);
         UiGenerationRequest request =
                 UiGenerationRequest.builder()
@@ -413,7 +412,7 @@ final class RepairBenchRunner {
             return new CapabilityDslInspect(false, List.of());
         }
         BuiltinCatalog builtins = BuiltinCatalog.fromContract(contract);
-        Program program = OpenuiParser.parse(dsl, ParseMode.FINAL, builtins);
+        Program program = OpenuiParser.parse(dsl, builtins);
         Map<String, Statement> stmts = program.currentById();
         if (stmts.isEmpty()) {
             return new CapabilityDslInspect(false, List.of());

@@ -8,7 +8,6 @@ import com.huawei.cloudsop.genui.core.validation.ValidationIssue;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 import com.huawei.cloudsop.genui.core.validation.parser.OpenuiParser;
-import com.huawei.cloudsop.genui.core.validation.parser.ParseMode;
 import com.huawei.cloudsop.genui.core.validation.parser.Program;
 import com.huawei.cloudsop.genui.core.validation.parser.Statement;
 
@@ -62,7 +61,7 @@ public final class StatementRelations {
         }
         BuiltinCatalog effectiveBuiltins =
                 builtins == null ? BuiltinCatalog.getDefault() : builtins;
-        Program program = OpenuiParser.parse(currentDsl, ParseMode.FINAL, effectiveBuiltins);
+        Program program = OpenuiParser.parse(currentDsl, effectiveBuiltins);
         LinkedHashMap<String, Statement> current = program.currentById();
         if (current.isEmpty()) {
             return Map.of();

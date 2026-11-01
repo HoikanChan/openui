@@ -309,10 +309,10 @@ class ValidationModelTest {
     // -----------------------------------------------------------------------
 
     @Test
-    void finalOnlyPresetHasExpectedMode() {
-        GenUiValidationConfig config = GenUiValidationConfig.finalOnly();
+    void enabledPresetEnablesValidationAndRepair() {
+        GenUiValidationConfig config = GenUiValidationConfig.enabled();
 
-        assertEquals(ValidationConfigMode.FINAL_ONLY, config.validationMode());
+        assertTrue(config.validationEnabled());
         assertEquals(0, config.maxIncrementalAttempts());
     }
 
@@ -320,7 +320,7 @@ class ValidationModelTest {
     void disabledPresetHasExpectedMode() {
         GenUiValidationConfig config = GenUiValidationConfig.disabled();
 
-        assertEquals(ValidationConfigMode.DISABLED, config.validationMode());
+        assertFalse(config.validationEnabled());
         assertEquals(0, config.maxIncrementalAttempts());
     }
 

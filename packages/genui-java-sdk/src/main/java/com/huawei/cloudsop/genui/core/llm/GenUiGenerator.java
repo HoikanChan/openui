@@ -24,7 +24,6 @@ import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig
 import com.huawei.cloudsop.genui.core.validation.DefaultOpenuiLangValidator;
 import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 import com.huawei.cloudsop.genui.core.validation.OpenuiLangValidator;
-import com.huawei.cloudsop.genui.core.validation.ValidationConfigMode;
 import com.huawei.cloudsop.genui.core.validation.ValidationMetadata;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
@@ -67,7 +66,7 @@ public final class GenUiGenerator {
         this.config = config == null ? GenUiLlmConfig.defaults() : config;
         this.transport = Objects.requireNonNull(transport, "transport must not be null");
         this.validationConfig =
-                validationConfig == null ? GenUiValidationConfig.incremental() : validationConfig;
+                validationConfig == null ? GenUiValidationConfig.enabled() : validationConfig;
         this.validator = validator == null ? new DefaultOpenuiLangValidator() : validator;
     }
 
@@ -159,7 +158,7 @@ public final class GenUiGenerator {
     /**
      * 使用自定义 transport 与显式校验/修复配置创建生成器,便于测试或宿主自管连接。
      *
-     * <p>{@code validationConfig} 为 null 时使用 {@link GenUiValidationConfig#incremental()}; {@code
+     * <p>{@code validationConfig} 为 null 时使用 {@link GenUiValidationConfig#enabled()}; {@code
      * validator} 为 null 时使用 {@link DefaultOpenuiLangValidator}。
      *
      * @param config LLM 配置,为 null 时使用 {@link GenUiLlmConfig#defaults()}
@@ -196,7 +195,7 @@ public final class GenUiGenerator {
      * @param sdk 已配置的生成 SDK,不能为 null
      * @param config LLM 配置,为 null 时使用 {@link GenUiLlmConfig#defaults()}
      * @param transport 模型传输实现,不能为 null
-     * @param validationConfig 校验/修复配置,为 null 时使用 {@link GenUiValidationConfig#incremental()}
+     * @param validationConfig 校验/修复配置,为 null 时使用 {@link GenUiValidationConfig#enabled()}
      * @param validator DSL 校验器,为 null 时使用 {@link DefaultOpenuiLangValidator}
      * @return 绑定上述依赖的生成器实例
      */
@@ -533,8 +532,8 @@ public final class GenUiGenerator {
     }
 
     /**
-     * 轮内实时转发(#56),轮末统一校验后进入增量修复(#58)。修复片段同样实时转发;每轮请求关闭后才发起下一轮; 模型单轮结束不发 {@code done}。DISABLED
-     * 时跳过程序状态与校验。
+     * 轮内实时转发(#56),轮末统一校验后进入增量修复(#58)。修复片段同样实时转发;每轮请求关闭后才发起下一轮; 模型单轮结束不发 {@code
+     * done}。关闭校验时跳过程序状态与校验。
      */
     private GenUiGenerationResult generateStreamInternal(
             UiGenerationRequest request,
@@ -543,7 +542,7 @@ public final class GenUiGenerator {
         Objects.requireNonNull(sink, "sink must not be null");
         UiGenerationRequest effectiveRequest =
                 request == null ? UiGenerationRequest.builder().build() : request;
-        boolean validate = validationConfig.validationMode() != ValidationConfigMode.DISABLED;
+        boolean validate = validationConfig.validationEnabled();
         Map<String, Object> dataModel = effectiveRequest.response();
         GenUIPromptRequest promptRequest = toPromptRequest(effectiveRequest);
         GenerationContract merged = validate ? sdk.mergedContract(promptRequest) : null;
@@ -563,7 +562,7 @@ public final class GenUiGenerator {
                                     rounds,
                                     GenerationEndReason.MODEL_REQUEST_FAILED));
         } else {
-            // DISABLED keeps validation off but must not discard partial streamed output on
+            // With validation disabled, retain partial streamed output on
             // timeout/request failure.
             budget.partialSnapshot(
                     () ->
@@ -595,16 +594,14 @@ public final class GenUiGenerator {
             }
 
             if (roundSession == null) {
-                // DISABLED: raw deltas were forwarded and accumulated; no validation, no round
+                // Raw deltas were forwarded and accumulated; no validation, no round
                 // record.
                 return new GenUiGenerationResult(
                         OpenuiCodeExtractor.extract(accumulated.toString()), dataModel);
             }
 
             RoundEndResult current = completeRound(roundSession, rounds, state);
-            boolean incremental =
-                    validationConfig.validationMode() == ValidationConfigMode.INCREMENTAL;
-            if (current.validationResult().status() == ValidationStatus.INVALID && incremental) {
+            if (current.validationResult().status() == ValidationStatus.INVALID) {
                 RepairLoop loop =
                         new RepairLoop(
                                 requestBody.systemPrompt(),
@@ -618,7 +615,7 @@ public final class GenUiGenerator {
             }
 
             ValidationStatus status = current.validationResult().status();
-            if (status == ValidationStatus.INVALID && incremental) {
+            if (status == ValidationStatus.INVALID) {
                 // Incremental repair could not produce a valid program: end unsuccessfully (no done
                 // for a failed
                 // DSL session); the outer entry emits one replace and hands off to Markdown.
@@ -647,7 +644,7 @@ public final class GenUiGenerator {
             sink.accept(
                     RenderStreamEnvelope.error(0, "LLM_STREAM_FAILED", error.getMessage(), true));
             if (roundSession == null) {
-                // DISABLED: no round record; keep the streamed prefix so the interrupted result is
+                // No round record; keep the streamed prefix so the interrupted result is
                 // not empty.
                 return new GenUiGenerationResult(
                         OpenuiCodeExtractor.extract(accumulated.toString()),
@@ -676,10 +673,8 @@ public final class GenUiGenerator {
                 (body, previousOutput) -> {
                     // The frontend consumes one appended DSL stream, while each model request has
                     // its own
-                    // parser buffer. Complete the previous request's tail using the same existing
-                    // auto-close
-                    // rule as round-end validation, then separate it from the next request with a
-                    // newline.
+                    // parser buffer. Close the previously forwarded tail and separate it from the
+                    // repair, so the frontend can consume the next independent request.
                     String boundary = OpenuiPreprocessor.streamRoundBoundary(previousOutput);
                     if (!boundary.isEmpty()) {
                         sink.accept(RenderStreamEnvelope.dsl(0, boundary));

@@ -48,8 +48,8 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <ul>
  *   <li>{@code off} — {@link GenUiValidationConfig#disabled()}: raw delta streaming, no validation.
- *   <li>{@code on} — {@link GenUiValidationConfig#finalOnly()}: live forwarding + end-of-round
- *       unified check.
+ *   <li>{@code on} — {@link GenUiValidationConfig#enabled()}: live forwarding + end-of-round
+ *       validation and repair.
  * </ul>
  *
  * <p>Usage: {@code java ... ValidationBenchmarkDriver --fixtures <dir> --out <dir> --arm off|on
@@ -193,7 +193,7 @@ public final class ValidationBenchmarkDriver {
         OpenAiHttpTransport transport = new OpenAiHttpTransport(baseUrl, apiKey, proxy);
         GenUiValidationConfig validationConfig =
                 "on".equals(arm)
-                        ? GenUiValidationConfig.finalOnly()
+                        ? GenUiValidationConfig.enabled()
                         : GenUiValidationConfig.disabled();
         GenUiGenerator generator =
                 GenUiGenerator.withTransport(llmConfig, transport, validationConfig, null);

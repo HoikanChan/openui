@@ -12,17 +12,17 @@ flowchart TD
     Generator -->|delta| Session[ProgramRoundSession]
     Session --> Scanner[StatementBoundaryScanner]
     Scanner -->|完整语句| State[按 ID 保存当前定义]
-    State -->|轮末 FINAL| Validator[OpenuiLangValidator]
+    State -->|轮末校验| Validator[OpenuiLangValidator]
     Client -->|直接调用| Validator
     Validator --> Default[DefaultOpenuiLangValidator]
     Default --> Snapshot[ValidationSnapshot]
     Snapshot --> Parser[解析：parser]
     Snapshot --> Semantic[语义：ProgramAnalyzer]
     Parser --> Semantic
-    Semantic -->|FINAL| Type[类型分析：TypeAnalysis]
+    Semantic --> Type[类型分析：TypeAnalysis]
     Type --> Result[ValidationResult 和覆盖摘要]
     Semantic --> Result
-    Result -->|失败且启用增量修复| Builder[RepairPromptBuilder]
+    Result -->|校验失败| Builder[RepairPromptBuilder]
     Builder --> Guidance[RepairGuidance 和模板]
     Builder -->|修复请求| Generator
     Result -->|完成或停止| Output[GenUiGenerationResult]
@@ -30,12 +30,12 @@ flowchart TD
     Data[可选 dataModel] --> Snapshot
 ```
 
-图中的箭头表示调用或数据流，不表示所有类之间都有直接 import。`OpenuiLangValidator` 可被注入替代实现；默认校验器只执行完整程序校验。`ValidationConfigMode` 控制生成器是否在轮末校验。
+图中的箭头表示调用或数据流，不表示所有类之间都有直接 import。`OpenuiLangValidator` 可被注入替代实现；默认校验器只执行完整程序校验。`GenUiValidationConfig` 的开关控制流式生成是否在轮末校验并修复。
 
 ## 主链及边界
 
 1. `ValidationSnapshot` 复制契约并使用请求的数据模型，构建 builtin/组件目录、解析程序并执行语义分析；数据模型的嵌套内容不再深拷贝。【10月】`1b959b8d`。
-2. `OpenuiParser` 组合预处理、分词、语句切分和表达式解析。流式模式允许补齐尾部；FINAL 按完整程序处理。语法错误进入结构化诊断。
+2. `OpenuiParser` 组合预处理、分词、语句切分和表达式解析。完整程序校验不补齐尾部。语法错误进入结构化诊断。
 3. `ProgramAnalyzer` 基于同名最后定义选取入口，检查根、引用、组件和参数；未解析引用报告错误。
 4. `DefaultOpenuiLangValidator` 运行 `TypeAnalysis`。即使没有数据模型，也检查字面量等静态可知内容；`dataModel == null` 表示未提供数据，空 map 表示明确的空数据。
 5. 类型分析把检查区分为匹配、不匹配和无法证明：只有可证明的不匹配产生类型错误；无法证明的项记录在覆盖摘要中。因此 `VALID` 不代表所有检查项都已证明通过。【10月】`88053ee1`、`392ec944`。
@@ -47,7 +47,7 @@ flowchart TD
 
 | 功能 | 上游输入 | 主要实现及下游 | 历史标记 |
 | --- | --- | --- | --- |
-| 预处理和语法解析 | 模型文本、解析模式、builtin 名称 | `OpenuiPreprocessor` → `OpenuiLexer` → `StatementSplitter` → `ExpressionParser` → `Program`；结果供语义及类型分析使用 | 基础解析 2026-07-01 `71d623e5` |
+| 预处理和语法解析 | 模型文本、builtin 名称 | `OpenuiPreprocessor` → `OpenuiLexer` → `StatementSplitter` → `ExpressionParser` → `Program`；结果供语义及类型分析使用 | 基础解析 2026-07-01 `71d623e5` |
 | 组件、参数、引用和根校验 | `Program`、`GenerationContract`、外部引用 | `ContractCatalog`、`ProgramAnalyzer`、`ComponentContractValidator`；输出 `ProgramAnalysis` 和诊断 | 基础语义 2026-07-01 `e0aa053d` |
 | builtin 词表和简洁签名契约化 | 生效契约、默认契约 | `BuiltinCatalog` 只提供名称与签名；加载器校验 `params`/`returnType` 并把特殊布局前提委托 `BuiltinAnalysis.validateDefinition`；类型分析用 `SignatureInference` 做通用推导 | 【10月】`ad15baaf`、`735bae7c`、`392ec944`；#122 删除旧规则 |
 | 类型及数据路径检查 | 可达语句、组件 schema、builtin 签名、可选数据模型 | `AnalysisSession`、`DataPathResolver`、`SnapshotFacts`、`Checks`；输出诊断和 `CoverageReport` | 数据感知基础 2026-08-28 `eab65c38`；【10月】统一分析引擎 `88053ee1`、`392ec944` |
@@ -57,9 +57,9 @@ flowchart TD
 | 格式化 builtin | 简洁签名、实际调用 | `SignatureInference` + `BuiltinAnalysis`（FormatDate 形状细化）；对参数和返回进行类型分析 | 【10月】`c8357e18` |
 | Table 与 Render 使用点 | 表格数据、列字段和模板使用点 | 类型引擎检查行形状、字段和模板作用域；表列字段存在性按任意一行满足判断 | 【10月】`c0c827a7`、`b135e271` |
 | 诊断整理与定向指导 | 完整 `ValidationIssue`、当前契约能力缺口 | `ValidationIssueReducer` 去噪；`RepairHints`、`RepairGuidance` 路由专项指导，供修复提示使用 | 去噪基础 2026-08-28 `0cd04700`；【10月】能力边界 `bfc9c760`、数据/表列指导 `d17f15b7` |
-| 流式轮末校验 | 模型 delta、契约、数据、注入校验器 | `StatementBoundaryScanner` → `ProgramRoundSession` → FINAL 校验 → `RoundEndResult` | 【10月】`8c2b1882`、`84cf6078` |
+| 流式轮末校验 | 模型 delta、契约、数据、注入校验器 | `StatementBoundaryScanner` → `ProgramRoundSession` → 轮末校验 → `RoundEndResult` | 【10月】`8c2b1882`、`84cf6078` |
 | 跨轮增量修复 | 最新诊断、当前定义、有限历史和修复模板 | `RepairPromptBuilder` 生成消息；生成器请求补丁并合并同名定义，再次轮末校验 | 【10月】`d67cdce5`、`6ec1f66e`、`b78dc0c4` |
-| 策略配置 | `GenUiValidationConfig` | `incremental()` 默认增量修复，`incremental(n)` 设置上限，`finalOnly()` 只校验，`disabled()` 关闭校验；生成器消费配置 | 【10月】`d67cdce5`、`2946fee8` |
+| 策略配置 | `GenUiValidationConfig` | `enabled()` 启用校验和修复，`enabled(n)` 设置上限，`disabled()` 关闭二者；生成器消费配置 | 【10月】`d67cdce5`、`2946fee8` |
 
 ### 流式和修复细节
 
@@ -109,14 +109,14 @@ flowchart LR
 | 类 | 职责及上下游 |
 | --- | --- |
 | `OpenuiLangValidator` | 对外接口；接收请求，返回结果；由生成器或外部调用方调用。 |
-| `DefaultOpenuiLangValidator` | 默认编排器；构造快照，合并语义和 FINAL 类型分析结果。 |
+| `DefaultOpenuiLangValidator` | 默认编排器；构造快照，合并语义和 类型分析结果。 |
 | `ValidationRequest` | DSL、契约、根、外部引用、数据模型和模式输入。 |
 | `ValidationSnapshot` | 【10月功能】整理分析输入并构建程序、词表、组件目录和语义结果。 |
 | `ValidationResult` | 状态、规范化 DSL、完整问题及 metadata；向调用者提供去噪视图。 |
 | `ValidationIssue` / `ValidationSeverity` | 单条诊断及严重级别；ERROR 阻塞。 |
 | `ValidationMetadata` / `ValidationStatus` | 校验元数据和 VALID、INVALID 状态。 |
 | `ValidationIssueReducer` | 降低重复、语法级联、表格和根诊断噪声；供结果和修复使用。 |
-| `GenUiValidationConfig` / `ValidationConfigMode` | 生成器的校验策略(增量修复、只校验、关闭)及增量修复上限。 |
+| `GenUiValidationConfig` | 生成器的校验与修复开关及修复上限。 |
 
 ### parser
 
@@ -128,7 +128,7 @@ flowchart LR
 | `ExpressionParser` | 以运算符优先级解析表达式，产生 AST 与诊断。 |
 | `OpenuiParser` | 组合预处理、lexer、splitter 和表达式解析，产出 `Program`。 |
 | `AstNode` / `Statement` / `Program` | 语法树、语句和程序模型；供语义、类型及修复关系分析使用。 |
-| `SourceSpan` / `ParseDiagnostic` / `ParseErrorCode` / `ParseMode` | 源码位置、解析诊断、错误码及解析模式。 |
+| `SourceSpan` / `ParseDiagnostic` / `ParseErrorCode` | 源码位置、解析诊断及错误码。 |
 | `BuiltinCatalog` | 【10月功能】从生效契约建立 builtin 名称与签名视图；另行判断 DSL 语法保留调用名称。 |
 
 ### semantic
@@ -146,7 +146,7 @@ flowchart LR
 
 | 类 | 职责及上下游 |
 | --- | --- |
-| `TypeAnalysis` / `AnalysisSession` | 【10月功能】FINAL 类型分析入口与单次分析会话，遍历入口可达定义、传播事实并登记检查。 |
+| `TypeAnalysis` / `AnalysisSession` | 【10月功能】类型分析入口与单次分析会话，遍历入口可达定义、传播事实并登记检查。 |
 | `Type` / `Types` / `TypeOps` | 类型表示、构造和运算；包括联合、记录、序列与对象枚举等操作。 |
 | `Fact` / `Expectation` | 表达式已有事实与契约要求；供检查器对照。 |
 | `Checks` / `Relations` | 判断事实与要求是否匹配、冲突或无法证明；传播上游错误与原因。 |
@@ -165,7 +165,7 @@ flowchart LR
 | 类 | 职责及上下游 |
 | --- | --- |
 | `StatementBoundaryScanner` | 【10月功能】从 delta 识别完整语句，轮末刷出尾部；供轮会话使用。 |
-| `ProgramRoundSession` | 【10月功能】跨轮维护当前定义，每轮末调用 FINAL 校验。 |
+| `ProgramRoundSession` | 【10月功能】跨轮维护当前定义，每轮末调用轮末校验。 |
 | `RoundEndResult` | 【10月功能】保存轮次输出、当前定义、校验结果、耗时、契约版本和结束原因。 |
 
 ### repair

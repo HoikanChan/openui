@@ -72,20 +72,16 @@ class OpenuiParserTest {
 
     @Test
     void unclosedParenInFinalModeReportsDiagnosticNotThrow() {
-        Program p = OpenuiParser.parse("root = Title(\"hi\"", ParseMode.FINAL);
+        Program p = OpenuiParser.parse("root = Title(\"hi\"");
         assertTrue(
                 p.diagnostics().stream().anyMatch(d -> d.code() == ParseErrorCode.UNCLOSED_BRACKET),
                 "expected UNCLOSED_BRACKET diagnostic");
     }
 
     @Test
-    void unclosedStringInStreamingModeIsRepaired() {
-        Program p = OpenuiParser.parse("root = Title(\"hi", ParseMode.STREAMING);
-        assertTrue(p.incomplete());
-        // auto-closed → a well-formed component, no unclosed diagnostics
-        assertTrue(
-                p.diagnostics().stream()
-                        .noneMatch(d -> d.code() == ParseErrorCode.UNCLOSED_BRACKET));
+    void unclosedStringReportsDiagnostic() {
+        Program p = OpenuiParser.parse("root = \"hi");
+        assertFalse(p.diagnostics().isEmpty());
     }
 
     @Test
@@ -105,7 +101,7 @@ class OpenuiParserTest {
 
     @Test
     void expressionDiagnosticsAttachStatementId() {
-        Program p = OpenuiParser.parse("root = Title(\"hi\"", ParseMode.FINAL);
+        Program p = OpenuiParser.parse("root = Title(\"hi\"");
         ParseDiagnostic d =
                 p.diagnostics().stream()
                         .filter(x -> x.code() == ParseErrorCode.UNCLOSED_BRACKET)
