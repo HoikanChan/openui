@@ -203,9 +203,7 @@ class RepairPromptBuilderTest {
             assertTrue(system.startsWith(original));
             assertEquals(1, occurrences(system, original));
             assertFalse(system.contains("Stack(children: Component[])"));
-            assertTrue(
-                    system.indexOf(RepairPromptBuilder.INCREMENTAL_REPAIR_MARKER)
-                            >= original.length());
+            assertTrue(system.indexOf(RepairLoop.INCREMENTAL_REPAIR_MARKER) >= original.length());
         }
     }
 
@@ -221,8 +219,7 @@ class RepairPromptBuilderTest {
         assertEquals(2, messages.size());
         assertEquals("system", messages.get(0).role());
         assertEquals("user", messages.get(1).role());
-        assertTrue(
-                messages.get(0).content().contains(RepairPromptBuilder.INCREMENTAL_REPAIR_MARKER));
+        assertTrue(messages.get(0).content().contains(RepairLoop.INCREMENTAL_REPAIR_MARKER));
         assertEquals(
                 1, occurrences(join(messages), SYSTEM_PROMPT), "system prompt reproduced once");
     }

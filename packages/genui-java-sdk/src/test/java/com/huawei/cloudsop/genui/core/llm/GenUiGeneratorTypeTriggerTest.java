@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.validation.ValidationResult;
 import com.huawei.cloudsop.genui.core.validation.ValidationStatus;
-import com.huawei.cloudsop.genui.core.validation.repair.RepairPromptBuilder;
+import com.huawei.cloudsop.genui.core.validation.repair.RepairLoop;
 
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +25,7 @@ import java.util.Map;
  */
 class GenUiGeneratorTypeTriggerTest {
 
-    private static final String REPAIR_MARKER = RepairPromptBuilder.INCREMENTAL_REPAIR_MARKER;
+    private static final String REPAIR_MARKER = RepairLoop.INCREMENTAL_REPAIR_MARKER;
 
     private static String frame(String content) {
         return "data: {\"choices\":[{\"delta\":{\"content\":"

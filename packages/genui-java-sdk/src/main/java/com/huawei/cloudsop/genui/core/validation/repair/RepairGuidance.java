@@ -23,7 +23,7 @@ import java.util.Set;
  *
  * @since 2026
  */
-public final class RepairGuidance {
+final class RepairGuidance {
 
     private static final List<String> GUIDANCE_FLAGS =
             List.of(
