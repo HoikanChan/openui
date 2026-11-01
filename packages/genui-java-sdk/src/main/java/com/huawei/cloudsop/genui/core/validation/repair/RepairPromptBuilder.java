@@ -49,10 +49,7 @@ import java.util.Set;
  *
  * @since 2026
  */
-public final class RepairPromptBuilder {
-
-    /** 机器可解析的标记，供测试/日志识别增量修复系统消息。 */
-    public static final String INCREMENTAL_REPAIR_MARKER = "[REPAIR:INCREMENTAL]";
+final class RepairPromptBuilder {
 
     /** 历史只保留最近 N 轮：当前 DSL 与最新诊断才是权威，更早的轮次仅作趋势参考。 */
     private static final int HISTORY_ROUND_LIMIT = 3;
@@ -71,7 +68,7 @@ public final class RepairPromptBuilder {
      * @param current 本轮轮末结果（当前有效 DSL + 最新诊断 + 原始输出）
      * @return 系统消息 + 用户消息组成的对话消息列表
      */
-    public static List<ChatMessage> build(
+    static List<ChatMessage> build(
             String originalSystemPrompt,
             String originalUserMessage,
             GenerationContract contract,
@@ -89,7 +86,7 @@ public final class RepairPromptBuilder {
      * @param history 早前轮次记录；{@code null} 视同空列表，只用于原始输出/检查摘要，不覆盖当前状态
      * @return 系统消息 + 用户消息组成的对话消息列表
      */
-    public static List<ChatMessage> build(
+    static List<ChatMessage> build(
             String originalSystemPrompt,
             String originalUserMessage,
             GenerationContract contract,
@@ -109,7 +106,7 @@ public final class RepairPromptBuilder {
         String rawOutput = stripped(current.rawOutput());
 
         Map<String, Object> model = new LinkedHashMap<>();
-        model.put("marker", INCREMENTAL_REPAIR_MARKER);
+        model.put("marker", RepairLoop.INCREMENTAL_REPAIR_MARKER);
         model.put("originalSystem", originalSystemPrompt == null ? "" : originalSystemPrompt);
         model.put("capabilityBoundaryActive", !capabilityBoundary.isEmpty());
         model.put("capabilityBoundary", capabilityBoundary);
