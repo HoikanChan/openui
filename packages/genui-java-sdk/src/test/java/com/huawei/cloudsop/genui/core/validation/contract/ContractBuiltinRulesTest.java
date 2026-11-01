@@ -296,7 +296,7 @@ class ContractBuiltinRulesTest {
         ValidationResult result =
                 validate("root = TextContent(@Sum(data.total))", Map.of("total", 3));
 
-        // 覆盖计数由 #80 CoverageReport 承载：已证明不匹配可见；VALID 不解读为完整证明。
+        // 覆盖计数由 #80 TypeAnalysisReport 承载：已证明不匹配可见；VALID 不解读为完整证明。
         assertEquals(
                 "1",
                 result.metadata().extra().get("typeChecks.mismatched"),

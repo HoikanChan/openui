@@ -167,7 +167,7 @@ TS 侧的契约导出工作曾跟踪于 [#91](https://github.com/HoikanChan/open
 
 | 项 | 终态 | 证据 |
 | --- | --- | --- |
-| 类型分析路径 | `TypeAnalysis.analyze` → `type/analysis` 内核（Type/Fact/TypeOps/Checks/CoverageReport）+ `BuiltinAnalysis` | `DefaultOpenuiLangValidator` FINAL 分支；`StaticTypeValidationTest` |
+| 类型分析路径 | `TypeAnalysis.analyze` → `type/analysis` 内核（Type/Fact/TypeOps/Checks/TypeAnalysisReport）+ `BuiltinAnalysis` | `DefaultOpenuiLangValidator` FINAL 分支；`StaticTypeValidationTest` |
 | builtin 词表 | 契约 `builtins` 派生；Query/Mutation/Action 等语句关键字单独判断 | `BuiltinCatalog.fromContract` 和语法保留字判断 |
 | 求值规则 | 简洁签名（`params` + `returnType`）：`SignatureInference` 做通用检查/绑定/实例化，`BuiltinAnalysis` 做 Java 特殊语义 | `ContractBuiltinRulesTest`、`SignatureBuiltinValidationTest`、`BuiltinDefinitionValidationTest` |
 | 已删除 | `ValueType`/`ValueTypes`/旧 `DataPath*`、`TypeTranslator`、`returnType`+`params` 泛型求值（`genericResult`/`collectLowerBounds`/`instantiate`）；#122 另删 `RulePlan`/`RuleCompiler`/`RuleEvaluator`/`RuleCompilationException`、`TypeExprEquals`、`LazyBuiltinBinders` 及 `param(n)`/`when`/`else` | 生产/测试源码无引用（历史文档仍可能提及）；`DataPathResolverTest` 改用新 `Type` |

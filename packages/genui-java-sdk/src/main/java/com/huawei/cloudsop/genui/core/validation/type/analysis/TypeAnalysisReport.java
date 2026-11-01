@@ -19,7 +19,7 @@ import java.util.Set;
  *
  * @since 2026
  */
-public final class CoverageReport {
+public final class TypeAnalysisReport {
 
     /**
      * 一条检查要求的稳定身份:语句/表达式路径 + 使用位置 + 要求种类 + 契约路径。

@@ -50,8 +50,8 @@ flowchart TD
 | 预处理和语法解析 | 模型文本、builtin 名称 | `OpenuiPreprocessor` → `OpenuiLexer` → `StatementSplitter` → `ExpressionParser` → `Program`；结果供语义及类型分析使用 | 基础解析 2026-07-01 `71d623e5` |
 | 组件、参数、引用和根校验 | `Program`、`GenerationContract`、外部引用 | `ContractCatalog`、`ProgramAnalyzer`、`ComponentContractValidator`；输出 `ProgramAnalysis` 和诊断 | 基础语义 2026-07-01 `e0aa053d` |
 | builtin 词表和简洁签名契约化 | 生效契约、默认契约 | `BuiltinCatalog` 只提供名称与签名；加载器校验 `params`/`returnType` 并把特殊布局前提委托 `BuiltinAnalysis.validateDefinition`；类型分析用 `SignatureInference` 做通用推导 | 【10月】`ad15baaf`、`735bae7c`、`392ec944`；#122 删除旧规则 |
-| 类型及数据路径检查 | 可达语句、组件 schema、builtin 签名、可选数据模型 | `AnalysisSession`、`DataPathResolver`、`SnapshotFacts`、`Checks`；输出诊断和 `CoverageReport` | 数据感知基础 2026-08-28 `eab65c38`；【10月】统一分析引擎 `88053ee1`、`392ec944` |
-| schema 和预算 | 契约 schema、分析预算 | `SchemaCompiler` 转为 `Expectation`；`AnalysisBudget` 限制分析工作，`CoverageReport` 记录未证明与截断 | 【10月】`88053ee1`、`cbc55558`、`636ed8e2` |
+| 类型及数据路径检查 | 可达语句、组件 schema、builtin 签名、可选数据模型 | `AnalysisSession`、`DataPathResolver`、`SnapshotFacts`、`Checks`；输出诊断和 `TypeAnalysisReport` | 数据感知基础 2026-08-28 `eab65c38`；【10月】统一分析引擎 `88053ee1`、`392ec944` |
+| schema 和预算 | 契约 schema、分析预算 | `SchemaCompiler` 转为 `Expectation`；`AnalysisBudget` 限制分析工作，`TypeAnalysisReport` 记录未证明与截断 | 【10月】`88053ee1`、`cbc55558`、`636ed8e2` |
 | Each / Render 等绑定作用域 | Java 固定的调用布局；实际调用参数 | `BuiltinAnalysis`；按实参角色识别变量作用域与元素来源，避免把空数组或未知元素当作已观察数据 | 【10月】`33a0e509`、`db2204a8`、`a6bdf42e` |
 | 对象枚举与数组流水线 | `ObjectKeys/Values/Entries`、数组处理 builtin 的签名与输入事实 | `BuiltinAnalysis`、`TypeOps`、`AnalysisSession`；向下游传播键值、元素及长度信息，检查图表等使用要求 | 【10月】`b2683d84`、`f579f92b` |
 | 格式化 builtin | 简洁签名、实际调用 | `SignatureInference` + `BuiltinAnalysis`（FormatDate 形状细化）；对参数和返回进行类型分析 | 【10月】`c8357e18` |
@@ -79,7 +79,7 @@ flowchart LR
     Analysis --> Builtin[BuiltinAnalysis]
     Signature --> Ops[TypeOps 和 Checks]
     Builtin --> Ops
-    Ops --> Coverage[CoverageReport 与 ValidationIssue]
+    Ops --> Coverage[TypeAnalysisReport 与 ValidationIssue]
 ```
 
 加载器只做结构校验：必填字段、名称唯一、`TypeExpr` 文法、命名类型变量有参数来源、普通可选/变长布局；Each/Render/Switch 的布局前提由 `BuiltinAnalysis.validateDefinition` 检查，加载器不维护第二份函数名单。`SignatureInference` 在调用点把 `params` 变成入口检查、按名绑定类型变量并实例化 `returnType`；`BuiltinAnalysis` 负责 Java 特殊语义与模板生命周期。非法类型语法、残留旧字段或声明与处理器可证明冲突都在加载期失败。组件 schema 的检查要求由 `SchemaCompiler` 编译。契约的 `templateBuiltin` 只用于提示词分组，不决定特殊处理。细节见 [runtime-semantics-contract.md](runtime-semantics-contract.md)。
@@ -95,7 +95,7 @@ flowchart LR
 | 10-20 `d67cdce5` | `repair/RepairGuidance`、`semantic/StatementRelations` | 分别连接诊断到指导、语句关系到修复提示。 |
 | 10-22 `1b959b8d` | `ValidationSnapshot` | 接收校验请求，向解析、语义和类型分析提供分析输入。 |
 | 10-31 `#118`–`#122` | `type/analysis/BuiltinAnalysis`、`type/analysis/SignatureInference` | 收拢 builtin 特殊语义与简洁签名推导；同期的旧规则类（`contract/*`）已删除，不列入现存类。 |
-| 10-23 `88053ee1` | `type/analysis/AnalysisBudget`、`AnalysisSession`、`Checks`、`CoverageReport`、`Expectation`、`Fact`、`Relations`、`SchemaCompiler`、`SnapshotFacts`、`Type`、`TypeAnalysis`、`TypeOps`、`Types` | 构成类型分析内核：接收程序、契约和数据，输出类型诊断及覆盖信息。 |
+| 10-23 `88053ee1` | `type/analysis/AnalysisBudget`、`AnalysisSession`、`Checks`、`TypeAnalysisReport`、`Expectation`、`Fact`、`Relations`、`SchemaCompiler`、`SnapshotFacts`、`Type`、`TypeAnalysis`、`TypeOps`、`Types` | 构成类型分析内核：接收程序、契约和数据，输出类型诊断及覆盖信息。 |
 | 10-28 `b78dc0c4` | `repair/RepairPromptBuilder` | 接收当前轮诊断与程序，渲染 Markdown 模板供生成器发起修复。 |
 
 `DataPath`、`DataPathResolution`、`DataPathResolver` 在 10 月从 `type/` 移到 `type/analysis/`，原类于 8 月已存在，故不计为新增。`StatementBoundaryScanner` 也未计入新增类；它的轮末处理属于 10 月功能变更。只列当前仍存在的类，不包括已删除的历史实现。
@@ -151,7 +151,7 @@ flowchart LR
 | `Fact` / `Expectation` | 表达式已有事实与契约要求；供检查器对照。 |
 | `Checks` / `Relations` | 判断事实与要求是否匹配、冲突或无法证明；传播上游错误与原因。 |
 | `SchemaCompiler` | 把组件 schema 的受支持部分转换为检查要求。 |
-| `AnalysisBudget` / `CoverageReport` | 限制分析工作并记录检查结果、截断和无法证明的原因。 |
+| `AnalysisBudget` / `TypeAnalysisReport` | 限制分析工作并记录检查结果、截断和无法证明的原因。 |
 | `DataPath` / `DataPathResolution` / `DataPathResolver` | 解析数据路径，在数据模型中区分已解析、缺失、非法遍历和无法证明。 |
 | `SnapshotFacts` | 将数据模型的实际值转成受预算约束的类型事实。 |
 | `SignatureInference` | 由 `params`/`returnType` 的 `TypeExpr` 生成入口检查要求、按名绑定类型变量并实例化返回类型；只被 `BuiltinAnalysis` 调用。 |
