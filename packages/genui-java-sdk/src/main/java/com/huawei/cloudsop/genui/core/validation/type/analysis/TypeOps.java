@@ -21,15 +21,17 @@ import java.util.Set;
  */
 public final class TypeOps {
 
-    private final AnalysisBudget.Tracker budget;
+    private static final int MAX_UNION_BRANCHES = 64;
 
-    /**
-     * 构造类型运算器,绑定一次分析共享的预算。
-     *
-     * @param budget 类型节点与联合分支预算追踪器;不做 null 校验,运算时解引用
-     */
-    public TypeOps(AnalysisBudget.Tracker budget) {
-        this.budget = budget;
+    private final AnalysisCompleteness completeness;
+
+    /** 构造独立的类型运算实例。 */
+    public TypeOps() {
+        this(new AnalysisCompleteness());
+    }
+
+    TypeOps(AnalysisCompleteness completeness) {
+        this.completeness = completeness;
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -89,7 +91,7 @@ public final class TypeOps {
             return new Fact(Type.Never.INSTANCE, Set.of(), losses, object.upstreamErrors());
         }
         return new Fact(
-                unionWithinBudget(results, losses), evidence, losses, object.upstreamErrors());
+                unionWithinLimit(results, losses), evidence, losses, object.upstreamErrors());
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -125,12 +127,8 @@ public final class TypeOps {
         operands.forEach(operand -> losses.addAll(operand.losses()));
         for (List<Type> combination : combinations) {
             results.add(overlayCombination(combination, losses));
-            if (!budget.tryConsumeTypeNodes(1L)) {
-                losses.add(Fact.Loss.PRECISION_BUDGET);
-                return new Fact(Type.Unknown.INSTANCE, Set.of(), losses, Set.of());
-            }
         }
-        return new Fact(unionWithinBudget(results, losses), Set.of(), losses, Set.of());
+        return new Fact(unionWithinLimit(results, losses), Set.of(), losses, Set.of());
     }
 
     private Type overlayCombination(List<Type> combination, Set<Fact.Loss> losses) {
@@ -257,7 +255,7 @@ public final class TypeOps {
             results.add(projectRecord(record, projection));
         }
         return new Fact(
-                unionWithinBudget(results, losses), Set.of(), losses, object.upstreamErrors());
+                unionWithinLimit(results, losses), Set.of(), losses, object.upstreamErrors());
     }
 
     private Type projectRecord(Type.RecordType record, Projection projection) {
@@ -530,7 +528,7 @@ public final class TypeOps {
             }
         }
         return new Fact(
-                unionWithinBudget(results, losses), Set.of(), losses, input.upstreamErrors());
+                unionWithinLimit(results, losses), Set.of(), losses, input.upstreamErrors());
     }
 
     /**
@@ -649,7 +647,7 @@ public final class TypeOps {
             results.add(Types.union(fieldTypes));
         }
         return new Fact(
-                unionWithinBudget(results, losses), Set.of(), losses, object.upstreamErrors());
+                unionWithinLimit(results, losses), Set.of(), losses, object.upstreamErrors());
     }
 
     /**
@@ -725,7 +723,7 @@ public final class TypeOps {
             results.add(Types.sequence(element, min, unbounded ? Type.Sequence.UNBOUNDED : max));
         }
         return new Fact(
-                unionWithinBudget(results, losses), Set.of(), losses, sequence.upstreamErrors());
+                unionWithinLimit(results, losses), Set.of(), losses, sequence.upstreamErrors());
     }
 
     private static long safeMultiply(long left, long right) {
@@ -755,7 +753,7 @@ public final class TypeOps {
         List<List<Type>> acc = new ArrayList<>();
         acc.add(List.of());
         for (List<Type> branches : branchSets) {
-            if (!budget.unionBranchesWithinBudget((long) acc.size() * branches.size())) {
+            if (!unionBranchesWithinLimit((long) acc.size() * branches.size())) {
                 return null;
             }
             List<List<Type>> next = new ArrayList<>();
@@ -771,9 +769,18 @@ public final class TypeOps {
         return acc;
     }
 
-    /** 联合并在预算超限时改用安全摘要(Unknown + PRECISION_BUDGET),损失并入调用方事实。 */
-    private Type unionWithinBudget(List<Type> alternatives, Set<Fact.Loss> losses) {
-        if (!budget.unionBranchesWithinBudget(alternatives.size())) {
+    /** 展开前检查分支数量，超限时标记会话不完整。 */
+    private boolean unionBranchesWithinLimit(long branches) {
+        if (branches > MAX_UNION_BRANCHES) {
+            completeness.markIncomplete();
+            return false;
+        }
+        return true;
+    }
+
+    /** 联合超限时改用安全摘要，损失并入调用方事实。 */
+    private Type unionWithinLimit(List<Type> alternatives, Set<Fact.Loss> losses) {
+        if (!unionBranchesWithinLimit(alternatives.size())) {
             losses.add(Fact.Loss.PRECISION_BUDGET);
             return Type.Unknown.INSTANCE;
         }

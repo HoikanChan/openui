@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 class OverlayPropertiesTest {
-    private final TypeOps ops = new TypeOps(AnalysisBudget.defaults().tracker());
+    private final TypeOps ops = new TypeOps();
     private final Type number = Types.scalar(Type.ScalarKind.NUMBER);
     private final Type string = Types.scalar(Type.ScalarKind.STRING);
 

@@ -55,13 +55,15 @@ public final class TypeAnalysisReport {
     }
 
     private final Map<String, Entry> entries = new LinkedHashMap<>();
-    private boolean traversalTruncated;
-    private boolean precisionLost;
+    private final AnalysisCompleteness completeness;
 
-    /** 预算生产方直接上报,不依赖检查结论及未证明原因。 */
-    public void markPrecisionLost() {
-        precisionLost = true;
-        markTraversalTruncated();
+    /** 构造独立的检查报告。 */
+    public TypeAnalysisReport() {
+        this(new AnalysisCompleteness());
+    }
+
+    TypeAnalysisReport(AnalysisCompleteness completeness) {
+        this.completeness = completeness;
     }
 
     /**
@@ -72,13 +74,8 @@ public final class TypeAnalysisReport {
     public void record(Entry entry) {
         entries.putIfAbsent(entry.obligation().identity(), entry);
         if (entry.reasons().contains(Fact.Loss.PRECISION_BUDGET)) {
-            markTraversalTruncated();
+            completeness.markIncomplete();
         }
-    }
-
-    /** 标记遍历被截断(预算或访问限制导致后续要求尚未发现)。 */
-    public void markTraversalTruncated() {
-        this.traversalTruncated = true;
     }
 
     /**
@@ -127,7 +124,7 @@ public final class TypeAnalysisReport {
      * @return 遍历未因预算或访问限制截断时为 true
      */
     public boolean analysisComplete() {
-        return !traversalTruncated;
+        return completeness.isComplete();
     }
 
     /**
@@ -161,10 +158,8 @@ public final class TypeAnalysisReport {
         summary.put("typeChecks.mismatched", String.valueOf(mismatched()));
         summary.put("typeChecks.unproven", String.valueOf(unproven()));
         summary.put("typeChecks.analysisComplete", String.valueOf(analysisComplete()));
-        if (traversalTruncated) {
+        if (!analysisComplete()) {
             summary.put("typeChecks.traversalTruncated", "true");
-        }
-        if (precisionLost) {
             summary.put("typeChecks.precisionLosses", "PRECISION_BUDGET");
         }
         Map<Fact.Loss, Long> reasons = unprovenReasons();

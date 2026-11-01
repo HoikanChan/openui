@@ -56,7 +56,7 @@ class ChartLengthProofTest {
     @Test
     void sameLengthPreservingSourceProvesEquality() {
         // 两侧都从同一个符号派生:Each/Sort 把输入的长度来源传递到结果,比较的是事实而不是表达式名称。
-        TypeOps ops = new TypeOps(AnalysisBudget.defaults().tracker());
+        TypeOps ops = new TypeOps();
         Fact source = withSources("ref:rows").withEvidence(new Fact.Evidence.KnownLength(3));
         Fact sorted = ops.preserve(source);
         Fact each = ops.map(sorted, Fact.of(Types.scalar(Type.ScalarKind.STRING)));
@@ -71,7 +71,7 @@ class ChartLengthProofTest {
     @Test
     void filterDoesNotClaimTheInputLength() {
         // Filter 改变数量:不得把输入的长度来源带到结果,否则两个不同谓词的过滤会被误判为等长。
-        TypeOps ops = new TypeOps(AnalysisBudget.defaults().tracker());
+        TypeOps ops = new TypeOps();
         Fact filtered = ops.subset(withSources("ref:rows"));
         assertTrue(filtered.lengthSourceIdentities().isEmpty());
         assertTrue(filtered.knownLength().isEmpty());

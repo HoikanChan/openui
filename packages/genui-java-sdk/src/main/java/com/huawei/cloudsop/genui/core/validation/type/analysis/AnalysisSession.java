@@ -41,20 +41,21 @@ import java.util.Set;
  */
 public final class AnalysisSession {
 
+    private static final int MAX_TRAVERSAL_ITEMS = 2_048;
+
     /** 带 cell 模板的 Table 列形如 {@code column(field, label, {cell: Render(...)})}。 */
     private static final int COLUMN_OPTIONS_ARG_INDEX = 2;
 
     private static final int COLUMN_MIN_ARGS_FOR_OPTIONS = COLUMN_OPTIONS_ARG_INDEX + 1;
 
     /**
-     * 会话输入:程序、组件目录、builtin 词表、Render Data Model 快照(可空)、根语句 id、预算。
+     * 会话输入:程序、组件目录、builtin 词表、Render Data Model 快照(可空)、根语句 id。
      *
      * @param program 已解析的取值程序
      * @param catalog 组件目录
      * @param builtins builtin 词表
      * @param dataModel Render Data Model 快照;null 表示无快照,数据依赖部分记 UNKNOWN_INPUT
      * @param entryId 入口语句 id;null 或不存在时没有可达起点
-     * @param budget 会话预算;null 时使用 {@link AnalysisBudget#defaults()}
      * @since 2026
      */
     public record Input(
@@ -62,11 +63,10 @@ public final class AnalysisSession {
             ContractCatalog catalog,
             BuiltinCatalog builtins,
             Map<String, Object> dataModel,
-            String entryId,
-            AnalysisBudget budget) {
+            String entryId) {
 
         /**
-         * 紧凑构造方法:校验程序与两个目录非 null,并补齐默认预算。
+         * 紧凑构造方法:校验程序与两个目录非 null。
          *
          * @throws IllegalArgumentException 程序、组件目录或 builtin 词表为 null 时
          */
@@ -74,7 +74,6 @@ public final class AnalysisSession {
             if (program == null || catalog == null || builtins == null) {
                 throw new IllegalArgumentException("program, catalog and builtins are required");
             }
-            budget = budget == null ? AnalysisBudget.defaults() : budget;
         }
     }
 
@@ -99,11 +98,12 @@ public final class AnalysisSession {
             String declarationStatementId) {}
 
     private final Input input;
-    private final AnalysisBudget.Tracker budget;
+    private final AnalysisCompleteness completeness = new AnalysisCompleteness();
+    private int traversalItems;
     private final TypeOps ops;
     private final BuiltinAnalysis builtinAnalysis;
     private final DataPathResolver pathResolver = new DataPathResolver();
-    private final TypeAnalysisReport coverage = new TypeAnalysisReport();
+    private final TypeAnalysisReport coverage = new TypeAnalysisReport(completeness);
     private final List<ValidationIssue> issues = new ArrayList<>();
     private final Map<String, AstNode> symbols = new LinkedHashMap<>();
     private final Map<String, SourceSpan> spans = new LinkedHashMap<>();
@@ -113,8 +113,7 @@ public final class AnalysisSession {
 
     private AnalysisSession(Input input) {
         this.input = input;
-        this.budget = input.budget().tracker();
-        this.ops = new TypeOps(budget);
+        this.ops = new TypeOps(completeness);
         this.builtinAnalysis = new BuiltinAnalysis(input.builtins(), this);
         for (Statement statement : input.program().statements()) {
             spans.put(statement.id(), statement.span());
@@ -131,7 +130,7 @@ public final class AnalysisSession {
     /**
      * 执行一次完整分析。
      *
-     * <p>遍历入口可达的取值语句并登记检查结论;会话预算发生过精度损失时,同步把覆盖报告标记为 遍历截断。
+     * <p>遍历入口可达的取值语句并登记检查结论;触发内部限制时,覆盖报告通过会话完整性标记反映截断。
      *
      * @param input 会话输入
      * @return 仅 MISMATCH 产生的诊断与覆盖报告
@@ -139,9 +138,6 @@ public final class AnalysisSession {
     public static Output analyze(Input input) {
         AnalysisSession session = new AnalysisSession(input);
         session.run();
-        if (session.budget.precisionLost()) {
-            session.coverage.markPrecisionLost();
-        }
         return new Output(List.copyOf(session.issues), session.coverage);
     }
 
@@ -153,8 +149,7 @@ public final class AnalysisSession {
             if (expr == null) {
                 continue;
             }
-            if (!budget.tryConsumeCheck()) {
-                coverage.markTraversalTruncated();
+            if (!tryStartTraversal()) {
                 break;
             }
             synth(expr, id, rootEnv, new LinkedHashSet<>());
@@ -393,7 +388,7 @@ public final class AnalysisSession {
         if (input.dataModel() == null) {
             return Fact.unknown(Fact.Loss.UNKNOWN_INPUT);
         }
-        return SnapshotFacts.typeOfValue(input.dataModel(), "data", 0, budget);
+        return SnapshotFacts.typeOfValue(input.dataModel(), "data", 0, completeness);
     }
 
     private Fact synthMember(
@@ -995,10 +990,10 @@ public final class AnalysisSession {
     }
 
     // ───────────────────────────────────────────────────────────────────────
-    // builtin module 协作:共享预算、覆盖、诊断身份与符号解析
+    // builtin module 协作:共享覆盖、诊断身份与符号解析
     // ───────────────────────────────────────────────────────────────────────
 
-    /** 本次会话的类型运算入口(携带同一份预算)。 */
+    /** 本次会话的类型运算入口(共享会话完整性标记)。 */
     TypeOps ops() {
         return ops;
     }
@@ -1010,14 +1005,14 @@ public final class AnalysisSession {
                         obligation, result.verdict(), List.copyOf(result.reasons())));
     }
 
-    /** 消费一次检查预算;耗尽时不再展开新的模板。 */
-    boolean consumeCheck() {
-        return budget.tryConsumeCheck();
-    }
-
-    /** 把覆盖报告标记为遍历截断。 */
-    void markTraversalTruncated() {
-        coverage.markTraversalTruncated();
+    /** 启动一个根语句或模板补查，超限时只标记会话不完整。 */
+    boolean tryStartTraversal() {
+        if (traversalItems >= MAX_TRAVERSAL_ITEMS) {
+            completeness.markIncomplete();
+            return false;
+        }
+        traversalItems++;
+        return true;
     }
 
     /** 进入模板使用位置:诊断与覆盖身份归属实际使用处。 */

@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.Set;
 
 class ObjectEnumerationTypeOpsTest {
-    private final TypeOps ops = new TypeOps(new AnalysisBudget.Tracker(AnalysisBudget.defaults()));
+    private final TypeOps ops = new TypeOps();
     private final Type number = Types.scalar(Type.ScalarKind.NUMBER);
     private final Type string = Types.scalar(Type.ScalarKind.STRING);
 
