@@ -145,88 +145,110 @@ public final class GenerationContractLoader {
         if (gaps == null || gaps.isEmpty()) {
             return;
         }
-        Set<String> builtinNames = new LinkedHashSet<>();
-        if (builtins != null) {
-            for (BuiltinSpec builtin : builtins) {
-                if (builtin != null && builtin.name() != null) {
-                    builtinNames.add(builtin.name());
-                }
-            }
-        }
+        Set<String> builtinNames = collectBuiltinNames(builtins);
         Set<String> seenIds = new LinkedHashSet<>();
         Map<String, String> seenAliases = new LinkedHashMap<>();
         for (CapabilityGapSpec gap : gaps) {
-            if (gap == null) {
+            validateGapBasics(gap, seenIds, scope);
+            validateGapAliases(gap, componentNames, builtinNames, seenAliases, scope);
+            validateGapPhrases(gap, scope);
+        }
+    }
+
+    private static Set<String> collectBuiltinNames(List<BuiltinSpec> builtins) {
+        Set<String> names = new LinkedHashSet<>();
+        if (builtins != null) {
+            for (BuiltinSpec builtin : builtins) {
+                if (builtin != null && builtin.name() != null) {
+                    names.add(builtin.name());
+                }
+            }
+        }
+        return names;
+    }
+
+    private static void validateGapBasics(
+            CapabilityGapSpec gap, Set<String> seenIds, String scope) {
+        if (gap == null) {
+            throw new GenerationSdkException("capabilityGap entry must not be null in " + scope);
+        }
+        if (gap.id() == null || gap.id().isBlank()) {
+            throw new GenerationSdkException("capabilityGap entry is missing 'id' in " + scope);
+        }
+        if (!seenIds.add(gap.id())) {
+            throw new GenerationSdkException(
+                    "duplicate capabilityGap id in " + scope + ": " + gap.id());
+        }
+        if (gap.kind() == null || !ALLOWED_GAP_KINDS.contains(gap.kind())) {
+            throw new GenerationSdkException(
+                    "capabilityGap '"
+                            + gap.id()
+                            + "' in "
+                            + scope
+                            + " has invalid kind '"
+                            + gap.kind()
+                            + "' (expected 'data' or 'component')");
+        }
+        if (gap.name() == null || gap.name().isBlank()) {
+            throw new GenerationSdkException(
+                    "capabilityGap '" + gap.id() + "' is missing 'name' in " + scope);
+        }
+        if (gap.fallback() == null || gap.fallback().isBlank()) {
+            throw new GenerationSdkException(
+                    "capabilityGap '" + gap.id() + "' is missing 'fallback' in " + scope);
+        }
+    }
+
+    private static void validateGapAliases(
+            CapabilityGapSpec gap,
+            Set<String> componentNames,
+            Set<String> builtinNames,
+            Map<String, String> seenAliases,
+            String scope) {
+        for (String rawAlias : gap.aliases()) {
+            String alias = CapabilityGapSpec.normalizeAlias(rawAlias);
+            if (alias.isEmpty()) {
                 throw new GenerationSdkException(
-                        "capabilityGap entry must not be null in " + scope);
+                        "capabilityGap '" + gap.id() + "' contains a blank alias in " + scope);
             }
-            if (gap.id() == null || gap.id().isBlank()) {
-                throw new GenerationSdkException("capabilityGap entry is missing 'id' in " + scope);
-            }
-            if (!seenIds.add(gap.id())) {
-                throw new GenerationSdkException(
-                        "duplicate capabilityGap id in " + scope + ": " + gap.id());
-            }
-            if (gap.kind() == null || !ALLOWED_GAP_KINDS.contains(gap.kind())) {
+            if (componentNames != null && componentNames.contains(alias)) {
                 throw new GenerationSdkException(
                         "capabilityGap '"
                                 + gap.id()
+                                + "' alias '"
+                                + alias
+                                + "' collides with existing component in "
+                                + scope);
+            }
+            if (builtinNames.contains(alias)) {
+                throw new GenerationSdkException(
+                        "capabilityGap '"
+                                + gap.id()
+                                + "' alias '"
+                                + alias
+                                + "' collides with existing builtin in "
+                                + scope);
+            }
+            String previousGap = seenAliases.put(alias, gap.id());
+            if (previousGap != null && !previousGap.equals(gap.id())) {
+                throw new GenerationSdkException(
+                        "capabilityGap '"
+                                + gap.id()
+                                + "' alias '"
+                                + alias
+                                + "' collides with capabilityGap '"
+                                + previousGap
                                 + "' in "
-                                + scope
-                                + " has invalid kind '"
-                                + gap.kind()
-                                + "' (expected 'data' or 'component')");
+                                + scope);
             }
-            if (gap.name() == null || gap.name().isBlank()) {
+        }
+    }
+
+    private static void validateGapPhrases(CapabilityGapSpec gap, String scope) {
+        for (String phrase : gap.phrases()) {
+            if (phrase == null || phrase.isBlank()) {
                 throw new GenerationSdkException(
-                        "capabilityGap '" + gap.id() + "' is missing 'name' in " + scope);
-            }
-            if (gap.fallback() == null || gap.fallback().isBlank()) {
-                throw new GenerationSdkException(
-                        "capabilityGap '" + gap.id() + "' is missing 'fallback' in " + scope);
-            }
-            for (String rawAlias : gap.aliases()) {
-                String alias = CapabilityGapSpec.normalizeAlias(rawAlias);
-                if (alias.isEmpty()) {
-                    throw new GenerationSdkException(
-                            "capabilityGap '" + gap.id() + "' contains a blank alias in " + scope);
-                }
-                if (componentNames != null && componentNames.contains(alias)) {
-                    throw new GenerationSdkException(
-                            "capabilityGap '"
-                                    + gap.id()
-                                    + "' alias '"
-                                    + alias
-                                    + "' collides with existing component in "
-                                    + scope);
-                }
-                if (builtinNames.contains(alias)) {
-                    throw new GenerationSdkException(
-                            "capabilityGap '"
-                                    + gap.id()
-                                    + "' alias '"
-                                    + alias
-                                    + "' collides with existing builtin in "
-                                    + scope);
-                }
-                String previousGap = seenAliases.put(alias, gap.id());
-                if (previousGap != null && !previousGap.equals(gap.id())) {
-                    throw new GenerationSdkException(
-                            "capabilityGap '"
-                                    + gap.id()
-                                    + "' alias '"
-                                    + alias
-                                    + "' collides with capabilityGap '"
-                                    + previousGap
-                                    + "' in "
-                                    + scope);
-                }
-            }
-            for (String phrase : gap.phrases()) {
-                if (phrase == null || phrase.isBlank()) {
-                    throw new GenerationSdkException(
-                            "capabilityGap '" + gap.id() + "' contains a blank phrase in " + scope);
-                }
+                        "capabilityGap '" + gap.id() + "' contains a blank phrase in " + scope);
             }
         }
     }
@@ -248,6 +270,11 @@ public final class GenerationContractLoader {
      * 解析单个 builtin 条目并做结构校验:必填字段、名称唯一、已删除字段、optional 排必填前、variadic 不在末位、 类型串解析。
      *
      * <p>必填字段缺失或类型错误直接失败并指出函数与字段(#117 第 2.2 节);仅 Each/Render 允许省略 returnType。
+     *
+     * @param entry 待解析的 builtin JSON 对象
+     * @param seenNames 已出现的 builtin 名集合，用于重复检测
+     * @return 解析并校验后的 builtin 规格
+     * @throws GenerationSdkException 字段缺失/非法、名称重复或类型串解析失败
      */
     private static BuiltinSpec builtin(Map<String, Object> entry, java.util.Set<String> seenNames) {
         Object nameRaw = entry.get("name");
@@ -303,7 +330,15 @@ public final class GenerationContractLoader {
         return spec;
     }
 
-    /** 必填字符串字段:缺失或空白都报 {@code builtin 'X' missing field 'Y'}。 */
+    /**
+     * 必填字符串字段:缺失或空白都报 {@code builtin 'X' missing field 'Y'}。
+     *
+     * @param entry 待读取的 builtin JSON 对象
+     * @param field 字段名
+     * @param name builtin 名，用于错误信息
+     * @return 非空白的字段文本
+     * @throws GenerationSdkException 字段缺失、非字符串或空白
+     */
     private static String requiredString(Map<String, Object> entry, String field, String name) {
         Object raw = entry.get(field);
         if (!(raw instanceof String text) || text.isBlank()) {
@@ -313,7 +348,15 @@ public final class GenerationContractLoader {
         return text;
     }
 
-    /** 必填 JSON boolean 字段:缺失按 missing field 报错,其他类型指出必须是 boolean。 */
+    /**
+     * 必填 JSON boolean 字段:缺失按 missing field 报错,其他类型指出必须是 boolean。
+     *
+     * @param entry 待读取的 builtin JSON 对象
+     * @param field 字段名
+     * @param name builtin 名，用于错误信息
+     * @return 字段布尔值
+     * @throws GenerationSdkException 字段缺失或不是 JSON boolean
+     */
     private static boolean requiredBoolean(Map<String, Object> entry, String field, String name) {
         Object raw = entry.get(field);
         if (raw == null) {
@@ -371,7 +414,14 @@ public final class GenerationContractLoader {
         return result;
     }
 
-    /** returnType 里的每个命名类型变量必须能在某个参数类型中解出绑定。错误信息同时指出函数与变量名,便于契约作者定位 (#119)。 */
+    /**
+     * returnType 里的每个命名类型变量必须能在某个参数类型中解出绑定。错误信息同时指出函数与变量名,便于契约作者定位 (#119)。
+     *
+     * @param params builtin 的参数列表
+     * @param returnType 返回类型表达式，可为 {@code null}
+     * @param builtinName builtin 名，用于错误信息
+     * @throws GenerationSdkException 返回类型引用了参数未绑定的类型变量
+     */
     private static void requireBoundTypeVars(
             List<BuiltinSpec.ParamSpec> params, TypeExpr returnType, String builtinName) {
         java.util.Set<String> parameterVars = new java.util.TreeSet<>();

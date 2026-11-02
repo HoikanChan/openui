@@ -8,7 +8,7 @@ import java.util.List;
 
 class LoopModificationNegative {
     void readForVariable() {
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 2; i++) {
             int copy = i;
             consume(copy);
         }
@@ -23,7 +23,7 @@ class LoopModificationNegative {
 
     void whileLoop() {
         int i = 0;
-        while (i < 3) {
+        while (i < 2) {
             i++;
         }
     }

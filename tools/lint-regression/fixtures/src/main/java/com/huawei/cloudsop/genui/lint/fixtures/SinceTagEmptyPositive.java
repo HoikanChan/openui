@@ -4,10 +4,10 @@
 
 package com.huawei.cloudsop.genui.lint.fixtures;
 
-class SummaryJavadocPositive {
-    /**
-     * Reads a value
-     */
-    void read() {
-    }
+/**
+ * Fixture with an empty since tag.
+ *
+ * @since
+ */
+public class SinceTagEmptyPositive {
 }

@@ -169,6 +169,9 @@ public final class Types {
     /**
      * 稳定结构键,用于联合去重与排序;与 {@code equals} 一致。字符串与容器元素均带长度前缀编码,
      * 值内部的分隔符(逗号、竖线、冒号等)不会改变键的结构,避免不同分支生成相同键而被误去重。
+     *
+     * @param type 待编码的类型
+     * @return 稳定结构键
      */
     static String structuralKey(Type type) {
         StringBuilder key = new StringBuilder();

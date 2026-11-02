@@ -62,7 +62,13 @@ public final class GenUiGenerator {
         this.validator = validator == null ? new DefaultOpenuiLangValidator() : validator;
     }
 
-    /** Backwards-compatible private constructor (no validation config). */
+    /**
+     * Backwards-compatible private constructor (no validation config).
+     *
+     * @param sdk 已配置的生成 SDK,不能为 null
+     * @param config LLM 配置,可为 null
+     * @param transport 模型传输实现,不能为 null
+     */
     private GenUiGenerator(GenerationSdk sdk, GenUiLlmConfig config, LlmTransport transport) {
         this(sdk, config, transport, null, null);
     }
@@ -332,6 +338,15 @@ public final class GenUiGenerator {
             sink.accept(RenderStreamEnvelope.done(session.nextSeq()));
             return outcome.result();
         }
+        return fallbackFromFailure(effective, sink, fallback, session, outcome);
+    }
+
+    private GenUiGenerationResult fallbackFromFailure(
+            UiGenerationRequest effective,
+            Consumer<RenderStreamEnvelope> sink,
+            MarkdownFallback fallback,
+            GenerationSession session,
+            GenerationSession.Outcome outcome) {
         sink.accept(RenderStreamEnvelope.replace(session.nextSeq(), outcome.failure()));
         try {
             GenUiGenerationResult result =
@@ -367,43 +382,66 @@ public final class GenUiGenerator {
         return result == null ? List.of() : result.rounds();
     }
 
-    /** 首轮和修复由同一 repair 会话管理;调用级预算、终止与降级留在生成入口。 */
+    /**
+     * 首轮和修复由同一 repair 会话管理;调用级预算、终止与降级留在生成入口。
+     *
+     * @param request 生成请求
+     * @param sink 渲染帧接收器
+     * @param budget 本轮调用共享的预算与输出会话
+     * @return 本次生成的最终结果
+     */
     private GenUiGenerationResult generateStreamInternal(
             UiGenerationRequest request,
             Consumer<RenderStreamEnvelope> sink,
             GenerationSession budget) {
         GenUIPromptRequest promptRequest = toPromptRequest(request);
         RequestBody body = buildRequest(promptRequest, request, true);
-        Map<String, Object> dataModel = request.response();
         if (validationConfig.validationEnabled()) {
-            RepairLoop repair =
-                    new RepairLoop(
-                            new RepairLoop.Context(
-                                    body.systemPrompt(),
-                                    userContext(request),
-                                    sdk.mergedContract(promptRequest),
-                                    dataModel,
-                                    validationConfig.maxIncrementalAttempts()),
-                            validator,
-                            config,
-                            transport,
-                            budget::expiredNow,
-                            delta -> sink.accept(RenderStreamEnvelope.dsl(0, delta)));
-            budget.partialSnapshot(() -> repair.snapshot(GenerationEndReason.MODEL_REQUEST_FAILED));
-            try {
-                GenUiGenerationResult result = repair.run(body.json());
-                if (result.validationStatus() == ValidationStatus.INVALID) {
-                    budget.terminate(result.endReason());
-                }
-                return result;
-            } catch (LlmTransportException error) {
-                sink.accept(
-                        RenderStreamEnvelope.error(
-                                0, "LLM_STREAM_FAILED", error.getMessage(), true));
-                return repair.snapshot(GenerationEndReason.MODEL_REQUEST_FAILED);
-            }
+            return generateWithValidation(promptRequest, body, request, sink, budget);
         }
+        return generateWithoutValidation(body, request, sink, budget);
+    }
 
+    private GenUiGenerationResult generateWithValidation(
+            GenUIPromptRequest promptRequest,
+            RequestBody body,
+            UiGenerationRequest request,
+            Consumer<RenderStreamEnvelope> sink,
+            GenerationSession budget) {
+        Map<String, Object> dataModel = request.response();
+        RepairLoop repair =
+                new RepairLoop(
+                        new RepairLoop.Context(
+                                body.systemPrompt(),
+                                userContext(request),
+                                sdk.mergedContract(promptRequest),
+                                dataModel,
+                                validationConfig.maxIncrementalAttempts()),
+                        validator,
+                        config,
+                        transport,
+                        budget::expiredNow,
+                        delta -> sink.accept(RenderStreamEnvelope.dsl(0, delta)));
+        budget.partialSnapshot(() -> repair.snapshot(GenerationEndReason.MODEL_REQUEST_FAILED));
+        try {
+            GenUiGenerationResult result = repair.run(body.json());
+            if (result.validationStatus() == ValidationStatus.INVALID) {
+                budget.terminate(result.endReason());
+            }
+            return result;
+        } catch (LlmTransportException error) {
+            sink.accept(
+                    RenderStreamEnvelope.error(0, "LLM_STREAM_FAILED", error.getMessage(), true));
+            return repair.snapshot(GenerationEndReason.MODEL_REQUEST_FAILED);
+        }
+    }
+
+    private GenUiGenerationResult generateWithoutValidation(
+            RequestBody body,
+            UiGenerationRequest request,
+            Consumer<RenderStreamEnvelope> sink,
+            GenerationSession budget) {
+        Map<String, Object> dataModel = request.response();
         // With validation disabled, retain partial streamed output on request failure.
         StringBuffer accumulated = new StringBuffer();
         budget.partialSnapshot(

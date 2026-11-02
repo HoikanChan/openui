@@ -64,294 +64,10 @@ public final class OpenuiLexer {
                 continue;
             }
 
-            // ── Single-character punctuation ───────────────────────────────────
-            TokenType punct = singleCharPunct(c);
-            if (punct != null) {
-                tokens.add(Token.of(punct, startLine, startCol, startOff, 1));
-                i++;
-                col++;
-                continue;
-            }
-
-            // ── Two-char / single-char operators ───────────────────────────────
-            if (c == '=') {
-                if (peek(src, i + 1) == '=') {
-                    tokens.add(Token.of(TokenType.EQ_EQ, startLine, startCol, startOff, 2));
-                    i += 2;
-                    col += 2;
-                } else {
-                    tokens.add(Token.of(TokenType.EQUALS, startLine, startCol, startOff, 1));
-                    i++;
-                    col++;
-                }
-                continue;
-            }
-            if (c == '!') {
-                if (peek(src, i + 1) == '=') {
-                    tokens.add(Token.of(TokenType.NOT_EQ, startLine, startCol, startOff, 2));
-                    i += 2;
-                    col += 2;
-                } else {
-                    tokens.add(Token.of(TokenType.NOT, startLine, startCol, startOff, 1));
-                    i++;
-                    col++;
-                }
-                continue;
-            }
-            if (c == '>') {
-                if (peek(src, i + 1) == '=') {
-                    tokens.add(Token.of(TokenType.GREATER_EQ, startLine, startCol, startOff, 2));
-                    i += 2;
-                    col += 2;
-                } else {
-                    tokens.add(Token.of(TokenType.GREATER, startLine, startCol, startOff, 1));
-                    i++;
-                    col++;
-                }
-                continue;
-            }
-            if (c == '<') {
-                if (peek(src, i + 1) == '=') {
-                    tokens.add(Token.of(TokenType.LESS_EQ, startLine, startCol, startOff, 2));
-                    i += 2;
-                    col += 2;
-                } else {
-                    tokens.add(Token.of(TokenType.LESS, startLine, startCol, startOff, 1));
-                    i++;
-                    col++;
-                }
-                continue;
-            }
-            // '&' and '|' always tokenize as And/Or (matches lexer.ts, single or double char).
-            if (c == '&') {
-                int len = peek(src, i + 1) == '&' ? 2 : 1;
-                tokens.add(Token.of(TokenType.AND, startLine, startCol, startOff, len));
-                i += len;
-                col += len;
-                continue;
-            }
-            if (c == '|') {
-                int len = peek(src, i + 1) == '|' ? 2 : 1;
-                tokens.add(Token.of(TokenType.OR, startLine, startCol, startOff, len));
-                i += len;
-                col += len;
-                continue;
-            }
-            if (c == '.') {
-                tokens.add(Token.of(TokenType.DOT, startLine, startCol, startOff, 1));
-                i++;
-                col++;
-                continue;
-            }
-            if (c == '?') {
-                if (peek(src, i + 1) == '?') {
-                    tokens.add(Token.of(TokenType.NULL_COAL, startLine, startCol, startOff, 2));
-                    i += 2;
-                    col += 2;
-                } else {
-                    tokens.add(Token.of(TokenType.QUESTION, startLine, startCol, startOff, 1));
-                    i++;
-                    col++;
-                }
-                continue;
-            }
-            if (c == '+') {
-                tokens.add(Token.of(TokenType.PLUS, startLine, startCol, startOff, 1));
-                i++;
-                col++;
-                continue;
-            }
-            if (c == '*') {
-                tokens.add(Token.of(TokenType.STAR, startLine, startCol, startOff, 1));
-                i++;
-                col++;
-                continue;
-            }
-            if (c == '/') {
-                tokens.add(Token.of(TokenType.SLASH, startLine, startCol, startOff, 1));
-                i++;
-                col++;
-                continue;
-            }
-            if (c == '%') {
-                tokens.add(Token.of(TokenType.PERCENT, startLine, startCol, startOff, 1));
-                i++;
-                col++;
-                continue;
-            }
-
-            // ── Double-quoted string literal ───────────────────────────────────
-            if (c == '"') {
-                int start = i;
-                i++;
-                boolean closed = false;
-                while (i < n) {
-                    char sc = src.charAt(i);
-                    if (sc == '\\') {
-                        i += 2;
-                    } else if (sc == '"') {
-                        i++;
-                        closed = true;
-                        break;
-                    } else {
-                        i++;
-                    }
-                }
-                String raw = src.substring(start, Math.min(i, n));
-                String value = decodeDoubleQuoted(closed ? raw : raw + '"');
-                i = Math.min(i, n);
-                int len = i - start;
-                tokens.add(Token.ofText(TokenType.STR, value, startLine, startCol, startOff, len));
-                col += len;
-                continue;
-            }
-
-            // ── Single-quoted string literal ───────────────────────────────────
-            if (c == '\'') {
-                int start = i;
-                i++;
-                StringBuilder sb = new StringBuilder();
-                while (i < n) {
-                    char sc = src.charAt(i);
-                    if (sc == '\\') {
-                        i++;
-                        if (i < n) {
-                            char esc = src.charAt(i);
-                            switch (esc) {
-                                case '\'' -> sb.append('\'');
-                                case '\\' -> sb.append('\\');
-                                case 'n' -> sb.append('\n');
-                                case 't' -> sb.append('\t');
-                                default -> sb.append(esc);
-                            }
-                            i++;
-                        }
-                    } else if (sc == '\'') {
-                        i++;
-                        break;
-                    } else {
-                        sb.append(sc);
-                        i++;
-                    }
-                }
-                int len = i - start;
-                tokens.add(
-                        Token.ofText(
-                                TokenType.STR, sb.toString(), startLine, startCol, startOff, len));
-                col += len;
-                continue;
-            }
-
-            // ── Minus: negative number literal or subtraction operator ─────────
-            if (c == '-') {
-                Token prev = tokens.isEmpty() ? null : tokens.get(tokens.size() - 1);
-                boolean afterValue = prev != null && isValueToken(prev.type());
-                boolean digitFollows = i + 1 < n && isDigit(src.charAt(i + 1));
-                if (afterValue || !digitFollows) {
-                    tokens.add(Token.of(TokenType.MINUS, startLine, startCol, startOff, 1));
-                    i++;
-                    col++;
-                    continue;
-                }
-                // else: negative number literal — fall through to number parsing.
-            }
-
-            // ── Number literal ─────────────────────────────────────────────────
-            boolean isNegDigit = c == '-' && i + 1 < n && isDigit(src.charAt(i + 1));
-            if (isDigit(c) || isNegDigit) {
-                int start = i;
-                if (src.charAt(i) == '-') {
-                    i++;
-                }
-                while (i < n && isDigit(src.charAt(i))) {
-                    i++;
-                }
-                if (i < n && src.charAt(i) == '.' && i + 1 < n && isDigit(src.charAt(i + 1))) {
-                    i++;
-                    while (i < n && isDigit(src.charAt(i))) {
-                        i++;
-                    }
-                }
-                if (i < n && (src.charAt(i) == 'e' || src.charAt(i) == 'E')) {
-                    i++;
-                    if (i < n && (src.charAt(i) == '+' || src.charAt(i) == '-')) {
-                        i++;
-                    }
-                    while (i < n && isDigit(src.charAt(i))) {
-                        i++;
-                    }
-                }
-                int len = i - start;
-                double value = Double.parseDouble(src.substring(start, i));
-                tokens.add(Token.ofNumber(value, startLine, startCol, startOff, len));
-                col += len;
-                continue;
-            }
-
-            // ── State variable: $identifier ────────────────────────────────────
-            if (c == '$' && i + 1 < n && isIdentStart(src.charAt(i + 1))) {
-                int start = i;
-                i++;
-                while (i < n && isIdentPart(src.charAt(i))) {
-                    i++;
-                }
-                int len = i - start;
-                tokens.add(
-                        Token.ofText(
-                                TokenType.STATE_VAR,
-                                src.substring(start, i),
-                                startLine,
-                                startCol,
-                                startOff,
-                                len));
-                col += len;
-                continue;
-            }
-
-            // ── Keyword or identifier ──────────────────────────────────────────
-            if (isIdentStart(c)) {
-                int start = i;
-                while (i < n && isIdentPart(src.charAt(i))) {
-                    i++;
-                }
-                String word = src.substring(start, i);
-                int len = i - start;
-                switch (word) {
-                    case "true" ->
-                            tokens.add(
-                                    Token.of(TokenType.TRUE, startLine, startCol, startOff, len));
-                    case "false" ->
-                            tokens.add(
-                                    Token.of(TokenType.FALSE, startLine, startCol, startOff, len));
-                    case "null" ->
-                            tokens.add(
-                                    Token.of(TokenType.NULL, startLine, startCol, startOff, len));
-                    default -> {
-                        TokenType kind = (c >= 'A' && c <= 'Z') ? TokenType.TYPE : TokenType.IDENT;
-                        tokens.add(Token.ofText(kind, word, startLine, startCol, startOff, len));
-                    }
-                }
-                col += len;
-                continue;
-            }
-
-            // ── Builtin call: @identifier ──────────────────────────────────────
-            if (c == '@' && i + 1 < n && isIdentStart(src.charAt(i + 1))) {
-                i++; // skip @
-                int start = i;
-                while (i < n && isIdentPart(src.charAt(i))) {
-                    i++;
-                }
-                int len = i - startOff;
-                tokens.add(
-                        Token.ofText(
-                                TokenType.BUILTIN_CALL,
-                                src.substring(start, i),
-                                startLine,
-                                startCol,
-                                startOff,
-                                len));
-                col += len;
+            Scan scan = scanToken(src, tokens, startLine, startCol, startOff);
+            if (scan != null) {
+                i = scan.pos();
+                col = scan.col();
                 continue;
             }
 
@@ -363,6 +79,318 @@ public final class OpenuiLexer {
         tokens.add(Token.of(TokenType.EOF, line, col, i, 0));
         return tokens;
     }
+
+    private static Scan scanToken(String src, List<Token> tokens, int line, int col, int off) {
+        TokenType punct = singleCharPunct(src.charAt(off));
+        if (punct != null) {
+            tokens.add(Token.of(punct, line, col, off, 1));
+            return new Scan(off + 1, col + 1);
+        }
+        Scan scan = scanDoubleCharOperator(src, tokens, line, col, off);
+        if (scan == null) {
+            scan = scanSimpleOperator(src, tokens, line, col, off);
+        }
+        if (scan == null) {
+            scan = scanDoubleQuoted(src, tokens, line, col, off);
+        }
+        if (scan == null) {
+            scan = scanSingleQuoted(src, tokens, line, col, off);
+        }
+        if (scan == null) {
+            scan = scanNumber(src, tokens, line, col, off);
+        }
+        if (scan == null) {
+            scan = scanStateVariable(src, tokens, line, col, off);
+        }
+        if (scan == null) {
+            scan = scanIdentifierOrKeyword(src, tokens, line, col, off);
+        }
+        if (scan == null) {
+            scan = scanBuiltinCall(src, tokens, line, col, off);
+        }
+        return scan;
+    }
+
+    private static Scan scanDoubleCharOperator(
+            String src, List<Token> tokens, int line, int col, int off) {
+        char c = src.charAt(off);
+        TokenType one;
+        TokenType two;
+        char doubled;
+        switch (c) {
+            case '=' -> {
+                one = TokenType.EQUALS;
+                two = TokenType.EQ_EQ;
+                doubled = '=';
+            }
+            case '!' -> {
+                one = TokenType.NOT;
+                two = TokenType.NOT_EQ;
+                doubled = '=';
+            }
+            case '>' -> {
+                one = TokenType.GREATER;
+                two = TokenType.GREATER_EQ;
+                doubled = '=';
+            }
+            case '<' -> {
+                one = TokenType.LESS;
+                two = TokenType.LESS_EQ;
+                doubled = '=';
+            }
+            case '?' -> {
+                one = TokenType.QUESTION;
+                two = TokenType.NULL_COAL;
+                doubled = '?';
+            }
+            default -> {
+                return null;
+            }
+        }
+        boolean pair = peek(src, off + 1) == doubled;
+        TokenType type = pair ? two : one;
+        int len = pair ? 2 : 1;
+        tokens.add(Token.of(type, line, col, off, len));
+        return new Scan(off + len, col + len);
+    }
+
+    private static Scan scanSimpleOperator(
+            String src, List<Token> tokens, int line, int col, int off) {
+        char c = src.charAt(off);
+        TokenType type;
+        int len;
+        switch (c) {
+            case '&' -> {
+                type = TokenType.AND;
+                len = peek(src, off + 1) == '&' ? 2 : 1;
+            }
+            case '|' -> {
+                type = TokenType.OR;
+                len = peek(src, off + 1) == '|' ? 2 : 1;
+            }
+            case '.' -> {
+                type = TokenType.DOT;
+                len = 1;
+            }
+            case '+' -> {
+                type = TokenType.PLUS;
+                len = 1;
+            }
+            case '*' -> {
+                type = TokenType.STAR;
+                len = 1;
+            }
+            case '/' -> {
+                type = TokenType.SLASH;
+                len = 1;
+            }
+            case '%' -> {
+                type = TokenType.PERCENT;
+                len = 1;
+            }
+            case '-' -> {
+                if (!minusIsOperator(src, tokens, off)) {
+                    return null;
+                }
+                type = TokenType.MINUS;
+                len = 1;
+            }
+            default -> {
+                return null;
+            }
+        }
+        tokens.add(Token.of(type, line, col, off, len));
+        return new Scan(off + len, col + len);
+    }
+
+    private static boolean minusIsOperator(String src, List<Token> tokens, int off) {
+        Token prev = tokens.isEmpty() ? null : tokens.get(tokens.size() - 1);
+        boolean afterValue = prev != null && isValueToken(prev.type());
+        boolean digitFollows = off + 1 < src.length() && isDigit(src.charAt(off + 1));
+        return afterValue || !digitFollows;
+    }
+
+    private static Scan scanDoubleQuoted(
+            String src, List<Token> tokens, int line, int col, int off) {
+        int n = src.length();
+        if (src.charAt(off) != '"') {
+            return null;
+        }
+        int start = off;
+        int i = off + 1;
+        boolean closed = false;
+        while (i < n) {
+            char sc = src.charAt(i);
+            if (sc == '\\') {
+                i += 2;
+            } else if (sc == '"') {
+                i++;
+                closed = true;
+                break;
+            } else {
+                i++;
+            }
+        }
+        String raw = src.substring(start, Math.min(i, n));
+        String value = decodeDoubleQuoted(closed ? raw : raw + '"');
+        i = Math.min(i, n);
+        int len = i - start;
+        tokens.add(Token.ofText(TokenType.STR, value, line, col, off, len));
+        return new Scan(i, col + len);
+    }
+
+    private static Scan scanSingleQuoted(
+            String src, List<Token> tokens, int line, int col, int off) {
+        int n = src.length();
+        if (src.charAt(off) != '\'') {
+            return null;
+        }
+        int start = off;
+        int i = off + 1;
+        StringBuilder sb = new StringBuilder();
+        while (i < n) {
+            char sc = src.charAt(i);
+            if (sc == '\\') {
+                i++;
+                if (i < n) {
+                    char esc = src.charAt(i);
+                    switch (esc) {
+                        case '\'' -> sb.append('\'');
+                        case '\\' -> sb.append('\\');
+                        case 'n' -> sb.append('\n');
+                        case 't' -> sb.append('\t');
+                        default -> sb.append(esc);
+                    }
+                    i++;
+                }
+            } else if (sc == '\'') {
+                i++;
+                break;
+            } else {
+                sb.append(sc);
+                i++;
+            }
+        }
+        int len = i - start;
+        tokens.add(Token.ofText(TokenType.STR, sb.toString(), line, col, off, len));
+        return new Scan(i, col + len);
+    }
+
+    private static Scan scanNumber(String src, List<Token> tokens, int line, int col, int off) {
+        char c = src.charAt(off);
+        boolean isNegDigit = isNegativeNumberStart(src, off);
+        if (!isDigit(c) && !isNegDigit) {
+            return null;
+        }
+        int start = off;
+        int i = off;
+        if (src.charAt(i) == '-') {
+            i++;
+        }
+        i = skipDigits(src, i);
+        if (hasFraction(src, i)) {
+            i = skipDigits(src, i + 1);
+        }
+        if (hasExponent(src, i)) {
+            i++;
+            if (hasExponentSign(src, i)) {
+                i++;
+            }
+            i = skipDigits(src, i);
+        }
+        int len = i - start;
+        double value = Double.parseDouble(src.substring(start, i));
+        tokens.add(Token.ofNumber(value, line, col, off, len));
+        return new Scan(i, col + len);
+    }
+
+    private static boolean isNegativeNumberStart(String src, int off) {
+        return src.charAt(off) == '-' && off + 1 < src.length() && isDigit(src.charAt(off + 1));
+    }
+
+    private static int skipDigits(String src, int i) {
+        int n = src.length();
+        while (i < n && isDigit(src.charAt(i))) {
+            i++;
+        }
+        return i;
+    }
+
+    private static boolean hasFraction(String src, int i) {
+        int n = src.length();
+        return i < n && src.charAt(i) == '.' && i + 1 < n && isDigit(src.charAt(i + 1));
+    }
+
+    private static boolean hasExponent(String src, int i) {
+        return i < src.length() && (src.charAt(i) == 'e' || src.charAt(i) == 'E');
+    }
+
+    private static boolean hasExponentSign(String src, int i) {
+        return i < src.length() && (src.charAt(i) == '+' || src.charAt(i) == '-');
+    }
+
+    private static Scan scanStateVariable(
+            String src, List<Token> tokens, int line, int col, int off) {
+        int n = src.length();
+        if (src.charAt(off) != '$' || off + 1 >= n || !isIdentStart(src.charAt(off + 1))) {
+            return null;
+        }
+        int start = off;
+        int i = off + 1;
+        while (i < n && isIdentPart(src.charAt(i))) {
+            i++;
+        }
+        int len = i - start;
+        tokens.add(Token.ofText(TokenType.STATE_VAR, src.substring(start, i), line, col, off, len));
+        return new Scan(i, col + len);
+    }
+
+    private static Scan scanIdentifierOrKeyword(
+            String src, List<Token> tokens, int line, int col, int off) {
+        int n = src.length();
+        if (!isIdentStart(src.charAt(off))) {
+            return null;
+        }
+        int start = off;
+        int i = off;
+        while (i < n && isIdentPart(src.charAt(i))) {
+            i++;
+        }
+        String word = src.substring(start, i);
+        int len = i - start;
+        switch (word) {
+            case "true" -> tokens.add(Token.of(TokenType.TRUE, line, col, off, len));
+            case "false" -> tokens.add(Token.of(TokenType.FALSE, line, col, off, len));
+            case "null" -> tokens.add(Token.of(TokenType.NULL, line, col, off, len));
+            default -> {
+                TokenType kind =
+                        (src.charAt(off) >= 'A' && src.charAt(off) <= 'Z')
+                                ? TokenType.TYPE
+                                : TokenType.IDENT;
+                tokens.add(Token.ofText(kind, word, line, col, off, len));
+            }
+        }
+        return new Scan(i, col + len);
+    }
+
+    private static Scan scanBuiltinCall(
+            String src, List<Token> tokens, int line, int col, int off) {
+        int n = src.length();
+        if (src.charAt(off) != '@' || off + 1 >= n || !isIdentStart(src.charAt(off + 1))) {
+            return null;
+        }
+        int start = off + 1;
+        int i = start;
+        while (i < n && isIdentPart(src.charAt(i))) {
+            i++;
+        }
+        int len = i - off;
+        tokens.add(
+                Token.ofText(TokenType.BUILTIN_CALL, src.substring(start, i), line, col, off, len));
+        return new Scan(i, col + len);
+    }
+
+    private record Scan(int pos, int col) {}
 
     private static TokenType singleCharPunct(char c) {
         return switch (c) {
@@ -416,6 +444,9 @@ public final class OpenuiLexer {
      * Decode a double-quoted raw literal (including surrounding quotes) into its runtime string,
      * mirroring the TS path that delegates to {@code JSON.parse}. On malformed escapes it falls
      * back to stripping the surrounding quotes (parity with the TS catch branch).
+     *
+     * @param raw raw literal including its surrounding quotes
+     * @return decoded runtime string, or the quote-stripped raw text on malformed escapes
      */
     private static String decodeDoubleQuoted(String raw) {
         if (raw.length() < 2) {

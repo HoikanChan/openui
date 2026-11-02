@@ -73,7 +73,12 @@ final class SignatureInference {
         return null;
     }
 
-    /** {@code Record<string, X>}:对象形状 + 所有值满足 X;X 为类型变量时值要求退化为接受任意值。 */
+    /**
+     * {@code Record<string, X>}:对象形状 + 所有值满足 X;X 为类型变量时值要求退化为接受任意值。
+     *
+     * @param record 记录类型表达式
+     * @return 记录参数的检查要求
+     */
     private static Expectation recordExpectation(TypeExpr.RecordOf record) {
         Expectation value = expectation(record.value());
         if (value == null) {
@@ -85,7 +90,12 @@ final class SignatureInference {
                         new Expectation.RecordValues(value)));
     }
 
-    /** 对象字面量参数:每个声明字段都须存在且满足其类型要求。 */
+    /**
+     * 对象字面量参数:每个声明字段都须存在且满足其类型要求。
+     *
+     * @param literal 对象字面量类型表达式
+     * @return 对象参数的检查要求
+     */
     private static Expectation objectLiteralExpectation(TypeExpr.ObjectLiteral literal) {
         List<Expectation> fields = new ArrayList<>();
         for (TypeExpr.ObjectLiteral.Field field : literal.fields()) {
@@ -100,7 +110,12 @@ final class SignatureInference {
                 : new Expectation.AllOf(fields);
     }
 
-    /** 基础类型关键字 → 检查要求;未知关键字返回 {@code null}。 */
+    /**
+     * 基础类型关键字 → 检查要求;未知关键字返回 {@code null}。
+     *
+     * @param name 基础类型关键字
+     * @return 对应检查要求;未知关键字为 {@code null}
+     */
     private static Expectation baseExpectation(String name) {
         return switch (name) {
             case "any" -> new Expectation.Accept(Type.Unknown.INSTANCE);
@@ -218,7 +233,13 @@ final class SignatureInference {
         // Base 不产生变量绑定。
     }
 
-    /** 对象字面量参数:已声明字段从实际对象读取;缺失或存在性未定的字段按未知绑定。 */
+    /**
+     * 对象字面量参数:已声明字段从实际对象读取;缺失或存在性未定的字段按未知绑定。
+     *
+     * @param literal 对象字面量类型表达式
+     * @param type 实参类型
+     * @param bounds 本次调用的变量绑定表,原地更新
+     */
     private static void bindObjectLiteral(
             TypeExpr.ObjectLiteral literal, Type type, Map<String, Type> bounds) {
         if (!(type instanceof Type.RecordType recordType)) {
@@ -237,7 +258,13 @@ final class SignatureInference {
         }
     }
 
-    /** 联合参数:只从与当前输入相容的分支绑定,不给不相干分支强加字段约束;没有适用分支时变量保持未知。 */
+    /**
+     * 联合参数:只从与当前输入相容的分支绑定,不给不相干分支强加字段约束;没有适用分支时变量保持未知。
+     *
+     * @param union 联合类型表达式
+     * @param type 实参类型
+     * @param bounds 本次调用的变量绑定表,原地更新
+     */
     private static void bindUnion(TypeExpr.UnionOf union, Type type, Map<String, Type> bounds) {
         List<Type> inputs = TypeOps.flatten(type);
         boolean bound = false;
@@ -254,7 +281,13 @@ final class SignatureInference {
         }
     }
 
-    /** 分支是否可能接受该输入;无法判断时按适用处理,由递归绑定的未知口径兜底。 */
+    /**
+     * 分支是否可能接受该输入;无法判断时按适用处理,由递归绑定的未知口径兜底。
+     *
+     * @param alternative 联合的一个分支
+     * @param input 实参类型
+     * @return 分支可能接受该输入时为 {@code true}
+     */
     private static boolean applies(TypeExpr alternative, Type input) {
         Expectation expectation = expectation(alternative);
         if (expectation == null) {
@@ -264,7 +297,12 @@ final class SignatureInference {
         return Checks.check(inputFact, expectation, null).verdict() != Checks.Verdict.MISMATCH;
     }
 
-    /** 未知输入:模式内所有变量并入未知,避免被其他已知实参掩盖。 */
+    /**
+     * 未知输入:模式内所有变量并入未知,避免被其他已知实参掩盖。
+     *
+     * @param pattern 参数类型表达式
+     * @param bounds 本次调用的变量绑定表,原地更新
+     */
     private static void bindUnknown(TypeExpr pattern, Map<String, Type> bounds) {
         if (pattern == null) {
             return;
@@ -288,7 +326,12 @@ final class SignatureInference {
         }
     }
 
-    /** 带精度损失的事实不具备可信的精确类型,按未知参与绑定(与旧规则求值口径一致)。 */
+    /**
+     * 带精度损失的事实不具备可信的精确类型,按未知参与绑定(与旧规则求值口径一致)。
+     *
+     * @param fact 实参事实
+     * @return 无损失时为事实类型,否则为 Unknown
+     */
     private static Type preciseType(Fact fact) {
         return fact.losses().isEmpty() ? fact.type() : Type.Unknown.INSTANCE;
     }

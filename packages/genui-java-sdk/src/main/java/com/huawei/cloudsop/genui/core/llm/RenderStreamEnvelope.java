@@ -80,6 +80,7 @@ public record RenderStreamEnvelope(String type, int seq, Object content) {
      *
      * @param seq 帧序号,必须 {@code >= 1}(0 保留给首帧 {@code dataModel})。
      * @param deltaText 模型输出的原始增量文本。
+     * @return DSL 帧。
      */
     public static RenderStreamEnvelope dsl(int seq, String deltaText) {
         return new RenderStreamEnvelope(TYPE_DSL, seq, deltaText);

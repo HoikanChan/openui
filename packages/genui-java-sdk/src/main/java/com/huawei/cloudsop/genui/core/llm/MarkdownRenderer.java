@@ -21,10 +21,10 @@ import com.huawei.cloudsop.genui.core.postprocess.DslEscapes;
  */
 final class MarkdownRenderer {
 
-    /** 内层表达式开头：Stack([MarkDownRenderer(" */
+    /** 内层表达式开头：Stack([MarkDownRenderer("。 */
     private static final String INNER_OPEN = "Stack([MarkDownRenderer(\"";
 
-    /** 内层表达式结尾：")]) */
+    /** 内层表达式结尾：")])。 */
     private static final String INNER_CLOSE = "\")])";
 
     private MarkdownRenderer() {}

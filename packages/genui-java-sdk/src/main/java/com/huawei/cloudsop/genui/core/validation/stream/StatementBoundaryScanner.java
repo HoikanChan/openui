@@ -130,7 +130,13 @@ public final class StatementBoundaryScanner {
         return result;
     }
 
-    /** Slice the preprocessed text for a statement's span, falling back to the whole statement. */
+    /**
+     * Slice the preprocessed text for a statement's span, falling back to the whole statement.
+     *
+     * @param cleaned preprocessed text
+     * @param stmt statement whose span selects the slice
+     * @return the statement text, or the trimmed whole text when the span is unusable
+     */
     private static String sliceOf(String cleaned, StatementSplitter.RawStmt stmt) {
         int start = stmt.span().startOffset();
         int end = stmt.span().endOffset();

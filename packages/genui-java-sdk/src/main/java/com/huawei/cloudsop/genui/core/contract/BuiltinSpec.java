@@ -57,7 +57,11 @@ public record BuiltinSpec(
     public record ParamSpec(
             String name, String type, TypeExpr typeExpr, boolean optional, boolean variadic) {
 
-        /** 最小 arity 贡献；variadic 参数可出现零次。 */
+        /**
+         * 最小 arity 贡献；variadic 参数可出现零次。
+         *
+         * @return 该参数对最小 arity 的贡献，optional 或 variadic 时为 0，否则为 1
+         */
         int minArity() {
             return optional || variadic ? 0 : 1;
         }

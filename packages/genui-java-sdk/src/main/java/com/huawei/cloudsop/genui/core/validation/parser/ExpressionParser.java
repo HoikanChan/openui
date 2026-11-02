@@ -97,7 +97,14 @@ public final class ExpressionParser {
         return t;
     }
 
-    /** Consume a token of {@code kind}; if absent, record an unclosed-bracket diagnostic. */
+    /**
+     * Consume a token of {@code kind}; if absent, record an unclosed-bracket diagnostic.
+     *
+     * @param kind 期望的结束 token 类型
+     * @param code 记录诊断时使用的错误码
+     * @param what 未闭合结构的名称,用于诊断文本
+     * @param opener 起始 token,用于定位诊断位置
+     */
     private void eatClosing(TokenType kind, ParseErrorCode code, String what, Token opener) {
         if (cur().type() == kind) {
             pos++;
@@ -148,6 +155,31 @@ public final class ExpressionParser {
     // ── Prefix / atoms ──────────────────────────────────────────────────────────
     private AstNode parsePrefix() {
         Token tok = cur();
+        return switch (tok.type()) {
+            case STR, NUM, TRUE, FALSE, NULL -> parseAtomic(tok);
+            case L_BRACK -> parseArr();
+            case L_BRACE -> parseObj();
+            case STATE_VAR -> parseStateVar(tok);
+            case TYPE -> parseTypeOrComp(tok);
+            case BUILTIN_CALL -> parseBuiltinOrRef(tok);
+            case IDENT -> {
+                adv();
+                yield new AstNode.Ref(tok.text());
+            }
+            case NOT -> {
+                adv();
+                yield new AstNode.UnaryOp("!", parseExpr(PREC_UNARY));
+            }
+            case MINUS -> {
+                adv();
+                yield new AstNode.UnaryOp("-", parseExpr(PREC_UNARY));
+            }
+            case L_PAREN -> parseParen();
+            default -> parseUnexpected(tok);
+        };
+    }
+
+    private AstNode parseAtomic(Token tok) {
         switch (tok.type()) {
             case STR -> {
                 adv();
@@ -165,167 +197,125 @@ public final class ExpressionParser {
                 adv();
                 return new AstNode.Bool(false);
             }
-            case NULL -> {
-                adv();
-                return new AstNode.Null();
-            }
-            case L_BRACK -> {
-                return parseArr();
-            }
-            case L_BRACE -> {
-                return parseObj();
-            }
-            case STATE_VAR -> {
-                String name = tok.text();
-                adv();
-                if (cur().type() == TokenType.EQUALS) {
-                    adv(); // consume '='
-                    AstNode value = parseExpr(0);
-                    return new AstNode.Assign(name, value);
-                }
-                return new AstNode.StateRef(name);
-            }
-            case TYPE -> {
-                String name = tok.text();
-                // Builtins require @-prefix; only Action is exempt.
-                if (peek(1).type() == TokenType.L_PAREN
-                        && (!builtins.isBuiltin(name) || "Action".equals(name))) {
-                    return parseComp(name);
-                }
-                adv();
-                return new AstNode.Ref(name);
-            }
-            case BUILTIN_CALL -> {
-                String name = tok.text();
-                if (peek(1).type() == TokenType.L_PAREN) {
-                    return parseComp(name);
-                }
-                adv();
-                return new AstNode.Ref(name);
-            }
-            case IDENT -> {
-                adv();
-                return new AstNode.Ref(tok.text());
-            }
-            case NOT -> {
-                adv();
-                return new AstNode.UnaryOp("!", parseExpr(PREC_UNARY));
-            }
-            case MINUS -> {
-                adv();
-                return new AstNode.UnaryOp("-", parseExpr(PREC_UNARY));
-            }
-            case L_PAREN -> {
-                Token opener = adv(); // skip '('
-                AstNode inner = parseExpr(0);
-                eatClosing(TokenType.R_PAREN, ParseErrorCode.UNCLOSED_BRACKET, "'('", opener);
-                return inner;
-            }
             default -> {
-                // Unknown token — record a diagnostic, skip it, and return Null (tolerant, matches
-                // TS).
-                if (tok.type() != TokenType.EOF) {
-                    diagnostics.add(
-                            ParseDiagnostic.at(
-                                    ParseErrorCode.UNEXPECTED_TOKEN,
-                                    "Unexpected token " + tok.type(),
-                                    statementId,
-                                    new SourceSpan(
-                                            tok.line(),
-                                            tok.column(),
-                                            tok.offset(),
-                                            tok.offset() + Math.max(0, tok.length()))));
-                }
                 adv();
                 return new AstNode.Null();
             }
         }
+    }
+
+    private AstNode parseStateVar(Token tok) {
+        String name = tok.text();
+        adv();
+        if (cur().type() == TokenType.EQUALS) {
+            adv(); // consume '='
+            AstNode value = parseExpr(0);
+            return new AstNode.Assign(name, value);
+        }
+        return new AstNode.StateRef(name);
+    }
+
+    private AstNode parseTypeOrComp(Token tok) {
+        String name = tok.text();
+        // Builtins require @-prefix; only Action is exempt.
+        if (peek(1).type() == TokenType.L_PAREN
+                && (!builtins.isBuiltin(name) || "Action".equals(name))) {
+            return parseComp(name);
+        }
+        adv();
+        return new AstNode.Ref(name);
+    }
+
+    private AstNode parseBuiltinOrRef(Token tok) {
+        String name = tok.text();
+        if (peek(1).type() == TokenType.L_PAREN) {
+            return parseComp(name);
+        }
+        adv();
+        return new AstNode.Ref(name);
+    }
+
+    private AstNode parseParen() {
+        Token opener = adv(); // skip '('
+        AstNode inner = parseExpr(0);
+        eatClosing(TokenType.R_PAREN, ParseErrorCode.UNCLOSED_BRACKET, "'('", opener);
+        return inner;
+    }
+
+    private AstNode parseUnexpected(Token tok) {
+        // Unknown token — record a diagnostic, skip it, and return Null (tolerant, matches
+        // TS).
+        if (tok.type() != TokenType.EOF) {
+            diagnostics.add(
+                    ParseDiagnostic.at(
+                            ParseErrorCode.UNEXPECTED_TOKEN,
+                            "Unexpected token " + tok.type(),
+                            statementId,
+                            new SourceSpan(
+                                    tok.line(),
+                                    tok.column(),
+                                    tok.offset(),
+                                    tok.offset() + Math.max(0, tok.length()))));
+        }
+        adv();
+        return new AstNode.Null();
     }
 
     // ── Infix / postfix ──────────────────────────────────────────────────────────
     private AstNode parseInfix(AstNode left) {
         Token tok = cur();
-        switch (tok.type()) {
-            case PLUS -> {
-                adv();
-                return new AstNode.BinOp("+", left, parseExpr(PREC_ADD));
-            }
-            case MINUS -> {
-                adv();
-                return new AstNode.BinOp("-", left, parseExpr(PREC_ADD));
-            }
-            case STAR -> {
-                adv();
-                return new AstNode.BinOp("*", left, parseExpr(PREC_MUL));
-            }
-            case SLASH -> {
-                adv();
-                return new AstNode.BinOp("/", left, parseExpr(PREC_MUL));
-            }
-            case PERCENT -> {
-                adv();
-                return new AstNode.BinOp("%", left, parseExpr(PREC_MUL));
-            }
-            case EQ_EQ -> {
-                adv();
-                return new AstNode.BinOp("==", left, parseExpr(PREC_EQ));
-            }
-            case NOT_EQ -> {
-                adv();
-                return new AstNode.BinOp("!=", left, parseExpr(PREC_EQ));
-            }
-            case GREATER -> {
-                adv();
-                return new AstNode.BinOp(">", left, parseExpr(PREC_CMP));
-            }
-            case LESS -> {
-                adv();
-                return new AstNode.BinOp("<", left, parseExpr(PREC_CMP));
-            }
-            case GREATER_EQ -> {
-                adv();
-                return new AstNode.BinOp(">=", left, parseExpr(PREC_CMP));
-            }
-            case LESS_EQ -> {
-                adv();
-                return new AstNode.BinOp("<=", left, parseExpr(PREC_CMP));
-            }
-            case AND -> {
-                adv();
-                return new AstNode.BinOp("&&", left, parseExpr(PREC_AND));
-            }
-            case OR -> {
-                adv();
-                return new AstNode.BinOp("||", left, parseExpr(PREC_OR));
-            }
-            case NULL_COAL -> {
-                adv();
-                return new AstNode.BinOp("??", left, parseExpr(PREC_OR));
-            }
-            case QUESTION -> {
-                adv(); // consume '?'
-                AstNode then = parseExpr(0);
-                eatOptional(TokenType.COLON);
-                AstNode els = parseExpr(0);
-                return new AstNode.Ternary(left, then, els);
-            }
-            case DOT -> {
-                adv(); // consume '.'
-                return new AstNode.Member(left, readFieldName());
-            }
-            case L_BRACK -> {
-                Token opener = adv(); // consume '['
-                AstNode index = parseExpr(0);
-                eatClosing(TokenType.R_BRACK, ParseErrorCode.UNCLOSED_BRACKET, "'['", opener);
-                return new AstNode.Index(left, index);
-            }
-            default -> {
-                return left; // should not be reached when infixPrec is correct
-            }
-        }
+        return switch (tok.type()) {
+            case PLUS -> parseBinary(left, "+", PREC_ADD);
+            case MINUS -> parseBinary(left, "-", PREC_ADD);
+            case STAR -> parseBinary(left, "*", PREC_MUL);
+            case SLASH -> parseBinary(left, "/", PREC_MUL);
+            case PERCENT -> parseBinary(left, "%", PREC_MUL);
+            case EQ_EQ -> parseBinary(left, "==", PREC_EQ);
+            case NOT_EQ -> parseBinary(left, "!=", PREC_EQ);
+            case GREATER -> parseBinary(left, ">", PREC_CMP);
+            case LESS -> parseBinary(left, "<", PREC_CMP);
+            case GREATER_EQ -> parseBinary(left, ">=", PREC_CMP);
+            case LESS_EQ -> parseBinary(left, "<=", PREC_CMP);
+            case AND -> parseBinary(left, "&&", PREC_AND);
+            case OR -> parseBinary(left, "||", PREC_OR);
+            case NULL_COAL -> parseBinary(left, "??", PREC_OR);
+            case QUESTION -> parseTernary(left);
+            case DOT -> parseMember(left);
+            case L_BRACK -> parseIndex(left);
+            default -> left; // should not be reached when infixPrec is correct
+        };
     }
 
-    /** Read a member field name after a dot (mirrors expressions.ts member handling). */
+    private AstNode parseBinary(AstNode left, String operator, int minPrec) {
+        adv();
+        return new AstNode.BinOp(operator, left, parseExpr(minPrec));
+    }
+
+    private AstNode parseTernary(AstNode left) {
+        adv(); // consume '?'
+        AstNode then = parseExpr(0);
+        eatOptional(TokenType.COLON);
+        AstNode els = parseExpr(0);
+        return new AstNode.Ternary(left, then, els);
+    }
+
+    private AstNode parseMember(AstNode left) {
+        adv(); // consume '.'
+        return new AstNode.Member(left, readFieldName());
+    }
+
+    private AstNode parseIndex(AstNode left) {
+        Token opener = adv(); // consume '['
+        AstNode index = parseExpr(0);
+        eatClosing(TokenType.R_BRACK, ParseErrorCode.UNCLOSED_BRACKET, "'['", opener);
+        return new AstNode.Index(left, index);
+    }
+
+    /**
+     * Read a member field name after a dot (mirrors expressions.ts member handling).
+     *
+     * @return 成员字段名;无法识别时返回 {@code "?"}
+     */
     private String readFieldName() {
         Token f = cur();
         switch (f.type()) {
@@ -393,7 +383,12 @@ public final class ExpressionParser {
         return new AstNode.Obj(entries);
     }
 
-    /** Render a numeric token as JS-like {@code String(number)} for member/object keys. */
+    /**
+     * Render a numeric token as JS-like {@code String(number)} for member/object keys.
+     *
+     * @param t 数值 token
+     * @return 与 JS {@code String(number)} 一致的文本
+     */
     private static String numberText(Token t) {
         double d = t.number();
         if (d == Math.rint(d) && !Double.isInfinite(d)) {

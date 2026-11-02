@@ -165,7 +165,12 @@ public final class TypeExprParser {
             }
         }
 
-        /** 命名泛型变量:单个大写字母(T、D 等),与基础类型名和 Record/param 关键字不冲突。 */
+        /**
+         * 命名泛型变量:单个大写字母(T、D 等),与基础类型名和 Record/param 关键字不冲突。
+         *
+         * @param token 待判断的 token 文本
+         * @return 是否为单个大写字母的泛型变量名
+         */
         private static boolean isTypeVariableName(String token) {
             return token.length() == 1 && Character.isUpperCase(token.charAt(0));
         }

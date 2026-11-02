@@ -6,17 +6,41 @@
     "com/huawei/cloudsop/genui/lint/fixtures/HeaderNegative.java": [
       ["RegexpHeader", 1]
     ],
+    "com/huawei/cloudsop/genui/lint/fixtures/HeaderOtherYearNegative.java": [
+      ["RegexpHeader", 2]
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/JavadocStylePositive.java": [
+      ["JavadocStyle", 13]
+    ],
     "com/huawei/cloudsop/genui/lint/fixtures/JavadocThrowsPositive.java": [
       ["JavadocMethod", 20]
     ],
     "com/huawei/cloudsop/genui/lint/fixtures/MissingJavadocMethodPositive.java": [
       ["MissingJavadocMethod", 13]
     ],
+    "com/huawei/cloudsop/genui/lint/fixtures/RecordJavadocMethodEdgePositive.java": [
+      ["RecordJavadocMethod", 21],
+      ["RecordJavadocMethod", 21],
+      ["RecordJavadocMethod", 21],
+      ["RecordJavadocMethod", 30],
+      ["RecordJavadocMethod", 58]
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/RecordJavadocMethodPositive.java": [
+      ["RecordJavadocMethod", 17],
+      ["RecordJavadocMethod", 24],
+      ["RecordJavadocMethod", 24]
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/RecordMissingJavadocPositive.java": [
+      ["MissingJavadocMethod", 14]
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/SinceTagEmptyPositive.java": [
+      ["WriteTag", 10]
+    ],
     "com/huawei/cloudsop/genui/lint/fixtures/SinceTagPositive.java": [
       ["WriteTag", 10]
     ],
-    "com/huawei/cloudsop/genui/lint/fixtures/SummaryJavadocPositive.java": [
-      ["SummaryJavadoc", 8]
+    "com/huawei/cloudsop/genui/lint/fixtures/UnusedImportsPositive.java": [
+      ["UnusedImports", 7]
     ]
   },
   "pmd": {
@@ -55,11 +79,11 @@
     "com/huawei/cloudsop/genui/lint/fixtures/BooleanExpressionComplexityNegative.java": [
       "BooleanExpressionComplexity"
     ],
-    "com/huawei/cloudsop/genui/lint/fixtures/HeaderOtherYearNegative.java": [
-      "RegexpHeader"
-    ],
     "com/huawei/cloudsop/genui/lint/fixtures/HeaderPositive.java": [
       "RegexpHeader"
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/JavadocStyleNegative.java": [
+      "JavadocStyle"
     ],
     "com/huawei/cloudsop/genui/lint/fixtures/JavadocThrowsNegative.java": [
       "JavadocMethod"
@@ -67,11 +91,17 @@
     "com/huawei/cloudsop/genui/lint/fixtures/MissingJavadocMethodNegative.java": [
       "MissingJavadocMethod"
     ],
+    "com/huawei/cloudsop/genui/lint/fixtures/RecordJavadocMethodEdgeNegative.java": [
+      "RecordJavadocMethod"
+    ],
+    "com/huawei/cloudsop/genui/lint/fixtures/RecordJavadocMethodNegative.java": [
+      "RecordJavadocMethod"
+    ],
     "com/huawei/cloudsop/genui/lint/fixtures/SinceTagNegative.java": [
       "WriteTag"
     ],
-    "com/huawei/cloudsop/genui/lint/fixtures/SummaryJavadocNegative.java": [
-      "SummaryJavadoc"
+    "com/huawei/cloudsop/genui/lint/fixtures/UnusedImportsNegative.java": [
+      "UnusedImports"
     ]
   },
   "negativePmd": {

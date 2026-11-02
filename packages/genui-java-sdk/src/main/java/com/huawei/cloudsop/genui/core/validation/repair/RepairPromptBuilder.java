@@ -134,7 +134,12 @@ final class RepairPromptBuilder {
 
     // ── system message ───────────────────────────────────────────────────────
 
-    /** 为当前诊断命中的能力缺口准备模板循环条目，保持契约匹配顺序。 */
+    /**
+     * 为当前诊断命中的能力缺口准备模板循环条目，保持契约匹配顺序。
+     *
+     * @param matchedGaps 命中的能力缺口条目，按契约顺序排列
+     * @return 供模板渲染的循环条目列表
+     */
     private static List<Map<String, Object>> capabilityModels(List<CapabilityGapSpec> matchedGaps) {
         List<Map<String, Object>> entries = new ArrayList<>();
         for (int index = 0; index < matchedGaps.size(); index++) {
@@ -157,7 +162,13 @@ final class RepairPromptBuilder {
         return entries;
     }
 
-    /** 仅根据当前契约 + 最新一轮 actionable issues 匹配能力缺口（按遇到顺序去重，绝不读取历史轮次）。 */
+    /**
+     * 仅根据当前契约 + 最新一轮 actionable issues 匹配能力缺口（按遇到顺序去重，绝不读取历史轮次）。
+     *
+     * @param contract 当前生效的契约，可为 {@code null}
+     * @param actionableIssues 最新一轮可操作的诊断，可为 {@code null}
+     * @return 按遇到顺序去重后的能力缺口列表
+     */
     private static List<CapabilityGapSpec> matchedCapabilityGaps(
             GenerationContract contract, List<ValidationIssue> actionableIssues) {
         if (contract == null
@@ -279,7 +290,12 @@ final class RepairPromptBuilder {
         return entries;
     }
 
-    /** 历史轮原始输出的截断视图。只在完整语句边界截断,并显式声明被截断:前缀再长也只是叙述,当前 DSL 与最新诊断才是修复依据。 */
+    /**
+     * 历史轮原始输出的截断视图。只在完整语句边界截断,并显式声明被截断:前缀再长也只是叙述,当前 DSL 与最新诊断才是修复依据。
+     *
+     * @param raw 历史轮原始输出，可为 {@code null}
+     * @return 含截断标记与截断文本的模板模型
+     */
     private static Map<String, Object> historyExcerpt(String raw) {
         String text = stripped(raw);
         boolean truncated = text.length() > HISTORY_RAW_OUTPUT_LIMIT;
@@ -294,7 +310,12 @@ final class RepairPromptBuilder {
                 excerpt);
     }
 
-    /** 在 {@link #HISTORY_RAW_OUTPUT_LIMIT} 内最后一个完整语句的结束偏移；找不到时退回最后一个换行边界，再退回 {@code 0}。 */
+    /**
+     * 在 {@link #HISTORY_RAW_OUTPUT_LIMIT} 内最后一个完整语句的结束偏移；找不到时退回最后一个换行边界，再退回 {@code 0}。
+     *
+     * @param raw 待截断的原始输出
+     * @return 最后一个完整语句的结束偏移；无法解析时退回换行边界或 {@code 0}
+     */
     private static int completeStatementEnd(String raw) {
         int limit = HISTORY_RAW_OUTPUT_LIMIT;
         int boundary = 0;
@@ -336,7 +357,12 @@ final class RepairPromptBuilder {
         return List.copyOf(blocking);
     }
 
-    /** 诊断位置的行内后缀；无语句 ID 且无行号时返回空字符串。保持 “ (stmt=…, line X:Y)” 的既有分隔格式。 */
+    /**
+     * 诊断位置的行内后缀；无语句 ID 且无行号时返回空字符串。保持 “ (stmt=…, line X:Y)” 的既有分隔格式。
+     *
+     * @param issue 待格式化的诊断
+     * @return 形如 “ (stmt=…, line X:Y)” 的后缀；无定位信息时为空字符串
+     */
     private static String formatLocation(ValidationIssue issue) {
         List<String> parts = new ArrayList<>();
         if (!isBlank(issue.statementId())) {

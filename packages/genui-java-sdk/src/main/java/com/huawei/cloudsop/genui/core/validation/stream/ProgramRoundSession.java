@@ -161,7 +161,11 @@ public final class ProgramRoundSession {
         return String.join("\n", currentStatements.values());
     }
 
-    /** 按 last-wins 把扫描出的完整语句放入当前程序(语句 id 直接复用切分器的结果)。 */
+    /**
+     * 按 last-wins 把扫描出的完整语句放入当前程序(语句 id 直接复用切分器的结果)。
+     *
+     * @param statements 已完成的语句列表
+     */
     private void applyAll(List<StatementBoundaryScanner.CompletedStatement> statements) {
         for (StatementBoundaryScanner.CompletedStatement statement : statements) {
             currentStatements.put(statement.id(), statement.text());

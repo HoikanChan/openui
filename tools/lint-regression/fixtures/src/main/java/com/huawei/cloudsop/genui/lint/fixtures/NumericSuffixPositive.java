@@ -5,7 +5,7 @@
 package com.huawei.cloudsop.genui.lint.fixtures;
 
 class NumericSuffixPositive {
-    private long assigned = 10;
+    private long assigned = 1;
     private float ratio = 2;
     private long field;
 
@@ -13,23 +13,23 @@ class NumericSuffixPositive {
     }
 
     long read() {
-        return 3;
+        return 1;
     }
 
     float readFloat() {
-        return 4;
+        return 2;
     }
 
     void write() {
-        field = 5;
-        consume(6);
-        consumeFloat(7);
-        long local = 8;
-        long negative = -9;
-        float negativeFloat = -10;
-        long[] values = {11, 12};
-        varargs(13, 14);
-        new NumericSuffixPositive(15);
+        field = 1;
+        consume(1);
+        consumeFloat(2);
+        long local = 1;
+        long negative = -1;
+        float negativeFloat = -1;
+        long[] values = {1, 2};
+        varargs(1, 2);
+        new NumericSuffixPositive(1);
     }
 
     void consume(long value) {

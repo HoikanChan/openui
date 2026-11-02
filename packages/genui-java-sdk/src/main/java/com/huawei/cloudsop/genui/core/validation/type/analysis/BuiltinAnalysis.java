@@ -260,7 +260,11 @@ public final class BuiltinAnalysis {
         requireReturnCovers(spec, required);
     }
 
-    /** 普通特殊函数:返回声明必须覆盖 Java 特殊语义可证明的结果上界。 */
+    /**
+     * 普通特殊函数:返回声明必须覆盖 Java 特殊语义可证明的结果上界。
+     *
+     * @param spec 已解析的 builtin 声明
+     */
     private static void validateSpecialReturn(BuiltinSpec spec) {
         TypeExpr required =
                 switch (spec.name()) {
@@ -381,7 +385,13 @@ public final class BuiltinAnalysis {
         }
     }
 
-    /** 声明类型是否覆盖要求类型:union 全分支覆盖、{@code any} 覆盖一切、变量按名匹配。 */
+    /**
+     * 声明类型是否覆盖要求类型:union 全分支覆盖、{@code any} 覆盖一切、变量按名匹配。
+     *
+     * @param declared 声明类型
+     * @param required 要求类型
+     * @return 声明覆盖要求类型时为 {@code true}
+     */
     private static boolean covers(TypeExpr declared, TypeExpr required) {
         if (declared == null || required == null) {
             return false;
@@ -422,7 +432,13 @@ public final class BuiltinAnalysis {
         return false;
     }
 
-    /** 要求对象的每个字段都必须在声明对象里同名字段且类型被覆盖。 */
+    /**
+     * 要求对象的每个字段都必须在声明对象里同名字段且类型被覆盖。
+     *
+     * @param declared 声明对象类型
+     * @param required 要求对象类型
+     * @return 所有要求字段都被覆盖时为 {@code true}
+     */
     private static boolean coversObjectLiteral(
             TypeExpr.ObjectLiteral declared, TypeExpr.ObjectLiteral required) {
         for (TypeExpr.ObjectLiteral.Field field : required.fields()) {
@@ -526,7 +542,12 @@ public final class BuiltinAnalysis {
         visitor.template(call.args().get(layout.bodyIndex()), Set.copyOf(binderNames));
     }
 
-    /** 普通实参遍历:所有实参按调用方自身作用域处理。 */
+    /**
+     * 普通实参遍历:所有实参按调用方自身作用域处理。
+     *
+     * @param call 被遍历的调用表达式
+     * @param visitor 接收实参角色与作用域的调用方
+     */
     private static void walkPlain(AstNode.Comp call, ArgumentVisitor visitor) {
         for (AstNode argument : call.args()) {
             visitor.value(argument, null);
@@ -552,7 +573,14 @@ public final class BuiltinAnalysis {
         private final String useSite;
         private final String useSitePath;
 
-        /** 普通调用上下文:无模板使用位置身份。 */
+        /**
+         * 普通调用上下文:无模板使用位置身份。
+         *
+         * @param session 承载共享状态的分析会话
+         * @param statementId 当前语句标识
+         * @param env 词法环境
+         * @param resolving 循环引用追踪集合
+         */
         AnalysisContext(
                 AnalysisSession session,
                 String statementId,
@@ -561,7 +589,16 @@ public final class BuiltinAnalysis {
             this(session, statementId, env, resolving, null, null);
         }
 
-        /** 模板使用位置上下文:带覆盖标签与诊断路径前缀。 */
+        /**
+         * 模板使用位置上下文:带覆盖标签与诊断路径前缀。
+         *
+         * @param session 承载共享状态的分析会话
+         * @param statementId 当前语句标识
+         * @param env 词法环境
+         * @param resolving 循环引用追踪集合
+         * @param useSite 覆盖标签
+         * @param useSitePath 诊断路径前缀
+         */
         AnalysisContext(
                 AnalysisSession session,
                 String statementId,
@@ -652,7 +689,14 @@ public final class BuiltinAnalysis {
      */
     private record SignatureCall(List<Fact> arguments, Map<String, Type> bounds) {}
 
-    /** 逐参求值并按契约 params 检查:数量、位置、可选与变长都由声明决定,特殊结果不再保存另一份参数签名。 */
+    /**
+     * 逐参求值并按契约 params 检查:数量、位置、可选与变长都由声明决定,特殊结果不再保存另一份参数签名。
+     *
+     * @param spec 已解析的 builtin 声明
+     * @param call 被检查的调用表达式
+     * @param context 当前语句、词法环境与循环引用追踪
+     * @return 按实参顺序的事实与本次调用的类型变量绑定
+     */
     private SignatureCall checkSignatureCall(
             BuiltinSpec spec, AstNode.Comp call, AnalysisContext context) {
         checkArity(spec, call, context);
@@ -677,7 +721,13 @@ public final class BuiltinAnalysis {
         return new SignatureCall(List.copyOf(arguments), bounds);
     }
 
-    /** 末尾 variadic 参数接收第 n 个及之后全部实参;超出声明且无 variadic 的多余实参不参与检查。 */
+    /**
+     * 末尾 variadic 参数接收第 n 个及之后全部实参;超出声明且无 variadic 的多余实参不参与检查。
+     *
+     * @param spec 已解析的 builtin 声明
+     * @param index 实参下标
+     * @return 对应的参数声明;无对应声明时为 {@code null}
+     */
     private static BuiltinSpec.ParamSpec paramAt(BuiltinSpec spec, int index) {
         if (index >= 0 && index < spec.params().size()) {
             return spec.params().get(index);
@@ -691,7 +741,16 @@ public final class BuiltinAnalysis {
         return null;
     }
 
-    /** 简洁签名的单参数检查:检查要求直接由 {@link SignatureInference#expectation} 从 TypeExpr 生成。 */
+    /**
+     * 简洁签名的单参数检查:检查要求直接由 {@link SignatureInference#expectation} 从 TypeExpr 生成。
+     *
+     * @param spec 已解析的 builtin 声明
+     * @param call 被检查的调用表达式
+     * @param index 实参下标
+     * @param param 该位置的参数声明
+     * @param actual 实参事实
+     * @param context 当前语句、词法环境与循环引用追踪
+     */
     private void checkSignatureParam(
             BuiltinSpec spec,
             AstNode.Comp call,
@@ -732,7 +791,15 @@ public final class BuiltinAnalysis {
         }
     }
 
-    /** 按内部布局逐个求值实参;binder 位与模板位不按普通表达式检查。 */
+    /**
+     * 按内部布局逐个求值实参;binder 位与模板位不按普通表达式检查。
+     *
+     * @param spec 已解析的 builtin 声明
+     * @param call 被求值的调用表达式
+     * @param context 当前语句、词法环境与循环引用追踪
+     * @param checkParams 是否先检查实参数量并逐参检查类型
+     * @return 按实参顺序的事实列表
+     */
     private List<Fact> argumentFacts(
             BuiltinSpec spec, AstNode.Comp call, AnalysisContext context, boolean checkParams) {
         if (checkParams) {
@@ -784,7 +851,14 @@ public final class BuiltinAnalysis {
                 "Use the documented @" + call.name() + " signature.");
     }
 
-    /** binder 参数:合法形态不产出类型事实(绑定发生在模板分析内);非法形态按普通表达式推断并报形态错。 */
+    /**
+     * binder 参数:合法形态不产出类型事实(绑定发生在模板分析内);非法形态按普通表达式推断并报形态错。
+     *
+     * @param call 被检查的调用表达式
+     * @param index binder 实参下标
+     * @param context 当前语句、词法环境与循环引用追踪
+     * @return binder 参数事实
+     */
     private Fact binderArgument(AstNode.Comp call, int index, AnalysisContext context) {
         if (binderName(call, index) != null) {
             return Fact.of(Types.scalar(Type.ScalarKind.STRING));
@@ -807,7 +881,13 @@ public final class BuiltinAnalysis {
         return actual;
     }
 
-    /** 有 Java 额外结果语义的普通 builtin:签名负责参数检查,结果证据与数量由既有 {@link TypeOps} 运算产生。 */
+    /**
+     * 有 Java 额外结果语义的普通 builtin:签名负责参数检查,结果证据与数量由既有 {@link TypeOps} 运算产生。
+     *
+     * @param call 被分析的调用表达式
+     * @param arguments 按实参顺序的事实列表
+     * @return 该 builtin 的结果事实
+     */
     private Fact dataSpecialResult(AstNode.Comp call, List<Fact> arguments) {
         Fact first =
                 arguments.isEmpty() ? Fact.unknown(Fact.Loss.MISSING_CONTEXT) : arguments.get(0);
@@ -825,7 +905,15 @@ public final class BuiltinAnalysis {
         };
     }
 
-    /** Each:元素绑定 binder 检查 body,数量保留;空输入仍检查 body 中独立错误。 */
+    /**
+     * Each:元素绑定 binder 检查 body,数量保留;空输入仍检查 body 中独立错误。
+     *
+     * @param spec 已解析的 builtin 声明
+     * @param call 被分析的调用表达式
+     * @param arguments 按实参顺序的事实列表
+     * @param context 当前语句、词法环境与循环引用追踪
+     * @return 逐元素映射的结果事实
+     */
     private Fact eachResult(
             BuiltinSpec spec, AstNode.Comp call, List<Fact> arguments, AnalysisContext context) {
         Layout layout = layoutOf(call.name(), call.args().size());
@@ -850,7 +938,14 @@ public final class BuiltinAnalysis {
         return session.ops().map(inputFact, body);
     }
 
-    /** 元素存在性未证明时保留专用标记;Never 元素直接记为无元素证据。 */
+    /**
+     * 元素存在性未证明时保留专用标记;Never 元素直接记为无元素证据。
+     *
+     * @param inputFact 输入序列事实
+     * @param element 元素事实
+     * @param emptyPossible 输入长度可能为零
+     * @return 带有元素存在性标记的元素事实
+     */
     private static Fact boundElement(Fact inputFact, Fact element, boolean emptyPossible) {
         if (element.type() instanceof Type.Never) {
             return Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE);
@@ -863,6 +958,10 @@ public final class BuiltinAnalysis {
 
     /**
      * 元素存在已证明:直接观察到元素行,或字段读取的证据关联保留了快照中的嵌套行(#77 §6.5)。 无任何损失不等于观察到元素——Filter 删除保留行后元素类型仍在但存在性未证明。
+     *
+     * @param inputFact 输入序列事实
+     * @param element 元素事实
+     * @return 元素存在性已证明时为 {@code true}
      */
     private static boolean elementExistenceProven(Fact inputFact, Fact element) {
         if (!element.evidence().isEmpty()) {
@@ -881,7 +980,14 @@ public final class BuiltinAnalysis {
         return false;
     }
 
-    /** 元素绑定到第一个 binder;其余 binder 位保持 missing-context(binder 恒在输入来源之后,#83)。 */
+    /**
+     * 元素绑定到第一个 binder;其余 binder 位保持 missing-context(binder 恒在输入来源之后,#83)。
+     *
+     * @param call 被分析的调用表达式
+     * @param element 元素事实
+     * @param env 外层词法环境
+     * @return 叠加 binder 绑定后的词法环境
+     */
     private static AnalysisSession.LexicalEnvironment bindElement(
             AstNode.Comp call, Fact element, AnalysisSession.LexicalEnvironment env) {
         AnalysisSession.LexicalEnvironment bodyEnv = env;
@@ -899,7 +1005,12 @@ public final class BuiltinAnalysis {
         return bodyEnv;
     }
 
-    /** 去掉输入层面的未知标记,保留元素存在性标记与逐元素精度损失。 */
+    /**
+     * 去掉输入层面的未知标记,保留元素存在性标记与逐元素精度损失。
+     *
+     * @param fact 待裁剪的事实
+     * @return 裁剪后的事实
+     */
     private static Fact stripExistenceLosses(Fact fact) {
         if (!fact.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)
                 && !fact.losses().contains(Fact.Loss.UNKNOWN_INPUT)) {
@@ -930,6 +1041,11 @@ public final class BuiltinAnalysis {
     /**
      * Render:产生延迟模板产物;body 推迟到使用位置检查,类型只保留 Template 形状。 声明环境在这里捕获,Render 自身 binder 遮蔽同名捕获(#77 第
      * 10.3 节、ADR 0006)。
+     *
+     * @param spec 已解析的 builtin 声明
+     * @param call 被分析的调用表达式
+     * @param context 当前语句、词法环境与循环引用追踪
+     * @return 延迟模板形状的结果事实
      */
     private Fact renderResult(BuiltinSpec spec, AstNode.Comp call, AnalysisContext context) {
         Layout layout = layoutOf(call.name(), call.args().size());
@@ -955,6 +1071,11 @@ public final class BuiltinAnalysis {
      * Switch:先按普通参数规则求值一次实参,结果为各 case 值与 default 的联合;未传 default 并入 null。
      *
      * <p>对象字面量逐项求值以保留诊断,结果只合并每个键最后一次赋值的事实;对象引用或数据路径能解出对象值类型时同样合并各值类型与 default。 无法解出对象值类型时保持未知。
+     *
+     * @param spec 已解析的 builtin 声明
+     * @param call 被分析的调用表达式
+     * @param context 当前语句、词法环境与循环引用追踪
+     * @return 各分支类型的联合事实
      */
     private Fact switchResult(BuiltinSpec spec, AstNode.Comp call, AnalysisContext context) {
         checkArity(spec, call, context);
@@ -994,6 +1115,19 @@ public final class BuiltinAnalysis {
         if (call.args().size() < 2) {
             return Fact.unknown(Fact.Loss.MISSING_CONTEXT);
         }
+        return mergeSwitchResults(call, arguments, caseEntries);
+    }
+
+    /**
+     * Switch 结果合并:把各 case 值、对象值类型与 default 合成联合事实。
+     *
+     * @param call 被分析的调用表达式
+     * @param arguments 按实参顺序的事实列表
+     * @param caseEntries 逐键保留的 case 事实;非对象字面量 cases 时为 {@code null}
+     * @return 各分支类型的联合事实
+     */
+    private Fact mergeSwitchResults(
+            AstNode.Comp call, List<Fact> arguments, Map<String, Fact> caseEntries) {
         Set<Fact.Loss> losses = new LinkedHashSet<>();
         Set<String> upstream = new LinkedHashSet<>();
         List<Type> results = new ArrayList<>();
@@ -1070,7 +1204,13 @@ public final class BuiltinAnalysis {
         checkTemplateAtUseSite(template, bindings, context);
     }
 
-    /** 在使用位置按提供的上下文检查模板 body:声明环境为底座叠加使用位置绑定,Render 自身 binder 再覆盖; 诊断与覆盖身份按使用位置区分。 */
+    /**
+     * 在使用位置按提供的上下文检查模板 body:声明环境为底座叠加使用位置绑定,Render 自身 binder 再覆盖; 诊断与覆盖身份按使用位置区分。
+     *
+     * @param render 模板调用表达式
+     * @param bindings 使用位置提供的 binder 绑定
+     * @param context 使用位置上下文
+     */
     private void checkTemplateAtUseSite(
             AstNode.Comp render, Map<String, Fact> bindings, AnalysisContext context) {
         Layout layout = layoutOf(render.name(), render.args().size());

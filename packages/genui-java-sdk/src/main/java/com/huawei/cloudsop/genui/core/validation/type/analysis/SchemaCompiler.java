@@ -49,79 +49,16 @@ public final class SchemaCompiler {
         return compile(schema, schemaPath);
     }
 
-    @SuppressWarnings("unchecked")
     private static Expectation compile(Map<String, Object> schema, String schemaPath) {
         if (schema == null || schema.isEmpty()) {
             return new Expectation.Accept(Type.Unknown.INSTANCE);
         }
         List<Expectation> requirements = new ArrayList<>();
         // Schema siblings are conjunctive, including component extensions and unsupported keywords.
-        Object component = schema.get("component");
-        if (component instanceof String componentName) {
-            requirements.add(new Expectation.Accept(new Type.Component(componentName)));
-        }
-        Object anyOf = schema.get("anyOf");
-        if (anyOf instanceof List<?> alternatives) {
-            List<Expectation> compiled = new ArrayList<>();
-            int index = 0;
-            for (Object alternative : alternatives) {
-                compiled.add(
-                        alternative instanceof Map<?, ?> map
-                                ? compile((Map<String, Object>) map, schemaPath + "/anyOf/" + index)
-                                : new Expectation.Unsupported(
-                                        schemaPath + "/anyOf/" + index, "nonObjectSchema"));
-                index++;
-            }
-            requirements.add(
-                    compiled.isEmpty()
-                            ? new Expectation.Accept(Type.Never.INSTANCE)
-                            : compiled.size() == 1
-                                    ? compiled.getFirst()
-                                    : new Expectation.AnyOf(compiled));
-        }
-        Object type = schema.get("type");
-        if (type instanceof String typeName) {
-            requirements.addAll(
-                    switch (typeName) {
-                        case "string" ->
-                                List.of(
-                                        new Expectation.Accept(
-                                                Types.scalar(Type.ScalarKind.STRING)));
-                        case "number" ->
-                                List.of(
-                                        new Expectation.Accept(
-                                                Types.scalar(Type.ScalarKind.NUMBER)));
-                        case "boolean" ->
-                                List.of(
-                                        new Expectation.Accept(
-                                                Types.scalar(Type.ScalarKind.BOOLEAN)));
-                        case "null" ->
-                                List.of(new Expectation.Accept(Types.scalar(Type.ScalarKind.NULL)));
-                        case "integer" ->
-                                List.of(new Expectation.Unsupported(schemaPath, "integer"));
-                        case "any" -> List.of(new Expectation.Accept(Type.Unknown.INSTANCE));
-                        case "array" -> List.of(compileArray(schema, schemaPath));
-                        case "object" -> compileObject(schema, schemaPath);
-                        default ->
-                                List.of(
-                                        new Expectation.Unsupported(
-                                                schemaPath, "type:" + typeName));
-                    });
-        } else if (schema.containsKey("properties") || schema.containsKey("required")) {
-            requirements.addAll(compileObject(schema, schemaPath));
-        } else if (schema.containsKey("items")) {
-            requirements.add(compileArray(schema, schemaPath));
-        }
-        Object enumValues = schema.get("enum");
-        if (enumValues instanceof List<?> values
-                && values.stream().allMatch(String.class::isInstance)
-                && !values.isEmpty()) {
-            java.util.Set<String> domain = new java.util.LinkedHashSet<>();
-            values.forEach(value -> domain.add((String) value));
-            requirements.add(new Expectation.EnumValues(domain));
-        } else if (enumValues != null) {
-            requirements.add(new Expectation.Unsupported(schemaPath, "enum"));
-        }
+        addComponentRequirement(schema, requirements);
+        addAnyOfRequirement(schema, schemaPath, requirements);
+        addTypeRequirement(schema, schemaPath, requirements);
+        addEnumRequirement(schema, schemaPath, requirements);
         // 未支持的验证要求保留为 Unsupported,不编译成“不限制”。
         for (String keyword : schema.keySet()) {
             if (SUPPORTED_KEYWORDS.contains(keyword) || ANNOTATION_KEYWORDS.contains(keyword)) {
@@ -135,6 +72,81 @@ public final class SchemaCompiler {
         return requirements.size() == 1
                 ? requirements.getFirst()
                 : new Expectation.AllOf(requirements);
+    }
+
+    private static void addComponentRequirement(
+            Map<String, Object> schema, List<Expectation> requirements) {
+        Object component = schema.get("component");
+        if (component instanceof String componentName) {
+            requirements.add(new Expectation.Accept(new Type.Component(componentName)));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void addAnyOfRequirement(
+            Map<String, Object> schema, String schemaPath, List<Expectation> requirements) {
+        Object anyOf = schema.get("anyOf");
+        if (!(anyOf instanceof List<?> alternatives)) {
+            return;
+        }
+        List<Expectation> compiled = new ArrayList<>();
+        int index = 0;
+        for (Object alternative : alternatives) {
+            compiled.add(
+                    alternative instanceof Map<?, ?> map
+                            ? compile((Map<String, Object>) map, schemaPath + "/anyOf/" + index)
+                            : new Expectation.Unsupported(
+                                    schemaPath + "/anyOf/" + index, "nonObjectSchema"));
+            index++;
+        }
+        requirements.add(
+                compiled.isEmpty()
+                        ? new Expectation.Accept(Type.Never.INSTANCE)
+                        : compiled.size() == 1
+                                ? compiled.getFirst()
+                                : new Expectation.AnyOf(compiled));
+    }
+
+    private static void addTypeRequirement(
+            Map<String, Object> schema, String schemaPath, List<Expectation> requirements) {
+        Object type = schema.get("type");
+        if (type instanceof String typeName) {
+            requirements.addAll(compileType(typeName, schema, schemaPath));
+        } else if (schema.containsKey("properties") || schema.containsKey("required")) {
+            requirements.addAll(compileObject(schema, schemaPath));
+        } else if (schema.containsKey("items")) {
+            requirements.add(compileArray(schema, schemaPath));
+        }
+    }
+
+    private static List<Expectation> compileType(
+            String typeName, Map<String, Object> schema, String schemaPath) {
+        return switch (typeName) {
+            case "string" -> List.of(new Expectation.Accept(Types.scalar(Type.ScalarKind.STRING)));
+            case "number" -> List.of(new Expectation.Accept(Types.scalar(Type.ScalarKind.NUMBER)));
+            case "boolean" ->
+                    List.of(new Expectation.Accept(Types.scalar(Type.ScalarKind.BOOLEAN)));
+            case "null" -> List.of(new Expectation.Accept(Types.scalar(Type.ScalarKind.NULL)));
+            case "integer" -> List.of(new Expectation.Unsupported(schemaPath, "integer"));
+            case "any" -> List.of(new Expectation.Accept(Type.Unknown.INSTANCE));
+            case "array" -> List.of(compileArray(schema, schemaPath));
+            case "object" -> compileObject(schema, schemaPath);
+            default -> List.of(new Expectation.Unsupported(schemaPath, "type:" + typeName));
+        };
+    }
+
+    private static void addEnumRequirement(
+            Map<String, Object> schema, String schemaPath, List<Expectation> requirements) {
+        Object enumValues = schema.get("enum");
+        if (enumValues instanceof List<?> values
+                && values.stream().allMatch(String.class::isInstance)
+                && !values.isEmpty()) {
+            java.util.Set<String> domain = new java.util.LinkedHashSet<>();
+            values.forEach(value -> domain.add((String) value));
+            requirements.add(new Expectation.EnumValues(domain));
+        } else if (enumValues != null) {
+            requirements.add(new Expectation.Unsupported(schemaPath, "enum"));
+        }
     }
 
     private static Expectation compileArray(Map<String, Object> schema, String schemaPath) {

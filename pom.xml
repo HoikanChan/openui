@@ -53,6 +53,12 @@
           </execution>
         </executions>
         <configuration>
+          <!--
+            聚合根没有源码。tools/lint-rules 虽有源码，但生产规则集引用该模块尚未产出的自定义检查，
+            在 verify 阶段无法加载自身 jar；该模块的 Checkstyle 由子 POM 显式关闭，源码仍经
+            fmt-check 与编译，限制见 tools/lint-rules/pom.xml。业务模块显式 skip=false。
+          -->
+          <skip>true</skip>
           <!-- 提到插件级，使手动 checkstyle:check 与 verify 判定的告警级别一致 -->
           <violationSeverity>warning</violationSeverity>
           <configLocation>${lint.config.dir}/checkstyle/checkstyle.xml</configLocation>

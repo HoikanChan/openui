@@ -93,7 +93,13 @@ public final class OpenuiParser {
         return escapes % 2 == 0;
     }
 
-    /** 对原始语句与已解析表达式做分类，对应 {@code classifyStatement}。 */
+    /**
+     * 对原始语句与已解析表达式做分类，对应 {@code classifyStatement}。
+     *
+     * @param raw 切分器给出的原始语句
+     * @param expr 已解析的表达式
+     * @return 分类后的语句
+     */
     private static Statement classify(StatementSplitter.RawStmt raw, AstNode expr) {
         // Query(...) → query — checked BEFORE $var so `$foo = Query(...)` is a query.
         if (expr instanceof AstNode.Comp comp && comp.name().equals(BuiltinCatalog.QUERY)) {

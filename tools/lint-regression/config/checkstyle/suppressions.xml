@@ -2,4 +2,5 @@
 <!DOCTYPE suppressions PUBLIC
   "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
   "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<!-- 回归用例必须实际触发规则，因此这里只保留空豁免，避免生产豁免掩盖漏检。 -->
 <suppressions/>
