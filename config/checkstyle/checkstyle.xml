@@ -27,7 +27,7 @@
     <!-- 头文件检查（替代 fixbotengine-java FileHeaderComment），沿用仓库既有版权头格式 -->
     <module name="RegexpHeader">
         <property name="header"
-                  value="^/\*$\n^ \* Copyright \(c\) Huawei Technologies Co\., Ltd\. \d{4}(-\d{4})?\. All rights reserved\.$\n^ \*/$"/>
+                  value="^/\*$\n^ \* Copyright \(c\) Huawei Technologies Co\., Ltd\. 2026-2026\. All rights reserved\.$\n^ \*/$"/>
         <property name="fileExtensions" value="java"/>
     </module>
 
@@ -63,12 +63,19 @@
             <property name="scope" value="protected"/>
         </module>
         <module name="JavadocMethod">
-            <property name="accessModifiers" value="public,protected"/>
+            <property name="accessModifiers" value="public,protected,package,private"/>
+            <property name="validateThrows" value="true"/>
+        </module>
+        <!--
+          Checkstyle 10.21.2 的 JavadocMethod 解析外围可见性时漏了 RECORD_DEF（上游 #21697），
+          顶层 record 内的成员会被整体跳过。该检查只补这一段，不重复标准 JavadocMethod。
+        -->
+        <module name="com.huawei.cloudsop.genui.lint.RecordJavadocMethodCheck">
             <property name="validateThrows" value="true"/>
         </module>
         <!-- 功能说明：首句必须存在并以标点结束；中文句号同样算数 -->
         <module name="JavadocStyle">
-            <property name="scope" value="protected"/>
+            <property name="scope" value="private"/>
             <property name="checkFirstSentence" value="true"/>
             <property name="checkEmptyJavadoc" value="true"/>
             <property name="endOfSentenceFormat"
@@ -115,9 +122,9 @@
         <module name="DefaultComesLast"/>
         <module name="FallThrough"/>
 
-        <!-- ========== 方法长度（替代 fixbotengine-java IdentifierName maxLength=64） ========== -->
+        <!-- ========== 方法长度（不计空行） ========== -->
         <module name="MethodLength">
-            <property name="max" value="150"/>
+            <property name="max" value="50"/>
             <property name="countEmpty" value="false"/>
         </module>
 
@@ -126,9 +133,9 @@
             <property name="max" value="7"/>
         </module>
 
-        <!-- ========== 圈复杂度（替代 cMetrics huge_cyclomatic_complexity=20，这里设更严格的15） ========== -->
+        <!-- ========== 圈复杂度（最多 20） ========== -->
         <module name="CyclomaticComplexity">
-            <property name="max" value="15"/>
+            <property name="max" value="20"/>
         </module>
 
         <!-- ========== 类数据抽象耦合 ========== -->

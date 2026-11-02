@@ -32,10 +32,19 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <configuration>
-          <configLocation>${project.basedir}/checkstyle-regression.xml</configLocation>
-          <suppressionsLocation>${project.basedir}/checkstyle-regression-suppressions.xml</suppressionsLocation>
-          <propertyExpansion>lint.config.dir=${project.basedir}</propertyExpansion>
+          <!-- 直接跑生产规则集，另用本目录的空豁免，避免回归只覆盖一份复制配置。 -->
+          <skip>false</skip>
+          <configLocation>${project.basedir}/../../config/checkstyle/checkstyle.xml</configLocation>
+          <suppressionsLocation>${project.basedir}/config/checkstyle/suppressions.xml</suppressionsLocation>
+          <propertyExpansion>lint.config.dir=${project.basedir}/config</propertyExpansion>
         </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>com.huawei.cloudsop</groupId>
+            <artifactId>genui-lint-rules</artifactId>
+            <version>${project.version}</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
             <id>checkstyle-validation</id>

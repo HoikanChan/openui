@@ -12,8 +12,8 @@
   </parent>
 
   <artifactId>genui-lint-rules</artifactId>
-  <name>OpenUI Custom PMD Rules</name>
-  <description>PMD rules for Huawei rules that need Java type resolution.</description>
+  <name>OpenUI Custom Lint Rules</name>
+  <description>Custom PMD and Checkstyle rules for Huawei rules that need Java type resolution.</description>
 
   <properties>
     <maven.compiler.release>21</maven.compiler.release>
@@ -29,5 +29,31 @@
       <version>${pmd.version}</version>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>com.puppycrawl.tools</groupId>
+      <artifactId>checkstyle</artifactId>
+      <version>${checkstyle.version}</version>
+      <scope>provided</scope>
+    </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <!--
+        限制：生产规则集引用本模块的自定义检查，而 verify 阶段本模块 jar 尚未安装，
+        Checkstyle 无法加载自身实现（鸡生蛋）。因此关闭本模块的 Checkstyle；源码仍经
+        fmt-check 和编译，规则行为由 tools/lint-regression 用生产配置做正反例验证。
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>checkstyle-validation</id>
+            <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>

@@ -8,13 +8,13 @@ import java.util.List;
 
 class LoopModificationPositive {
     void assignForVariable() {
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 2; i++) {
             i = 1;
         }
     }
 
     void incrementForVariable() {
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 2; i++) {
             i++;
         }
     }

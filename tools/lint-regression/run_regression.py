@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Run the lint regression fixtures and compare the reports with expected.json.
 
-The fixture project deliberately contains violations for the six Checkstyle rules that the
-production ruleset relies on and for the three PMD semantic rules added for G.FMT.20, G.OBJ.04,
-and G.CTL.05. Both the positive and the negative fixtures are asserted, so a check that silently
-stops firing and a check that starts over-reporting both fail this script.
+The fixture project runs the production Checkstyle ruleset (with an empty suppression file) and
+the production PMD ruleset. Every reported violation is compared with expected.json, so both a
+check that silently stops firing and one that starts over-reporting fail this script.
 """
 
 from __future__ import annotations
@@ -20,10 +19,12 @@ import xml.etree.ElementTree as ET
 CHECKSTYLE_RULES = {
     "MissingJavadocMethod",
     "JavadocMethod",
-    "SummaryJavadoc",
+    "JavadocStyle",
+    "RecordJavadocMethod",
     "WriteTag",
     "RegexpHeader",
     "BooleanExpressionComplexity",
+    "UnusedImports",
 }
 PMD_RULES = {
     "MissingNumericSuffix",
@@ -62,8 +63,7 @@ def read_checkstyle(report: Path, fixtures_root: Path) -> list[tuple[str, str, i
         file_name = normalize(file_element.get("name", ""), fixtures_root)
         for error in file_element:
             rule = checkstyle_rule(error)
-            if rule in CHECKSTYLE_RULES:
-                found.append((file_name, rule, int(error.get("line"))))
+            found.append((file_name, rule, int(error.get("line"))))
     return found
 
 

@@ -4,8 +4,12 @@
 
 package com.huawei.cloudsop.genui.lint.fixtures;
 
-class SummaryJavadocNegative {
-    /** Reads a value. */
-    void read() {
-    }
+import java.util.List;
+
+/**
+ * Fixture with an unused import.
+ *
+ * @since 2026
+ */
+public class UnusedImportsPositive {
 }
