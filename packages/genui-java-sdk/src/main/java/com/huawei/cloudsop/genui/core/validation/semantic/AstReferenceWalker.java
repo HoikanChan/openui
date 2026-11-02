@@ -136,7 +136,16 @@ public final class AstReferenceWalker {
         }
     }
 
-    /** 惰性 builtin 的 binder 只作用于 body;按各调用方既有规则决定 binder 实参与非法名字的处理。 */
+    /**
+     * 惰性 builtin 的 binder 只作用于 body;按各调用方既有规则决定 binder 实参与非法名字的处理。
+     *
+     * @param comp 待遍历的 builtin 调用节点
+     * @param builtins 当前 builtin 词表，用于解析惰性 binder
+     * @param scope 进入该调用时已绑定的名字集合
+     * @param sink 接收未被遮蔽的引用
+     * @param policy 当前入口的遍历规则
+     * @param visited 本次遍历已访问的节点集合
+     */
     private static void walkCall(
             AstNode.Comp comp,
             BuiltinCatalog builtins,

@@ -74,11 +74,47 @@ public final class PromptAssembler {
         boolean usesActionExpression =
                 componentSignatures(input.components()).stream()
                         .anyMatch(signature -> signature.contains("ActionExpression"));
-        boolean hasRawDataModel = hasRawDataModel(input.dataModel());
         List<CapabilityGapSpec> gaps = capabilityGaps == null ? List.of() : capabilityGaps;
         boolean hasCapabilityGaps = !gaps.isEmpty();
 
         ArrayList<String> parts = new ArrayList<>();
+        appendIntroSections(
+                parts,
+                input,
+                builtins,
+                toolCalls,
+                bindings,
+                supportsExpressions,
+                usesActionExpression);
+        appendFeatureSections(
+                parts,
+                input.tools(),
+                gaps,
+                toolCalls,
+                bindings,
+                usesActionExpression,
+                hasCapabilityGaps);
+        appendTailSections(
+                parts,
+                input,
+                rootName,
+                toolCalls,
+                bindings,
+                supportsExpressions,
+                hasCapabilityGaps);
+        return String.join("\n", parts);
+    }
+
+    private static void appendIntroSections(
+            ArrayList<String> parts,
+            PromptInput input,
+            List<BuiltinSpec> builtins,
+            boolean toolCalls,
+            boolean bindings,
+            boolean supportsExpressions,
+            boolean usesActionExpression) {
+        String rootName = input.root() == null ? "Root" : input.root();
+        boolean hasRawDataModel = hasRawDataModel(input.dataModel());
         parts.add(input.preamble() != null ? input.preamble() : PREAMBLE);
         parts.add("");
         parts.add(syntaxRules(rootName, bindings));
@@ -103,7 +139,16 @@ public final class PromptAssembler {
             parts.add("");
             parts.add(dataBuiltinsSection(builtins));
         }
+    }
 
+    private static void appendFeatureSections(
+            ArrayList<String> parts,
+            List<ToolSpec> tools,
+            List<CapabilityGapSpec> gaps,
+            boolean toolCalls,
+            boolean bindings,
+            boolean usesActionExpression,
+            boolean hasCapabilityGaps) {
         if (hasCapabilityGaps) {
             parts.add("");
             parts.add(capabilityBoundarySection(gaps));
@@ -131,11 +176,20 @@ public final class PromptAssembler {
             parts.add(TOOL_WORKFLOW_SECTION);
         }
 
-        if (hasTools) {
+        if (tools != null && !tools.isEmpty()) {
             parts.add("");
-            parts.add(renderToolsSection(input.tools()));
+            parts.add(renderToolsSection(tools));
         }
+    }
 
+    private static void appendTailSections(
+            ArrayList<String> parts,
+            PromptInput input,
+            String rootName,
+            boolean toolCalls,
+            boolean bindings,
+            boolean supportsExpressions,
+            boolean hasCapabilityGaps) {
         parts.add("");
         parts.add(streamingRules(rootName, supportsExpressions));
 
@@ -167,8 +221,6 @@ public final class PromptAssembler {
                 parts.add("- " + rule);
             }
         }
-
-        return String.join("\n", parts);
     }
 
     // ─── Syntax rules ──────────────────────────────────────────────────────────
@@ -230,73 +282,99 @@ public final class PromptAssembler {
                 "Arguments marked with ? are optional. Sub-components can be inline or referenced; prefer references for better streaming.");
 
         if (usesActionExpression) {
-            ArrayList<String> allSteps = new ArrayList<>();
-            if (toolCalls) {
-                allSteps.add("@Run");
-            }
-            allSteps.add("@ToAssistant");
-            allSteps.add("@OpenUrl");
-            if (bindings) {
-                allSteps.add("@Set");
-                allSteps.add("@Reset");
-            }
-            lines.add(
-                    "Props typed `ActionExpression` accept an Action([@steps...]) expression. See the Action section for available steps ("
-                            + String.join(", ", allSteps)
-                            + ").");
+            lines.add(actionExpressionNote(toolCalls, bindings));
         }
 
-        boolean usesBindings =
-                bindings
-                        || componentSignatures(components).stream()
-                                .anyMatch(signature -> signature.contains("$binding"));
-        if (usesBindings) {
+        if (usesBindings(bindings, components)) {
             lines.add(
                     "Props marked `$binding<type>` accept a `$variable` reference for two-way binding.");
         }
 
         if (componentGroups != null && !componentGroups.isEmpty()) {
             Set<String> grouped = new LinkedHashSet<>();
-            for (ComponentGroup group : componentGroups) {
-                lines.add("");
-                lines.add("### " + group.name());
-                for (String name : group.components()) {
-                    if (grouped.contains(name)) {
-                        continue;
-                    }
-                    ComponentPromptSpec comp = components.get(name);
-                    if (comp == null) {
-                        continue;
-                    }
-                    grouped.add(name);
-                    lines.add(formatSig(name, comp));
-                }
-                if (group.notes() != null && !group.notes().isEmpty()) {
-                    for (String note : group.notes()) {
-                        lines.add(note);
-                    }
-                }
-            }
-            ArrayList<String> ungrouped = new ArrayList<>();
-            for (String name : components.keySet()) {
-                if (!grouped.contains(name)) {
-                    ungrouped.add(name);
-                }
-            }
-            if (!ungrouped.isEmpty()) {
-                lines.add("");
-                lines.add("### Other");
-                for (String name : ungrouped) {
-                    lines.add(formatSig(name, components.get(name)));
-                }
-            }
+            appendGroupedSignatures(lines, grouped, components, componentGroups);
+            appendUngroupedSignatures(lines, grouped, components);
         } else {
             lines.add("");
-            for (Map.Entry<String, ComponentPromptSpec> entry : components.entrySet()) {
-                lines.add(formatSig(entry.getKey(), entry.getValue()));
-            }
+            appendAllSignatures(lines, components);
         }
         return String.join("\n", lines);
+    }
+
+    private static String actionExpressionNote(boolean toolCalls, boolean bindings) {
+        ArrayList<String> allSteps = new ArrayList<>();
+        if (toolCalls) {
+            allSteps.add("@Run");
+        }
+        allSteps.add("@ToAssistant");
+        allSteps.add("@OpenUrl");
+        if (bindings) {
+            allSteps.add("@Set");
+            allSteps.add("@Reset");
+        }
+        return "Props typed `ActionExpression` accept an Action([@steps...]) expression. See the Action section for available steps ("
+                + String.join(", ", allSteps)
+                + ").";
+    }
+
+    private static boolean usesBindings(
+            boolean bindings, Map<String, ComponentPromptSpec> components) {
+        return bindings
+                || componentSignatures(components).stream()
+                        .anyMatch(signature -> signature.contains("$binding"));
+    }
+
+    private static void appendGroupedSignatures(
+            ArrayList<String> lines,
+            Set<String> grouped,
+            Map<String, ComponentPromptSpec> components,
+            List<ComponentGroup> componentGroups) {
+        for (ComponentGroup group : componentGroups) {
+            lines.add("");
+            lines.add("### " + group.name());
+            for (String name : group.components()) {
+                if (grouped.contains(name)) {
+                    continue;
+                }
+                ComponentPromptSpec comp = components.get(name);
+                if (comp == null) {
+                    continue;
+                }
+                grouped.add(name);
+                lines.add(formatSig(name, comp));
+            }
+            if (group.notes() != null && !group.notes().isEmpty()) {
+                for (String note : group.notes()) {
+                    lines.add(note);
+                }
+            }
+        }
+    }
+
+    private static void appendUngroupedSignatures(
+            ArrayList<String> lines,
+            Set<String> grouped,
+            Map<String, ComponentPromptSpec> components) {
+        ArrayList<String> ungrouped = new ArrayList<>();
+        for (String name : components.keySet()) {
+            if (!grouped.contains(name)) {
+                ungrouped.add(name);
+            }
+        }
+        if (!ungrouped.isEmpty()) {
+            lines.add("");
+            lines.add("### Other");
+            for (String name : ungrouped) {
+                lines.add(formatSig(name, components.get(name)));
+            }
+        }
+    }
+
+    private static void appendAllSignatures(
+            ArrayList<String> lines, Map<String, ComponentPromptSpec> components) {
+        for (Map.Entry<String, ComponentPromptSpec> entry : components.entrySet()) {
+            lines.add(formatSig(entry.getKey(), entry.getValue()));
+        }
     }
 
     private static String formatSig(String componentName, ComponentPromptSpec comp) {
@@ -446,6 +524,22 @@ public final class PromptAssembler {
     // ─── Action ────────────────────────────────────────────────────────────────
 
     private static String actionSection(boolean toolCalls, boolean bindings) {
+        return "## Action — Button Behavior\n"
+                + "\n"
+                + "Action([@steps...]) wires button clicks to operations. Steps are @-prefixed built-in actions. Steps execute in order.\n"
+                + "Buttons without an explicit Action prop automatically send their label to the assistant (equivalent to Action([@ToAssistant(label)])).\n"
+                + "\n"
+                + "Available steps:\n"
+                + String.join("\n", actionSteps(toolCalls, bindings))
+                + "\n"
+                + "\n"
+                + String.join("\n\n", actionExamples(toolCalls))
+                + "\n"
+                + "\n"
+                + String.join("\n", actionRules(toolCalls));
+    }
+
+    private static ArrayList<String> actionSteps(boolean toolCalls, boolean bindings) {
         ArrayList<String> steps = new ArrayList<>();
         if (toolCalls) {
             steps.add(
@@ -459,7 +553,10 @@ public final class PromptAssembler {
             steps.add(
                     "- @Reset($var1, $var2, ...) — Reset $variables to their declared defaults (e.g. @Reset($title, $priority) restores $title=\"\" and $priority=\"medium\")");
         }
+        return steps;
+    }
 
+    private static ArrayList<String> actionExamples(boolean toolCalls) {
         ArrayList<String> examples = new ArrayList<>();
         if (toolCalls) {
             examples.add(
@@ -476,7 +573,10 @@ public final class PromptAssembler {
                         + "```\n"
                         + "viewBtn = Button(\"View\", Action([@OpenUrl(\"https://example.com\")]))\n"
                         + "```");
+        return examples;
+    }
 
+    private static ArrayList<String> actionRules(boolean toolCalls) {
         ArrayList<String> rules = new ArrayList<>();
         rules.add(
                 "- Action can be assigned to a variable or inlined: Button(\"Go\", onSubmit) and Button(\"Go\", Action([...])) both work");
@@ -485,20 +585,7 @@ public final class PromptAssembler {
                     "- If a @Run(mutation) step fails, remaining steps are skipped (halt on failure)");
             rules.add("- @Run(queryRef) re-fetches the query (fire-and-forget, cannot fail)");
         }
-
-        return "## Action — Button Behavior\n"
-                + "\n"
-                + "Action([@steps...]) wires button clicks to operations. Steps are @-prefixed built-in actions. Steps execute in order.\n"
-                + "Buttons without an explicit Action prop automatically send their label to the assistant (equivalent to Action([@ToAssistant(label)])).\n"
-                + "\n"
-                + "Available steps:\n"
-                + String.join("\n", steps)
-                + "\n"
-                + "\n"
-                + String.join("\n\n", examples)
-                + "\n"
-                + "\n"
-                + String.join("\n", rules);
+        return rules;
     }
 
     // ─── Tools ─────────────────────────────────────────────────────────────────

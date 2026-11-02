@@ -105,93 +105,22 @@ public final class DataPathResolver {
 
     private Step resolveStep(List<Object> current, Segment segment, String path) {
         List<Object> next = new ArrayList<>();
-        int present = 0;
-        int missing = 0;
-        int nulls = 0;
-        int total = 0;
-        boolean plucked = false;
+        StepCounters counters = new StepCounters();
 
         for (Object value : current) {
             if (segment instanceof Key key && value instanceof List<?> list) {
-                if ("length".equals(key.name())) {
-                    return Step.failure(
-                            new DataPathResolution.InvalidTraversal(
-                                    path,
-                                    "array",
-                                    "Use @Count("
-                                            + path.substring(0, path.length() - ".length".length())
-                                            + ") instead."));
+                Step failure = pluckMembers(key, list, path, next, counters);
+                if (failure != null) {
+                    return failure;
                 }
-                if (list.isEmpty()) {
-                    return Step.failure(
-                            new DataPathResolution.Unprovable(
-                                    path,
-                                    "The empty array does not prove member type; use existing data or avoid the member "
-                                            + "traversal."));
-                }
-                plucked = true;
-                for (Object item : list) {
-                    total++;
-                    if (!(item instanceof Map<?, ?> map)) {
-                        return Step.failure(
-                                new DataPathResolution.InvalidTraversal(
-                                        path,
-                                        coarseTypeName(item),
-                                        "Member access requires an object array."));
-                    }
-                    if (!map.containsKey(key.name())) {
-                        missing++;
-                        continue;
-                    }
-                    Object member = map.get(key.name());
-                    if (member == null) {
-                        // 显式 null 不是缺失:保留为投影结果的可能值,由类型层与缺失分支分别表达。
-                        nulls++;
-                        next.add(null);
-                    } else {
-                        present++;
-                        next.add(member);
-                    }
-                }
+                counters.plucked = true;
                 continue;
             }
-
-            total++;
-            if (segment instanceof Key key && value instanceof Map<?, ?> map) {
-                if (!map.containsKey(key.name())) {
-                    missing++;
-                    continue;
-                }
-                Object member = map.get(key.name());
-                if (member == null) {
-                    nulls++;
-                    next.add(null);
-                } else {
-                    present++;
-                    next.add(member);
-                }
-                continue;
+            counters.total++;
+            Step failure = resolveMember(segment, value, path, next, counters);
+            if (failure != null) {
+                return failure;
             }
-            if (segment instanceof Index index && value instanceof List<?> list) {
-                if (index.value() < 0 || index.value() >= list.size()) {
-                    missing++;
-                    continue;
-                }
-                Object member = list.get(index.value());
-                if (member == null) {
-                    nulls++;
-                    next.add(null);
-                } else {
-                    present++;
-                    next.add(member);
-                }
-                continue;
-            }
-            return Step.failure(
-                    new DataPathResolution.InvalidTraversal(
-                            path,
-                            coarseTypeName(value),
-                            "Member access requires an object or array."));
         }
 
         if (next.isEmpty()) {
@@ -200,10 +129,113 @@ public final class DataPathResolver {
                     new DataPathResolution.Missing(
                             path, "Use a path present in the Render Data Model."));
         }
-        return new Step(next, new Evidence(present, missing, nulls, total, plucked), plucked, null);
+        return new Step(
+                next,
+                new Evidence(
+                        counters.present,
+                        counters.missing,
+                        counters.nulls,
+                        counters.total,
+                        counters.plucked),
+                counters.plucked,
+                null);
     }
 
-    /** 把投影后的观察值提升为类型上界;全部为字符串时保留有界字面值域。 */
+    private static Step pluckMembers(
+            Key key, List<?> list, String path, List<Object> next, StepCounters counters) {
+        if ("length".equals(key.name())) {
+            return Step.failure(
+                    new DataPathResolution.InvalidTraversal(
+                            path,
+                            "array",
+                            "Use @Count("
+                                    + path.substring(0, path.length() - ".length".length())
+                                    + ") instead."));
+        }
+        if (list.isEmpty()) {
+            return Step.failure(
+                    new DataPathResolution.Unprovable(
+                            path,
+                            "The empty array does not prove member type; use existing data or avoid the member "
+                                    + "traversal."));
+        }
+        for (Object item : list) {
+            counters.total++;
+            if (!(item instanceof Map<?, ?> map)) {
+                return Step.failure(
+                        new DataPathResolution.InvalidTraversal(
+                                path,
+                                coarseTypeName(item),
+                                "Member access requires an object array."));
+            }
+            if (!map.containsKey(key.name())) {
+                counters.missing++;
+                continue;
+            }
+            Object member = map.get(key.name());
+            if (member == null) {
+                // 显式 null 不是缺失:保留为投影结果的可能值,由类型层与缺失分支分别表达。
+                counters.nulls++;
+                next.add(null);
+            } else {
+                counters.present++;
+                next.add(member);
+            }
+        }
+        return null;
+    }
+
+    private static Step resolveMember(
+            Segment segment, Object value, String path, List<Object> next, StepCounters counters) {
+        if (segment instanceof Key key && value instanceof Map<?, ?> map) {
+            if (!map.containsKey(key.name())) {
+                counters.missing++;
+                return null;
+            }
+            Object member = map.get(key.name());
+            if (member == null) {
+                counters.nulls++;
+                next.add(null);
+            } else {
+                counters.present++;
+                next.add(member);
+            }
+            return null;
+        }
+        if (segment instanceof Index index && value instanceof List<?> list) {
+            if (index.value() < 0 || index.value() >= list.size()) {
+                counters.missing++;
+                return null;
+            }
+            Object member = list.get(index.value());
+            if (member == null) {
+                counters.nulls++;
+                next.add(null);
+            } else {
+                counters.present++;
+                next.add(member);
+            }
+            return null;
+        }
+        return Step.failure(
+                new DataPathResolution.InvalidTraversal(
+                        path, coarseTypeName(value), "Member access requires an object or array."));
+    }
+
+    private static final class StepCounters {
+        private int present;
+        private int missing;
+        private int nulls;
+        private int total;
+        private boolean plucked;
+    }
+
+    /**
+     * 把投影后的观察值提升为类型上界;全部为字符串时保留有界字面值域。
+     *
+     * @param values 投影后的观察值
+     * @return 类型上界
+     */
     private static Type inferValues(List<Object> values) {
         if (values.stream().allMatch(String.class::isInstance)) {
             Set<String> domain = new LinkedHashSet<>();
@@ -247,7 +279,12 @@ public final class DataPathResolver {
         return Types.scalar(Type.ScalarKind.STRING);
     }
 
-    /** 遍历失败消息使用的粗粒度类型名(不带字面值,避免把快照内容写进诊断)。 */
+    /**
+     * 遍历失败消息使用的粗粒度类型名(不带字面值,避免把快照内容写进诊断)。
+     *
+     * @param value 待命名的值
+     * @return 粗粒度类型名
+     */
     private static String coarseTypeName(Object value) {
         if (value == null) {
             return "null";

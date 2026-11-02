@@ -17,6 +17,19 @@
         <version>3.5.2</version>
       </plugin>
       <plugin>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <dependencies>
+          <dependency>
+            <groupId>com.huawei.cloudsop</groupId>
+            <artifactId>genui-lint-rules</artifactId>
+            <version>${project.version}</version>
+          </dependency>
+        </dependencies>
+        <configuration>
+          <skip>false</skip>
+        </configuration>
+      </plugin>
+      <plugin>
         <artifactId>maven-pmd-plugin</artifactId>
         <executions>
           <execution>

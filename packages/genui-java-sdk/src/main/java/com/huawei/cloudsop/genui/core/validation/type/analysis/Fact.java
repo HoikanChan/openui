@@ -38,12 +38,23 @@ public record Fact(
         upstreamErrors = upstreamErrors == null ? Set.of() : Set.copyOf(upstreamErrors);
     }
 
-    /** 只有类型上界的事实(无证据、无损失、无上游错误)。 */
+    /**
+     * 只有类型上界的事实(无证据、无损失、无上游错误)。
+     *
+     * @param type 类型上界
+     * @return 无证据、无损失、无上游错误的事实
+     */
     public static Fact of(Type type) {
         return new Fact(type, Set.of(), Set.of(), Set.of());
     }
 
-    /** 信息不足的事实:Unknown + 至少一条损失原因。 */
+    /**
+     * 信息不足的事实:Unknown + 至少一条损失原因。
+     *
+     * @param loss 首条损失原因
+     * @param more 其余损失原因
+     * @return 类型为 Unknown 且携带损失原因的事实
+     */
     public static Fact unknown(Loss loss, Loss... more) {
         Set<Loss> losses = new java.util.LinkedHashSet<>();
         losses.add(loss);
@@ -51,42 +62,71 @@ public record Fact(
         return new Fact(Type.Unknown.INSTANCE, Set.of(), Set.copyOf(losses), Set.of());
     }
 
-    /** 附加证据,返回新事实。 */
+    /**
+     * 附加证据,返回新事实。
+     *
+     * @param item 要附加的证据
+     * @return 携带合并证据的新事实
+     */
     public Fact withEvidence(Evidence item) {
         Set<Evidence> merged = new java.util.LinkedHashSet<>(evidence);
         merged.add(item);
         return new Fact(type, merged, losses, upstreamErrors);
     }
 
-    /** 附加精度损失,返回新事实。 */
+    /**
+     * 附加精度损失,返回新事实。
+     *
+     * @param loss 要附加的损失原因
+     * @return 携带合并损失的新事实
+     */
     public Fact withLoss(Loss loss) {
         Set<Loss> merged = new java.util.LinkedHashSet<>(losses);
         merged.add(loss);
         return new Fact(type, evidence, merged, upstreamErrors);
     }
 
-    /** 附加上游错误身份,返回新事实。 */
+    /**
+     * 附加上游错误身份,返回新事实。
+     *
+     * @param errorIdentity 上游错误身份
+     * @return 携带合并上游错误身份的新事实
+     */
     public Fact withUpstreamError(String errorIdentity) {
         Set<String> merged = new java.util.LinkedHashSet<>(upstreamErrors);
         merged.add(errorIdentity);
         return new Fact(type, evidence, losses, merged);
     }
 
-    /** 附加上游错误身份集合,返回新事实。 */
+    /**
+     * 附加上游错误身份集合,返回新事实。
+     *
+     * @param errorIdentities 上游错误身份集合
+     * @return 携带合并上游错误身份的新事实
+     */
     public Fact withUpstreamErrors(Set<String> errorIdentities) {
         Set<String> merged = new java.util.LinkedHashSet<>(upstreamErrors);
         merged.addAll(errorIdentities);
         return new Fact(type, evidence, losses, merged);
     }
 
-    /** 附加精度损失集合,返回新事实。 */
+    /**
+     * 附加精度损失集合,返回新事实。
+     *
+     * @param items 要附加的损失原因集合
+     * @return 携带合并损失的新事实
+     */
     public Fact withLosses(Set<Loss> items) {
         Set<Loss> merged = new java.util.LinkedHashSet<>(losses);
         merged.addAll(items);
         return new Fact(type, evidence, merged, upstreamErrors);
     }
 
-    /** 是否与上游错误关联(关联的检查结论须抑制,不能当作独立反例)。 */
+    /**
+     * 是否与上游错误关联(关联的检查结论须抑制,不能当作独立反例)。
+     *
+     * @return 存在上游错误身份时为 true
+     */
     public boolean hasUpstreamErrors() {
         return !upstreamErrors.isEmpty();
     }

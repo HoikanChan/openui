@@ -280,6 +280,9 @@ public final class GenerationSdk {
      * Shared merge helper: base + registered extension
      * components/groups/tools/examples/rules/capabilityGaps. Used by both {@link #assemblePrompt}
      * and {@link #mergedContract} so the two never drift.
+     *
+     * @param effectiveRequest request whose extension overrides are merged into the base contract
+     * @return merged contract parts
      */
     private MergedParts merge(GenUIPromptRequest effectiveRequest) {
         GenUIExtension generation =
@@ -348,6 +351,10 @@ public final class GenerationSdk {
      * #assemblePrompt}. When the gate passes through (small/disabled/empty raw data), this returns
      * the SAME {@code in} instance unchanged — no sidecar is attached, so {@code dataModelSection}
      * stays byte-identical and existing golden prompts are unaffected.
+     *
+     * @param in data model to characterize, or {@code null}
+     * @return characterized model, the unchanged input when the gate passes through, or {@code
+     *     null} for a {@code null} input
      */
     private DataModelSpec characterize(DataModelSpec in) {
         if (in == null) {

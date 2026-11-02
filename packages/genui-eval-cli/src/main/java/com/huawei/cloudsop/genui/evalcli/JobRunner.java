@@ -82,6 +82,9 @@ final class JobRunner {
      * Only a DSL session that finished successfully may be reported as {@code ok}: validation
      * passed, or validation was explicitly disabled (nothing was checked). TIMEOUT /
      * MODEL_REQUEST_FAILED / VALIDATION_FAILED keep their reason.
+     *
+     * @param result generation result to classify
+     * @return the failure reason, or {@code null} when the DSL session counts as successful
      */
     static String dslFailure(GenUiGenerationResult result) {
         GenerationEndReason reason = result.endReason();

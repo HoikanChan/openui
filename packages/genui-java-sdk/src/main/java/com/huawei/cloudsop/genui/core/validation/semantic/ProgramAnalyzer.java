@@ -157,7 +157,12 @@ public final class ProgramAnalyzer {
      */
     private record UnresolvedRef(String name, String statementId) {}
 
-    /** Statement start span, or {@link SourceSpan#UNKNOWN} when the statement is not in the map. */
+    /**
+     * Statement start span, or {@link SourceSpan#UNKNOWN} when the statement is not in the map.
+     *
+     * @param s 待取跨度的语句，可为 {@code null}
+     * @return 语句的起始跨度；语句或跨度缺失时返回 {@link SourceSpan#UNKNOWN}
+     */
     private static SourceSpan spanOf(Statement s) {
         return s == null || s.span() == null ? SourceSpan.UNKNOWN : s.span();
     }
@@ -195,7 +200,12 @@ public final class ProgramAnalyzer {
         return firstId;
     }
 
-    /** 值语句，且其表达式是既非内置函数也非 Query/Mutation 的 Comp。 */
+    /**
+     * 值语句，且其表达式是既非内置函数也非 Query/Mutation 的 Comp。
+     *
+     * @param s 待判断的语句
+     * @return 该语句是否可作为组件根候选
+     */
     private boolean isComponentStatement(Statement s) {
         if (!(s instanceof Statement.Value value)) {
             return false;
@@ -326,24 +336,7 @@ public final class ProgramAnalyzer {
 
         ComponentDef def = catalog == null ? null : catalog.get(name);
         if (def == null) {
-            String hint =
-                    RepairHints.unknownComponentHint(
-                            name, builtins, catalog == null ? List.of() : catalog.capabilityGaps());
-            emit(
-                    ctx,
-                    "unknown-component",
-                    ValidationSeverity.ERROR,
-                    "contract",
-                    name,
-                    "",
-                    "Unknown component \"" + name + "\" — not found in catalog or builtins",
-                    ctx.currentStatementId,
-                    hint,
-                    false);
-            // Still walk args so nested unresolved refs / unknown components are reported.
-            for (AstNode a : comp.args()) {
-                walkExpr(a, ctx);
-            }
+            reportUnknownComponent(comp, ctx);
             return null;
         }
 
@@ -362,9 +355,34 @@ public final class ProgramAnalyzer {
         return new ElementValue(name);
     }
 
+    private void reportUnknownComponent(AstNode.Comp comp, WalkCtx ctx) {
+        String name = comp.name();
+        String hint =
+                RepairHints.unknownComponentHint(
+                        name, builtins, catalog == null ? List.of() : catalog.capabilityGaps());
+        emit(
+                ctx,
+                "unknown-component",
+                ValidationSeverity.ERROR,
+                "contract",
+                name,
+                "",
+                "Unknown component \"" + name + "\" — not found in catalog or builtins",
+                ctx.currentStatementId,
+                hint,
+                false);
+        // Still walk args so nested unresolved refs / unknown components are reported.
+        for (AstNode a : comp.args()) {
+            walkExpr(a, ctx);
+        }
+    }
+
     /**
      * Mirrors {@code materialize.ts#materializeLazyBuiltin}: binder 名只在模板体内生效, binder 实参自身不作为
      * 引用解析。参数角色与作用域由 {@link BuiltinAnalysis#walkArguments} 提供,本类不读模板下标。
+     *
+     * @param comp 待遍历的惰性 builtin 调用
+     * @param ctx 本次分析的可变上下文
      */
     private void walkBuiltinArguments(AstNode.Comp comp, WalkCtx ctx) {
         BuiltinAnalysis.walkArguments(
@@ -391,7 +409,13 @@ public final class ProgramAnalyzer {
                 });
     }
 
-    /** Resolve a Ref: inline from symbol table, track cycles + unresolved. Mirrors resolveRef. */
+    /**
+     * Resolve a Ref: inline from symbol table, track cycles + unresolved. Mirrors resolveRef.
+     *
+     * @param name 待解析的引用名
+     * @param ctx 本次分析的可变上下文
+     * @return 解析出的物化值；未解析引用返回 {@code null}
+     */
     private Object resolveRef(String name, WalkCtx ctx) {
         if (ctx.inScope(name)) {
             return DYNAMIC; // lazy-builtin binder variable — bound at render time
@@ -422,7 +446,12 @@ public final class ProgramAnalyzer {
         }
     }
 
-    /** Walk a runtime-expression subtree solely to surface nested refs / unknown components. */
+    /**
+     * Walk a runtime-expression subtree solely to surface nested refs / unknown components.
+     *
+     * @param node 待遍历的表达式子树根节点
+     * @param ctx 本次分析的可变上下文
+     */
     private void walkExpr(AstNode node, WalkCtx ctx) {
         if (node == null) {
             return;
@@ -447,6 +476,10 @@ public final class ProgramAnalyzer {
             }
             return;
         }
+        walkOperatorExpr(node, ctx);
+    }
+
+    private void walkOperatorExpr(AstNode node, WalkCtx ctx) {
         if (node instanceof AstNode.BinOp binOp) {
             walkExpr(binOp.left(), ctx);
             walkExpr(binOp.right(), ctx);

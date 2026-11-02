@@ -51,6 +51,10 @@ final class ComponentContractValidator {
      * component). {@code argCount} is the raw number of positional args supplied (may exceed
      * argValues size only if excess were not materialized, but here they match).
      *
+     * @param componentName 组件名
+     * @param def 组件目录定义
+     * @param argValues 已物化的位置参数值，按源码顺序
+     * @param statementId 调用所在语句 id
      * @return {@code true} if the component is "valid enough" to render (no missing/null required
      *     left after defaults) — mirrors TS returning a non-null ElementNode.
      */
@@ -75,23 +79,36 @@ final class ComponentContractValidator {
         }
 
         // Excess positional args (extra args are silently dropped in TS, but reported).
-        if (argValues.size() > params.size()) {
-            int excess = argValues.size() - params.size();
-            emit(
-                    "excess-args",
-                    componentName,
-                    "",
-                    componentName
-                            + " takes "
-                            + params.size()
-                            + " arg(s), got "
-                            + argValues.size()
-                            + " ("
-                            + excess
-                            + " excess dropped)",
-                    statementId);
-        }
+        reportExcessArgs(componentName, params.size(), argValues.size(), statementId);
+        return validateRequiredProps(componentName, params, props, statementId);
+    }
 
+    private void reportExcessArgs(
+            String componentName, int paramCount, int argCount, String statementId) {
+        if (argCount <= paramCount) {
+            return;
+        }
+        int excess = argCount - paramCount;
+        emit(
+                "excess-args",
+                componentName,
+                "",
+                componentName
+                        + " takes "
+                        + paramCount
+                        + " arg(s), got "
+                        + argCount
+                        + " ("
+                        + excess
+                        + " excess dropped)",
+                statementId);
+    }
+
+    private boolean validateRequiredProps(
+            String componentName,
+            List<ParamDef> params,
+            Map<String, Object> props,
+            String statementId) {
         // Required props — apply defaultValue before reporting; missing vs null distinguished by
         // presence.
         boolean renderable = true;
@@ -130,6 +147,12 @@ final class ComponentContractValidator {
      * validateNestedObjectProps}. Only flags unknown keys when the schema forbids additional
      * properties ({@code additionalProperties === false}). The {@code Col.options.format} key gets
      * the special removed-prop hint.
+     *
+     * @param componentName 组件名
+     * @param value 待校验的属性值
+     * @param schema 该属性的 schema
+     * @param pathPrefix 当前属性路径前缀
+     * @param statementId 调用所在语句 id
      */
     @SuppressWarnings("unchecked")
     private void validateNestedObjectProps(
@@ -186,6 +209,9 @@ final class ComponentContractValidator {
     /**
      * Mirrors TS {@code resolveObjectSchema}: unwraps object / anyOf / oneOf to a properties
      * schema.
+     *
+     * @param schema 待解析的 schema
+     * @return 含 properties 的对象 schema；无法解析时返回 {@code null}
      */
     @SuppressWarnings("unchecked")
     private static Map<String, Object> resolveObjectSchema(Object schema) {

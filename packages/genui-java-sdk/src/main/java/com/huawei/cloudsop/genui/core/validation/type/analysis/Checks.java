@@ -114,17 +114,7 @@ public final class Checks {
             return checkRecordValues(fact, recordValues, checkedPath);
         }
         if (expectation instanceof Expectation.AllOf allOf) {
-            Set<Fact.Loss> reasons = new LinkedHashSet<>();
-            for (Expectation part : allOf.expectations()) {
-                CheckResult result = check(fact, part, checkedPath);
-                if (result.verdict() == Verdict.MISMATCH) {
-                    return result;
-                }
-                if (result.verdict() == Verdict.UNPROVEN) {
-                    reasons.addAll(result.reasons());
-                }
-            }
-            return reasons.isEmpty() ? CheckResult.match() : CheckResult.unproven(reasons, null);
+            return checkAllOf(fact, allOf, checkedPath);
         }
         if (expectation instanceof Expectation.AnyOf anyOf) {
             return checkComposite(fact, anyOf.expectations(), CompositeKind.ANY_OF, checkedPath);
@@ -134,6 +124,28 @@ public final class Checks {
                     fact, exactlyOne.expectations(), CompositeKind.EXACTLY_ONE, checkedPath);
         }
         return CheckResult.unproven(Set.of(Fact.Loss.UNSUPPORTED_RULE), "unknown expectation kind");
+    }
+
+    /**
+     * 全部候选都须满足:任一候选 MISMATCH 即返回该结果,否则汇总未证明原因。
+     *
+     * @param fact 待检查的事实
+     * @param allOf 复合要求
+     * @param checkedPath 当前检查对象路径
+     * @return 检查结论
+     */
+    private static CheckResult checkAllOf(Fact fact, Expectation.AllOf allOf, String checkedPath) {
+        Set<Fact.Loss> reasons = new LinkedHashSet<>();
+        for (Expectation part : allOf.expectations()) {
+            CheckResult result = check(fact, part, checkedPath);
+            if (result.verdict() == Verdict.MISMATCH) {
+                return result;
+            }
+            if (result.verdict() == Verdict.UNPROVEN) {
+                reasons.addAll(result.reasons());
+            }
+        }
+        return reasons.isEmpty() ? CheckResult.match() : CheckResult.unproven(reasons, null);
     }
 
     private enum CompositeKind {
@@ -185,7 +197,14 @@ public final class Checks {
         return CheckResult.unproven(reasons, "cannot prove inclusion into " + target.displayName());
     }
 
-    /** 观察证据中适用于当前检查对象、且确定违反要求的值。 */
+    /**
+     * 观察证据中适用于当前检查对象、且确定违反要求的值。
+     *
+     * @param fact 待检查的事实
+     * @param accept 类型包含要求
+     * @param checkedPath 当前检查对象路径
+     * @return 找到的真实反例;未找到时为 null
+     */
     private static Counterexample findCounterexample(
             Fact fact, Expectation.Accept accept, String checkedPath) {
         for (Fact.Evidence evidence : fact.evidence()) {
@@ -207,6 +226,11 @@ public final class Checks {
     /**
      * 对观察值重建事实的 Accept 判定,不再下钻证据:类型判定(包含/互斥/确定反例)在该值自身类型上完成。 重建事实按路径携带与父级同源的证据,若回到完整 checkAccept
      * 会无限重访同一观察值(#83 评审发现的 终止性缺陷:`TextContent(@Sum(@Each([], "row", data.values)))` 栈溢出)。
+     *
+     * @param valueFact 由观察值重建的事实
+     * @param accept 类型包含要求
+     * @param checkedPath 当前检查对象路径
+     * @return MATCH、MISMATCH 或 UNPROVEN
      */
     private static CheckResult checkObservedAccept(
             Fact valueFact, Expectation.Accept accept, String checkedPath) {
@@ -234,7 +258,13 @@ public final class Checks {
                 "cannot prove inclusion into " + target.displayName());
     }
 
-    /** 类型级确定反例:存在与目标互斥的非 Never 分支(联合其余分支可能通过,但当前分支本身确定不满足; 仅当分支为具体类型时成立,Unknown 分支不算)。 */
+    /**
+     * 类型级确定反例:存在与目标互斥的非 Never 分支(联合其余分支可能通过,但当前分支本身确定不满足; 仅当分支为具体类型时成立,Unknown 分支不算)。
+     *
+     * @param source 待检查的源类型
+     * @param target 目标类型
+     * @return 存在确定不满足目标的分支时为 true
+     */
     private static boolean definiteTypeCounterexample(Type source, Type target) {
         for (Type branch : TypeOps.flatten(source)) {
             if (branch instanceof Type.Never || branch instanceof Type.Unknown) {
@@ -255,7 +285,14 @@ public final class Checks {
 
     private record Counterexample(String detail) {}
 
-    /** 当前检查对象确实含有值(全不兼容判定的前提):类型非 Never,且不是“可能是空数组”的无元素情形。 */
+    /**
+     * 当前检查对象确实含有值(全不兼容判定的前提):类型非 Never,且不是“可能是空数组”的无元素情形。
+     *
+     * @param fact 待检查的事实
+     * @param checkedPath 当前检查对象路径
+     * @param target 目标类型
+     * @return 能证明当前检查对象确实含有值时为 true
+     */
     private static boolean existenceProven(Fact fact, String checkedPath, Type target) {
         if (fact.type() instanceof Type.Never) {
             return false;
@@ -277,7 +314,12 @@ public final class Checks {
         return true;
     }
 
-    /** 目标是否为逐元素要求:数组本身或含数组分支的联合。 */
+    /**
+     * 目标是否为逐元素要求:数组本身或含数组分支的联合。
+     *
+     * @param target 目标类型
+     * @return 目标为逐元素要求时为 true
+     */
     private static boolean targetInvolvesSequences(Type target) {
         if (target instanceof Type.Sequence) {
             return true;
@@ -292,7 +334,14 @@ public final class Checks {
     // 额外字段约束(additionalProperties)
     // ───────────────────────────────────────────────────────────────────────
 
-    /** additionalProperties: false——已列出字段之外的字段不得出现。 */
+    /**
+     * additionalProperties: false——已列出字段之外的字段不得出现。
+     *
+     * @param fact 待检查的事实
+     * @param extraClosed additionalProperties: false 编译结果
+     * @param checkedPath 当前检查对象路径
+     * @return 检查结论
+     */
     private static CheckResult checkExtraClosed(
             Fact fact, SchemaCompiler.ExtraClosed extraClosed, String checkedPath) {
         return checkExtraFields(
@@ -302,14 +351,28 @@ public final class Checks {
                 checkedPath);
     }
 
-    /** additionalProperties: schema——对象额外字段(未列出部分)的值须满足要求。 */
+    /**
+     * additionalProperties: schema——对象额外字段(未列出部分)的值须满足要求。
+     *
+     * @param fact 待检查的事实
+     * @param extraConstraint additionalProperties 编译结果
+     * @param checkedPath 当前检查对象路径
+     * @return 检查结论
+     */
     private static CheckResult checkExtraConstraint(
             Fact fact, SchemaCompiler.ExtraConstraint extraConstraint, String checkedPath) {
         return checkExtraFields(
                 fact, extraConstraint.declaredFields(), extraConstraint.expectation(), checkedPath);
     }
 
-    /** {@code Record<string, X>} 参数:所有值(已声明字段与开放尾部)都须满足 X;空对象不产生反例。 */
+    /**
+     * {@code Record<string, X>} 参数:所有值(已声明字段与开放尾部)都须满足 X;空对象不产生反例。
+     *
+     * @param fact 待检查的事实
+     * @param recordValues 记录值要求
+     * @param checkedPath 当前检查对象路径
+     * @return 检查结论
+     */
     private static CheckResult checkRecordValues(
             Fact fact, Expectation.RecordValues recordValues, String checkedPath) {
         return checkRecordFields(
@@ -325,6 +388,12 @@ public final class Checks {
      * 对象字段值检查:{@code declaredFields} 之外的字段与开放尾部都须满足 {@code requirement}。
      *
      * <p>先查观察到的实际对象值(真实反例),再按类型分支判定;存在必填字段确定违反即 MISMATCH,部分分支未证明或存在性未定时 UNPROVEN。
+     *
+     * @param fact 待检查的事实
+     * @param declaredFields 已声明字段集合
+     * @param requirement 额外字段须满足的要求
+     * @param checkedPath 当前检查对象路径
+     * @return 检查结论
      */
     private static CheckResult checkExtraFields(
             Fact fact, Set<String> declaredFields, Expectation requirement, String checkedPath) {
@@ -351,7 +420,15 @@ public final class Checks {
                 fact, declaredFields, requirement, structuralViolationDetail);
     }
 
-    /** 观察到的实际对象值中,是否存在未声明字段(或不满足值要求的字段)构成真实反例。 */
+    /**
+     * 观察到的实际对象值中,是否存在未声明字段(或不满足值要求的字段)构成真实反例。
+     *
+     * @param fact 待检查的事实
+     * @param declaredFields 已声明字段集合
+     * @param requirement 字段值须满足的要求
+     * @param checkedPath 当前检查对象路径
+     * @return 存在真实反例时为 true
+     */
     private static boolean observedEntryViolates(
             Fact fact, Set<String> declaredFields, Expectation requirement, String checkedPath) {
         for (Fact.Evidence evidence : fact.evidence()) {
@@ -376,7 +453,15 @@ public final class Checks {
         return false;
     }
 
-    /** 按类型分支检查对象字段值与开放尾部;存在必填字段确定违反即 MISMATCH,其余未定即 UNPROVEN。 */
+    /**
+     * 按类型分支检查对象字段值与开放尾部;存在必填字段确定违反即 MISMATCH,其余未定即 UNPROVEN。
+     *
+     * @param fact 待检查的事实
+     * @param declaredFields 已声明字段集合
+     * @param requirement 额外字段须满足的要求
+     * @param structuralViolationDetail 结构级违反的说明文本
+     * @return 检查结论
+     */
     private static CheckResult checkRecordTypeBranches(
             Fact fact,
             Set<String> declaredFields,
@@ -413,7 +498,14 @@ public final class Checks {
         return CheckResult.unproven(reasons, null);
     }
 
-    /** 单个对象分支:未声明字段与开放尾部的值检查结果。 */
+    /**
+     * 单个对象分支:未声明字段与开放尾部的值检查结果。
+     *
+     * @param record 单个对象类型分支
+     * @param declaredFields 已声明字段集合
+     * @param requirement 额外字段须满足的要求
+     * @return 该分支的字段检查结果
+     */
     private static BranchCheck checkRecordBranch(
             Type.RecordType record, Set<String> declaredFields, Expectation requirement) {
         boolean fails = false;
@@ -512,6 +604,10 @@ public final class Checks {
      * <p>列渲染对缺值行天然容忍(渲染空单元格),因此"部分行有"是合法用法,不是静态错误——提示词侧的形状描述同样把这类字段标为 optional。只有全部行形状都证明没有该字段,才判
      * {@code type-table-column-missing}。与 {@link #checkRequireField} 的区别仅此一处:后者用于单对象 props 的
      * required 判定,部分缺失仍是错误。
+     *
+     * @param fact 待检查的事实
+     * @param field 字段名
+     * @return 检查结论
      */
     static CheckResult checkColumnField(Fact fact, String field) {
         Presence presence = fieldPresence(fact, field);
@@ -530,7 +626,14 @@ public final class Checks {
         return CheckResult.match();
     }
 
-    /** 条件字段(properties 非 required 项):字段存在才查值要求;确知不存在即满足;存在性未知则未证明。 */
+    /**
+     * 条件字段(properties 非 required 项):字段存在才查值要求;确知不存在即满足;存在性未知则未证明。
+     *
+     * @param fact 待检查的事实
+     * @param conditionalField 条件字段要求
+     * @param checkedPath 当前检查对象路径
+     * @return 检查结论
+     */
     private static CheckResult checkConditionalField(
             Fact fact, Expectation.ConditionalField conditionalField, String checkedPath) {
         Set<Fact.Loss> reasons = lossesAsReasons(fact);
@@ -633,7 +736,13 @@ public final class Checks {
         return values.isEmpty() ? null : Types.union(values);
     }
 
-    /** 字段级证据:整体 FieldPresence 证据适用于该字段;行级 ObservedValue 不下钻(本票只保留路径级)。 */
+    /**
+     * 字段级证据:整体 FieldPresence 证据适用于该字段;行级 ObservedValue 不下钻(本票只保留路径级)。
+     *
+     * @param fact 待检查的事实
+     * @param name 字段名
+     * @return 适用于该字段的证据集合
+     */
     private static Set<Fact.Evidence> fieldEvidence(Fact fact, String name) {
         Set<Fact.Evidence> result = new LinkedHashSet<>();
         for (Fact.Evidence evidence : fact.evidence()) {
@@ -650,29 +759,19 @@ public final class Checks {
 
     /**
      * 逐元素检查:元素上界满足嵌套要求即 MATCH(空数组不破坏);存在确定违反嵌套要求的元素(类型互斥的 非空分支,或观察到的实际元素)即 MISMATCH;否则 UNPROVEN。
+     *
+     * @param fact 待检查的事实
+     * @param sequenceOf 逐元素要求
+     * @param checkedPath 当前检查对象路径
+     * @return 检查结论
      */
     private static CheckResult checkSequenceOf(
             Fact fact, Expectation.SequenceOf sequenceOf, String checkedPath) {
         Set<Fact.Loss> reasons = lossesAsReasons(fact);
         // 1. 观察到的实际数组元素:同一快照值逐个检查(真实反例)。证据可来自事实自身或调用方提供。
-        List<Object> observedArrays = new ArrayList<>();
-        for (Fact.Evidence evidence : fact.evidence()) {
-            if (evidence instanceof Fact.Evidence.ObservedValue observed
-                    && (checkedPath == null || checkedPath.equals(observed.path()))
-                    && observed.value() instanceof List<?> list) {
-                observedArrays.add(list);
-            }
-        }
-        for (Object arrayValue : observedArrays) {
-            for (Object element : (List<?>) arrayValue) {
-                Fact elementFact = SnapshotFacts.typeOfValue(element, null, 0);
-                CheckResult elementResult =
-                        check(elementFact, sequenceOf.elementExpectation(), null);
-                if (elementResult.verdict() == Verdict.MISMATCH) {
-                    return CheckResult.mismatch(
-                            "observed array element violates element requirement");
-                }
-            }
+        CheckResult observedResult = checkObservedSequenceElements(fact, sequenceOf, checkedPath);
+        if (observedResult != null) {
+            return observedResult;
         }
         // 2. 类型上界:数组分支逐分支检查元素。
         boolean sawUnknown = false;
@@ -719,6 +818,38 @@ public final class Checks {
             return CheckResult.unproven(reasons, null);
         }
         return reasons.isEmpty() ? CheckResult.match() : CheckResult.unproven(reasons, null);
+    }
+
+    /**
+     * 检查观察到的实际数组元素:任一元素确定违反要求即返回该反例。
+     *
+     * @param fact 待检查的事实
+     * @param sequenceOf 逐元素要求
+     * @param checkedPath 当前检查对象路径
+     * @return 找到的反例结论;未找到时为 null
+     */
+    private static CheckResult checkObservedSequenceElements(
+            Fact fact, Expectation.SequenceOf sequenceOf, String checkedPath) {
+        List<Object> observedArrays = new ArrayList<>();
+        for (Fact.Evidence evidence : fact.evidence()) {
+            if (evidence instanceof Fact.Evidence.ObservedValue observed
+                    && (checkedPath == null || checkedPath.equals(observed.path()))
+                    && observed.value() instanceof List<?> list) {
+                observedArrays.add(list);
+            }
+        }
+        for (Object arrayValue : observedArrays) {
+            for (Object element : (List<?>) arrayValue) {
+                Fact elementFact = SnapshotFacts.typeOfValue(element, null, 0);
+                CheckResult elementResult =
+                        check(elementFact, sequenceOf.elementExpectation(), null);
+                if (elementResult.verdict() == Verdict.MISMATCH) {
+                    return CheckResult.mismatch(
+                            "observed array element violates element requirement");
+                }
+            }
+        }
+        return null;
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -792,7 +923,13 @@ public final class Checks {
         return CheckResult.unproven(reasons, null);
     }
 
-    /** 适用于当前检查对象路径的观察值列表。 */
+    /**
+     * 适用于当前检查对象路径的观察值列表。
+     *
+     * @param fact 待检查的事实
+     * @param checkedPath 当前检查对象路径
+     * @return 适用于该路径的观察值列表
+     */
     private static List<Object> observedValuesFor(Fact fact, String checkedPath) {
         List<Object> values = new ArrayList<>();
         for (Fact.Evidence evidence : fact.evidence()) {
@@ -804,7 +941,15 @@ public final class Checks {
         return values;
     }
 
-    /** 同一确定值上的候选组合(每个候选先独立判定该值)。 */
+    /**
+     * 同一确定值上的候选组合(每个候选先独立判定该值)。
+     *
+     * @param valueFact 由观察值重建的事实
+     * @param expectations 候选要求列表
+     * @param kind 复合类型
+     * @param checkedPath 当前检查对象路径
+     * @return 组合后的判定
+     */
     private static Verdict combineOnValue(
             Fact valueFact,
             List<Expectation> expectations,
@@ -817,7 +962,14 @@ public final class Checks {
         return combine(outcomes, kind);
     }
 
-    /** 抽象分区上的候选组合:各类要求按分区语义判定(SequenceOf 递归进元素;复合要求按分区组合)。 */
+    /**
+     * 抽象分区上的候选组合:各类要求按分区语义判定(SequenceOf 递归进元素;复合要求按分区组合)。
+     *
+     * @param type 抽象分区类型
+     * @param expectations 候选要求列表
+     * @param kind 复合类型
+     * @return 组合后的判定
+     */
     private static Verdict combineOnType(
             Type type, List<Expectation> expectations, CompositeKind kind) {
         List<Verdict> outcomes = new ArrayList<>();
@@ -827,7 +979,13 @@ public final class Checks {
         return combine(outcomes, kind);
     }
 
-    /** 单一要求在抽象分区上的判定。 */
+    /**
+     * 单一要求在抽象分区上的判定。
+     *
+     * @param type 抽象分区类型
+     * @param expectation 待判定的要求
+     * @return 判定结果
+     */
     private static Verdict evaluateOnType(Type type, Expectation expectation) {
         if (expectation instanceof Expectation.Accept accept) {
             return acceptOnType(type, accept.type());
@@ -836,29 +994,7 @@ public final class Checks {
             return acceptOnType(type, Types.stringLiterals(enumValues.values()));
         }
         if (expectation instanceof Expectation.SequenceOf sequenceOf) {
-            if (type instanceof Type.Unknown) {
-                return Verdict.UNPROVEN;
-            }
-            if (!(type instanceof Type.Sequence sequence)) {
-                return Verdict.MISMATCH;
-            }
-            if (sequence.maxLength() == 0) {
-                return Verdict.MATCH;
-            }
-            List<Verdict> elements =
-                    TypeOps.flatten(sequence.element()).stream()
-                            .map(
-                                    element ->
-                                            evaluateOnType(
-                                                    element, sequenceOf.elementExpectation()))
-                            .toList();
-            if (elements.stream().allMatch(result -> result == Verdict.MATCH)) {
-                return Verdict.MATCH;
-            }
-            return sequence.minLength() > 0
-                            && elements.stream().allMatch(result -> result == Verdict.MISMATCH)
-                    ? Verdict.MISMATCH
-                    : Verdict.UNPROVEN;
+            return evaluateSequenceOnType(type, sequenceOf);
         }
         if (expectation instanceof Expectation.RequireField
                 || expectation instanceof Expectation.RecordValues
@@ -881,7 +1017,43 @@ public final class Checks {
         return Verdict.UNPROVEN;
     }
 
-    /** 条件字段在抽象分区上的判定:确知无此字段的分区满足;有此字段则值须满足;开放尾部未知。 */
+    /**
+     * 逐元素要求在抽象分区上的判定:按元素类型递归判定,空数组按最大长度区分。
+     *
+     * @param type 抽象分区类型
+     * @param sequenceOf 逐元素要求
+     * @return 判定结果
+     */
+    private static Verdict evaluateSequenceOnType(Type type, Expectation.SequenceOf sequenceOf) {
+        if (type instanceof Type.Unknown) {
+            return Verdict.UNPROVEN;
+        }
+        if (!(type instanceof Type.Sequence sequence)) {
+            return Verdict.MISMATCH;
+        }
+        if (sequence.maxLength() == 0) {
+            return Verdict.MATCH;
+        }
+        List<Verdict> elements =
+                TypeOps.flatten(sequence.element()).stream()
+                        .map(element -> evaluateOnType(element, sequenceOf.elementExpectation()))
+                        .toList();
+        if (elements.stream().allMatch(result -> result == Verdict.MATCH)) {
+            return Verdict.MATCH;
+        }
+        return sequence.minLength() > 0
+                        && elements.stream().allMatch(result -> result == Verdict.MISMATCH)
+                ? Verdict.MISMATCH
+                : Verdict.UNPROVEN;
+    }
+
+    /**
+     * 条件字段在抽象分区上的判定:确知无此字段的分区满足;有此字段则值须满足;开放尾部未知。
+     *
+     * @param type 抽象分区类型
+     * @param conditionalField 条件字段要求
+     * @return 判定结果
+     */
     private static Verdict conditionalFieldOnType(
             Type type, Expectation.ConditionalField conditionalField) {
         if (!(type instanceof Type.RecordType record)) {
@@ -894,7 +1066,13 @@ public final class Checks {
         return evaluateOnType(field.type(), conditionalField.expectation());
     }
 
-    /** 分区值集合对 Accept 的判定:数组分区按“逐元素满足”语义——包含看元素,互斥看元素且忽略空数组。 */
+    /**
+     * 分区值集合对 Accept 的判定:数组分区按“逐元素满足”语义——包含看元素,互斥看元素且忽略空数组。
+     *
+     * @param type 抽象分区类型
+     * @param target 目标类型
+     * @return 判定结果
+     */
     private static Verdict acceptOnType(Type type, Type target) {
         if (Relations.proveIncluded(type, target)) {
             return Verdict.MATCH;
@@ -926,7 +1104,12 @@ public final class Checks {
         };
     }
 
-    /** Fact 损失直接作为检查原因的可变副本。 */
+    /**
+     * Fact 损失直接作为检查原因的可变副本。
+     *
+     * @param fact 待检查的事实
+     * @return 可修改的损失原因副本
+     */
     static Set<Fact.Loss> lossesAsReasons(Fact fact) {
         return new LinkedHashSet<>(fact.losses());
     }

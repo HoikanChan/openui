@@ -32,7 +32,11 @@ public final class TypeAnalysisReport {
      */
     public record Obligation(String statementId, String useSite, String kind, String contractPath) {
 
-        /** 稳定身份键(同一次分析内去重)。 */
+        /**
+         * 稳定身份键(同一次分析内去重)。
+         *
+         * @return 由语句、使用位置、种类与契约路径组成的身份键
+         */
         String identity() {
             return statementId + "|" + useSite + "|" + kind + "|" + contractPath;
         }

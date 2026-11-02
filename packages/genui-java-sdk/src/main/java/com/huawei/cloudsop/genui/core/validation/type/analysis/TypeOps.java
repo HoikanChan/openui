@@ -138,53 +138,15 @@ public final class TypeOps {
             if (!(branch instanceof Type.RecordType record)) {
                 // 非对象分支(含 Unknown):可能覆盖任何已知字段 —— 存在性不丢,值类型放宽。
                 losses.add(Fact.Loss.UNKNOWN_INPUT);
-                Map<String, Type.Field> widened = new LinkedHashMap<>();
-                fields.forEach(
-                        (name, field) ->
-                                widened.put(
-                                        name,
-                                        new Type.Field(
-                                                Types.union(field.type(), Type.Unknown.INSTANCE),
-                                                field.presence())));
-                fields = widened;
+                fields = widenAllFields(fields);
                 extra = Type.Extra.open(Type.Unknown.INSTANCE);
                 continue;
             }
-            for (var entry : record.fields().entrySet()) {
-                String name = entry.getKey();
-                Type.Field next = entry.getValue();
-                Type.Field previous = fields.get(name);
-                if (previous == null && !extra.isClosed()) {
-                    previous = Type.Field.optional(extra.valueType());
-                }
-                if (previous == null) {
-                    fields.put(name, next);
-                    continue;
-                }
-                if (next.presence() == Type.Presence.REQUIRED) {
-                    fields.put(name, next);
-                } else {
-                    // 可选后字段保留两种值可能。
-                    fields.put(
-                            name,
-                            new Type.Field(
-                                    Types.union(previous.type(), next.type()),
-                                    previous.presence()));
-                }
-            }
+            fields = overlayFields(fields, extra, record);
             if (!record.extra().isClosed()) {
                 // 开放后对象:未知额外字段可能覆盖前字段 —— 放宽已列字段值,存在性保留。
-                Map<String, Type.Field> widened = new LinkedHashMap<>();
                 Type extraType = record.extra().valueType();
-                for (var entry : fields.entrySet()) {
-                    Type.Field field = entry.getValue();
-                    Type merged =
-                            record.fields().containsKey(entry.getKey())
-                                    ? field.type()
-                                    : Types.union(field.type(), extraType);
-                    widened.put(entry.getKey(), new Type.Field(merged, field.presence()));
-                }
-                fields = widened;
+                fields = widenForOpenExtra(fields, record, extraType);
                 extra =
                         Type.Extra.open(
                                 extra.isClosed()
@@ -193,6 +155,78 @@ public final class TypeOps {
             }
         }
         return Types.record(fields, extra);
+    }
+
+    /**
+     * 非对象分支可能覆盖任何字段:保留存在性,把每个字段值放宽为 Unknown。
+     *
+     * @param fields 已有字段表
+     * @return 每个字段值都放宽为 Unknown 的新字段表
+     */
+    private static Map<String, Type.Field> widenAllFields(Map<String, Type.Field> fields) {
+        Map<String, Type.Field> widened = new LinkedHashMap<>();
+        fields.forEach(
+                (name, field) ->
+                        widened.put(
+                                name,
+                                new Type.Field(
+                                        Types.union(field.type(), Type.Unknown.INSTANCE),
+                                        field.presence())));
+        return widened;
+    }
+
+    /**
+     * 把后一个记录的字段按覆盖规则并入已有字段表。
+     *
+     * @param fields 已有字段表
+     * @param extra 当前额外字段约束
+     * @param record 后续记录类型
+     * @return 覆盖后的字段表
+     */
+    private static Map<String, Type.Field> overlayFields(
+            Map<String, Type.Field> fields, Type.Extra extra, Type.RecordType record) {
+        for (var entry : record.fields().entrySet()) {
+            String name = entry.getKey();
+            Type.Field next = entry.getValue();
+            Type.Field previous = fields.get(name);
+            if (previous == null && !extra.isClosed()) {
+                previous = Type.Field.optional(extra.valueType());
+            }
+            if (previous == null) {
+                fields.put(name, next);
+            } else if (next.presence() == Type.Presence.REQUIRED) {
+                fields.put(name, next);
+            } else {
+                // 可选后字段保留两种值可能。
+                fields.put(
+                        name,
+                        new Type.Field(
+                                Types.union(previous.type(), next.type()), previous.presence()));
+            }
+        }
+        return fields;
+    }
+
+    /**
+     * 开放后对象:已列但未在本记录声明的字段并入额外值类型,存在性保留。
+     *
+     * @param fields 已有字段表
+     * @param record 开放记录类型
+     * @param extraType 开放尾部值类型
+     * @return 放宽后的字段表
+     */
+    private static Map<String, Type.Field> widenForOpenExtra(
+            Map<String, Type.Field> fields, Type.RecordType record, Type extraType) {
+        Map<String, Type.Field> widened = new LinkedHashMap<>();
+        for (var entry : fields.entrySet()) {
+            Type.Field field = entry.getValue();
+            Type merged =
+                    record.fields().containsKey(entry.getKey())
+                            ? field.type()
+                            : Types.union(field.type(), extraType);
+            widened.put(entry.getKey(), new Type.Field(merged, field.presence()));
+        }
+        return widened;
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -441,29 +475,53 @@ public final class TypeOps {
         // 输入确定非空(每个可能的数组分支长度下界都 ≥1,或观察到实际非空数组值)时,输出元素确定来自 body:
         // 摘掉 NO_ELEMENT_EVIDENCE,生成形状(如 Each 产生的对象行)可支撑确定性的列存在性判定。
         // #77 §6.5:单个联合分支非空不能证明元素存在——另一个分支可能为空,运行时拿到的未必是 body 形状。
-        // 因此只有全部分支都非空(或实际观察)才摘除该 loss。
-        boolean inputProvablyNonempty =
+        boolean inputProvablyNonempty = isInputProvablyNonempty(sequence);
+        if (inputProvablyNonempty) {
+            losses.remove(Fact.Loss.NO_ELEMENT_EVIDENCE);
+        }
+        return new Fact(
+                Types.union(results),
+                mappedEvidence(sequence, body, inputProvablyNonempty),
+                losses,
+                Set.of());
+    }
+
+    /**
+     * 输入是否确定非空:观察到实际非空数组,或全部分支长度下界都 ≥1。
+     *
+     * @param sequence 输入序列事实
+     * @return 能证明输入非空时为 {@code true}
+     */
+    private static boolean isInputProvablyNonempty(Fact sequence) {
+        boolean observedNonEmpty =
                 sequence.evidence().stream()
                         .anyMatch(
                                 e ->
                                         e instanceof Fact.Evidence.ObservedValue observed
                                                 && observed.value() instanceof List<?> values
                                                 && !values.isEmpty());
-        if (!inputProvablyNonempty) {
-            List<Type> branches = flatten(sequence.type());
-            inputProvablyNonempty =
-                    !branches.isEmpty()
-                            && branches.stream()
-                                    .allMatch(
-                                            branch ->
-                                                    branch instanceof Type.Sequence seq
-                                                            && seq.minLength() >= 1);
+        if (observedNonEmpty) {
+            return true;
         }
-        if (inputProvablyNonempty) {
-            losses.remove(Fact.Loss.NO_ELEMENT_EVIDENCE);
-        }
-        // 仅在输入元素存在已证明时传播 body 的观察值,并包回输出数组这一层。
-        // body 自身的长度/字段证据不描述输出数组,不得直接复制到输出层。
+        List<Type> branches = flatten(sequence.type());
+        return !branches.isEmpty()
+                && branches.stream()
+                        .allMatch(
+                                branch ->
+                                        branch instanceof Type.Sequence seq
+                                                && seq.minLength() >= 1);
+    }
+
+    /**
+     * 收集 Each 结果的证据:传递输入数量证据,仅在元素存在已证明时包回 body 的观察值。
+     *
+     * @param sequence 输入序列事实
+     * @param body 单个元素映射后的元素事实
+     * @param inputProvablyNonempty 输入是否确定非空
+     * @return 输出数组事实的证据集合
+     */
+    private static Set<Fact.Evidence> mappedEvidence(
+            Fact sequence, Fact body, boolean inputProvablyNonempty) {
         Set<Fact.Evidence> evidence = new LinkedHashSet<>();
         // Each 保持输入数量:输入的长度来源与已知长度随结果传递,消费方据此证明数量相等(#121)。
         for (Fact.Evidence item : sequence.evidence()) {
@@ -472,13 +530,18 @@ public final class TypeOps {
                 evidence.add(item);
             }
         }
+        if (!inputProvablyNonempty) {
+            return evidence;
+        }
+        // 仅在输入元素存在已证明时传播 body 的观察值,并包回输出数组这一层。
+        // body 自身的长度/字段证据不描述输出数组,不得直接复制到输出层。
         List<Object> observedElements = new ArrayList<>();
         for (Fact.Evidence item : body.evidence()) {
             if (item instanceof Fact.Evidence.ObservedValue observed) {
                 observedElements.add(observed.value());
             }
         }
-        if (inputProvablyNonempty && !observedElements.isEmpty()) {
+        if (!observedElements.isEmpty()) {
             String path =
                     body.evidence().stream()
                             .filter(e -> e instanceof Fact.Evidence.ObservedValue)
@@ -488,7 +551,7 @@ public final class TypeOps {
                             .orElse(null);
             evidence.add(new Fact.Evidence.ObservedValue(path, List.copyOf(observedElements)));
         }
-        return new Fact(Types.union(results), evidence, losses, Set.of());
+        return evidence;
     }
 
     /**
@@ -668,62 +731,64 @@ public final class TypeOps {
         List<Type> results = new ArrayList<>();
         Set<Fact.Loss> losses = new LinkedHashSet<>(sequence.losses());
         for (Type branch : flatten(sequence.type())) {
-            if (!(branch instanceof Type.Sequence outer)) {
-                losses.add(Fact.Loss.UNKNOWN_INPUT);
-                results.add(Type.Unknown.INSTANCE);
-                continue;
-            }
-            List<Type> inner = flatten(outer.element());
-            List<Type> sequenceBranches =
-                    inner.stream().filter(t -> t instanceof Type.Sequence).toList();
-            boolean hasNonSequence =
-                    inner.stream()
-                            .anyMatch(
-                                    t ->
-                                            !(t instanceof Type.Sequence)
-                                                    && !(t instanceof Type.Never));
-            if (sequenceBranches.isEmpty()) {
-                // 空外层(元素 Never)或完全无内层数组:只可能得到空数组。
-                if (!hasNonSequence) {
-                    results.add(Types.emptySequence());
-                } else {
-                    losses.add(Fact.Loss.UNKNOWN_INPUT);
-                    results.add(Type.Unknown.INSTANCE);
-                }
-                continue;
-            }
-            if (hasNonSequence) {
-                // 混合元素策略未定义:保守放宽,不误作空数组。
-                losses.add(Fact.Loss.UNKNOWN_INPUT);
-                results.add(Type.Unknown.INSTANCE);
-                continue;
-            }
-            long min =
-                    outer.minLength() == 0
-                            ? 0
-                            : sequenceBranches.stream()
-                                    .mapToLong(s -> ((Type.Sequence) s).minLength())
-                                    .min()
-                                    .orElse(0L);
-            long max = 0L;
-            boolean unbounded = outer.maxLength() == Type.Sequence.UNBOUNDED;
-            for (Type elementBranch : sequenceBranches) {
-                Type.Sequence innerSeq = (Type.Sequence) elementBranch;
-                if (innerSeq.maxLength() == Type.Sequence.UNBOUNDED) {
-                    unbounded = true;
-                } else if (!unbounded) {
-                    max = Math.max(max, safeMultiply(outer.maxLength(), innerSeq.maxLength()));
-                }
-            }
-            Type element =
-                    Types.union(
-                            sequenceBranches.stream()
-                                    .map(s -> ((Type.Sequence) s).element())
-                                    .toList());
-            results.add(Types.sequence(element, min, unbounded ? Type.Sequence.UNBOUNDED : max));
+            results.add(flattenBranch(branch, losses));
         }
         return new Fact(
                 unionWithinLimit(results, losses), Set.of(), losses, sequence.upstreamErrors());
+    }
+
+    /**
+     * 展平单个分支:内层全为数组时合并元素并计算数量积,否则退化为 Unknown。
+     *
+     * @param branch 待展平的分支类型
+     * @param losses 调用方损失集合,必要时原地追加未知输入损失
+     * @return 展平后的类型
+     */
+    private Type flattenBranch(Type branch, Set<Fact.Loss> losses) {
+        if (!(branch instanceof Type.Sequence outer)) {
+            losses.add(Fact.Loss.UNKNOWN_INPUT);
+            return Type.Unknown.INSTANCE;
+        }
+        List<Type> inner = flatten(outer.element());
+        List<Type> sequenceBranches =
+                inner.stream().filter(t -> t instanceof Type.Sequence).toList();
+        boolean hasNonSequence =
+                inner.stream()
+                        .anyMatch(t -> !(t instanceof Type.Sequence) && !(t instanceof Type.Never));
+        if (sequenceBranches.isEmpty()) {
+            // 空外层(元素 Never)或完全无内层数组:只可能得到空数组。
+            if (!hasNonSequence) {
+                return Types.emptySequence();
+            }
+            losses.add(Fact.Loss.UNKNOWN_INPUT);
+            return Type.Unknown.INSTANCE;
+        }
+        if (hasNonSequence) {
+            // 混合元素策略未定义:保守放宽,不误作空数组。
+            losses.add(Fact.Loss.UNKNOWN_INPUT);
+            return Type.Unknown.INSTANCE;
+        }
+        long min =
+                outer.minLength() == 0
+                        ? 0
+                        : sequenceBranches.stream()
+                                .mapToLong(s -> ((Type.Sequence) s).minLength())
+                                .min()
+                                .orElse(0L);
+        long max = 0L;
+        boolean unbounded = outer.maxLength() == Type.Sequence.UNBOUNDED;
+        for (Type elementBranch : sequenceBranches) {
+            Type.Sequence innerSeq = (Type.Sequence) elementBranch;
+            if (innerSeq.maxLength() == Type.Sequence.UNBOUNDED) {
+                unbounded = true;
+            } else if (!unbounded) {
+                max = Math.max(max, safeMultiply(outer.maxLength(), innerSeq.maxLength()));
+            }
+        }
+        Type element =
+                Types.union(
+                        sequenceBranches.stream().map(s -> ((Type.Sequence) s).element()).toList());
+        return Types.sequence(element, min, unbounded ? Type.Sequence.UNBOUNDED : max);
     }
 
     private static long safeMultiply(long left, long right) {
@@ -748,7 +813,12 @@ public final class TypeOps {
         return type instanceof Type.Union union ? union.alternatives() : List.of(type);
     }
 
-    /** 多操作数的分支组合(笛卡尔),逐步折叠并在展开前检查预算;超限返回 null 表示须改用安全摘要。 */
+    /**
+     * 多操作数的分支组合(笛卡尔),逐步折叠并在展开前检查预算;超限返回 null 表示须改用安全摘要。
+     *
+     * @param branchSets 每个操作数的分支列表
+     * @return 所有分支组合;超出预算时为 {@code null}
+     */
     private List<List<Type>> combinations(List<List<Type>> branchSets) {
         List<List<Type>> acc = new ArrayList<>();
         acc.add(List.of());
@@ -769,7 +839,12 @@ public final class TypeOps {
         return acc;
     }
 
-    /** 展开前检查分支数量，超限时标记会话不完整。 */
+    /**
+     * 展开前检查分支数量，超限时标记会话不完整。
+     *
+     * @param branches 待展开的分支数量
+     * @return 在预算内时为 {@code true}
+     */
     private boolean unionBranchesWithinLimit(long branches) {
         if (branches > MAX_UNION_BRANCHES) {
             completeness.markIncomplete();
@@ -778,7 +853,13 @@ public final class TypeOps {
         return true;
     }
 
-    /** 联合超限时改用安全摘要，损失并入调用方事实。 */
+    /**
+     * 联合超限时改用安全摘要，损失并入调用方事实。
+     *
+     * @param alternatives 联合分支类型
+     * @param losses 调用方损失集合,超限时原地追加预算损失
+     * @return 联合类型;超限时为 Unknown
+     */
     private Type unionWithinLimit(List<Type> alternatives, Set<Fact.Loss> losses) {
         if (!unionBranchesWithinLimit(alternatives.size())) {
             losses.add(Fact.Loss.PRECISION_BUDGET);

@@ -145,12 +145,18 @@ final class GenerationSession implements LlmTransport {
      * Publish a live snapshot so an abnormal terminal (timeout or transport failure) can retain
      * completed and interrupted round records (#58). The supplier must be cheap and must not emit
      * to the sink.
+     *
+     * @param supplier supplier of the live partial result
      */
     void partialSnapshot(Supplier<GenUiGenerationResult> supplier) {
         this.partialSnapshot = supplier;
     }
 
-    /** Whether elapsed time prevents starting a second or later incremental repair. */
+    /**
+     * Whether elapsed time prevents starting a second or later incremental repair.
+     *
+     * @return whether the repair deadline has expired
+     */
     boolean expiredNow() {
         return expired();
     }
@@ -159,6 +165,8 @@ final class GenerationSession implements LlmTransport {
      * End the whole session from the worker with a non-success reason (#58). Used when incremental
      * repair stops while the current program is still invalid, so the public entry performs exactly
      * one whole-page fallback.
+     *
+     * @param reason terminal reason reported to the caller
      */
     void terminate(GenerationEndReason reason) {
         fail(reason);

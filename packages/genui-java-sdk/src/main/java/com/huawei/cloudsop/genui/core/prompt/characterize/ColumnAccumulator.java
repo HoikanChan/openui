@@ -36,7 +36,11 @@ final class ColumnAccumulator {
         this.distinctCap = distinctCap;
     }
 
-    /** Records a row where the key was present with a non-null string value. */
+    /**
+     * Records a row where the key was present with a non-null string value.
+     *
+     * @param value the observed string value
+     */
     void observePresent(String value) {
         occurrences++;
         if (!distinctOverflowed) {
@@ -48,7 +52,11 @@ final class ColumnAccumulator {
         }
     }
 
-    /** Records a row where the key was present with a non-null, non-string scalar value. */
+    /**
+     * Records a row where the key was present with a non-null, non-string scalar value.
+     *
+     * @param type the observed scalar type
+     */
     void observeScalarType(ScalarType type) {
         occurrences++;
         scalarTypesSeen.add(type);
@@ -65,7 +73,11 @@ final class ColumnAccumulator {
         missingCount++;
     }
 
-    /** Records the type seen for a non-string, non-null scalar without consuming the type set. */
+    /**
+     * Records the type seen for a non-string, non-null scalar without consuming the type set.
+     *
+     * @param type the observed scalar type
+     */
     void observeType(ScalarType type) {
         scalarTypesSeen.add(type);
     }
@@ -94,7 +106,11 @@ final class ColumnAccumulator {
         return scalarTypesSeen;
     }
 
-    /** Lazily creates and returns the nested accumulator for an object/array column. */
+    /**
+     * Lazily creates and returns the nested accumulator for an object/array column.
+     *
+     * @return the nested accumulator, created on first use
+     */
     ColumnAccumulator childAccumulator() {
         if (childAccumulator == null) {
             childAccumulator = new ColumnAccumulator(distinctCap);

@@ -128,7 +128,13 @@ public record GenUIBaseSupplement(
                 new ArrayList<>(mergedGapsById.values()));
     }
 
-    /** Order-preserving de-duplicated union of members (left first), notes appended. */
+    /**
+     * Order-preserving de-duplicated union of members (left first), notes appended.
+     *
+     * @param left left-hand group whose members and notes come first
+     * @param right right-hand group whose members and notes are appended
+     * @return merged group with de-duplicated members and concatenated notes
+     */
     private static ComponentGroup unionGroups(ComponentGroup left, ComponentGroup right) {
         LinkedHashSet<String> members = new LinkedHashSet<>(left.components());
         members.addAll(right.components());
