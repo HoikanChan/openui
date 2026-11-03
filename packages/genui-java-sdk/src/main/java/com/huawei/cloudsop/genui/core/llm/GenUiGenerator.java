@@ -387,19 +387,19 @@ public final class GenUiGenerator {
      *
      * @param request 生成请求
      * @param sink 渲染帧接收器
-     * @param budget 本轮调用共享的预算与输出会话
+     * @param session 本次调用共享的生成会话
      * @return 本次生成的最终结果
      */
     private GenUiGenerationResult generateStreamInternal(
             UiGenerationRequest request,
             Consumer<RenderStreamEnvelope> sink,
-            GenerationSession budget) {
+            GenerationSession session) {
         GenUIPromptRequest promptRequest = toPromptRequest(request);
         RequestBody body = buildRequest(promptRequest, request, true);
         if (validationConfig.validationEnabled()) {
-            return generateWithValidation(promptRequest, body, request, sink, budget);
+            return generateWithValidation(promptRequest, body, request, sink, session);
         }
-        return generateWithoutValidation(body, request, sink, budget);
+        return generateWithoutValidation(body, request, sink, session);
     }
 
     private GenUiGenerationResult generateWithValidation(
@@ -407,7 +407,7 @@ public final class GenUiGenerator {
             RequestBody body,
             UiGenerationRequest request,
             Consumer<RenderStreamEnvelope> sink,
-            GenerationSession budget) {
+            GenerationSession session) {
         Map<String, Object> dataModel = request.response();
         RepairLoop repair =
                 new RepairLoop(
@@ -420,13 +420,13 @@ public final class GenUiGenerator {
                         validator,
                         config,
                         transport,
-                        budget::expiredNow,
+                        session::expiredNow,
                         delta -> sink.accept(RenderStreamEnvelope.dsl(0, delta)));
-        budget.partialSnapshot(() -> repair.snapshot(GenerationEndReason.MODEL_REQUEST_FAILED));
+        session.partialSnapshot(() -> repair.snapshot(GenerationEndReason.MODEL_REQUEST_FAILED));
         try {
             GenUiGenerationResult result = repair.run(body.json());
             if (result.validationStatus() == ValidationStatus.INVALID) {
-                budget.terminate(result.endReason());
+                session.terminate(result.endReason());
             }
             return result;
         } catch (LlmTransportException error) {
@@ -440,11 +440,11 @@ public final class GenUiGenerator {
             RequestBody body,
             UiGenerationRequest request,
             Consumer<RenderStreamEnvelope> sink,
-            GenerationSession budget) {
+            GenerationSession session) {
         Map<String, Object> dataModel = request.response();
         // With validation disabled, retain partial streamed output on request failure.
         StringBuffer accumulated = new StringBuffer();
-        budget.partialSnapshot(
+        session.partialSnapshot(
                 () ->
                         new GenUiGenerationResult(
                                 OpenuiCodeExtractor.extract(accumulated.toString()),
