@@ -11,6 +11,8 @@
   <!-- 类型分析核心：AnalysisSession 是语义分析的主循环 -->
   <suppress-xpath files="AnalysisSession\.java" checks="ParameterNumber"
             query="//METHOD_DEF[./IDENT[@text='checkComponentParam'] or ./IDENT[@text='checkObligation'] or ./IDENT[@text='checkTableColumn']]/descendant-or-self::node()"/>
+  <suppress-xpath files="BuiltinSession\.java" checks="ParameterNumber"
+            query="//METHOD_DEF[./IDENT[@text='checkObligation']]/descendant-or-self::node()"/>
   <suppress-xpath files="AnalysisSession\.java" checks="ClassDataAbstractionCoupling"
             query="//CLASS_DEF[./IDENT[@text='AnalysisSession']]"/>
 

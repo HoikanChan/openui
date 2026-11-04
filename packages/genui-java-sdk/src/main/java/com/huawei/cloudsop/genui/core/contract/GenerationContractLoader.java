@@ -8,7 +8,6 @@ import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr;
 import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExprParser;
-import com.huawei.cloudsop.genui.core.validation.type.analysis.BuiltinAnalysis;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -291,7 +290,7 @@ public final class GenerationContractLoader {
         List<BuiltinSpec.ParamSpec> params = builtinParams(entry.get("params"), name);
         // Each/Render 的参数布局由 builtin module 拥有（Render 的中段 row 可省），
         // 加载器不再为它们套普通可选/变长位置规则，也不在这里列出函数名。
-        if (!BuiltinAnalysis.ownsCallLayout(name)) {
+        if (!BuiltinDefinitionRules.ownsCallLayout(name)) {
             boolean seenPlainOptional = false;
             for (int i = 0; i < params.size(); i++) {
                 BuiltinSpec.ParamSpec param = params.get(i);
@@ -319,14 +318,14 @@ public final class GenerationContractLoader {
         Object returnTypeRaw = entry.get("returnType");
         if (returnTypeRaw != null) {
             returnType = TypeExprParser.parse(string(returnTypeRaw), name + ".returnType");
-        } else if (!BuiltinAnalysis.ownsCallLayout(name)) {
+        } else if (!BuiltinDefinitionRules.ownsCallLayout(name)) {
             throw new GenerationSdkException("builtin '" + name + "' missing field 'returnType'");
         }
         requireBoundTypeVars(params, returnType, name);
         BuiltinSpec spec =
                 new BuiltinSpec(name, signature, description, templateBuiltin, params, returnType);
         // 特殊函数的最低布局前提与返回声明覆盖由 builtin module 统一校验(#117 第 3.1 节)。
-        BuiltinAnalysis.validateDefinition(spec);
+        BuiltinDefinitionRules.validateDefinition(spec);
         return spec;
     }
 
