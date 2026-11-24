@@ -7,6 +7,7 @@ package com.huawei.cloudsop.genui.core.prompt.characterize;
 import com.huawei.cloudsop.genui.core.Json;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -20,8 +21,9 @@ import java.util.Set;
  * <p>Exposes two public APIs: {@link #characterize(Map, CharacterizationConfig)} preserves the
  * existing {@link Characterizer} gate behavior, while {@link #profile(Map, CharacterizationConfig)}
  * runs a layer-by-layer rule engine regardless of the size trigger. Layer evaluation is ordered:
- * {@link InsightLevel#L0_GATE} first, and a match short-circuits so no deeper layer runs. Deeper
- * layers (L1/L2/L3) are extension points added by later tickets.
+ * {@link InsightLevel#L0_GATE} first, and a match short-circuits so no deeper layer runs. Otherwise
+ * deeper-layer rules (L2 dataset with per-path priority competition, and L3 field statistics) run
+ * in a single pass.
  *
  * @since 2026
  */
@@ -187,8 +189,7 @@ public final class DataProfiler {
      * Profiles a payload and returns the deterministic insights its rules fire.
      *
      * <p>Evaluation runs {@link InsightLevel#L0_GATE} first; a match short-circuits and is returned
-     * as the only insight. Deeper layers are added by later tickets and currently produce no
-     * insights.
+     * as the only insight. Otherwise deeper-layer analyzers evaluate the payload in a single pass.
      *
      * @param raw the raw data-model map to inspect; may be {@code null}
      * @param cfg the gate and sampling configuration; must not be {@code null}
@@ -217,15 +218,55 @@ public final class DataProfiler {
     }
 
     /**
-     * Placeholder for L1/L2/L3 rules added by later tickets.
+     * Runs the deeper-layer rules (L2 dataset and L3 field) over the payload.
+     *
+     * <p>The payload is walked exactly once with a {@link ProfileCollector} threaded through {@link
+     * ShapeWalker}; the analyzers then derive insights from the gathered statistics without any
+     * second traversal. L2 insights compete per target path (highest priority wins, ties broken by
+     * declaration order); L3 insights coexist freely. The result is sorted by level (L1, then L2,
+     * then L3), preserving encounter order within each level.
      *
      * @param raw the raw data-model map to inspect
      * @param cfg the gate and sampling configuration
-     * @return the insights fired by deeper layers; currently always empty
+     * @return the insights fired by deeper layers, in deterministic output order
      */
     private static List<DataInsight> evaluateDeeperLayers(
             Map<String, Object> raw, CharacterizationConfig cfg) {
-        return List.of();
+        if (raw == null || raw.isEmpty()) {
+            return List.of();
+        }
+        ProfileCollector collector = new ProfileCollector(cfg);
+        ShapeWalker.walk(raw, cfg, 0, collector);
+        List<DataInsight> l2 = new ArrayList<>();
+        List<DataInsight> l3 = new ArrayList<>();
+        for (ArrayProfile profile : collector.arrays().values()) {
+            l2.addAll(DatasetInsightAnalyzer.analyze(profile, cfg));
+            l3.addAll(FieldInsightAnalyzer.analyze(profile, cfg));
+        }
+        List<DataInsight> l2Winners = competePerTargetPath(l2);
+        List<DataInsight> merged = new ArrayList<>(l2Winners.size() + l3.size());
+        merged.addAll(l2Winners);
+        merged.addAll(l3);
+        merged.sort(Comparator.comparingInt(insight -> insight.level().ordinal()));
+        return merged;
+    }
+
+    /**
+     * Keeps only the highest-priority L2 insight per target path, breaking ties by declaration
+     * (encounter) order.
+     *
+     * @param l2 the fired L2 insights in encounter order
+     * @return the surviving L2 insights, one per target path
+     */
+    private static List<DataInsight> competePerTargetPath(List<DataInsight> l2) {
+        Map<String, DataInsight> winners = new LinkedHashMap<>();
+        for (DataInsight insight : l2) {
+            DataInsight current = winners.get(insight.targetPath());
+            if (current == null || insight.priority() > current.priority()) {
+                winners.put(insight.targetPath(), insight);
+            }
+        }
+        return new ArrayList<>(winners.values());
     }
 
     /**

@@ -42,6 +42,35 @@ public final class ShapeWalker {
      * @return the sample/shape pair for {@code value}
      */
     public static Characterized walk(Object value, CharacterizationConfig cfg, int depth) {
+        return walk(value, cfg, depth, null, "");
+    }
+
+    /**
+     * Reduces one JSON value to a same-shape sample plus an inferred shape, optionally feeding a
+     * profiling collector during the same single pass.
+     *
+     * <p>When {@code collector} is {@code null} the behavior and output are byte-identical to
+     * {@link #walk(Object, CharacterizationConfig, int)}. When non-null, the collector is notified
+     * at the exact points where rows and values are already inspected, gathering statistics for
+     * deeper-layer insights without any second walk.
+     *
+     * @param value the parsed JSON value to characterize; {@code null} yields a null shape
+     * @param cfg the sampling and enum-inference configuration
+     * @param depth the current recursion depth, normally {@code 0} at the root
+     * @param collector the profiling collector, or {@code null} to skip profiling
+     * @return the sample/shape pair for {@code value}
+     */
+    static Characterized walk(
+            Object value, CharacterizationConfig cfg, int depth, ProfileCollector collector) {
+        return walk(value, cfg, depth, collector, "");
+    }
+
+    private static Characterized walk(
+            Object value,
+            CharacterizationConfig cfg,
+            int depth,
+            ProfileCollector collector,
+            String path) {
         if (value == null) {
             return new Characterized(null, new ScalarShape(ScalarType.NULL));
         }
@@ -55,10 +84,10 @@ public final class ShapeWalker {
             return new Characterized(value, new ScalarShape(ScalarType.BOOLEAN));
         }
         if (value instanceof Map<?, ?> map) {
-            return walkObject(map, cfg, depth);
+            return walkObject(map, cfg, depth, collector, path);
         }
         if (value instanceof List<?> list) {
-            return walkArray(list, cfg, depth);
+            return walkArray(list, cfg, depth, collector, path);
         }
         return new Characterized(value, new ScalarShape(ScalarType.UNKNOWN));
     }
@@ -69,43 +98,59 @@ public final class ShapeWalker {
         return new Characterized(sample, new ScalarShape(ScalarType.STRING));
     }
 
-    private static Characterized walkObject(Map<?, ?> map, CharacterizationConfig cfg, int depth) {
+    private static Characterized walkObject(
+            Map<?, ?> map,
+            CharacterizationConfig cfg,
+            int depth,
+            ProfileCollector collector,
+            String path) {
         LinkedHashMap<String, Object> sample = new LinkedHashMap<>();
         LinkedHashMap<String, FieldShape> fields = new LinkedHashMap<>();
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             String key = String.valueOf(entry.getKey());
-            Characterized child = walk(entry.getValue(), cfg, depth + 1);
+            String childPath = path.isEmpty() ? key : path + "." + key;
+            Characterized child = walk(entry.getValue(), cfg, depth + 1, collector, childPath);
             sample.put(key, child.sample());
             fields.put(key, new FieldShape(child.shape(), false, false));
         }
         return new Characterized(sample, new ObjectShape(fields));
     }
 
-    private static Characterized walkArray(List<?> list, CharacterizationConfig cfg, int depth) {
+    private static Characterized walkArray(
+            List<?> list,
+            CharacterizationConfig cfg,
+            int depth,
+            ProfileCollector collector,
+            String path) {
         int n = list.size();
         int k = Math.min(cfg.sampleRows(), n);
 
         // Pass A: sample, first K elements only.
         List<Object> sample = new ArrayList<>(k);
         for (int i = 0; i < k; i++) {
-            sample.add(walk(list.get(i), cfg, depth + 1).sample());
+            sample.add(walk(list.get(i), cfg, depth + 1, null, path).sample());
         }
 
         // Pass B: feature scan over all n elements to infer the element shape.
-        ShapeNode elementShape = scanElementShape(list, cfg, depth);
+        ShapeNode elementShape = scanElementShape(list, cfg, depth, collector, path);
 
         boolean truncated = n > cfg.sampleRows();
         return new Characterized(sample, new ArrayShape(elementShape, n, truncated));
     }
 
-    private static ShapeNode scanElementShape(List<?> list, CharacterizationConfig cfg, int depth) {
+    private static ShapeNode scanElementShape(
+            List<?> list,
+            CharacterizationConfig cfg,
+            int depth,
+            ProfileCollector collector,
+            String path) {
         if (list.isEmpty()) {
             return new ScalarShape(ScalarType.UNKNOWN);
         }
 
         Object first = list.get(0);
         if (first instanceof Map) {
-            return scanObjectArray(list, cfg, depth);
+            return scanObjectArray(list, cfg, depth, collector, path);
         }
         if (first instanceof Long || first instanceof Double) {
             return scanNumberArray(list);
@@ -114,7 +159,13 @@ public final class ShapeWalker {
             return scanStringArray(list, cfg);
         }
         // Heterogeneous / nested array element: v1 does not go deeper.
-        return walk(first, cfg, depth + 1).shape();
+        if (collector != null) {
+            ArrayProfile profile = collector.beginArray(path);
+            for (Object row : list) {
+                collector.observeTupleRow(profile, row);
+            }
+        }
+        return walk(first, cfg, depth + 1, collector, path).shape();
     }
 
     private static ShapeNode scanNumberArray(List<?> list) {
@@ -139,14 +190,23 @@ public final class ShapeWalker {
         return finalizeStringShape(accumulator, total, cfg);
     }
 
-    private static ShapeNode scanObjectArray(List<?> list, CharacterizationConfig cfg, int depth) {
+    private static ShapeNode scanObjectArray(
+            List<?> list,
+            CharacterizationConfig cfg,
+            int depth,
+            ProfileCollector collector,
+            String path) {
         LinkedHashMap<String, ColumnAccumulator> columns = new LinkedHashMap<>();
+        ArrayProfile profile = collector == null ? null : collector.beginArray(path);
         long n = 0L;
 
         for (Object rawRow : list) {
             n++;
             if (!(rawRow instanceof Map<?, ?> row)) {
                 // A heterogeneous element among object rows: treat the whole array as opaque.
+                if (profile != null) {
+                    profile.markNonObjectRow();
+                }
                 return new ScalarShape(ScalarType.UNKNOWN);
             }
             long rowsSeenBeforeThis = n - 1;
@@ -172,6 +232,10 @@ public final class ShapeWalker {
                     continue;
                 }
                 observeColumnValue(accumulator, row.get(key), cfg, depth, n <= cfg.deepScanLimit());
+            }
+            if (profile != null) {
+                profile.columns().putAll(columns);
+                collector.observeObjectRow(profile, row, n - 1);
             }
         }
 
