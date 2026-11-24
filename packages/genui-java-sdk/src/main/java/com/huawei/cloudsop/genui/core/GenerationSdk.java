@@ -21,6 +21,9 @@ import com.huawei.cloudsop.genui.core.prompt.PromptAssembler;
 import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig;
 import com.huawei.cloudsop.genui.core.prompt.characterize.Characterized;
 import com.huawei.cloudsop.genui.core.prompt.characterize.Characterizer;
+import com.huawei.cloudsop.genui.core.prompt.characterize.DataInsight;
+import com.huawei.cloudsop.genui.core.prompt.characterize.DataProfiler;
+import com.huawei.cloudsop.genui.core.prompt.characterize.InsightPromptAugmenter;
 import com.huawei.cloudsop.genui.core.prompt.characterize.TsTypeRenderer;
 
 import java.util.ArrayList;
@@ -243,6 +246,11 @@ public final class GenerationSdk {
         Set<String> registeredToolNames = toolNames(parts.tools());
 
         DataModelSpec characterizedData = characterize(effectiveRequest.dataModel());
+        InsightPromptAugmenter.Augmented augmented =
+                InsightPromptAugmenter.augment(
+                        profileInsights(effectiveRequest.dataModel()),
+                        parts.examples(),
+                        parts.additionalRules());
         String prompt =
                 PromptAssembler.assemble(
                         new PromptAssembler.PromptInput(
@@ -254,8 +262,8 @@ public final class GenerationSdk {
                                 parts.componentGroups(),
                                 characterizedData,
                                 parts.tools(),
-                                parts.examples(),
-                                parts.additionalRules(),
+                                augmented.examples(),
+                                augmented.additionalRules(),
                                 effectiveRequest.editMode(),
                                 effectiveRequest.inlineMode(),
                                 effectiveRequest.toolCalls(),
@@ -368,6 +376,23 @@ public final class GenerationSdk {
         Map<String, Object> sample = (Map<String, Object>) c.sample();
         String sidecar = TsTypeRenderer.render(c.shape(), characterization.sampleRows());
         return new DataModelSpec(in.description(), sample, sidecar);
+    }
+
+    /**
+     * Profiles the request's data model for prompt-side insight injection.
+     *
+     * <p>Unlike {@link #characterize(DataModelSpec)}, profiling is not gated by the size threshold,
+     * so small payloads (empty data, status acknowledgements, a few heterogeneous objects) still
+     * yield insights. The raw model is never modified: only the prompt copy is augmented.
+     *
+     * @param in the request data model, or {@code null}
+     * @return the fired insights, or an empty list when there is no data model
+     */
+    private List<DataInsight> profileInsights(DataModelSpec in) {
+        if (in == null) {
+            return List.of();
+        }
+        return DataProfiler.profile(in.raw(), characterization);
     }
 
     private static void validateComponentGroups(
