@@ -36,6 +36,21 @@ public final class DataProfiler {
     /** Stable identifier of the status-ack-only L0 gate insight. */
     public static final String ID_L0_STATUS_ACK_ONLY = "l0-status-ack-only";
 
+    /** Stable identifier of the correlated-object-merge L1 container insight. */
+    public static final String ID_L1_CORRELATED_OBJECT_MERGE = "l1-correlated-object-merge";
+
+    /** Stable identifier of the multi-entity-tabs L1 container insight. */
+    public static final String ID_L1_MULTI_ENTITY_TABS = "l1-multi-entity-tabs";
+
+    /** Stable identifier of the paginated-envelope L1 container insight. */
+    public static final String ID_L1_PAGINATED_ENVELOPE = "l1-paginated-envelope";
+
+    /** Stable identifier of the dynamic-key-map L1 container insight. */
+    public static final String ID_L1_DYNAMIC_KEY_MAP = "l1-dynamic-key-map";
+
+    /** Stable identifier of the single-record-detail L1 container insight. */
+    public static final String ID_L1_SINGLE_RECORD_DETAIL = "l1-single-record-detail";
+
     /** Priority of the empty-data L0 gate (runs first among L0 rules). */
     private static final int PRIORITY_L0_EMPTY_DATA = 100;
 
@@ -218,13 +233,15 @@ public final class DataProfiler {
     }
 
     /**
-     * Runs the deeper-layer rules (L2 dataset and L3 field) over the payload.
+     * Runs the deeper-layer rules (L1 container, L2 dataset, and L3 field) over the payload.
      *
      * <p>The payload is walked exactly once with a {@link ProfileCollector} threaded through {@link
      * ShapeWalker}; the analyzers then derive insights from the gathered statistics without any
-     * second traversal. L2 insights compete per target path (highest priority wins, ties broken by
-     * declaration order); L3 insights coexist freely. The result is sorted by level (L1, then L2,
-     * then L3), preserving encounter order within each level.
+     * second traversal. Outer arrays identified as heterogeneous/multi-entity L1 containers skip
+     * flat outer L2/L3 evaluation while retaining inner sub-table L2/L3 insights. L2 insights
+     * compete per target path (highest priority wins, ties broken by declaration order); L1 and L3
+     * insights compose freely. The result is sorted by level (L1, then L2, then L3), preserving
+     * encounter order within each level.
      *
      * @param raw the raw data-model map to inspect
      * @param cfg the gate and sampling configuration
@@ -237,14 +254,22 @@ public final class DataProfiler {
         }
         ProfileCollector collector = new ProfileCollector(cfg);
         ShapeWalker.walk(raw, cfg, 0, collector);
+        ContainerInsightAnalyzer.AnalysisResult l1Result =
+                ContainerInsightAnalyzer.analyze(collector);
+        List<DataInsight> l1 = l1Result.insights();
+        Set<String> suppressed = l1Result.suppressedL2Paths();
         List<DataInsight> l2 = new ArrayList<>();
         List<DataInsight> l3 = new ArrayList<>();
         for (ArrayProfile profile : collector.arrays().values()) {
+            if (suppressed.contains(profile.arrayPath())) {
+                continue;
+            }
             l2.addAll(DatasetInsightAnalyzer.analyze(profile, cfg));
             l3.addAll(FieldInsightAnalyzer.analyze(profile, cfg));
         }
         List<DataInsight> l2Winners = competePerTargetPath(l2);
-        List<DataInsight> merged = new ArrayList<>(l2Winners.size() + l3.size());
+        List<DataInsight> merged = new ArrayList<>(l1.size() + l2Winners.size() + l3.size());
+        merged.addAll(l1);
         merged.addAll(l2Winners);
         merged.addAll(l3);
         merged.sort(Comparator.comparingInt(insight -> insight.level().ordinal()));

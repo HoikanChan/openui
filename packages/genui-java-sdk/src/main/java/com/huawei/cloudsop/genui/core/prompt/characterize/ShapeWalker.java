@@ -104,6 +104,9 @@ public final class ShapeWalker {
             int depth,
             ProfileCollector collector,
             String path) {
+        if (collector != null) {
+            collector.observeObject(path, map);
+        }
         LinkedHashMap<String, Object> sample = new LinkedHashMap<>();
         LinkedHashMap<String, FieldShape> fields = new LinkedHashMap<>();
         for (Map.Entry<?, ?> entry : map.entrySet()) {

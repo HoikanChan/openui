@@ -22,6 +22,9 @@ import java.util.Set;
  * @since 2026
  */
 final class ArrayProfile {
+    /** Maximum row count for which per-row key sets and scalar snapshots are retained for L1. */
+    static final int MAX_CONTAINER_SAMPLE_ROWS = 16;
+
     /** The dot-joined path of this array from the payload root (for example {@code data.rows}). */
     private final String arrayPath;
 
@@ -42,6 +45,21 @@ final class ArrayProfile {
 
     /** Whether every tuple X value seen so far is numeric. */
     private boolean tupleXNumeric = true;
+
+    /** Per-row key sets captured for small object arrays (bounded by MAX_CONTAINER_SAMPLE_ROWS). */
+    private final List<Set<String>> rowKeySets = new ArrayList<>();
+
+    /** Per-row scalar snapshots captured for small object arrays. */
+    private final List<Map<String, Object>> rowScalars = new ArrayList<>();
+
+    /** Per-row embedded timestamp sets captured from nested arrays for cross-object correlation. */
+    private final List<Set<Long>> rowNestedTimestamps = new ArrayList<>();
+
+    /** Column names observed holding non-empty nested maps. */
+    private final Set<String> nestedObjectFields = new LinkedHashSet<>();
+
+    /** Column names observed holding non-empty nested object/tuple arrays. */
+    private final Set<String> nestedArrayFields = new LinkedHashSet<>();
 
     /**
      * Captured (time-column, group-column) timestamp series, keyed by {@link #pairKey(String,
@@ -111,6 +129,50 @@ final class ArrayProfile {
 
     Map<String, Map<String, List<long[]>>> pairTimestamps() {
         return pairTimestamps;
+    }
+
+    List<Set<String>> rowKeySets() {
+        return rowKeySets;
+    }
+
+    List<Map<String, Object>> rowScalars() {
+        return rowScalars;
+    }
+
+    List<Set<Long>> rowNestedTimestamps() {
+        return rowNestedTimestamps;
+    }
+
+    Set<String> nestedObjectFields() {
+        return nestedObjectFields;
+    }
+
+    Set<String> nestedArrayFields() {
+        return nestedArrayFields;
+    }
+
+    /**
+     * Records a row's key set, scalar values, and nested timestamps when still within the
+     * small-container cap.
+     *
+     * @param keys the row's key set
+     * @param scalars scalar key/value pairs from the row
+     * @param nestedTimestamps timestamps extracted from nested arrays in this row
+     */
+    void recordRowShape(Set<String> keys, Map<String, Object> scalars, Set<Long> nestedTimestamps) {
+        if (rowKeySets.size() < MAX_CONTAINER_SAMPLE_ROWS) {
+            rowKeySets.add(keys);
+            rowScalars.add(scalars);
+            rowNestedTimestamps.add(nestedTimestamps);
+        }
+    }
+
+    void markNestedObjectField(String field) {
+        nestedObjectFields.add(field);
+    }
+
+    void markNestedArrayField(String field) {
+        nestedArrayFields.add(field);
     }
 
     /**
