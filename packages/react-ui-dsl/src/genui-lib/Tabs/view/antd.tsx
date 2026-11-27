@@ -3,18 +3,16 @@
 import { Skeleton, Tabs } from "antd";
 import type { TabViewProps } from "./types";
 
-export function TabView({ items, activeTab, onTabChange, style }: TabViewProps) {
+export function TabView({ items, activeTab, onTabChange }: TabViewProps) {
   return (
-    <div style={style}>
-      <Tabs
-        activeKey={activeTab}
-        onChange={onTabChange}
-        items={items.map((item) => ({
-          key: item.value,
-          label: item.label,
-          children: item.loading ? <Skeleton active paragraph={{ rows: 3 }} /> : item.children,
-        }))}
-      />
-    </div>
+    <Tabs
+      activeKey={activeTab}
+      onChange={onTabChange}
+      items={items.map((item) => ({
+        key: item.value,
+        label: item.label,
+        children: item.loading ? <Skeleton active paragraph={{ rows: 3 }} /> : item.children,
+      }))}
+    />
   );
 }

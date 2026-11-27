@@ -204,11 +204,7 @@ const EXAMPLE_SPECS: readonly ExampleSpec[] = [
         },
       ],
     },
-    contains: ["S5735"],
-    // Gated: TabItem is now registered, but Tabs still consumes only its own
-    // inline item shape, so a standalone TabItem element assigned then passed to
-    // Tabs renders an empty container. Un-gate once Tabs accepts TabItem elements.
-    gated: "Tabs does not yet consume standalone TabItem elements",
+    contains: ["S5735 (2)", "S6730 (1)", "SW-3"],
   },
   {
     match: "data.queryDeviceInfo.deviceInfo",

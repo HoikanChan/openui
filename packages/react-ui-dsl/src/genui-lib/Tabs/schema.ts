@@ -1,12 +1,8 @@
 import { z } from "zod";
-
-export const TabItemSchema = z.object({
-  value: z.string(),
-  label: z.string(),
-  content: z.array(z.any()),
-});
+import { TabItem } from "../TabItem";
 
 export const TabsSchema = z.object({
-  items: z.array(TabItemSchema),
-  style: z.record(z.string(), z.any()).optional(),
+  items: z.array(TabItem.ref),
 });
+
+export type TabsProps = z.infer<typeof TabsSchema>;

@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export type TabViewItem = {
   value: string;
@@ -13,5 +13,4 @@ export type TabViewProps = {
   items: TabViewItem[];
   activeTab: string;
   onTabChange: (value: string) => void;
-  style?: CSSProperties;
 };

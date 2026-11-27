@@ -1,18 +1,29 @@
 "use client";
 
-import { type ComponentRenderProps, defineComponent } from "@cloudsop/openui-react-lang";
+import {
+  defineComponent,
+  type ComponentRenderProps,
+  type SubComponentOf,
+} from "@cloudsop/openui-react-lang";
 import React from "react";
-import { z } from "zod";
-import { TabsSchema } from "./schema";
+import { TabItemSchema, type TabItemProps } from "../TabItem";
+import { TabsSchema, type TabsProps } from "./schema";
 import { TabView } from "./view";
+
+function isComponentNode<T>(value: unknown): value is SubComponentOf<T> {
+  return typeof value === "object" && value !== null && "type" in value && "props" in value;
+}
+
+function getTabItemProps(value: unknown): TabItemProps {
+  return isComponentNode<TabItemProps>(value) ? value.props : TabItemSchema.parse(value);
+}
 
 export const Tabs = defineComponent({
   name: "Tabs",
   props: TabsSchema,
   description: "Tabbed container with streaming-aware skeleton and auto tab-switching",
-  component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof TabsSchema>>) => {
-    const items = props.items ?? [];
-    type TabItem = z.infer<typeof TabsSchema>["items"][number];
+  component: ({ props, renderNode }: ComponentRenderProps<TabsProps>) => {
+    const items = props.items.map(getTabItemProps);
     const [activeTab, setActiveTab] = React.useState("");
     const userHasInteracted = React.useRef(false);
     const prevContentSizes = React.useRef<Record<string, number>>({});
@@ -57,8 +68,7 @@ export const Tabs = defineComponent({
       <TabView
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        style={props.style as React.CSSProperties}
-        items={items.map((item: TabItem) => ({
+        items={items.map((item) => ({
           value: item.value,
           label: item.label,
           children: renderNode(item.content),

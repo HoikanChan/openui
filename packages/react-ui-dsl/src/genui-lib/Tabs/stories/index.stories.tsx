@@ -1,5 +1,5 @@
-import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react";
+import { useState } from "react";
 import { TabView } from "../view";
 
 const meta = {
@@ -12,9 +12,6 @@ const meta = {
       { value: "overview", label: "Overview", children: "Overview content", loading: false },
       { value: "settings", label: "Settings", children: "Settings content", loading: false },
     ],
-  },
-  argTypes: {
-    style: { control: "object" },
   },
   render: (args) => {
     const [activeTab, setActiveTab] = useState(args.activeTab);
