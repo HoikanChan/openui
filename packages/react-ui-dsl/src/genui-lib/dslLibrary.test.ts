@@ -55,15 +55,8 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
 
     expect(Object.keys(propsOf("SelectItem"))).toEqual(["label", "value"]);
 
-    expect(Object.keys(propsOf("DescGroup"))).toEqual(["title", "fields", "columns"]);
-
     expect(Object.keys(propsOf("DescField"))).toEqual(["label", "value", "span"]);
     expect(propsOf("DescField")).not.toHaveProperty("format");
-
-    expect(Object.keys(propsOf("MiniChart"))).toEqual(["type", "data", "height", "color"]);
-    expect(propsOf("MiniChart")).not.toHaveProperty("size");
-    expect(propsOf("MiniChart")).not.toHaveProperty("labels");
-    expect(propsOf("MiniChart")).not.toHaveProperty("series");
   });
 
   it("exports json schema without legacy properties wrappers or removed host-control fields", () => {
@@ -81,11 +74,9 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     const card = defs.Card;
     const cardHeader = defs.CardHeader;
     const descriptions = defs.Descriptions;
-    const descGroup = defs.DescGroup;
     const descField = defs.DescField;
     const tag = defs.Tag;
     const table = defs.Table;
-    const miniChart = defs.MiniChart;
 
     expect(button.properties).toMatchObject({
       label: expect.anything(),
@@ -158,29 +149,12 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(descriptions.properties).not.toHaveProperty("title");
     expect(descriptions.properties).not.toHaveProperty("extra");
     expect(descriptions.properties).not.toHaveProperty("columns");
-    expect(descGroup.properties).toMatchObject({
-      title: expect.anything(),
-      fields: expect.anything(),
-      columns: expect.anything(),
-    });
     expect(descField.properties).toMatchObject({
       label: expect.anything(),
       value: expect.anything(),
       span: expect.anything(),
     });
     expect(descField.properties).not.toHaveProperty("format");
-
-    expect(miniChart.properties).toMatchObject({
-      type: expect.anything(),
-      data: expect.anything(),
-      height: expect.anything(),
-      color: expect.anything(),
-    });
-    expect(miniChart.properties).not.toHaveProperty("size");
-    expect(miniChart.properties).not.toHaveProperty("labels");
-    expect(miniChart.properties).not.toHaveProperty("series");
-    expect(miniChart.properties).not.toHaveProperty("xLabel");
-    expect(miniChart.properties).not.toHaveProperty("yLabel");
   });
 
   it("includes Render in static-library prompts while omitting data-only builtins", () => {
@@ -326,35 +300,6 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     });
 
     expect(prompt).toContain("Use Descriptions for single-record detail views instead of Table");
-    expect(prompt).toContain('detail = Descriptions([DescField("Name", data.user.name)');
-    expect(prompt).toContain('DescField("Status", Tag(data.user.status, "success"))');
-    expect(prompt).toContain('DescField("Joined", @FormatDate(data.user.joinedAt, "dateTime"), 2)');
-  });
-
-  it("includes timeline guidance for direct host-data bindings", () => {
-    const prompt = dslLibrary.prompt({
-      dataModel: {
-        raw: {
-          timeline: {
-            title: "Deployment History",
-            items: [
-              {
-                title: "v2.1.0 deployed to production",
-                description: "Production deployment completed successfully.",
-                status: "success",
-              },
-            ],
-          },
-        },
-      },
-    });
-
-    expect(prompt).toContain(
-      "If timeline rows already expose `title`, `description`, and `status`, pass them directly to `TimeLine(data.timeline.items, data.timeline.title)`",
-    );
-    expect(prompt).toContain(
-      "timelineComponent = TimeLine(data.timeline.items, data.timeline.title)",
-    );
   });
 
   it("includes chart guidance that forbids inventing derived series from raw rows", () => {
@@ -425,46 +370,5 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(prompt).not.toContain("For unlabeled ratio arrays");
     expect(prompt).not.toContain("data.deviceId");
     expect(prompt).not.toContain("CPU Utilization");
-  });
-
-  it("includes MiniChart guidance as a compact single-series trend primitive", () => {
-    const prompt = dslLibrary.prompt({
-      dataModel: {
-        raw: {
-          metrics: {
-            sparkline: [12, 18, 15, 21],
-          },
-        },
-      },
-    });
-
-    expect(prompt).toContain("MiniChart");
-    expect(prompt).toContain("compact single-series trend primitive");
-    expect(prompt).toContain(
-      "Treat primitive numeric arrays (`number[]`) as compact quantitative series",
-    );
-    expect(prompt).toContain(
-      "When a `number[]` appears as a field inside records shown in a Table",
-    );
-    expect(prompt).toContain('Col(..., {cell: @Render("v", MiniChart(..., v))})');
-    expect(prompt).toContain(
-      "MiniChart accepts `number[]` directly and derives compact point labels automatically",
-    );
-    expect(prompt).toContain(
-      "For standalone numeric arrays rendered with MiniChart, keep the chart compact",
-    );
-    expect(prompt).toContain(
-      "Include scalar identifier and context fields such as id, name, title, endpoint, label, unit, count, current, min, max, avg, p95",
-    );
-    expect(prompt).toContain("Never set MiniChart height above 96 for a primitive numeric array");
-    expect(prompt).toContain('MiniChart("line", data.metrics.sparkline');
-    expect(prompt).toContain(
-      'valuesCol = Col("Values", "values", {cell: @Render("v", MiniChart("line", v))})',
-    );
-    expect(prompt).toContain('measurementsChart = MiniChart("bar", data.summary.measurements');
-    expect(prompt).toContain(
-      "Omit MiniChart height unless the layout needs a tighter or taller trend",
-    );
-    expect(prompt).not.toContain("MiniChart(data.labels");
   });
 });

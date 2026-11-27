@@ -8,7 +8,7 @@ import {
   type SubComponentOf,
 } from "@cloudsop/openui-react-lang";
 import { z } from "zod";
-import { DescFieldSchema, DescGroupSchema, DescriptionsSchema, type DescFieldProps } from "./schema";
+import { DescFieldSchema, DescriptionsSchema, type DescFieldProps } from "./schema";
 import {
   DescriptionsRuntimeView,
   resolveAutoSpan,
@@ -22,13 +22,6 @@ export const DescField = defineComponent({
   name: "DescField",
   props: DescFieldSchema,
   description: "Declarative descriptions field with label, direct value expression, and optional span.",
-  component: () => null,
-});
-
-export const DescGroup = defineComponent({
-  name: "DescGroup",
-  props: DescGroupSchema,
-  description: "Declarative descriptions group with a title, field list, and optional column override.",
   component: () => null,
 });
 

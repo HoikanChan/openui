@@ -17,9 +17,9 @@ title = TextContent("Traffic Trend", "large")
 chart = LineChart(["Mon", "Tue", "Wed"], [Series("Inbound", [120, 200, 150])], "smooth", "Time", "Mbps")`;
 
 const DEMO_DSL_KPI = `root = Stack([kpiCard])
-kpiCard = Card([cardTitle, miniChart])
+kpiCard = Card([cardTitle, trendChart])
 cardTitle = TextContent("7-Day Latency", "large")
-miniChart = MiniChart("line", [45, 52, 38, 60, 55, 48, 42])`;
+trendChart = LineChart(["D1", "D2", "D3", "D4", "D5", "D6", "D7"], [Series("Latency", [45, 52, 38, 60, 55, 48, 42])], "smooth", "Day", "ms")`;
 
 export interface CanvasDemoProps {
   library: Library;

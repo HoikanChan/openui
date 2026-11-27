@@ -320,30 +320,6 @@ export const fixtures: Record<string, Fixture[]> = {
       },
     },
   ],
-  MiniChart: [
-    {
-      id: "mini-chart-card-trend",
-      prompt: "Show a compact single-series latency sparkline in a KPI card using data.sparkline",
-      dataModel: {
-        sparkline: [12, 18, 15, 21, 19, 24, 22],
-      },
-      assert: {
-        contains: ["Latency Trend"],
-        verify: (_container, { echartsInit }) => {
-          expect(
-            echartsInit,
-            "mini-chart-card-trend: echarts.init was not called",
-          ).toHaveBeenCalled();
-          const option = getFirstChartOption(echartsInit, "mini-chart-card-trend");
-          expect(option.series).toHaveLength(1);
-          expect(option.series?.[0]).toMatchObject({
-            type: "line",
-            data: [12, 18, 15, 21, 19, 24, 22],
-          });
-        },
-      },
-    },
-  ],
   BarChart: [
     {
       id: "bar-product-comparison",
@@ -380,25 +356,6 @@ export const fixtures: Record<string, Fixture[]> = {
             name: "Product B",
             data: [350000, 410000],
           });
-        },
-      },
-    },
-  ],
-  GaugeChart: [
-    {
-      id: "gauge-kpi",
-      prompt: "Show a KPI gauge for system health score using data.readings",
-      dataModel: {
-        readings: [{ name: "Health", value: 87 }],
-      },
-      assert: {
-        contains: [],
-        verify: (container, { echartsInit }) => {
-          expect(echartsInit, "gauge-kpi: echarts.init was not called").toHaveBeenCalled();
-          expect(
-            container.querySelector('div[style*="300px"]'),
-            'gauge-kpi: no container with height "300px" found',
-          ).not.toBeNull();
         },
       },
     },
@@ -461,53 +418,6 @@ export const fixtures: Record<string, Fixture[]> = {
           expect(
             echartsInit,
             "radar-device-health: echarts.init was not called",
-          ).toHaveBeenCalled();
-        },
-      },
-    },
-  ],
-  HeatmapChart: [
-    {
-      id: "heatmap-alert-frequency",
-      prompt:
-        "Show alert frequency by hour and day of week as a heatmap using data.xLabels, data.yLabels, and data.values",
-      dataModel: {
-        xLabels: ["0h", "6h", "12h", "18h"],
-        yLabels: ["Mon", "Tue", "Wed"],
-        values: [
-          [2, 8, 12, 7],
-          [1, 9, 11, 6],
-          [3, 7, 9, 8],
-        ],
-      },
-      assert: {
-        contains: [],
-        verify: (_container, { echartsInit }) => {
-          expect(
-            echartsInit,
-            "heatmap-alert-frequency: echarts.init was not called",
-          ).toHaveBeenCalled();
-        },
-      },
-    },
-  ],
-  TreeMapChart: [
-    {
-      id: "treemap-bandwidth-breakdown",
-      prompt: "Show bandwidth breakdown by subnet and interface as a treemap using data.data",
-      dataModel: {
-        data: [
-          { name: "eth0", value: 850, group: "Subnet A" },
-          { name: "eth1", value: 620, group: "Subnet A" },
-          { name: "eth2", value: 340, group: "Subnet B" },
-        ],
-      },
-      assert: {
-        contains: [],
-        verify: (_container, { echartsInit }) => {
-          expect(
-            echartsInit,
-            "treemap-bandwidth-breakdown: echarts.init was not called",
           ).toHaveBeenCalled();
         },
       },
@@ -703,28 +613,6 @@ export const fixtures: Record<string, Fixture[]> = {
       },
     },
   ],
-  List: [
-    {
-      id: "list-action-items",
-      prompt:
-        "Show an unordered list with the header Action Items and exactly these list items: Review Q1 financials and Update product roadmap",
-      dataModel: {
-        list: {
-          title: "Action Items",
-          items: ["Review Q1 financials", "Update product roadmap"],
-        },
-      },
-      assert: {
-        contains: ["Action Items", "Review Q1 financials", "Update product roadmap"],
-        verify: (container) => {
-          expect(
-            container.querySelector("ul"),
-            "list-action-items: expected <ul> element",
-          ).not.toBeNull();
-        },
-      },
-    },
-  ],
   Form: [
     {
       id: "form-contact",
@@ -732,47 +620,6 @@ export const fixtures: Record<string, Fixture[]> = {
       dataModel: {},
       assert: {
         contains: ["Full Name", "Email Address"],
-      },
-    },
-  ],
-  TimeLine: [
-    {
-      id: "timeline-deployments",
-      prompt: "Show a deployment history timeline with success, default, and error events",
-      dataModel: {
-        timeline: {
-          title: "Deployment History",
-          items: [
-            {
-              status: "success",
-              title: "v2.1.0 deployed to production",
-              description: "Production deployment completed successfully.",
-            },
-            {
-              status: "default",
-              title: "v2.0.1 staged for rollout",
-              description: "Rollout is pending approval.",
-            },
-            {
-              status: "error",
-              title: "v2.0.0 deployment failed",
-              description: "Deployment failed during verification.",
-            },
-          ],
-        },
-      },
-      assert: {
-        contains: [
-          "Deployment History",
-          "v2.1.0 deployed to production",
-          "v2.0.0 deployment failed",
-        ],
-        verify: (container) => {
-          expect(
-            container.innerHTML,
-            'timeline-deployments: expected class "ant-timeline"',
-          ).toContain("ant-timeline");
-        },
       },
     },
   ],

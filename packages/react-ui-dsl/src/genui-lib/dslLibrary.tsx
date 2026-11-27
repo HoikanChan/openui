@@ -5,18 +5,14 @@ import type { ComponentGroup, Library } from "@cloudsop/openui-react-lang";
 import {
   AreaChart,
   BarChart,
-  GaugeChart,
-  HeatmapChart,
   HorizontalBarChart,
   LineChart,
-  MiniChart,
   PieChart,
   Point,
   RadarChart,
   ScatterChart,
   ScatterSeries,
   Series,
-  TreeMapChart,
 } from "./Charts";
 import { Button } from "./Button";
 import { Buttons } from "./Buttons";
@@ -28,14 +24,13 @@ import { HTMLLoader } from "../canvas/HTMLLoader";
 import { CheckBoxGroup } from "./CheckBoxGroup";
 import { CheckBoxItem } from "./CheckBoxItem";
 import { DatePicker } from "./DatePicker";
-import { DescField, DescGroup, Descriptions } from "./Descriptions";
+import { DescField, Descriptions } from "./Descriptions";
 import { Form } from "./Form";
 import { FormControl } from "./FormControl";
 import { Image } from "./Image";
 import { ImageBlock } from "./ImageBlock";
 import { Input } from "./Input";
 import { Link } from "./Link";
-import { List } from "./List";
 import { Modal } from "./Modal";
 import { RadioGroup } from "./RadioGroup";
 import { RadioItem } from "./RadioItem";
@@ -54,7 +49,6 @@ import { TextCallout } from "./TextCallout";
 import { Col, ExtraCol, IndexCol, Table } from "./Table";
 import { TextContent } from "./TextContent";
 import { MarkDownRenderer } from "./MarkDownRenderer";
-import { TimeLine } from "./TimeLine";
 import { Tabs } from "./Tabs";
 import { Stack } from "./Stack";
 import { PACKAGE_NAME, PACKAGE_VERSION } from "./packageMetadata";
@@ -98,7 +92,7 @@ export const dslComponentGroups: ComponentGroup[] = [
   },
   {
     name: "Descriptions",
-    components: ["Descriptions", "DescGroup", "DescField"],
+    components: ["Descriptions", "DescField"],
     notes: [
       "- Prefer Descriptions for single-record detail views; reserve Table for arrays of records.",
       "- When Descriptions will contain 6+ fields, set `columns=2` to avoid crowding (long device names, ports, IPs need horizontal space).",
@@ -114,8 +108,6 @@ export const dslComponentGroups: ComponentGroup[] = [
       "AreaChart",
       "RadarChart",
       "HorizontalBarChart",
-      "HeatmapChart",
-      "TreeMapChart",
       "Series",
     ],
     notes: [
@@ -128,23 +120,9 @@ export const dslComponentGroups: ComponentGroup[] = [
   },
   {
     name: "Charts (1D)",
-    components: ["PieChart", "GaugeChart"],
+    components: ["PieChart"],
     notes: [
       '- PieChart takes parallel labels[] and values[] arrays of NUMBERS (not objects): PieChart(["Low", "Med", "High"], [12, 28, 7], "donut").',
-      "- GaugeChart auto-scales 0-1 decimal values to 0-100% display. Pass `min=0, max=1` for ratio fields (availabilityRate, avgCpuUtil); pass `min=0, max=100` for values already in percentage form.",
-    ],
-  },
-  {
-    name: "Charts (Compact)",
-    components: ["MiniChart"],
-    notes: [
-      "- MiniChart is a single-series numeric trend primitive for KPI cards, table cells, and dense summaries. Accepts `number[]` directly and derives compact point labels automatically.",
-      "- Treat primitive `number[]` as chart-ready — never render as JSON, comma-separated text, or index-value tables.",
-      '- Inside a Table, render row-local arrays with `Col(..., {cell: @Render("v", MiniChart("line", v))})`. Never combine arrays from multiple rows into one chart unless the data explicitly models one shared series.',
-      "- Choose `type` from semantics: `line` for ordered/time-like sequences (trend, sparkline, history, usage, readings); `bar` for samples, measurements, durations, latencies, scores, counts, buckets. When unclear, default `line` for ordered data and `bar` for sample-like data.",
-      "- Keep MiniChart compact: never set `height` above 96 for a primitive numeric array; default to omitting `height`. Width always fills.",
-      "- When a single object has scalar summary fields plus one or more `number[]` fields, show scalars with Descriptions and render each array as a nearby MiniChart.",
-      "- Pair MiniChart with available scalar context (id, name, unit, count, current, min, max, avg, p95, p99, total, sampleCount) — do not drop identifiers and stats when present.",
     ],
   },
   {
@@ -160,11 +138,10 @@ export const dslComponentGroups: ComponentGroup[] = [
   },
   {
     name: "Data Display",
-    components: ["Tag", "TagBlock", "List", "TimeLine", "Button"],
+    components: ["Tag", "TagBlock", "Button"],
     notes: [
       "- For boolean fields (active, enabled, status), use a ternary: `v ? Tag(\"Active\", \"success\") : Tag(\"Inactive\", \"danger\")`. `@Switch` matches string keys so `{true: ...}` won't match boolean values.",
       '- Color-mapped Tag (variant is the 2nd arg in dsl): Tag(v, v == "high" ? "danger" : v == "medium" ? "warning" : "neutral").',
-      "- If timeline rows already expose `title`, `description`, and `status`, pass them directly: `TimeLine(data.timeline.items, data.timeline.title)`.",
     ],
   },
 ];
@@ -185,14 +162,9 @@ export const DEFAULT_PROMPT_ADDITIONAL_RULES = [
   "For dynamic-key object maps such as `{ \"dev-001\": {...}, \"dev-002\": {...} }`, use `@ObjectEntries(...)` or `@ObjectKeys(...)` instead of hardcoding sample keys.",
   "For paginated envelopes with total/pageSize/pageIndex plus list/items/rows, show pagination metadata with Descriptions and render the array with Table. Do not add previous/next Button controls unless a Query or Action can actually change pages.",
   "Use Descriptions for single-record detail views instead of Table.",
-  "If timeline rows already expose `title`, `description`, and `status`, pass them directly to `TimeLine(data.timeline.items, data.timeline.title)`.",
   "Only use chart components when the data model already exposes chart-ready fields. If the data model only contains raw row records, prefer Table or Descriptions. Do not invent labels, series, categories, or missing time points from raw rows.",
   "Do not declare pseudo-reusable component templates that reference undeclared variables. Repeated displays should use existing components directly, valid `@Each` templates, table cells, or descriptions.",
   "Do not add a chart that repeats the same homogeneous records shown in a Table; prefer one clear Table with formatted columns.",
-  "MiniChart is a compact single-series trend primitive for KPI cards, table cells, dense summaries, and standalone primitive numeric arrays.",
-  "Treat primitive numeric arrays (`number[]`) as compact quantitative series. When a `number[]` appears as a field inside records shown in a Table, render it with `Col(..., {cell: @Render(\"v\", MiniChart(..., v))})`.",
-  "MiniChart accepts `number[]` directly and derives compact point labels automatically. For standalone numeric arrays rendered with MiniChart, keep the chart compact. Omit MiniChart height unless the layout needs a tighter or taller trend. Never set MiniChart height above 96 for a primitive numeric array.",
-  "Include scalar identifier and context fields such as id, name, title, endpoint, label, unit, count, current, min, max, avg, p95 when pairing MiniChart with related values.",
 ];
 
 export const DSL_BASE_CONTRACT_VERSION = `${PACKAGE_NAME}@${PACKAGE_VERSION}`;
@@ -269,27 +241,6 @@ deviceCol = Col("Device", "deviceName")
 interfaceCol = Col("Interface", "showName")
 timeCol = Col("Time", "time", {cell: @Render("v", TextContent(@FormatDate(v, "dateTime")))})
 utilizationCol = Col("Peak Utilization", "PeakBandwidthUtilization", {cell: @Render("v", TextContent(@FormatPercent(v / 100, 1)))})`,
-  // Descriptions + DescGroup with span/columns
-  `root = Stack([detail])
-detail = Descriptions([DescField("Name", data.user.name), DescField("Email", data.user.email), account], "Profile")
-account = DescGroup("Account", [DescField("Status", Tag(data.user.status, "success")), DescField("Joined", @FormatDate(data.user.joinedAt, "dateTime"), 2)], 2)`,
-  // Timeline direct host-data binding
-  `root = Stack([timelineComponent])
-timelineComponent = TimeLine(data.timeline.items, data.timeline.title)`,
-  // KPI MiniChart in Card
-  `root = Stack([kpiCard])
-kpiCard = Card([cardTitle, cardTrend], "card", "standard")
-cardTitle = TextContent("7-Day Latency Trend", "large")
-cardTrend = MiniChart("line", data.metrics.sparkline)`,
-  // Standalone measurements MiniChart
-  `root = Stack([measurementsChart])
-measurementsChart = MiniChart("bar", data.summary.measurements)`,
-  // MiniChart row-local in Table cell
-  `root = Stack([itemsTable])
-itemsTable = Table([nameCol, currentCol, valuesCol], data.items)
-nameCol = Col("Name", "name")
-currentCol = Col("Current", "current", {cell: @Render("v", TextContent(@FormatNumber(v, 1)))})
-valuesCol = Col("Values", "values", {cell: @Render("v", MiniChart("line", v))})`,
   // Null-dominant record with fallbacks
   `root = Stack([recordDetail])
 recordDetail = Descriptions([DescField("ID", data.record.id ?? "No data"), DescField("Name", data.record.name ?? "No data"), DescField("File", data.record.file ?? "No data"), DescField("Status", data.record.status ?? "No data"), DescField("Metric", data.record.metric ?? "No data")], "Record")`,
@@ -322,9 +273,7 @@ export const dslLibrary: Library = createLibrary({
     PreviewCard,
     HTMLLoader,
     Descriptions,
-    DescGroup,
     DescField,
-    List,
     Form,
     FormControl,
     CheckBoxGroup,
@@ -347,18 +296,13 @@ export const dslLibrary: Library = createLibrary({
     PieChart,
     LineChart,
     BarChart,
-    GaugeChart,
     HorizontalBarChart,
     AreaChart,
     RadarChart,
-    HeatmapChart,
-    TreeMapChart,
     ScatterChart,
-    MiniChart,
     Series,
     ScatterSeries,
     Point,
-    TimeLine,
     Tabs,
     TabItem,
   ],

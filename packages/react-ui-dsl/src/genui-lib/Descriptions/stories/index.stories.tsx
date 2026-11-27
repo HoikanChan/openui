@@ -20,15 +20,8 @@ const meta = {
     items: [
       { kind: "field", label: "Name", renderedValue: "Alice", resolvedSpan: 1 },
       { kind: "field", label: "Email", renderedValue: "alice@example.com", resolvedSpan: 2 },
-      {
-        kind: "group",
-        title: "Account",
-        columns: 2,
-        fields: [
-          { kind: "field", label: "Status", renderedValue: <TagView text="Active" variant="success" />, resolvedSpan: 1 },
-          { kind: "field", label: "Joined", renderedValue: "1/2/2026", resolvedSpan: 1 },
-        ],
-      },
+      { kind: "field", label: "Status", renderedValue: <TagView text="Active" variant="success" />, resolvedSpan: 1 },
+      { kind: "field", label: "Joined", renderedValue: "1/2/2026", resolvedSpan: 1 },
     ],
   },
 } satisfies Meta<typeof DescriptionsView>;
@@ -48,29 +41,22 @@ export const Grouped: Story = {
       { kind: "field", label: "Product", renderedValue: "Cloud Database", resolvedSpan: 1 },
       { kind: "field", label: "Billing", renderedValue: "Prepaid", resolvedSpan: 1 },
       { kind: "field", label: "Amount", renderedValue: "$80.00", resolvedSpan: 1 },
+      { kind: "field", label: "Time", renderedValue: "18:00:00", resolvedSpan: 1 },
       {
-        kind: "group",
-        title: "Configuration",
-        columns: 2,
-        fields: [
-          { kind: "field", label: "Time", renderedValue: "18:00:00", resolvedSpan: 1 },
-          {
-            kind: "field",
-            label: "Config Info",
-            renderedValue: (
-              <ul>
-                <li>Data disk type: MongoDB</li>
-                <li>Database version: 3.4</li>
-                <li>Storage space: 10 GB</li>
-                <li>Region: East China 1</li>
-              </ul>
-            ),
-            resolvedSpan: 2,
-          },
-          { kind: "field", label: "Status", renderedValue: <TagView text="Running" variant="success" />, resolvedSpan: 1 },
-          { kind: "field", label: "Discount", renderedValue: "$20.00", resolvedSpan: 1 },
-        ],
+        kind: "field",
+        label: "Config Info",
+        renderedValue: (
+          <ul>
+            <li>Data disk type: MongoDB</li>
+            <li>Database version: 3.4</li>
+            <li>Storage space: 10 GB</li>
+            <li>Region: East China 1</li>
+          </ul>
+        ),
+        resolvedSpan: 2,
       },
+      { kind: "field", label: "Status", renderedValue: <TagView text="Running" variant="success" />, resolvedSpan: 1 },
+      { kind: "field", label: "Discount", renderedValue: "$20.00", resolvedSpan: 1 },
     ],
   },
 };

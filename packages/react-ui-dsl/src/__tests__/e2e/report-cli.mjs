@@ -22,7 +22,7 @@ const SUITE_FLAG = "REACT_UI_DSL_E2E_SUITE";
 // under plain `node`, which cannot import the `.ts` config, so the eview
 // view-target remap is reproduced here for the report-app vite build.
 // Keep VIEW_COMPONENTS in sync with view-target.config.ts.
-const VIEW_COMPONENTS = ["Button", "Form", "Input", "Link", "Select", "Table", "Tabs", "Tag", "TimeLine"];
+const VIEW_COMPONENTS = ["Button", "Form", "Input", "Link", "Select", "Table", "Tabs", "Tag"];
 
 // Global stylesheet imported by report-app/main.tsx via the virtual module below.
 // antd v5 is CSS-in-JS (no global import); eview needs its design-system styles.

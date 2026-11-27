@@ -13,15 +13,6 @@ type ChartOptions =
   | echarts.EChartsOption
   | (Omit<echarts.EChartsOption, "title"> & { title?: string })
   | undefined;
-export type MiniChartDatum = number | { value: number; label?: string };
-export type MiniChartData = MiniChartDatum[];
-export type NormalizedMiniChartDatum = { value: number; label: string };
-
-const MINI_CHART_AUTO_HEIGHT_FALLBACK = 36;
-const MINI_CHART_AUTO_HEIGHT_MIN = 24;
-const MINI_CHART_AUTO_HEIGHT_MAX = 44;
-const MINI_CHART_AUTO_HEIGHT_RATIO = 0.22;
-const MINI_CHART_AUTO_WIDTH_MIN = 96;
 const DEFAULT_CHART_LEGEND: echarts.LegendComponentOption = {
   orient: "horizontal",
   left: "center",
@@ -89,53 +80,4 @@ export function buildScatterSeries(
       : {}),
     };
   });
-}
-
-export function normalizeMiniChartData(data: MiniChartData): NormalizedMiniChartDatum[] {
-  return (data ?? []).map((item, index) =>
-    typeof item === "number"
-      ? { value: item, label: `Item ${index + 1}` }
-      : { value: item.value, label: item.label ?? `Item ${index + 1}` });
-}
-
-export function getRecentMiniChartDataThatFits<T extends MiniChartData>(
-  data: T,
-  containerWidth: number,
-  elementSpacing: number,
-): T {
-  if (containerWidth <= 0 || data.length === 0) {
-    return data;
-  }
-
-  const maxItems = Math.max(1, Math.floor(containerWidth / elementSpacing));
-  if (maxItems >= data.length) {
-    return data;
-  }
-
-  return data.slice(-maxItems) as T;
-}
-
-export function getAutoMiniChartHeight(containerWidth: number): number {
-  if (containerWidth <= 0) {
-    return MINI_CHART_AUTO_HEIGHT_FALLBACK;
-  }
-
-  return Math.min(
-    MINI_CHART_AUTO_HEIGHT_MAX,
-    Math.max(MINI_CHART_AUTO_HEIGHT_MIN, Math.round(containerWidth * MINI_CHART_AUTO_HEIGHT_RATIO)),
-  );
-}
-
-export function getAutoMiniChartWidth(
-  dataLength: number,
-  elementSpacing: number,
-  containerWidth: number,
-): number {
-  const desiredWidth = Math.max(MINI_CHART_AUTO_WIDTH_MIN, dataLength * elementSpacing);
-
-  if (containerWidth <= 0) {
-    return desiredWidth;
-  }
-
-  return Math.min(containerWidth, desiredWidth);
 }

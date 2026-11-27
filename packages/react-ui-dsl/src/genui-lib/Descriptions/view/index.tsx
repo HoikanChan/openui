@@ -2,7 +2,7 @@
 
 import React, { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import type { DescFieldProps, DescGroupProps } from "../schema";
+import type { DescFieldProps } from "../schema";
 export type DescriptionsVariant = "bordered" | "plain";
 
 const DEFAULT_COLUMNS = 3;
@@ -31,13 +31,6 @@ const titleStyle: CSSProperties = {
   fontSize: 16,
   fontWeight: 600,
   color: "#1f1f1f",
-};
-
-const groupTitleStyle: CSSProperties = {
-  fontSize: 14,
-  fontWeight: 600,
-  color: "#1f1f1f",
-  marginBottom: 12,
 };
 
 const borderedGridStyle = (columns: number): CSSProperties => ({
@@ -112,20 +105,11 @@ export type ResolvedDescriptionsField = {
   resolvedSpan: number;
 };
 
-export type ResolvedDescriptionsGroup = {
-  kind: "group";
-  columns: number;
-  fields: ResolvedDescriptionsField[];
-  title: string;
-};
-
-export type ResolvedDescriptionsItem = ResolvedDescriptionsField | ResolvedDescriptionsGroup;
-
 export type DescriptionsViewProps = {
   border?: boolean;
   columns?: number;
   extra?: ReactNode;
-  items: ResolvedDescriptionsItem[];
+  items: ResolvedDescriptionsField[];
   title?: string;
 };
 
@@ -331,31 +315,6 @@ export function DescriptionsView({
   title,
 }: DescriptionsViewProps) {
   const variant = getVariant(border);
-  const sections: ReactNode[] = [];
-  let pendingFields: ResolvedDescriptionsField[] = [];
-
-  const flushPendingFields = () => {
-    if (pendingFields.length === 0) return;
-    sections.push(renderGrid(pendingFields, columns, variant, `top-level-fields-${sections.length}`));
-    pendingFields = [];
-  };
-
-  items.forEach((item, index) => {
-    if (item.kind === "field") {
-      pendingFields.push(item);
-      return;
-    }
-
-    flushPendingFields();
-    sections.push(
-      <section key={`${item.title}-${index}`}>
-        <div style={groupTitleStyle}>{item.title}</div>
-        {renderGrid(item.fields, item.columns, variant)}
-      </section>,
-    );
-  });
-
-  flushPendingFields();
 
   return (
     <div data-descriptions-columns={columns} data-descriptions-variant={variant} style={wrapperStyle}>
@@ -367,27 +326,20 @@ export function DescriptionsView({
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: variant === "plain" ? 20 : DEFAULT_GAP }}>
-        {sections}
+        {renderGrid(items, columns, variant)}
       </div>
     </div>
   );
 }
 
-type RuntimeDescriptionsField = DescFieldProps & { kind?: "field" };
-type RuntimeDescriptionsGroup = DescGroupProps & { kind?: "group" };
-
 export type DescriptionsRuntimeViewProps = {
   border?: boolean;
   columns?: number;
   extra?: ReactNode;
-  items: (RuntimeDescriptionsField | RuntimeDescriptionsGroup)[];
+  items: DescFieldProps[];
   renderValue: (field: DescFieldProps, resolvedSpan: number) => ResolvedDescriptionsField;
   title?: string;
 };
-
-function isGroup(value: RuntimeDescriptionsField | RuntimeDescriptionsGroup): value is RuntimeDescriptionsGroup {
-  return "fields" in value;
-}
 
 export function DescriptionsRuntimeView({
   border = true,
@@ -421,23 +373,8 @@ export function DescriptionsRuntimeView({
     return (gridWidth - columnGap * (columns - 1)) / columns;
   }, [columnGap, columns, gridWidth]);
 
-  const resolvedItems = useMemo<ResolvedDescriptionsItem[]>(() => {
+  const resolvedItems = useMemo<ResolvedDescriptionsField[]>(() => {
     return items.map((item) => {
-      if (isGroup(item)) {
-        const groupColumns = item.columns ?? columns;
-        return {
-          kind: "group",
-          title: item.title,
-          columns: groupColumns,
-          fields: item.fields.map((field) => {
-            const resolvedSpan =
-              field.span ??
-              resolveAutoSpan(resolveDescriptionAutoSpanValue(field.value), columnWidth, groupColumns, columnGap);
-            return renderValue(field, resolvedSpan);
-          }),
-        };
-      }
-
       const resolvedSpan =
         item.span ??
         resolveAutoSpan(resolveDescriptionAutoSpanValue(item.value), columnWidth, columns, columnGap);

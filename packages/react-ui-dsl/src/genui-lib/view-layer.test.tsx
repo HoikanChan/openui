@@ -6,7 +6,6 @@ import { resolveButtonAppearance } from "./Button";
 import { DescriptionsView, formatDescriptionValue, resolveAutoSpan } from "./Descriptions";
 import { formatCell } from "./Table";
 import { resolveTagAppearance, TagView } from "./Tag";
-import { buildTimelineItems } from "./TimeLine";
 
 describe("react-ui-dsl view layer helpers", () => {
   it("maps DSL button props to antd button appearance", () => {
@@ -73,25 +72,6 @@ describe("react-ui-dsl view layer helpers", () => {
       xAxis: { type: "category" },
       yAxis: { type: "value" },
     });
-  });
-
-  it("builds timeline items with rendered children", () => {
-    const items = buildTimelineItems(
-      [
-        {
-          iconType: "success",
-          content: {
-            title: "Deployed",
-            children: ["ok"],
-          },
-        },
-      ],
-      (value) => <span data-value={String(value)}>{String(value)}</span>,
-    );
-
-    expect(items).toHaveLength(1);
-    expect(items[0].color).toBe("green");
-    expect(items[0].children.props.children[0].props.children).toBe("Deployed");
   });
 
   it("maps DSL tag props to deterministic antd appearance", () => {
@@ -163,7 +143,7 @@ describe("react-ui-dsl view layer helpers", () => {
 
     expect(element.props["data-descriptions-variant"]).toBe("plain");
     const content = element.props.children[1];
-    expect(content.props.children[0].props["data-descriptions-layout"]).toBe("plain");
+    expect(content.props.children.props["data-descriptions-layout"]).toBe("plain");
   });
 
   it("renders consecutive top-level fields into a shared grid section", () => {
