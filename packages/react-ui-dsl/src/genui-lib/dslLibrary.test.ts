@@ -51,13 +51,9 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(propsOf("Table")).not.toHaveProperty("style");
     expect(Object.keys(propsOf("Tag"))).toEqual(["text", "variant", "icon", "size"]);
 
-    expect(Object.keys(propsOf("Descriptions"))).toEqual([
-      "items",
-      "title",
-      "extra",
-      "columns",
-      "border",
-    ]);
+    expect(Object.keys(propsOf("Descriptions"))).toEqual(["items", "border"]);
+
+    expect(Object.keys(propsOf("SelectItem"))).toEqual(["label", "value"]);
 
     expect(Object.keys(propsOf("DescGroup"))).toEqual(["title", "fields", "columns"]);
 
@@ -157,11 +153,11 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
 
     expect(descriptions.properties).toMatchObject({
       items: expect.anything(),
-      title: expect.anything(),
-      extra: expect.anything(),
-      columns: expect.anything(),
       border: expect.anything(),
     });
+    expect(descriptions.properties).not.toHaveProperty("title");
+    expect(descriptions.properties).not.toHaveProperty("extra");
+    expect(descriptions.properties).not.toHaveProperty("columns");
     expect(descGroup.properties).toMatchObject({
       title: expect.anything(),
       fields: expect.anything(),

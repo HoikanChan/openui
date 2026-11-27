@@ -10,14 +10,6 @@ export const Input = defineComponent({
   props: InputSchema,
   description: "Single-line text input control",
   component: ({ props }: ComponentRenderProps<z.infer<typeof InputSchema>>) => (
-    <InputView
-      defaultValue={props.defaultValue}
-      disabled={props.disabled}
-      hasError={props.hasError}
-      maxLength={props.maxLength}
-      placeholder={props.placeholder}
-      readOnly={props.readOnly}
-      size={props.size}
-    />
+    <InputView placeholder={props.placeholder} type={props.type} value={props.value} />
   ),
 });

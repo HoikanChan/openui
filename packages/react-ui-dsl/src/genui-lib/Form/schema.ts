@@ -1,15 +1,14 @@
 import { z } from "zod";
+import { Buttons } from "../Buttons";
+import { FormControl } from "../FormControl";
 
 export const FormSchema = z.object({
-  fields: z.array(
-    z.object({
-      label: z.string(),
-      name: z.string(),
-      rules: z.array(z.object({ required: z.boolean() })).optional(),
-      component: z.any(),
-    }),
-  ),
+  name: z.string(),
+  buttons: Buttons.ref,
+  fields: z.array(FormControl.ref).optional(),
   layout: z.enum(["vertical", "inline", "horizontal"]).optional(),
   labelAlign: z.enum(["left", "right"]).optional(),
   initialValues: z.record(z.string(), z.any()).optional(),
 });
+
+export type FormProps = z.infer<typeof FormSchema>;

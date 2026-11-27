@@ -1,10 +1,15 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import type { SelectProps } from "../schema";
 
-export type SelectOption = NonNullable<SelectProps["items"]>[number];
+export type SelectOption = {
+  label: string;
+  value: string;
+};
 
-export type SelectViewProps = Pick<SelectProps, "items" | "placeholder" | "value"> & {
+export type SelectViewProps = {
+  items?: SelectOption[];
+  placeholder?: string;
+  value?: string;
   style?: CSSProperties;
 };

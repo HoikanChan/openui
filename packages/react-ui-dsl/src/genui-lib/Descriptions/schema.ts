@@ -18,10 +18,7 @@ export const DescGroupSchema = z
 
 export const DescriptionsSchema = z
   .object({
-    items: z.array(z.union([DescFieldSchema, DescGroupSchema])),
-    title: z.string().optional(),
-    extra: z.any().optional(),
-    columns: z.number().int().positive().optional(),
+    items: z.array(DescFieldSchema),
     border: z.boolean().optional(),
   })
   .strict();

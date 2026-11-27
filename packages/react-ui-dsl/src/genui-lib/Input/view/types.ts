@@ -2,15 +2,11 @@
 
 import type { CSSProperties } from "react";
 
-export type InputSize = "small" | "medium" | "large";
+export type InputType = "text" | "email" | "password" | "number" | "url";
 
 export type InputViewProps = {
   placeholder?: string;
-  defaultValue?: string | number;
-  disabled?: boolean;
-  readOnly?: boolean;
-  size?: InputSize;
-  hasError?: boolean;
-  maxLength?: number;
+  type?: InputType;
+  value?: string;
   style?: CSSProperties;
 };

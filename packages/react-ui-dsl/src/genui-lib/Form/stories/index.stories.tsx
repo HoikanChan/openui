@@ -1,23 +1,36 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Input, InputNumber } from "antd";
+import { ButtonsView } from "../../Buttons/view";
+import { FormControlView } from "../../FormControl/view";
 import { InputView } from "../../Input/view";
 import { FormView, type FormViewProps } from "../view";
 
-type FormStoryProps = Omit<FormViewProps, "fields">;
+type FormStoryProps = Omit<FormViewProps, "buttons" | "fields">;
 
 function FormStoryExample(props: FormStoryProps) {
   return (
     <FormView
       {...props}
-      fields={[
-        { component: <Input placeholder="Project name" />, label: "Project", name: "project" },
-        {
-          component: <InputNumber min={0} style={{ width: "100%" }} />,
-          label: "Budget",
-          name: "budget",
-          required: true,
-        },
-      ]}
+      buttons={
+        <ButtonsView direction="row">
+          <button type="submit">Save</button>
+          <button type="reset">Cancel</button>
+        </ButtonsView>
+      }
+      fields={
+        <>
+          <FormControlView
+            input={<InputView placeholder="Full name" />}
+            label="Name"
+            name="name"
+            required
+          />
+          <FormControlView
+            input={<InputView placeholder="name@example.com" type="email" />}
+            label="Email"
+            name="email"
+          />
+        </>
+      }
     />
   );
 }
@@ -27,11 +40,12 @@ const meta = {
   component: FormStoryExample,
   args: {
     initialValues: {
-      budget: 120000,
-      project: "react-ui-dsl",
+      email: "alice@example.com",
+      name: "Alice",
     },
     labelAlign: "left",
     layout: "vertical",
+    name: "profile-form",
   },
   argTypes: {
     layout: {
@@ -53,30 +67,3 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
-
-export const WithDSLInputs: Story = {
-  render: (args) => (
-    <FormView
-      {...args}
-      fields={[
-        {
-          component: <InputView placeholder="Full name" />,
-          label: "Name",
-          name: "name",
-          required: true,
-        },
-        {
-          component: <InputView placeholder="name@example.com" />,
-          label: "Email",
-          name: "email",
-        },
-      ]}
-    />
-  ),
-  args: {
-    initialValues: {
-      email: "alice@example.com",
-      name: "Alice",
-    },
-  },
-};

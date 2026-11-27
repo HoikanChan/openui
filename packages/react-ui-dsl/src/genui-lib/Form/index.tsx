@@ -8,18 +8,15 @@ import { FormView } from "./view";
 export const Form = defineComponent({
   name: "Form",
   props: FormSchema,
-  description: "Form with inline field definitions",
+  description: "Form container with fields and explicit action buttons",
   component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof FormSchema>>) => (
     <FormView
-      fields={props.fields.map((field: z.infer<typeof FormSchema>["fields"][number]) => ({
-        component: renderNode(field.component),
-        label: field.label,
-        name: field.name,
-        required: field.rules?.some((rule: { required: boolean }) => rule.required),
-      }))}
+      buttons={renderNode(props.buttons)}
+      fields={props.fields ? renderNode(props.fields) : undefined}
       initialValues={props.initialValues}
       labelAlign={props.labelAlign}
       layout={props.layout}
+      name={props.name}
     />
   ),
 });

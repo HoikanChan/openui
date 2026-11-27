@@ -10,6 +10,10 @@ export const Select = defineComponent({
   props: SelectSchema,
   description: "Dropdown select with named items",
   component: ({ props }: ComponentRenderProps<z.infer<typeof SelectSchema>>) => (
-    <SelectView items={props.items} placeholder={props.placeholder} value={props.value} />
+    <SelectView
+      items={props.items?.map((item) => item.props)}
+      placeholder={props.placeholder}
+      value={props.value}
+    />
   ),
 });

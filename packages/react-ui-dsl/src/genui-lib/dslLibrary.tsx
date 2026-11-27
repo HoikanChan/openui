@@ -41,6 +41,7 @@ import { RadioGroup } from "./RadioGroup";
 import { RadioItem } from "./RadioItem";
 import { Separator } from "./Separator";
 import { Select } from "./Select";
+import { SelectItem } from "./SelectItem";
 import { Slider } from "./Slider";
 import { Steps, StepsItem } from "./Steps";
 import { SwitchGroup } from "./SwitchGroup";
@@ -308,6 +309,7 @@ export const dslLibrary: Library = createLibrary({
     Buttons,
     Input,
     Select,
+    SelectItem,
     Separator,
     Tag,
     TagBlock,

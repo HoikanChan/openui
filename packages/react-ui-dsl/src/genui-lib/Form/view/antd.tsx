@@ -4,23 +4,19 @@ import { Form as AntForm } from "antd";
 import type { FormViewProps } from "./types";
 
 export function FormView({
+  buttons,
   fields,
   initialValues,
   labelAlign,
   layout = "vertical",
+  name,
 }: FormViewProps) {
   return (
-    <AntForm initialValues={initialValues} labelAlign={labelAlign} layout={layout}>
-      {fields.map((field) => (
-        <AntForm.Item
-          key={field.name}
-          label={field.label}
-          name={field.name}
-          rules={field.required ? [{ required: true }] : undefined}
-        >
-          {field.component}
-        </AntForm.Item>
-      ))}
+    <AntForm initialValues={initialValues} labelAlign={labelAlign} layout={layout} name={name}>
+      {fields}
+      <div data-form-actions style={{ display: "flex", gap: 8, marginTop: 16 }}>
+        {buttons}
+      </div>
     </AntForm>
   );
 }

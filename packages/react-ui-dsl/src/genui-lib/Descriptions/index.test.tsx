@@ -10,7 +10,7 @@ import { resolveAutoSpan, resolveDescriptionFieldValue } from "./index";
 describe("react-ui-dsl Descriptions schema", () => {
   it("parses descriptions with the optional border toggle", () => {
     const parser = createParser(dslLibrary.toJSONSchema());
-    const result = parser.parse(`root = Descriptions([nameField], "Profile", null, 3, false)
+    const result = parser.parse(`root = Descriptions([nameField], false)
 nameField = DescField("Name", "Alice")`);
 
     expect(result.meta.errors).toHaveLength(0);
@@ -18,13 +18,11 @@ nameField = DescField("Name", "Alice")`);
     expect(result.root?.props.border).toBe(false);
   });
 
-  it("parses descriptions with mixed fields and groups", () => {
+  it("parses descriptions with field items", () => {
     const parser = createParser(dslLibrary.toJSONSchema());
-    const result = parser.parse(`root = Descriptions([nameField, accountGroup], "Profile", Tag("Ready", "success"), 3)
+    const result = parser.parse(`root = Descriptions([nameField, emailField])
 nameField = DescField("Name", "Alice")
-accountGroup = DescGroup("Account", [emailField, statusField], 2)
-emailField = DescField("Email", "alice@example.com")
-statusField = DescField("Status", Tag("Active", "success"))`);
+emailField = DescField("Email", "alice@example.com")`);
 
     expect(result.meta.errors).toHaveLength(0);
     expect(result.root?.typeName).toBe("Descriptions");
@@ -34,8 +32,8 @@ statusField = DescField("Status", Tag("Active", "success"))`);
       props: { label: "Name", value: "Alice" },
     });
     expect(result.root?.props.items[1]).toMatchObject({
-      typeName: "DescGroup",
-      props: { title: "Account", columns: 2 },
+      typeName: "DescField",
+      props: { label: "Email", value: "alice@example.com" },
     });
   });
 
@@ -62,15 +60,13 @@ statusField = DescField("Status", Tag("Active", "success"))`);
     expect(result.resolvedSpan).toBe(1);
   });
 
-  it("renders grouped field nodes with their labels and values", () => {
-    const dsl = `root = Descriptions([accountGroup], "Profile")
-accountGroup = DescGroup("Account", [statusField, roleField], 2)
+  it("renders field nodes with their labels and values", () => {
+    const dsl = `root = Descriptions([statusField, roleField])
 statusField = DescField("Status", Tag("Active", "success"))
 roleField = DescField("Role", "Administrator")`;
 
     const { container } = render(<Renderer library={dslLibrary} response={dsl} dataModel={{}} />);
 
-    expect(container.innerHTML).toContain("Account");
     expect(container.innerHTML).toContain("Status");
     expect(container.innerHTML).toContain("Active");
     expect(container.innerHTML).toContain("Role");
@@ -79,7 +75,7 @@ roleField = DescField("Role", "Administrator")`;
 
   it("renders formatted field values directly from @Format* expressions", () => {
     const createdAt = "2026-01-02T03:04:05.000Z";
-    const dsl = `root = Descriptions([joinedField], "Profile")
+    const dsl = `root = Descriptions([joinedField])
 joinedField = DescField("Joined", @FormatDate(data.user.createdAt, "dateTime"))`;
 
     const { container } = render(
@@ -102,7 +98,7 @@ joinedField = DescField("Joined", @FormatDate(data.user.createdAt, "dateTime"))`
   it("rejects the removed DescField format argument", () => {
     const parser = createParser(dslLibrary.toJSONSchema());
     const result = parser.parse(
-      `root = Descriptions([joinedField], "Profile")
+      `root = Descriptions([joinedField])
 joinedField = DescField("Joined", "2026-01-02T03:04:05.000Z", 2, "dateTime")`,
     );
 

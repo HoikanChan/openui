@@ -1,13 +1,8 @@
 import { z } from "zod";
-
-/** Mirrors the contract SelectItem shape; SelectItem registration is owned elsewhere. */
-const SelectItemOptionSchema = z.object({
-  label: z.string(),
-  value: z.string(),
-});
+import { SelectItem } from "../SelectItem";
 
 export const SelectSchema = z.object({
-  items: z.array(SelectItemOptionSchema).optional(),
+  items: z.array(SelectItem.ref).optional(),
   placeholder: z.string().optional(),
   value: z.string().optional(),
 });

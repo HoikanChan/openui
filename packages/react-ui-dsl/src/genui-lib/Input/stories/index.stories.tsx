@@ -6,11 +6,12 @@ const meta = {
   component: InputView,
   args: {
     placeholder: "Enter text",
+    type: "text",
   },
   argTypes: {
-    size: {
+    type: {
       control: "select",
-      options: ["small", "medium", "large"],
+      options: ["text", "email", "password", "number", "url"],
     },
     style: {
       control: "object",
@@ -24,46 +25,21 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
-export const Sizes: Story = {
+export const Types: Story = {
   render: (args) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <InputView {...args} size="small" placeholder="Small" />
-      <InputView {...args} size="medium" placeholder="Medium" />
-      <InputView {...args} size="large" placeholder="Large" />
+      <InputView {...args} placeholder="Text" type="text" />
+      <InputView {...args} placeholder="Email" type="email" />
+      <InputView {...args} placeholder="Password" type="password" />
+      <InputView {...args} placeholder="Number" type="number" />
+      <InputView {...args} placeholder="URL" type="url" />
     </div>
   ),
 };
 
-export const ErrorState: Story = {
+export const WithValue: Story = {
   args: {
-    hasError: true,
-    placeholder: "Invalid value",
-  },
-};
-
-export const Disabled: Story = {
-  args: {
-    disabled: true,
-    placeholder: "Disabled input",
-  },
-};
-
-export const ReadOnly: Story = {
-  args: {
-    readOnly: true,
-    defaultValue: "Read-only value",
-  },
-};
-
-export const WithMaxLength: Story = {
-  args: {
-    maxLength: 6,
-    placeholder: "0",
-  },
-};
-
-export const WithDefaultValue: Story = {
-  args: {
-    defaultValue: "Initial text",
+    placeholder: "Controlled value",
+    value: "Initial text",
   },
 };
