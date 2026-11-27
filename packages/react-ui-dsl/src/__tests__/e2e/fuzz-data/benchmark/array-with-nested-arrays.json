@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "prompt": "显示各设备下的接口列表",
+    "taxonomy": ["named-list", "record-with-array-field", "none", "full", "raw-only"],
+    "evalHints": [
+      "each device record has a nested interfaces array — must render the nested arrays, not flatten them",
+      "must show the relationship between device and its interfaces",
+      "interface status should be visually distinguished",
+      "must not ignore the nested interfaces field"
+    ]
+  },
+  "data": {
+    "devices": [
+      {
+        "deviceId": "d-001",
+        "name": "GZ-Core-01",
+        "interfaces": [
+          { "ifName": "GE0/0/1", "status": "up", "speed": "1G" },
+          { "ifName": "GE0/0/2", "status": "down", "speed": "1G" },
+          { "ifName": "10GE1/0/1", "status": "up", "speed": "10G" }
+        ]
+      },
+      {
+        "deviceId": "d-002",
+        "name": "GZ-Core-02",
+        "interfaces": [
+          { "ifName": "GE0/0/1", "status": "up", "speed": "1G" },
+          { "ifName": "10GE1/0/1", "status": "up", "speed": "10G" }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "prompt": "显示本月与上月核心指标对比",
+    "taxonomy": ["flat-object", "delta-values", "none", "full", "delta-comparison"],
+    "evalHints": [
+      "each metric has current and previous values — must render the comparison, not just current values",
+      "delta = current - previous — should be shown with positive/negative visual indicator",
+      "percent change should be derived and displayed where applicable",
+      "must not render this as a plain key-value list ignoring the comparison dimension"
+    ]
+  },
+  "data": {
+    "period": "2024-06",
+    "comparedTo": "2024-05",
+    "totalAlarms": { "current": 347, "previous": 412, "delta": -65 },
+    "criticalAlarms": { "current": 28, "previous": 35, "delta": -7 },
+    "avgResolutionHours": { "current": 4.2, "previous": 5.8, "delta": -1.6 },
+    "deviceAvailability": { "current": 0.9987, "previous": 0.9971, "delta": 0.0016 },
+    "totalIncidents": { "current": 12, "previous": 9, "delta": 3 }
+  }
+}

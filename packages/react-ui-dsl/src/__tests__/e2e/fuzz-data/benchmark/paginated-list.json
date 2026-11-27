@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "prompt": "显示当前告警分页列表",
+    "taxonomy": ["paginated-envelope", "homogeneous", "epoch-ms", "integer-enum", "none", "sparse-nullable", "raw-only"],
+    "evalHints": [
+      "total/pageSize/pageIndex are pagination metadata — should display context such as 'X total records'",
+      "alarmTime is epoch milliseconds — must be formatted as a human-readable datetime",
+      "alarmLevel is integer enum: 1=critical, 2=major, 3=minor, 4=warning — must be displayed as label not raw number",
+      "clearTime may be null (alarm not yet cleared) — must handle null gracefully",
+      "acknowledged is boolean — should be visually distinguished"
+    ]
+  },
+  "data": {
+    "total": 347,
+    "pageSize": 20,
+    "pageIndex": 1,
+    "list": [
+      { "alarmId": "ALM-20240601-0001", "neResId": "76cc6c2c-a801-40d5-8b52-3e8a86158a83", "neName": "GZ-Core-01", "alarmName": "Link Down", "alarmLevel": 1, "alarmTime": 1717200000000, "clearTime": null, "acknowledged": false },
+      { "alarmId": "ALM-20240601-0002", "neResId": "86dd7d3d-b912-51e6-b827-397fe5ce9b94", "neName": "GZ-Core-02", "alarmName": "High CPU Usage", "alarmLevel": 2, "alarmTime": 1717196400000, "clearTime": 1717200000000, "acknowledged": true },
+      { "alarmId": "ALM-20240601-0003", "neResId": "96ee8e4e-c023-62f7-c938-408af6df0ca5", "neName": "GZ-Access-01", "alarmName": "Interface Error Rate High", "alarmLevel": 3, "alarmTime": 1717192800000, "clearTime": null, "acknowledged": false },
+      { "alarmId": "ALM-20240601-0004", "neResId": "76cc6c2c-a801-40d5-8b52-3e8a86158a83", "neName": "GZ-Core-01", "alarmName": "Memory Usage High", "alarmLevel": 2, "alarmTime": 1717189200000, "clearTime": 1717196400000, "acknowledged": true }
+    ]
+  }
+}

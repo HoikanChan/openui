@@ -104,3 +104,80 @@ describe("object map builtins", () => {
     expect(keys).toEqual(["svc-a", "svc-b"]);
   });
 });
+
+describe("Flatten builtin", () => {
+  it("flattens a nested array one level", () => {
+    const flattenFn = BUILTINS.Flatten.fn;
+
+    expect(
+      flattenFn(runtime, [
+        [1, 2],
+        [3, 4],
+      ]),
+    ).toEqual([1, 2, 3, 4]);
+    expect(flattenFn(runtime, [["a"], ["b", "c"], ["d"]])).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("keeps non-array elements and skips null holes", () => {
+    const flattenFn = BUILTINS.Flatten.fn;
+
+    expect(flattenFn(runtime, [[1], 2, null, [3]])).toEqual([1, 2, 3]);
+  });
+
+  it("returns [] for null and non-array input", () => {
+    const flattenFn = BUILTINS.Flatten.fn;
+
+    expect(flattenFn(runtime, null)).toEqual([]);
+    expect(flattenFn(runtime, "bad")).toEqual([]);
+    expect(flattenFn(runtime, { a: 1 })).toEqual([]);
+  });
+
+  it("evaluates through the shared runtime dispatcher", () => {
+    const result = evaluateBuiltin("Flatten", [
+      {
+        k: "Arr",
+        els: [
+          { k: "Arr", els: [{ k: "Num", v: 1 }, { k: "Num", v: 2 }] },
+          { k: "Arr", els: [{ k: "Num", v: 3 }] },
+        ],
+      },
+    ]);
+
+    expect(result).toEqual([1, 2, 3]);
+  });
+});
+
+describe("MergeObject builtin", () => {
+  it("merges objects with later objects overriding earlier ones", () => {
+    const mergeFn = BUILTINS.MergeObject.fn;
+
+    expect(mergeFn(runtime, { a: 1, b: 2 }, { b: 3, c: 4 })).toEqual({ a: 1, b: 3, c: 4 });
+  });
+
+  it("skips non-object arguments and returns {} when none are objects", () => {
+    const mergeFn = BUILTINS.MergeObject.fn;
+
+    expect(mergeFn(runtime, { a: 1 }, "bad", [1, 2], null, 42)).toEqual({ a: 1 });
+    expect(mergeFn(runtime)).toEqual({});
+    expect(mergeFn(runtime, "bad", [1])).toEqual({});
+  });
+
+  it("supports a variadic tail of objects", () => {
+    const mergeFn = BUILTINS.MergeObject.fn;
+
+    expect(mergeFn(runtime, { a: 1 }, { b: 2 }, { c: 3 }, { a: 9 })).toEqual({
+      a: 9,
+      b: 2,
+      c: 3,
+    });
+  });
+
+  it("evaluates through the shared runtime dispatcher", () => {
+    const result = evaluateBuiltin("MergeObject", [
+      { k: "Obj", entries: [["groupName", { k: "Str", v: "MLAG-A" }]] },
+      { k: "Obj", entries: [["member", { k: "Str", v: "SW-1" }]] },
+    ]);
+
+    expect(result).toEqual({ groupName: "MLAG-A", member: "SW-1" });
+  });
+});

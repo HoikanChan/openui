@@ -1,0 +1,18 @@
+"use client";
+
+import { Skeleton, Tabs } from "antd";
+import type { TabViewProps } from "./types";
+
+export function TabView({ items, activeTab, onTabChange }: TabViewProps) {
+  return (
+    <Tabs
+      activeKey={activeTab}
+      onChange={onTabChange}
+      items={items.map((item) => ({
+        key: item.value,
+        label: item.label,
+        children: item.loading ? <Skeleton active paragraph={{ rows: 3 }} /> : item.children,
+      }))}
+    />
+  );
+}

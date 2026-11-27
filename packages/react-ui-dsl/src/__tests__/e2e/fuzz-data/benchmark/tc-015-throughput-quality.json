@@ -1,0 +1,197 @@
+{
+  "meta": {
+    "prompt": "查询区域吞吐质量指标\n\nAPI Schema:\n{\n  \"apiId\": \"查询区域吞吐质量指标\",\n  \"apiName\": \"查询区域吞吐质量指标\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/campuswlanqualityservice/v1/intent/common/throughput\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"id\",\n      \"description\": \"区域id\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"description\": \"区域层级\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"开始时间\"\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"description\": \"租户id\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"charts\",\n      \"description\": \"charts\",\n      \"childParams\": [\n        {\n          \"paramName\": \"charts\",\n          \"description\": \"echart option\",\n          \"childParams\": [\n            {\n              \"paramName\": \"en\",\n              \"description\": \"英文echart option\"\n            },\n            {\n              \"paramName\": \"zh\",\n              \"description\": \"中文echart option\"\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"data\",\n      \"description\": \"data\",\n      \"childParams\": [\n        {\n          \"paramName\": \"data\",\n          \"description\": \"键值对模型\",\n          \"childParams\": [\n            {\n              \"paramName\": \"key\",\n              \"description\": \"列举值 accessSuccessRate,roam,accessConsume,capacity,coverage,throughput\"\n            },\n            {\n              \"paramName\": \"value\",\n              \"description\": \"质量评估数据模型\",\n              \"childParams\": [\n                {\n                  \"paramName\": \"rootValue\",\n                  \"description\": \"rootValue\"\n                },\n                {\n                  \"paramName\": \"rank\",\n                  \"description\": \"rank\"\n                },\n                {\n                  \"paramName\": \"rankList\",\n                  \"description\": \"rankList\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"rankList\",\n                      \"description\": \"质量评估排名数据模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"regionId\",\n                          \"description\": \"regionId\"\n                        },\n                        {\n                          \"paramName\": \"regionName\",\n                          \"description\": \"regionName\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"description\": \"value\"\n                        }\n                      ]\n                    }\n                  ]\n                },\n                {\n                  \"paramName\": \"subValues\",\n                  \"description\": \"subValues\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"subValues\",\n                      \"description\": \"键值对模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"key\",\n                          \"description\": \"key\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"description\": \"value\"\n                        }\n                      ]\n                    }\n                  ]\n                },\n                {\n                  \"paramName\": \"baseline\",\n                  \"description\": \"baseline\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"baseline\",\n                      \"description\": \"质量评估趋势基本数据模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"timestamp\",\n                          \"description\": \"timestamp\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"description\": \"value\"\n                        }\n                      ]\n                    }\n                  ]\n                },\n                {\n                  \"paramName\": \"essential\",\n                  \"description\": \"essential\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"essential\",\n                      \"description\": \"质量评估趋势基本数据模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"timestamp\",\n                          \"description\": \"timestamp\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"description\": \"value\"\n                        }\n                      ]\n                    }\n                  ]\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"detailUrl\",\n      \"description\": \"detailUrl\"\n    },\n    {\n      \"paramName\": \"errorAdvice\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDes\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDetail\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorReson\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"healthScore\",\n      \"description\": \"healthScore\"\n    },\n    {\n      \"paramName\": \"resultCode\",\n      \"description\": \"状态码\"\n    },\n    {\n      \"paramName\": \"summary\",\n      \"description\": \"总结\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "nested-object",
+      "polymorphic",
+      "epoch-ms, composite-id",
+      "multi-entity-interleaved",
+      "sparse-nullable",
+      "stats-plus-rows"
+    ],
+    "evalHints": [
+      "折线图/面积图（趋势数据）"
+    ]
+  },
+  "data": {
+    "success": {
+      "resultCode": 200,
+      "errorDes": "排查设备故障",
+      "errorReson": "Successful.",
+      "errorDetail": null,
+      "errorAdvice": null,
+      "detailUrl": "/dashboard/throughput-details",
+      "healthScore": 87.5,
+      "data": [
+        {
+          "key": "throughput",
+          "value": {
+            "rootValue": 85.2,
+            "rank": 1,
+            "rankList": [
+              {
+                "regionId": "region-1",
+                "regionName": "区域A",
+                "value": 92.1
+              },
+              {
+                "regionId": "region-2",
+                "regionName": "区域B",
+                "value": 85.2
+              },
+              {
+                "regionId": "region-3",
+                "regionName": "区域C",
+                "value": 78.9
+              }
+            ],
+            "subValues": [
+              {
+                "key": "bandwidth_2.4g",
+                "value": "120.5 MB/s"
+              },
+              {
+                "key": "bandwidth_5g",
+                "value": "350.8 MB/s"
+              }
+            ],
+            "baseline": [
+              {
+                "timestamp": 1640995200000,
+                "value": 82
+              },
+              {
+                "timestamp": 1641001200000,
+                "value": 83.5
+              }
+            ],
+            "essential": [
+              {
+                "timestamp": 1640995200000,
+                "value": 85.2
+              },
+              {
+                "timestamp": 1641001200000,
+                "value": 92.1
+              }
+            ]
+          }
+        },
+        {
+          "key": "congestion",
+          "value": {
+            "rootValue": 15.8,
+            "rank": 2,
+            "rankList": [
+              {
+                "regionId": "region-1",
+                "regionName": "区域A",
+                "value": 10.2
+              },
+              {
+                "regionId": "region-2",
+                "regionName": "区域B",
+                "value": 15.8
+              }
+            ],
+            "subValues": [
+              {
+                "key": "queue_usage",
+                "value": "12.3 MB/s"
+              }
+            ],
+            "baseline": [
+              {
+                "timestamp": 1640995200000,
+                "value": 18.5
+              }
+            ],
+            "essential": [
+              {
+                "timestamp": 1640995200000,
+                "value": 15.8
+              }
+            ]
+          }
+        },
+        {
+          "key": "nonfiveg",
+          "value": {
+            "rootValue": 65.2,
+            "rank": 3,
+            "subValues": [
+              {
+                "key": "user_count_2.4g",
+                "value": "156"
+              },
+              {
+                "key": "user_count_5g",
+                "value": "89"
+              }
+            ]
+          }
+        }
+      ],
+      "charts": [
+        {
+          "en": "{\"title\": {\"text\": \"Throughput Trend\"},...}",
+          "zh": "{\"title\": {\"text\": \"吞吐量趋势\"},...}"
+        },
+        {
+          "en": "{\"title\": {\"text\": \"Bandwidth Distribution\"},...}",
+          "zh": "{\"title\": {\"text\": \"带宽分布\"},...}"
+        }
+      ],
+      "summary": "整体吞吐量表现良好，2.4G频段占比偏高，建议适当增大5G频段用户接入比例。"
+    },
+    "error": {
+      "resultCode": 400,
+      "errorDes": "Incorrect Parameter",
+      "errorReson": "参数错误",
+      "errorDetail": "Invalid time range specified",
+      "errorAdvice": "Please ensure startTime is less than endTime"
+    },
+    "unauthorized": {
+      "resultCode": 401,
+      "errorDes": "Not Certified",
+      "errorReson": "Not Certified",
+      "errorDetail": null,
+      "errorAdvice": null
+    },
+    "forbidden": {
+      "resultCode": 403,
+      "errorDes": "URL Authentication",
+      "errorReson": "URL鉴权",
+      "errorDetail": null,
+      "errorAdvice": null
+    },
+    "notFound": {
+      "resultCode": 404,
+      "errorDes": "Rest Interface is not found",
+      "errorReson": "rest接口没找到",
+      "errorDetail": null,
+      "errorAdvice": null
+    },
+    "serverError": {
+      "resultCode": 500,
+      "errorDes": "Service Exception",
+      "errorReson": "默认ServiceException异常码，应用内部错误",
+      "errorDetail": "Internal server error occurred",
+      "errorAdvice": "Please contact system administrator"
+    },
+    "gatewayError": {
+      "resultCode": 502,
+      "errorDes": "Bad Gateway",
+      "errorReson": "Bad Gateway",
+      "errorDetail": null,
+      "errorAdvice": null
+    },
+    "serviceUnavailable": {
+      "resultCode": 503,
+      "errorDes": "Service Available",
+      "errorReson": "服务不可用",
+      "errorDetail": null,
+      "errorAdvice": null
+    }
+  }
+}

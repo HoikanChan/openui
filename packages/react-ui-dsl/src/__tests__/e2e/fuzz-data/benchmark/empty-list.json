@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "prompt": "显示当前活跃告警列表",
+    "taxonomy": ["named-list", "homogeneous", "none", "empty", "raw-only"],
+    "evalHints": [
+      "alarms is an empty array — must render an empty state message, not just a blank space",
+      "must not crash or render nothing when the list is empty",
+      "empty state should communicate to the user that there are no current alarms",
+      "must not hide the component entirely — the empty state UI is the output"
+    ]
+  },
+  "data": {
+    "alarms": []
+  }
+}

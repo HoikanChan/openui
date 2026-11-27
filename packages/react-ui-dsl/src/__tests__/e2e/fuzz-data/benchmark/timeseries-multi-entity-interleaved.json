@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "prompt": "显示多台服务器 CPU 使用率时序对比",
+    "taxonomy": ["named-list", "homogeneous", "epoch-ms", "multi-entity-interleaved", "full", "raw-only"],
+    "evalHints": [
+      "records from multiple servers are interleaved in one array — must derive per-server series using the server field",
+      "must render as a multi-series line chart, not a flat table",
+      "timestamp is epoch milliseconds — must format on time axis",
+      "must not collapse all servers into a single series"
+    ]
+  },
+  "data": {
+    "samples": [
+      { "timestamp": 1717190400000, "server": "prod-app-01", "cpuPercent": 42.1 },
+      { "timestamp": 1717190400000, "server": "prod-app-02", "cpuPercent": 38.7 },
+      { "timestamp": 1717194000000, "server": "prod-app-01", "cpuPercent": 67.8 },
+      { "timestamp": 1717194000000, "server": "prod-app-02", "cpuPercent": 45.2 },
+      { "timestamp": 1717197600000, "server": "prod-app-01", "cpuPercent": 55.4 },
+      { "timestamp": 1717197600000, "server": "prod-app-02", "cpuPercent": 61.9 },
+      { "timestamp": 1717201200000, "server": "prod-app-01", "cpuPercent": 72.3 },
+      { "timestamp": 1717201200000, "server": "prod-app-02", "cpuPercent": 58.1 }
+    ]
+  }
+}

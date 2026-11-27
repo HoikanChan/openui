@@ -1,0 +1,26 @@
+/*
+ * Markdown view overrides — NOT auto-generated.
+ *
+ * Imported AFTER the vendor github-markdown.css so it wins on equal specificity
+ * via source order.
+ *
+ * The vendor file is the light-only github-markdown-light.css variant, so the
+ * theme is already pinned to light upstream — no palette overrides needed here.
+ * The one product deviation: the markdown should sit transparently on its host
+ * background, whereas upstream paints a solid white surface.
+ */
+.markdown-body {
+  background-color: transparent;
+  /*
+   * Consume the typography variables set by host wrappers — e.g. TextContent's
+   * size classes ("small" | "default" | "large" | …) set --openui-text-* on the
+   * parent element. The vendor file hardcodes font-size/line-height/color
+   * directly on .markdown-body, which masks any inherited value, so we re-read
+   * the variables here (after the vendor css) with the upstream values as
+   * fallbacks. Without this, the `size` prop has no visual effect.
+   */
+  color: var(--openui-text-color, #1f2328);
+  font-size: var(--openui-text-font-size, 16px);
+  font-weight: var(--openui-text-font-weight, 400);
+  line-height: var(--openui-text-line-height, 1.5);
+}

@@ -1,0 +1,298 @@
+{
+  "meta": {
+    "prompt": "查询应用指标\n\nAPI Schema:\n{\n  \"apiId\": \"查询应用指标\",\n  \"apiName\": \"查询应用指标\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/campusapplicationservice/v1/app/metric\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"X-Auth-Token\",\n      \"description\": \"鉴权token\"\n    },\n    {\n      \"paramName\": \"appName\",\n      \"description\": \"应用名称，必填\"\n    },\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"id\",\n      \"description\": \"站点id，选填，regionName和id、level可选，id和level必须同时有\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"description\": \"层级，选填，regionName和id、level可选，id和level必须同时有\"\n    },\n    {\n      \"paramName\": \"querySiteIdList\",\n      \"description\": \"站点id列表\",\n      \"childParams\": [\n        {\n          \"paramName\": \"querySiteIdList\",\n          \"description\": \"站点id\"\n        }\n      ]\n    },\n    {\n      \"paramName\": \"queryUserIpList\",\n      \"description\": \"用户Ip列表\",\n      \"childParams\": [\n        {\n          \"paramName\": \"queryUserIpList\",\n          \"description\": \"用户Ip\"\n        }\n      ]\n    },\n    {\n      \"paramName\": \"regionName\",\n      \"description\": \"站点名称，选填\"\n    },\n    {\n      \"paramName\": \"sortColumn\",\n      \"description\": \"排序列，选填，默认按流量排序，packetLoss/latency/traffic\"\n    },\n    {\n      \"paramName\": \"sortType\",\n      \"description\": \"排序方式，选填，默认按降序，asc/desc\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"开始时间\"\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"description\": \"租户Id\"\n    },\n    {\n      \"paramName\": \"topNumber\",\n      \"description\": \"TopN值，选填，默认5\"\n    },\n    {\n      \"paramName\": \"userIp\",\n      \"description\": \"用户IP，选填\"\n    },\n    {\n      \"paramName\": \"userMac\",\n      \"description\": \"用户mac，选填\"\n    },\n    {\n      \"paramName\": \"userName\",\n      \"description\": \"用户名，选填\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"cost_time\",\n      \"description\": \"查询时间。\"\n    },\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"error_code\",\n      \"description\": \"错误码。\"\n    },\n    {\n      \"paramName\": \"error_msg\",\n      \"description\": \"错误消息。\"\n    },\n    {\n      \"paramName\": \"regionName\",\n      \"description\": \"区域名称\"\n    },\n    {\n      \"paramName\": \"resultData\",\n      \"description\": \"结果集合\",\n      \"childParams\": [\n        {\n          \"paramName\": \"resultData\",\n          \"description\": \"应用指标统计\",\n          \"childParams\": [\n            {\n              \"paramName\": \"appId\",\n              \"description\": \"应用id\"\n            },\n            {\n              \"paramName\": \"appName\",\n              \"description\": \"应用名称\"\n            },\n            {\n              \"paramName\": \"userNum\",\n              \"description\": \"应用使用用户数\"\n            },\n            {\n              \"paramName\": \"totalTraffic\",\n              \"description\": \"总流量\"\n            },\n            {\n              \"paramName\": \"upwardTraffic\",\n              \"description\": \"上行流量\"\n            },\n            {\n              \"paramName\": \"downwardTraffic\",\n              \"description\": \"下行流量\"\n            },\n            {\n              \"paramName\": \"packetLossRate\",\n              \"description\": \"丢包率\"\n            },\n            {\n              \"paramName\": \"latency\",\n              \"description\": \"时延\"\n            },\n            {\n              \"paramName\": \"poorFlowCount\",\n              \"description\": \"异常流数\"\n            },\n            {\n              \"paramName\": \"poorFlowProportion\",\n              \"description\": \"异常流数占比\"\n            },\n            {\n              \"paramName\": \"qualityTrends\",\n              \"description\": \"丢包、时延、异常流趋势\",\n              \"childParams\": [\n                {\n                  \"paramName\": \"qualityTrends\",\n                  \"description\": \"丢包时延趋势\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"timestamp\",\n                      \"description\": \"时间戳\"\n                    },\n                    {\n                      \"paramName\": \"packetLossRate\",\n                      \"description\": \"丢包率\"\n                    },\n                    {\n                      \"paramName\": \"latency\",\n                      \"description\": \"时延(毫秒)\"\n                    },\n                    {\n                      \"paramName\": \"poorFlowCount\",\n                      \"description\": \"异常流数\"\n                    },\n                    {\n                      \"paramName\": \"poorFlowProportion\",\n                      \"description\": \"异常流占比\"\n                    },\n                    {\n                      \"paramName\": \"userNum\",\n                      \"description\": \"用户数\"\n                    }\n                  ]\n                }\n              ]\n            },\n            {\n              \"paramName\": \"userAppList\",\n              \"description\": \"用户的应用指标\",\n              \"childParams\": [\n                {\n                  \"paramName\": \"userAppList\",\n                  \"description\": \"用户的应用指标统计\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"userIp\",\n                      \"description\": \"用户IP\"\n                    },\n                    {\n                      \"paramName\": \"userName\",\n                      \"description\": \"用户名称\"\n                    },\n                    {\n                      \"paramName\": \"userMac\",\n                      \"description\": \"用户mac\"\n                    },\n                    {\n                      \"paramName\": \"totalTraffic\",\n                      \"description\": \"总流量\"\n                    },\n                    {\n                      \"paramName\": \"upwardTraffic\",\n                      \"description\": \"上行流量\"\n                    },\n                    {\n                      \"paramName\": \"downwardTraffic\",\n                      \"description\": \"下行流量\"\n                    },\n                    {\n                      \"paramName\": \"packetLossRate\",\n                      \"description\": \"丢包率\"\n                    },\n                    {\n                      \"paramName\": \"latency\",\n                      \"description\": \"时延\"\n                    },\n                    {\n                      \"paramName\": \"poorFlowCount\",\n                      \"description\": \"异常流数\"\n                    },\n                    {\n                      \"paramName\": \"poorFlowProportion\",\n                      \"description\": \"异常流数占比\"\n                    },\n                    {\n                      \"paramName\": \"qualityTrends\",\n                      \"description\": \"丢包、时延、异常流趋势\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"qualityTrends\",\n                          \"description\": \"丢包时延趋势\",\n                          \"childParams\": [\n                            {\n                              \"paramName\": \"timestamp\",\n                              \"description\": \"时间戳\"\n                            },\n                            {\n                              \"paramName\": \"packetLossRate\",\n                              \"description\": \"丢包率\"\n                            },\n                            {\n                              \"paramName\": \"latency\",\n                              \"description\": \"时延(毫秒)\"\n                            },\n                            {\n                              \"paramName\": \"poorFlowCount\",\n                              \"description\": \"异常流数\"\n                            },\n                            {\n                              \"paramName\": \"poorFlowProportion\",\n                              \"description\": \"异常流占比\"\n                            },\n                            {\n                              \"paramName\": \"userNum\",\n                              \"description\": \"用户数\"\n                            }\n                          ]\n                        }\n                      ]\n                    }\n                  ]\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"开始时间\"\n    },\n    {\n      \"paramName\": \"status_code\",\n      \"description\": \"状态码。\"\n    },\n    {\n      \"paramName\": \"totalNum\",\n      \"description\": \"总数\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "api-response-envelope",
+      "homogeneous",
+      "epoch-ms, byte-values, percentage-decimal",
+      "multi-entity-interleaved",
+      "full",
+      "raw-only"
+    ],
+    "evalHints": [
+      "表格（结构化列表数据）",
+      "折线图/面积图（趋势数据）"
+    ]
+  },
+  "data": {
+    "status_caode": 200,
+    "error_code": 0,
+    "error_msg": "Successful.",
+    "cost_time": 156,
+    "startTime": 1698372000000,
+    "endTime": 1698375600000,
+    "regionName": "Building_A_Floor_1",
+    "totalNum": 3,
+    "resultData": [
+      {
+        "appId": "app-1002",
+        "appName": "YouTube",
+        "userNum": 350,
+        "totalTraffic": 2147483648,
+        "upwardTraffic": 52428800,
+        "downwardTraffic": 2095050752,
+        "packetLossRate": 0.01,
+        "latency": 35.5,
+        "poorFlowCount": 12,
+        "poorFlowProportion": 0.03,
+        "qualityTrends": [
+          {
+            "timestamp": 1698372000000,
+            "packetLossRate": 0.01,
+            "latency": 30,
+            "poorFlowCount": 10,
+            "poorFlowProportion": 0.02,
+            "userNum": 300
+          },
+          {
+            "timestamp": 1698372600000,
+            "packetLossRate": 0.02,
+            "latency": 35.5,
+            "poorFlowCount": 12,
+            "poorFlowProportion": 0.03,
+            "userNum": 320
+          },
+          {
+            "timestamp": 1698373200000,
+            "packetLossRate": 0.01,
+            "latency": 32,
+            "poorFlowCount": 8,
+            "poorFlowProportion": 0.02,
+            "userNum": 340
+          },
+          {
+            "timestamp": 1698373800000,
+            "packetLossRate": 0,
+            "latency": 28,
+            "poorFlowCount": 5,
+            "poorFlowProportion": 0.01,
+            "userNum": 345
+          },
+          {
+            "timestamp": 1698374400000,
+            "packetLossRate": 0.01,
+            "latency": 31,
+            "poorFlowCount": 7,
+            "poorFlowProportion": 0.02,
+            "userNum": 350
+          }
+        ],
+        "userAppList": [
+          {
+            "userIp": "192.168.10.12",
+            "userName": "lisi",
+            "userMac": "AA-BB-CC-DD-EE-01",
+            "totalTraffic": 1073741824,
+            "upwardTraffic": 20971520,
+            "downwardTraffic": 1052770304,
+            "packetLossRate": 0,
+            "latency": 20,
+            "poorFlowCount": 0,
+            "poorFlowProportion": 0,
+            "qualityTrends": [
+              {
+                "timestamp": 1698372000000,
+                "packetLossRate": 0,
+                "latency": 20,
+                "poorFlowCount": 0,
+                "poorFlowProportion": 0,
+                "userNum": 1
+              }
+            ]
+          },
+          {
+            "userIp": "192.168.10.15",
+            "userName": "wangwu",
+            "userMac": "AA-BB-CC-DD-EE-02",
+            "totalTraffic": 536870912,
+            "upwardTraffic": 10485760,
+            "downwardTraffic": 526385152,
+            "packetLossRate": 0.05,
+            "latency": 45,
+            "poorFlowCount": 2,
+            "poorFlowProportion": 0.1,
+            "qualityTrends": [
+              {
+                "timestamp": 1698372000000,
+                "packetLossRate": 0.05,
+                "latency": 45,
+                "poorFlowCount": 2,
+                "poorFlowProportion": 0.1,
+                "userNum": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "appId": "app-1003",
+        "appName": "Zoom",
+        "userNum": 45,
+        "totalTraffic": 838860800,
+        "upwardTraffic": 419430400,
+        "downwardTraffic": 419430400,
+        "packetLossRate": 0.02,
+        "latency": 15,
+        "poorFlowCount": 3,
+        "poorFlowProportion": 0.06,
+        "qualityTrends": [
+          {
+            "timestamp": 1698372000000,
+            "packetLossRate": 0,
+            "latency": 12,
+            "poorFlowCount": 0,
+            "poorFlowProportion": 0,
+            "userNum": 40
+          },
+          {
+            "timestamp": 1698372600000,
+            "packetLossRate": 0.01,
+            "latency": 14,
+            "poorFlowCount": 1,
+            "poorFlowProportion": 0.02,
+            "userNum": 42
+          },
+          {
+            "timestamp": 1698373200000,
+            "packetLossRate": 0.02,
+            "latency": 15,
+            "poorFlowCount": 3,
+            "poorFlowProportion": 0.06,
+            "userNum": 45
+          },
+          {
+            "timestamp": 1698373800000,
+            "packetLossRate": 0.03,
+            "latency": 18,
+            "poorFlowCount": 4,
+            "poorFlowProportion": 0.08,
+            "userNum": 43
+          },
+          {
+            "timestamp": 1698374400000,
+            "packetLossRate": 0.01,
+            "latency": 13,
+            "poorFlowCount": 1,
+            "poorFlowProportion": 0.02,
+            "userNum": 45
+          }
+        ],
+        "userAppList": [
+          {
+            "userIp": "192.168.20.5",
+            "userName": "zhaoliu",
+            "userMac": "11-22-33-44-55-66",
+            "totalTraffic": 209715200,
+            "upwardTraffic": 104857600,
+            "downwardTraffic": 104857600,
+            "packetLossRate": 0,
+            "latency": 10,
+            "poorFlowCount": 0,
+            "poorFlowProportion": 0,
+            "qualityTrends": []
+          }
+        ]
+      },
+      {
+        "appId": "app-1001",
+        "appName": "WeChat",
+        "userNum": 120,
+        "totalTraffic": 52428800,
+        "upwardTraffic": 10485760,
+        "downwardTraffic": 41943040,
+        "packetLossRate": 0.05,
+        "latency": 25.5,
+        "poorFlowCount": 5,
+        "poorFlowProportion": 0.04,
+        "qualityTrends": [
+          {
+            "timestamp": 1698372000000,
+            "packetLossRate": 0.02,
+            "latency": 20,
+            "poorFlowCount": 2,
+            "poorFlowProportion": 0.02,
+            "userNum": 110
+          },
+          {
+            "timestamp": 1698372600000,
+            "packetLossRate": 0.03,
+            "latency": 22,
+            "poorFlowCount": 3,
+            "poorFlowProportion": 0.03,
+            "userNum": 115
+          },
+          {
+            "timestamp": 1698373200000,
+            "packetLossRate": 0.04,
+            "latency": 24,
+            "poorFlowCount": 4,
+            "poorFlowProportion": 0.03,
+            "userNum": 118
+          },
+          {
+            "timestamp": 1698373800000,
+            "packetLossRate": 0.05,
+            "latency": 25.5,
+            "poorFlowCount": 5,
+            "poorFlowProportion": 0.04,
+            "userNum": 120
+          },
+          {
+            "timestamp": 1698374400000,
+            "packetLossRate": 0.04,
+            "latency": 23,
+            "poorFlowCount": 4,
+            "poorFlowProportion": 0.03,
+            "userNum": 120
+          }
+        ],
+        "userAppList": [
+          {
+            "userIp": "192.168.10.5",
+            "userName": "zhangsan",
+            "userMac": "00-1A-2B-3C-4D-5E",
+            "totalTraffic": 2097152,
+            "upwardTraffic": 524288,
+            "downwardTraffic": 1572864,
+            "packetLossRate": 0,
+            "latency": 15,
+            "poorFlowCount": 0,
+            "poorFlowProportion": 0,
+            "qualityTrends": [
+              {
+                "timestamp": 1698372000000,
+                "packetLossRate": 0,
+                "latency": 15,
+                "poorFlowCount": 0,
+                "poorFlowProportion": 0,
+                "userNum": 1
+              }
+            ]
+          },
+          {
+            "userIp": "192.168.10.8",
+            "userName": "qianqi",
+            "userMac": "00-1A-2B-3C-4D-6F",
+            "totalTraffic": 4194304,
+            "upwardTraffic": 1048576,
+            "downwardTraffic": 3145728,
+            "packetLossRate": 0.1,
+            "latency": 40,
+            "poorFlowCount": 2,
+            "poorFlowProportion": 0.15,
+            "qualityTrends": [
+              {
+                "timestamp": 1698372000000,
+                "packetLossRate": 0.1,
+                "latency": 40,
+                "poorFlowCount": 2,
+                "poorFlowProportion": 0.15,
+                "userNum": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

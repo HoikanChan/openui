@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "prompt": "显示 CPU 使用率时序折线图",
+    "taxonomy": ["columnar-arrays", "primitive-numbers", "epoch-ms", "single-entity", "full", "raw-only"],
+    "evalHints": [
+      "timestamps and values are parallel arrays — must be rendered as a time-series line chart, not a table",
+      "timestamps are epoch milliseconds — must be formatted as human-readable datetime on the axis",
+      "values represent CPU utilization percentage — axis label should indicate %",
+      "must not render as separate unrelated columns"
+    ]
+  },
+  "data": {
+    "timestamps": [1717190400000, 1717191300000, 1717192200000, 1717193100000, 1717194000000, 1717194900000, 1717195800000, 1717196700000, 1717197600000, 1717198500000],
+    "values": [42.1, 45.3, 67.8, 72.4, 58.9, 51.2, 63.7, 70.1, 55.4, 48.6]
+  }
+}

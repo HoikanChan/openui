@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "prompt": "显示混合事件流",
+    "taxonomy": ["bare-array", "polymorphic", "integer-enum", "none", "full", "raw-only"],
+    "evalHints": [
+      "records have different schemas depending on eventType (1=alarm, 2=performance, 3=config) — must use eventType to distinguish rendering",
+      "eventType is integer enum: 1=alarm, 2=performance, 3=config change — must not display as raw number",
+      "must render type-specific fields for each event type, not show all fields for all records",
+      "must not ignore the type discriminator and render all records uniformly"
+    ]
+  },
+  "data": [
+    { "eventId": "ev-001", "eventType": 1, "timestamp": 1717200000000, "severity": "critical", "alarmName": "Link Down", "deviceId": "d-001" },
+    { "eventId": "ev-002", "eventType": 2, "timestamp": 1717199500000, "metric": "cpuUtil", "value": 0.891, "deviceId": "d-002" },
+    { "eventId": "ev-003", "eventType": 3, "timestamp": 1717199000000, "changedBy": "admin", "changeDesc": "Updated ACL policy", "deviceId": "d-001" },
+    { "eventId": "ev-004", "eventType": 1, "timestamp": 1717198500000, "severity": "major", "alarmName": "High Memory", "deviceId": "d-003" },
+    { "eventId": "ev-005", "eventType": 2, "timestamp": 1717198000000, "metric": "memUtil", "value": 0.912, "deviceId": "d-003" }
+  ]
+}

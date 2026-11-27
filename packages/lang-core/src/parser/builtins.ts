@@ -334,6 +334,22 @@ export const BUILTINS: Record<string, BuiltinDef> = {
         ? arr.reduce((acc: number, b: unknown) => Math.max(acc, toNumber(b)), toNumber(arr[0]))
         : 0,
   },
+  MergeObject: {
+    name: "MergeObject",
+    signature: "MergeObject(object1, object2, ...objectN) -> object",
+    description:
+      "Merge multiple objects into one. Later objects override earlier ones. Non-object arguments are skipped. Returns {} when no objects are provided. Useful with @Each to expand array rows with extra fields.",
+    templateBuiltin: true,
+    fn: (_runtime, ...args) => {
+      const out: Record<string, unknown> = {};
+      for (const arg of args) {
+        if (isPlainRecord(arg)) {
+          Object.assign(out, arg);
+        }
+      }
+      return out;
+    },
+  },
   Sort: {
     name: "Sort",
     signature: "Sort(array, field, direction?) -> sorted array",
@@ -388,6 +404,24 @@ export const BUILTINS: Record<string, BuiltinDef> = {
             return false;
         }
       });
+    },
+  },
+  Flatten: {
+    name: "Flatten",
+    signature: "Flatten(array[][]) -> array",
+    description:
+      'Flatten a nested array one level. Best used with array pluck: @Flatten(data.groups.items) extracts the "items" field from each group (producing items[][]) then flattens to items[]. Returns [] for null and non-array input.',
+    fn: (_runtime, arr) => {
+      if (!Array.isArray(arr)) return [];
+      const out: unknown[] = [];
+      for (const item of arr) {
+        if (Array.isArray(item)) {
+          out.push(...item);
+        } else if (item != null) {
+          out.push(item);
+        }
+      }
+      return out;
     },
   },
   ObjectEntries: {

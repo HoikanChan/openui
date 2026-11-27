@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "prompt": "显示端口流量统计列表",
+    "taxonomy": ["named-list", "homogeneous", "byte-values", "percentage-decimal", "string-enum", "none", "full", "raw-only"],
+    "evalHints": [
+      "inTraffic and outTraffic are raw byte counts — must be formatted as MB or GB with units",
+      "utilization is 0–100 percentage — must display with % suffix",
+      "adminStatus and operStatus are string enums — must visually distinguish up/down states",
+      "all records share the same schema — must use a list or table component"
+    ]
+  },
+  "data": {
+    "portList": [
+      { "portResId": "p-001", "deviceName": "GZ-Core-01", "ifName": "GigabitEthernet0/0/1", "inTraffic": 1287654321, "outTraffic": 987543210, "utilization": 45.7, "adminStatus": "up", "operStatus": "up" },
+      { "portResId": "p-002", "deviceName": "GZ-Core-01", "ifName": "GigabitEthernet0/0/2", "inTraffic": 3456789012, "outTraffic": 2345678901, "utilization": 82.3, "adminStatus": "up", "operStatus": "up" },
+      { "portResId": "p-003", "deviceName": "GZ-Core-02", "ifName": "10GE1/0/1", "inTraffic": 9876543210, "outTraffic": 8765432109, "utilization": 94.1, "adminStatus": "up", "operStatus": "up" },
+      { "portResId": "p-004", "deviceName": "GZ-Core-02", "ifName": "10GE1/0/2", "inTraffic": 123456789, "outTraffic": 98765432, "utilization": 12.5, "adminStatus": "up", "operStatus": "down" },
+      { "portResId": "p-005", "deviceName": "GZ-Access-01", "ifName": "GigabitEthernet0/0/3", "inTraffic": 654321098, "outTraffic": 543210987, "utilization": 28.9, "adminStatus": "down", "operStatus": "down" }
+    ]
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "prompt": "查询用户信息列表\n\nAPI Schema:\n{\n  \"apiId\": \"查询用户信息列表\",\n  \"apiName\": \"查询用户信息列表\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/campusclientservice/v1/intent/userlist\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"X-Auth-Token\",\n      \"description\": \"鉴权token\"\n    },\n    {\n      \"paramName\": \"aggregationType\",\n      \"description\": \"汇聚类型 最新值(last)、最大值(max)、最小值(min)、平均值(average)和累计值(sum)\"\n    },\n    {\n      \"paramName\": \"dimension\",\n      \"description\": \"查询的实体维度\"\n    },\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间，必填\"\n    },\n    {\n      \"paramName\": \"filter\",\n      \"description\": \"查询条件\",\n      \"childParams\": [\n        {\n          \"paramName\": \"filter\",\n          \"description\": \"查询过滤条件\",\n          \"childParams\": [\n            {\n              \"paramName\": \"key\",\n              \"description\": \"支持：用户MAC：userMac；用户名称：userName； 用户IP：userIP；接入SSID：ssid；总体验时长：totalcount； 平均RSSI：rssi；平均下行速率：rateAvg，总流量:totalBytes，时延:latency， 丢包率:packetloss，体验速率：downExpAvg, 粘性终端百分比：stickyTag, 带宽：downLinkSpeed\"\n            },\n            {\n              \"paramName\": \"operate\",\n              \"description\": \"方法：=：包含；== 等于； !=不包含\"\n            },\n            {\n              \"paramName\": \"value\",\n              \"description\": \"筛选值\"\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"filterOper\",\n      \"description\": \"筛选条件组合方式，可能的值包括：\\n- and: 多条件通过与关系组合\\n- or: 多条件通过或关系组合\\n\"\n    },\n    {\n      \"paramName\": \"id\",\n      \"description\": \"区域ID\"\n    },\n    {\n      \"paramName\": \"legend\",\n      \"description\": \"对比维度\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"description\": \"区域层级\"\n    },\n    {\n      \"paramName\": \"limit\",\n      \"description\": \"TopN的N（5）\"\n    },\n    {\n      \"paramName\": \"metricList\",\n      \"description\": \"指标类别\",\n      \"childParams\": [\n        {\n          \"paramName\": \"metricList\",\n          \"description\": \"指标类型模型类\",\n          \"childParams\": [\n            {\n              \"paramName\": \"name\",\n              \"description\": \"指标名称。\"\n            },\n            {\n              \"paramName\": \"aggregationType\",\n              \"description\": \"聚合类型。\"\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"metricType\",\n      \"description\": \"指标类别[all；总体验时长：totalcount；平均RSSI：rssi； 平均下行速率：rateAvg，总流量:totalBytes，时延:latency，丢包率:packetloss，体验速率：downExpAvg, 粘性终端百分比：stickyTag,带宽：downLinkSpeed,体验评分：experience]\",\n      \"childParams\": [\n        {\n          \"paramName\": \"metricType\",\n          \"description\": \"指标类别\"\n        }\n      ]\n    },\n    {\n      \"paramName\": \"sortColumn\",\n      \"description\": \"排序指标\"\n    },\n    {\n      \"paramName\": \"sortType\",\n      \"description\": \"排序类型，asc 正序，desc 倒叙\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"开始时间, 必填\"\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"description\": \"租户ID\"\n    },\n    {\n      \"paramName\": \"userInfo\",\n      \"description\": \"用户基本信息\",\n      \"childParams\": [\n        {\n          \"paramName\": \"userMac\",\n          \"description\": \"用户MAC\"\n        },\n        {\n          \"paramName\": \"userName\",\n          \"description\": \"用户名称\"\n        },\n        {\n          \"paramName\": \"userIp\",\n          \"description\": \"用户IP\"\n        }\n      ]\n    },\n    {\n      \"paramName\": \"userIp\",\n      \"description\": \"用户IP，选填\"\n    },\n    {\n      \"paramName\": \"userMac\",\n      \"description\": \"用户MAC，选填\"\n    },\n    {\n      \"paramName\": \"userName\",\n      \"description\": \"用户名，选填\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"data\",\n      \"description\": \"values\",\n      \"childParams\": [\n        {\n          \"paramName\": \"data\",\n          \"description\": \"用户列表返回值\",\n          \"childParams\": [\n            {\n              \"paramName\": \"userMac\",\n              \"description\": \"用户MAC\"\n            },\n            {\n              \"paramName\": \"userName\",\n              \"description\": \"用户名称\"\n            },\n            {\n              \"paramName\": \"userIp\",\n              \"description\": \"用户IP\"\n            },\n            {\n              \"paramName\": \"accType\",\n              \"description\": \"接入类型, 0:：有线用户，1：无线用户\"\n            },\n            {\n              \"paramName\": \"mode\",\n              \"description\": \"终端模式\"\n            },\n            {\n              \"paramName\": \"nss\",\n              \"description\": \"终端天线数\"\n            },\n            {\n              \"paramName\": \"userType\",\n              \"description\": \"用户类型 0 普通用户 1VIP用户\"\n            },\n            {\n              \"paramName\": \"vendor\",\n              \"description\": \"厂商\"\n            },\n            {\n              \"paramName\": \"deviceVendor\",\n              \"description\": \"设备厂商\"\n            },\n            {\n              \"paramName\": \"totalTimes\",\n              \"description\": \"总体验时长，毫秒级\"\n            },\n            {\n              \"paramName\": \"totalPoorTimes\",\n              \"description\": \"质差时长，毫秒级\"\n            },\n            {\n              \"paramName\": \"rssi\",\n              \"description\": \"平均信号强度，dbm\"\n            },\n            {\n              \"paramName\": \"dlRssi\",\n              \"description\": \"平均下行信号强度，dbm\"\n            },\n            {\n              \"paramName\": \"downSpeed\",\n              \"description\": \"平均速率\"\n            },\n            {\n              \"paramName\": \"upSpeed\",\n              \"description\": \"平均速率\"\n            },\n            {\n              \"paramName\": \"totalBytes\",\n              \"description\": \"总流量\"\n            },\n            {\n              \"paramName\": \"upBytes\",\n              \"description\": \"上行流量\"\n            },\n            {\n              \"paramName\": \"downBytes\",\n              \"description\": \"下行流量\"\n            },\n            {\n              \"paramName\": \"latency\",\n              \"description\": \"平均时延\"\n            },\n            {\n              \"paramName\": \"packetLoss\",\n              \"description\": \"平均丢包率，单位%，小数保留2位\"\n            },\n            {\n              \"paramName\": \"retransRate\",\n              \"description\": \"重传率，单位%，小数保留2位\"\n            },\n            {\n              \"paramName\": \"snr\",\n              \"description\": \"信噪比，单位%，小数保留2位\"\n            },\n            {\n              \"paramName\": \"psTime\",\n              \"description\": \"省电模式百分比，单位%，小数保留2位\"\n            },\n            {\n              \"paramName\": \"downExpSpeed\",\n              \"description\": \"下行体验速率\"\n            },\n            {\n              \"paramName\": \"upExpSpeed\",\n              \"description\": \"下行体验速率\"\n            },\n            {\n              \"paramName\": \"stickyTag\",\n              \"description\": \"粘性终端（1=是/0=否）\"\n            },\n            {\n              \"paramName\": \"score\",\n              \"description\": \"体验评分\"\n            },\n            {\n              \"paramName\": \"downLinkSpeed\",\n              \"description\": \"带宽\"\n            },\n            {\n              \"paramName\": \"upLinkSpeed\",\n              \"description\": \"带宽\"\n            },\n            {\n              \"paramName\": \"detailUrl\",\n              \"description\": \"用户旅程链接\"\n            },\n            {\n              \"paramName\": \"ssid\",\n              \"description\": \"接入SSID\"\n            },\n            {\n              \"paramName\": \"hostName\",\n              \"description\": \"主机名\"\n            },\n            {\n              \"paramName\": \"siteId\",\n              \"description\": \"siteId\"\n            },\n            {\n              \"paramName\": \"floorId\",\n              \"description\": \"floorId\"\n            },\n            {\n              \"paramName\": \"resId\",\n              \"description\": \"resId\"\n            },\n            {\n              \"paramName\": \"directRegion\",\n              \"description\": \"directRegion\"\n            },\n            {\n              \"paramName\": \"radioId\",\n              \"description\": \"radioId\"\n            },\n            {\n              \"paramName\": \"band\",\n              \"description\": \"band\"\n            },\n            {\n              \"paramName\": \"apMac\",\n              \"description\": \"apMac\"\n            },\n            {\n              \"paramName\": \"apName\",\n              \"description\": \"apName\"\n            },\n            {\n              \"paramName\": \"siteName\",\n              \"description\": \"siteName\"\n            },\n            {\n              \"paramName\": \"maxAccTime\",\n              \"description\": \"maxAccTime\"\n            },\n            {\n              \"paramName\": \"connApNum\",\n              \"description\": \"连接ap数\"\n            },\n            {\n              \"paramName\": \"roamNum\",\n              \"description\": \"漫游次数\"\n            },\n            {\n              \"paramName\": \"location\",\n              \"description\": \"resId\"\n            },\n            {\n              \"paramName\": \"favoriteAp\",\n              \"description\": \"resId\"\n            },\n            {\n              \"paramName\": \"userCount\",\n              \"description\": \"用户数\"\n            },\n            {\n              \"paramName\": \"lastJoinRes\",\n              \"description\": \"最近接入状态\"\n            },\n            {\n              \"paramName\": \"vip\",\n              \"description\": \"是否vip用户\"\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"detailUrl\",\n      \"description\": \"查询更多详情url，默认用户列表URL\"\n    },\n    {\n      \"paramName\": \"errorAdvice\",\n      \"description\": \"错误建议。\"\n    },\n    {\n      \"paramName\": \"errorDes\",\n      \"description\": \"错误描述。查询单用户场景，但结果存在多用户，默认选择第一个用户，增加相应描述。\"\n    },\n    {\n      \"paramName\": \"errorDetail\",\n      \"description\": \"错误详情。\"\n    },\n    {\n      \"paramName\": \"errorReson\",\n      \"description\": \"错误原因。\"\n    },\n    {\n      \"paramName\": \"resultCode\",\n      \"description\": \"状态码。\"\n    },\n    {\n      \"paramName\": \"size\",\n      \"description\": \"返回的数据条数\"\n    },\n    {\n      \"paramName\": \"totalNum\",\n      \"description\": \"符合总数\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "multi-top-arrays",
+      "homogeneous",
+      "epoch-ms",
+      "single-entity",
+      "full",
+      "stats-plus-rows"
+    ],
+    "evalHints": [
+      "表格（列表数据）"
+    ]
+  },
+  "data": {
+    "rows": [
+      {
+        "time": 1698372000000,
+        "downSpeed": 54.5,
+        "latency": 12,
+        "rssi": -55
+      },
+      {
+        "time": 1698372300000,
+        "downSpeed": 52.1,
+        "latency": 15,
+        "rssi": -56
+      },
+      {
+        "time": 1698372600000,
+        "downSpeed": 48.2,
+        "latency": 45,
+        "rssi": -65
+      },
+      {
+        "time": 1698372900000,
+        "downSpeed": 55,
+        "latency": 10,
+        "rssi": -54
+      }
+    ],
+    "times": {
+      "period": 5,
+      "startTime": 1698371700000,
+      "endTime": 1698374400000,
+      "valid_period": 5,
+      "valid_startTime": 1698371700000,
+      "valid_endTime": 1698374370000
+    },
+    "statistics": [
+      {
+        "indicatorName": "downSpeed",
+        "max": 55,
+        "min": 48.2,
+        "avg": 52.45,
+        "last": 55
+      },
+      {
+        "indicatorName": "latency",
+        "max": 45,
+        "min": 10,
+        "avg": 20.5,
+        "last": 10
+      },
+      {
+        "indicatorName": "rssi",
+        "max": -54,
+        "min": -65,
+        "avg": -57.5,
+        "last": -54
+      }
+    ]
+  }
+}

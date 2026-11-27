@@ -1,0 +1,120 @@
+{
+  "meta": {
+    "prompt": "查询射频类指标趋势\n\nAPI Schema:\n{\n  \"apiId\": \"查询射频类指标趋势\",\n  \"apiName\": \"查询射频类指标趋势\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/campuswlanqualityservice/v1/intent/device/trend\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"aggregationType\",\n      \"description\": \"汇聚类型 最新值(last)、最大值(max)、最小值(min)、平均值(average)和累计值(sum)\"\n    },\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"filter\",\n      \"description\": \"过滤条件\",\n      \"childParams\": [\n        {\n          \"paramName\": null,\n          \"description\": null\n        }\n      ]\n    },\n    {\n      \"paramName\": \"id\",\n      \"description\": \"站点或区域id、\\\"/\\\" 为根区域\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"description\": \"区域层级，global为0，站点为1，楼栋为8，楼层为9\"\n    },\n    {\n      \"paramName\": \"limit\",\n      \"description\": \"返回的最大设备数量\"\n    },\n    {\n      \"paramName\": \"metricType\",\n      \"description\": \"指标类别[channelUsage, infRatio等]\",\n      \"childParams\": [\n        {\n          \"paramName\": null,\n          \"description\": null\n        }\n      ]\n    },\n    {\n      \"paramName\": \"queryType\",\n      \"description\": \"查询类型 scatter(散点查询)、count(计算查询)、aggregation(聚合查询)和topN(TopN查询)\"\n    },\n    {\n      \"paramName\": \"sortType\",\n      \"description\": \"排序类型，desc：降序；asc：升序\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"example 1683302400000\"\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"description\": \"租户ID\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"data\",\n      \"description\": \"趋势图数据数组\",\n      \"childParams\": [\n        {\n          \"paramName\": \"data\",\n          \"description\": \"趋势图基本数据模型\",\n          \"childParams\": [\n            {\n              \"paramName\": \"timestamp\",\n              \"description\": \"时间戳\"\n            },\n            {\n              \"paramName\": \"value\",\n              \"description\": \"值\"\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"errorAdvice\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDes\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDetail\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorReson\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"resultCode\",\n      \"description\": \"状态码\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "nested-object",
+      "polymorphic",
+      "epoch-ms",
+      "multi-entity-interleaved",
+      "full",
+      "raw-only"
+    ],
+    "evalHints": [
+      "折线图/面积图（趋势数据）"
+    ]
+  },
+  "data": {
+    "queryDeviceMetricTrend": {
+      "success": {
+        "resultCode": 200,
+        "errorDes": "query device trend",
+        "errorReson": "Successful.",
+        "errorDetail": null,
+        "errorAdvice": null,
+        "data": [
+          {
+            "timestamp": 1640995200000,
+            "value": 45.5,
+            "deviceName": "AP-001",
+            "region": "/default-region"
+          },
+          {
+            "timestamp": 1641001200000,
+            "value": 42.3,
+            "deviceName": "AP-001",
+            "region": "/default-region"
+          },
+          {
+            "timestamp": 1641007200000,
+            "value": 48.7,
+            "deviceName": "AP-001",
+            "region": "/default-region"
+          },
+          {
+            "timestamp": 1641013200000,
+            "value": 51.2,
+            "deviceName": "AP-001",
+            "region": "/default-region"
+          },
+          {
+            "timestamp": 1641019200000,
+            "value": 47.8,
+            "deviceName": "AP-001",
+            "region": "/default-region"
+          },
+          {
+            "timestamp": 1641025200000,
+            "value": 44.2,
+            "deviceName": "AP-002",
+            "region": "/default-region"
+          },
+          {
+            "timestamp": 1641031200000,
+            "value": 49.1,
+            "deviceName": "AP-002",
+            "region": "/default-region"
+          }
+        ]
+      },
+      "error": {
+        "resultCode": 400,
+        "errorDes": "参数错误",
+        "errorReson": "参数错误",
+        "errorDetail": "Invalid metric type specified",
+        "errorAdvice": "Please check the available metric types"
+      },
+      "unauthorized": {
+        "resultCode": 401,
+        "errorDes": "未认证",
+        "errorReson": "未认证",
+        "errorDetail": null,
+        "errorAdvice": null
+      },
+      "forbidden": {
+        "resultCode": 403,
+        "errorDes": "URL鉴权",
+        "errorReson": "URL鉴权",
+        "errorDetail": null,
+        "errorAdvice": null
+      },
+      "notFound": {
+        "resultCode": 404,
+        "errorDes": "rest接口没找到",
+        "errorReson": "rest接口没找到",
+        "errorDetail": null,
+        "errorAdvice": null
+      },
+      "serverError": {
+        "resultCode": 500,
+        "errorDes": "默认ServiceException异常码，应用内部错误",
+        "errorReson": "默认ServiceException异常码，应用内部错误",
+        "errorDetail": "Internal server error occurred",
+        "errorAdvice": "Please contact system administrator"
+      },
+      "gatewayError": {
+        "resultCode": 502,
+        "errorDes": "网关错误",
+        "errorReson": "网关错误",
+        "errorDetail": null,
+        "errorAdvice": null
+      },
+      "serviceUnavailable": {
+        "resultCode": 503,
+        "errorDes": "服务不可用",
+        "errorReson": "服务不可用",
+        "errorDetail": null,
+        "errorAdvice": null
+      }
+    }
+  }
+}

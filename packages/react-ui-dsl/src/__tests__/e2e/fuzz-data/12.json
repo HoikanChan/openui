@@ -1,0 +1,24 @@
+{
+  "portList": [
+    {
+      "nativeName": "FlexE1/0/143",
+      "portResId": "04ac21d7-f088-11eb-8a6d-286ed4bd893f",
+      "ipv6Address": "",
+      "bandwidth": 5000000,
+      "ipv4Address": "129.145.190.121",
+      "neName": "P1439-南洲路-PTN7900",
+      "portName": "1-TPA1FV8-143(PORT-143)",
+      "neResId": "b4ce0344-dc7c-41b7-9ba3-5b88bff62916"
+    },
+    {
+      "nativeName": "FlexE79/0/2",
+      "portResId": "be034a88-f087-11eb-a8b0-286ed4bd8bbf",
+      "ipv6Address": "",
+      "bandwidth": 5000000,
+      "ipv4Address": "129.145.190.122",
+      "neName": "P35167-广州海珠区三窖立交西D-ZRH",
+      "portName": "79-TPN1VPIC-2(6/0/1,PORT-2)",
+      "neResId": "f97be326-a3e7-11ea-bf0f-286ed4bd8b70"
+    }
+  ]
+}

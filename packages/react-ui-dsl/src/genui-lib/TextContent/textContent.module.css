@@ -1,0 +1,34 @@
+.small {
+  --openui-text-color: var(--openui-text-neutral-secondary, rgba(0, 0, 0, 0.65));
+  --openui-text-font-size: 14px;
+  --openui-text-font-weight: 400;
+  --openui-text-line-height: 20px;
+}
+
+.default {
+  --openui-text-color: var(--openui-text-neutral-primary, inherit);
+  --openui-text-font-size: 16px;
+  --openui-text-font-weight: 400;
+  --openui-text-line-height: 24px;
+}
+
+.large {
+  --openui-text-color: var(--openui-text-neutral-primary, inherit);
+  --openui-text-font-size: 18px;
+  --openui-text-font-weight: 400;
+  --openui-text-line-height: 28px;
+}
+
+.smallHeavy {
+  --openui-text-color: var(--openui-text-neutral-primary, inherit);
+  --openui-text-font-size: 14px;
+  --openui-text-font-weight: 600;
+  --openui-text-line-height: 20px;
+}
+
+.largeHeavy {
+  --openui-text-color: var(--openui-text-neutral-primary, inherit);
+  --openui-text-font-size: 18px;
+  --openui-text-font-weight: 600;
+  --openui-text-line-height: 28px;
+}

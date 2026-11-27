@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "prompt": "显示批量操作执行结果",
+    "taxonomy": ["nested-object", "homogeneous", "string-enum", "none", "sparse-nullable", "raw-only"],
+    "evalHints": [
+      "results contains mixed success and failure records — must render both, not only successes",
+      "errorMessage is null for successful operations — must handle null gracefully",
+      "status is a string enum (success/failed/skipped) — must be visually distinguished",
+      "must show both succeeded and failed counts from the summary section"
+    ]
+  },
+  "data": {
+    "summary": {
+      "total": 5,
+      "succeeded": 3,
+      "failed": 1,
+      "skipped": 1
+    },
+    "results": [
+      { "operationId": "op-001", "target": "GZ-Core-01", "action": "update-firmware", "status": "success", "errorMessage": null },
+      { "operationId": "op-002", "target": "GZ-Core-02", "action": "update-firmware", "status": "success", "errorMessage": null },
+      { "operationId": "op-003", "target": "GZ-Access-01", "action": "update-firmware", "status": "failed", "errorMessage": "SSH connection refused: timeout after 30s" },
+      { "operationId": "op-004", "target": "GZ-Access-02", "action": "update-firmware", "status": "success", "errorMessage": null },
+      { "operationId": "op-005", "target": "GZ-Access-03", "action": "update-firmware", "status": "skipped", "errorMessage": null }
+    ]
+  }
+}

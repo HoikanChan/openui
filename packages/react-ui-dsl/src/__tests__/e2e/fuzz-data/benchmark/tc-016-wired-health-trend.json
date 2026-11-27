@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "prompt": "查询有线健康度趋势\n\nAPI Schema:\n{\n  \"apiId\": \"查询有线健康度趋势\",\n  \"apiName\": \"查询有线健康度趋势\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/healthmgmtservice/v1/ai/problem/trend\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"id\",\n      \"description\": \"站点或区域id、\\\"/\\\" 为根区域\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"description\": \"区域层级，global为0，站点为1，楼栋为8，楼层为9\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"开始时间\"\n    },\n    {\n      \"paramName\": \"statDimens\",\n      \"description\": \"指标维度\",\n      \"childParams\": [\n        {\n          \"paramName\": null,\n          \"description\": null\n        }\n      ]\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"error_code\",\n      \"description\": \"状态码\"\n    },\n    {\n      \"paramName\": \"healthStats\",\n      \"description\": \"统计信息。\",\n      \"childParams\": [\n        {\n          \"paramName\": \"healthStats\",\n          \"description\": \"健康度统计\",\n          \"childParams\": [\n            {\n              \"paramName\": \"tenantId\",\n              \"description\": \"租户ID。\"\n            },\n            {\n              \"paramName\": \"subnetId\",\n              \"description\": \"子网ID\"\n            },\n            {\n              \"paramName\": \"timestamp\",\n              \"description\": \"开始时间\"\n            },\n            {\n              \"paramName\": \"statDimens\",\n              \"description\": \"统计维度。\"\n            },\n            {\n              \"paramName\": \"healthScore\",\n              \"description\": \"健康度打分。\"\n            },\n            {\n              \"paramName\": \"totalCount\",\n              \"description\": \"检测总资源类别对象数。\"\n            },\n            {\n              \"paramName\": \"abnCount\",\n              \"description\": \"资源类别故障对樠±¡数。\"\n            },\n            {\n              \"paramName\": \"totalTarget\",\n              \"description\": \"保留字段。\"\n            },\n            {\n              \"paramName\": \"abnTarget\",\n              \"description\": \"故障对象数。\"\n            },\n            {\n              \"paramName\": \"issueCount\",\n              \"description\": \"Issue数量。\"\n            },\n            {\n              \"paramName\": \"eventCount\",\n              \"description\": \"保留字段。\"\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"message\",\n      \"description\": \"错误消息\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "api-response-envelope",
+      "homogeneous",
+      "epoch-ms, string-enum",
+      "none",
+      "nearly-all-null",
+      "raw-only"
+    ],
+    "evalHints": [
+      "折线图/面积图（趋势数据）",
+      "仪表盘/卡片（指标数值）"
+    ]
+  },
+  "data": {
+    "error_code": 200,
+    "message": "Successful.",
+    "healthStats": [
+      {
+        "tenantId": "string",
+        "subnetId": "string",
+        "timestamp": 0,
+        "statDimens": "string",
+        "healthScore": "100",
+        "totalCount": 0,
+        "abnCount": 0,
+        "totalTarget": 0,
+        "abnTarget": 0,
+        "issueCount": 0,
+        "eventCount": -1
+      }
+    ]
+  }
+}

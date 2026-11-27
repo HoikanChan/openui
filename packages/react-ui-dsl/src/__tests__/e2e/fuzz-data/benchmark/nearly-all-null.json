@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "prompt": "显示设备最近检测结果",
+    "taxonomy": ["flat-object", "none", "nearly-all-null", "raw-only"],
+    "evalHints": [
+      "almost all fields are null — only id and name have non-null values",
+      "must not crash or render a broken layout when nearly all fields are null",
+      "should communicate clearly that data is not available for most metrics",
+      "must still render the non-null fields (deviceId, name) correctly"
+    ]
+  },
+  "data": {
+    "deviceId": "d-007",
+    "name": "GZ-Access-07",
+    "status": null,
+    "cpuUtil": null,
+    "memUtil": null,
+    "diskUtil": null,
+    "lastSeen": null,
+    "ipAddress": null,
+    "location": null,
+    "firmwareVersion": null
+  }
+}

@@ -1,0 +1,25 @@
+.root {
+  --card-header-title-color: var(--openui-text-neutral-primary, #111827);
+  --card-header-subtitle-color: var(--openui-text-neutral-secondary, #6b7280);
+  --card-header-gap: var(--openui-space-xs, 4px);
+  --card-header-title-size: 14px;
+  --card-header-subtitle-size: 13px;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-header-gap);
+  overflow-wrap: break-word;
+}
+
+.title {
+  color: var(--card-header-title-color);
+  font-size: var(--card-header-title-size);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.subtitle {
+  color: var(--card-header-subtitle-color);
+  font-size: var(--card-header-subtitle-size);
+  line-height: 1.5;
+}

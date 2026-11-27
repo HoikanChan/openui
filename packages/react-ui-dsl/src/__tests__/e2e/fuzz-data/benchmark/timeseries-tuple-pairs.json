@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "prompt": "显示网络延迟时序折线图",
+    "taxonomy": ["bare-array", "tuple-array", "epoch-ms", "single-entity", "full", "raw-only"],
+    "evalHints": [
+      "each element is a [timestamp, value] tuple — must treat index 0 as time axis and index 1 as value",
+      "timestamps are epoch milliseconds — must be formatted as human-readable datetime on the axis",
+      "values represent latency in milliseconds — axis should indicate ms unit",
+      "must render as a time-series chart, not a two-column table"
+    ]
+  },
+  "data": [
+    [1717190400000, 12.4],
+    [1717191300000, 15.7],
+    [1717192200000, 11.2],
+    [1717193100000, 18.9],
+    [1717194000000, 22.3],
+    [1717194900000, 14.1],
+    [1717195800000, 13.8],
+    [1717196700000, 19.5],
+    [1717197600000, 16.2],
+    [1717198500000, 10.9]
+  ]
+}

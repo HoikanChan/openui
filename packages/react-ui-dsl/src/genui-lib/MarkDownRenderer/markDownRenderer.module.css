@@ -1,0 +1,30 @@
+.root {
+  --mdr-bg: var(--openui-foreground, #ffffff);
+  --mdr-sunk-bg: var(--openui-sunk, #f3f4f6);
+  --mdr-border: var(--openui-border-default, #d9dde6);
+  --mdr-radius: var(--openui-radius-3xl, 24px);
+  --mdr-padding: var(--openui-space-l, 16px);
+
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.clear {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.card {
+  background: var(--mdr-bg);
+  border: 1px solid var(--mdr-border);
+  border-radius: var(--mdr-radius);
+  padding: var(--mdr-padding);
+}
+
+.sunk {
+  background: var(--mdr-sunk-bg);
+  border: 1px solid var(--mdr-border);
+  border-radius: var(--mdr-radius);
+  padding: var(--mdr-padding);
+}

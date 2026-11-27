@@ -1,0 +1,10 @@
+# Eval loop cache directories
+src/__tests__/e2e/eval/.judge-cache/
+src/__tests__/e2e/eval/.report-app-cache/
+src/__tests__/e2e/eval/.regen-staging/
+
+# Build output
+dist/
+
+# Dependencies
+node_modules/

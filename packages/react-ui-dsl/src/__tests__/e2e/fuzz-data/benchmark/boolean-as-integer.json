@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "prompt": "显示服务功能开关状态",
+    "taxonomy": ["named-list", "homogeneous", "boolean-int", "none", "full", "raw-only"],
+    "evalHints": [
+      "enabled, logging, alerting, autoScale are 0/1 integer fields with boolean semantics — must render as enabled/disabled or on/off, not as 0/1 numbers",
+      "must not display 0/1 as raw numbers without visual boolean interpretation",
+      "toggle state should be visually clear (e.g. badge, icon, or text label)",
+      "all services should be visible in the output"
+    ]
+  },
+  "data": {
+    "services": [
+      { "serviceId": "svc-001", "name": "API Gateway", "enabled": 1, "logging": 1, "alerting": 1, "autoScale": 0 },
+      { "serviceId": "svc-002", "name": "Auth Service", "enabled": 1, "logging": 1, "alerting": 0, "autoScale": 1 },
+      { "serviceId": "svc-003", "name": "Legacy Adapter", "enabled": 0, "logging": 0, "alerting": 0, "autoScale": 0 },
+      { "serviceId": "svc-004", "name": "Analytics", "enabled": 1, "logging": 0, "alerting": 1, "autoScale": 1 }
+    ]
+  }
+}

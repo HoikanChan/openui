@@ -1,0 +1,15 @@
+{
+  "smartConfigration": {
+    "deviceType": "Bc",
+    "passiveAlarmThreshold": 200,
+    "poRunMode": 1,
+    "passiveMeasureEnable": true,
+    "poPtpStaticBmc": 0,
+    "profile": "IEEE1588V2",
+    "neName": "2101-SPE1",
+    "ptpEable": true,
+    "ssmCtrlOn": false,
+    "neResId": "8c75fa05-d1fb-40c2-8319-01b154e3cc85",
+    "poPtpLocalClkid": "00259e3100d200ce"
+  }
+}

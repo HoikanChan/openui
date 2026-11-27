@@ -1,0 +1,17 @@
+{
+  "aEndPortIPv6Address": "",
+  "bandwidth": 5000000,
+  "linkName": "P1439-南洲路-PTN7900-子架1-1-TPA1FV8-143(PORT-143)---P35167-广州海珠区三窖立交西D-ZRH-子架1-79-TPN1VPIC-2(PORT-2)",
+  "refAEndNEName": "P1439-南洲路-PTN7900",
+  "refZEndNeResId": "f97be326-a3e7-11ea-bf0f-286ed4bd8b70",
+  "linkResId": "866b704e-8dbb-44b4-b99c-ad0b9e9886d6",
+  "zEndPortName": "79-TPN1VPIC-2(6/0/1,PORT-2)",
+  "aEndPortName": "1-TPA1FV8-143(PORT-143)",
+  "refZEndNEName": "P35167-广州海珠区三窖立交西D-ZRH",
+  "aEndPortIPv4Address": "129.145.190.121",
+  "refAEndNeResId": "b4ce0344-dc7c-41b7-9ba3-5b88bff62916",
+  "refAEndPortResId": "04ac21d7-f088-11eb-8a6d-286ed4bd893f",
+  "refZEndPortResId": "be034a88-f087-11eb-a8b0-286ed4bd8bbf",
+  "zEndPortIPv6Address": "",
+  "zEndPortIPv4Address": "129.145.190.122"
+}

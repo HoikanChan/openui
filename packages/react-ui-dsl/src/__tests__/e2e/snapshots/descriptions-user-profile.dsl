@@ -1,0 +1,7 @@
+root = Stack([profileDetail])
+profileDetail = Descriptions([nameField, emailField, accountGroup], "Profile")
+nameField = DescField("Name", data.profile.name)
+emailField = DescField("Email", data.profile.email)
+accountGroup = DescGroup("Account", [statusField, roleField], 2)
+statusField = DescField("Status", Tag(data.profile.status, "success"))
+roleField = DescField("Role", data.profile.role)

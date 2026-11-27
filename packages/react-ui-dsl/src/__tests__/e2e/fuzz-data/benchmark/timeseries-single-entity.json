@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "prompt": "显示单台服务器内存使用率时序趋势",
+    "taxonomy": ["named-list", "homogeneous", "epoch-ms", "single-entity", "full", "raw-only"],
+    "evalHints": [
+      "records are time-ordered samples for a single entity — must render as a time-series line chart",
+      "timestamp is epoch milliseconds — must be formatted as human-readable datetime on the time axis",
+      "usagePercent is a percentage — axis should indicate % unit",
+      "must not render as a plain table when a line chart is more appropriate"
+    ]
+  },
+  "data": {
+    "server": "prod-app-01",
+    "samples": [
+      { "timestamp": 1717190400000, "usagePercent": 61.2 },
+      { "timestamp": 1717194000000, "usagePercent": 63.7 },
+      { "timestamp": 1717197600000, "usagePercent": 67.4 },
+      { "timestamp": 1717201200000, "usagePercent": 71.9 },
+      { "timestamp": 1717204800000, "usagePercent": 74.3 },
+      { "timestamp": 1717208400000, "usagePercent": 70.1 },
+      { "timestamp": 1717212000000, "usagePercent": 68.5 },
+      { "timestamp": 1717215600000, "usagePercent": 72.8 }
+    ]
+  }
+}
