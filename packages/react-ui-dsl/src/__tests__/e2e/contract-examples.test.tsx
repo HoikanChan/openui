@@ -220,10 +220,6 @@ const EXAMPLE_SPECS: readonly ExampleSpec[] = [
       },
     },
     contains: ["Devices", "Leaf-01", "10.10.0.1", "Server Leaf", "在线"],
-    // Gated: lang-core's builtin registry has no Flatten (it was dropped when the
-    // branch was scoped to the Java SDK; the contract kept the example). Once
-    // Flatten lands, remove it.fails.
-    gated: "@Flatten is missing from lang-core builtins",
   },
   {
     match: "data.devicesById",
@@ -258,9 +254,6 @@ const EXAMPLE_SPECS: readonly ExampleSpec[] = [
       ],
     },
     contains: ["MLAG 组信息", "共 2 个 MLAG 组", "MLAG-A", "SW-3", "192.168.2.1"],
-    // Gated: the same lang-core gap as example 5, plus @MergeObject is absent too.
-    // Once both land, remove it.fails.
-    gated: "@Flatten and @MergeObject are missing from lang-core builtins",
   },
 ];
 
