@@ -1,6 +1,6 @@
 {
   "name": "@cloudsop/openui-react-ui-dsl",
-  "version": "0.1.0",
+  "version": "1.1.6",
   "type": "module",
   "description": "DSL component library built on Ant Design v5 and ECharts",
   "main": "dist/index.cjs",
@@ -43,6 +43,7 @@
     "eval": "tsx --import ./src/__tests__/e2e/css-stub-loader.mjs ./src/__tests__/e2e/eval-loop.ts",
     "generate:package-metadata": "tsx ./scripts/generate-package-metadata.mts",
     "generate:base-contract": "tsx --import ./src/__tests__/e2e/css-stub-loader.mjs ./scripts/generate-base-contract.mts",
+    "check:contract": "tsx --import ./src/__tests__/e2e/css-stub-loader.mjs ./scripts/compare-contract.mts",
     "prebuild": "pnpm run generate:package-metadata && pnpm run generate:base-contract && node ./scripts/inline-vendor-css.mjs",
     "build": "tsdown",
     "build:eview": "cross-env REACT_UI_DSL_VIEW_TARGET=eview tsdown",
