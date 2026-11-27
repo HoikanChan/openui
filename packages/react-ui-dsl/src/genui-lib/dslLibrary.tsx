@@ -19,22 +19,38 @@ import {
   TreeMapChart,
 } from "./Charts";
 import { Button } from "./Button";
+import { Buttons } from "./Buttons";
 import { Card } from "./Card";
 import { CardHeader } from "./CardHeader";
 import { CanvasCard } from "../canvas/CanvasCard";
 import { PreviewCard } from "../canvas/PreviewCard";
 import { HTMLLoader } from "../canvas/HTMLLoader";
+import { CheckBoxGroup } from "./CheckBoxGroup";
+import { CheckBoxItem } from "./CheckBoxItem";
+import { DatePicker } from "./DatePicker";
 import { DescField, DescGroup, Descriptions } from "./Descriptions";
 import { Form } from "./Form";
+import { FormControl } from "./FormControl";
 import { Image } from "./Image";
+import { ImageBlock } from "./ImageBlock";
 import { Input } from "./Input";
 import { Link } from "./Link";
 import { List } from "./List";
+import { Modal } from "./Modal";
+import { RadioGroup } from "./RadioGroup";
+import { RadioItem } from "./RadioItem";
 import { Separator } from "./Separator";
 import { Select } from "./Select";
+import { Slider } from "./Slider";
+import { Steps, StepsItem } from "./Steps";
+import { SwitchGroup } from "./SwitchGroup";
+import { SwitchItem } from "./SwitchItem";
+import { TabItem } from "./TabItem";
 import { Tag } from "./Tag";
 import { TagBlock } from "./TagBlock";
-import { Col, Table } from "./Table";
+import { TextArea } from "./TextArea";
+import { TextCallout } from "./TextCallout";
+import { Col, ExtraCol, IndexCol, Table } from "./Table";
 import { TextContent } from "./TextContent";
 import { MarkDownRenderer } from "./MarkDownRenderer";
 import { TimeLine } from "./TimeLine";
@@ -289,12 +305,14 @@ export const dslLibrary: Library = createLibrary({
     TextContent,
     MarkDownRenderer,
     Button,
+    Buttons,
     Input,
     Select,
     Separator,
     Tag,
     TagBlock,
     Image,
+    ImageBlock,
     Link,
     Card,
     CardHeader,
@@ -306,7 +324,23 @@ export const dslLibrary: Library = createLibrary({
     DescField,
     List,
     Form,
+    FormControl,
+    CheckBoxGroup,
+    CheckBoxItem,
+    RadioGroup,
+    RadioItem,
+    SwitchGroup,
+    SwitchItem,
+    Slider,
+    TextArea,
+    DatePicker,
+    Modal,
+    Steps,
+    StepsItem,
+    TextCallout,
     Col,
+    ExtraCol,
+    IndexCol,
     Table,
     PieChart,
     LineChart,
@@ -324,5 +358,6 @@ export const dslLibrary: Library = createLibrary({
     Point,
     TimeLine,
     Tabs,
+    TabItem,
   ],
 });
