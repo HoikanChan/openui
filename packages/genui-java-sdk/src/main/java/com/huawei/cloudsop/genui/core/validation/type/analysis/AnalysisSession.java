@@ -39,7 +39,7 @@ import java.util.Set;
  *
  * @since 2026
  */
-public final class AnalysisSession {
+public final class AnalysisSession implements BuiltinSession {
 
     private static final int MAX_TRAVERSAL_ITEMS = 2_048;
 
@@ -195,77 +195,20 @@ public final class AnalysisSession {
     }
 
     // ───────────────────────────────────────────────────────────────────────
-    // 词法环境
-    // ───────────────────────────────────────────────────────────────────────
-
-    /**
-     * 不可变父子链词法环境;binder 只影响声明的 body,嵌套同名正常遮蔽。
-     *
-     * @since 2026
-     */
-    static final class LexicalEnvironment {
-        private final LexicalEnvironment parent;
-        private final String name;
-        private final Fact value;
-
-        private LexicalEnvironment(LexicalEnvironment parent, String name, Fact value) {
-            this.parent = parent;
-            this.name = name;
-            this.value = value;
-        }
-
-        static LexicalEnvironment root() {
-            return new LexicalEnvironment(null, null, null);
-        }
-
-        LexicalEnvironment bind(String boundName, Fact boundValue) {
-            return new LexicalEnvironment(this, boundName, boundValue);
-        }
-
-        Optional<Fact> lookup(String lookedUp) {
-            for (LexicalEnvironment env = this; env != null; env = env.parent) {
-                if (env.name != null && env.name.equals(lookedUp)) {
-                    return Optional.ofNullable(env.value);
-                }
-            }
-            return Optional.empty();
-        }
-
-        boolean isBound(String lookedUp) {
-            for (LexicalEnvironment env = this; env != null; env = env.parent) {
-                if (env.name != null && env.name.equals(lookedUp)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /**
-         * 把本环境(更内层、优先)的绑定叠加到 {@code base} 上,用于在使用位置保留声明环境并继承使用位置绑定 (ADR 0006):同名以本环境为准,退出后自然回到
-         * {@code base} 的绑定。
-         *
-         * @param base 被叠加的基础环境;null 时从根环境开始
-         * @return 叠加当前绑定后的新环境
-         */
-        LexicalEnvironment over(LexicalEnvironment base) {
-            List<LexicalEnvironment> chain = new ArrayList<>();
-            for (LexicalEnvironment env = this; env != null && env.name != null; env = env.parent) {
-                chain.add(env);
-            }
-            LexicalEnvironment result = base == null ? root() : base;
-            for (int index = chain.size() - 1; index >= 0; index--) {
-                LexicalEnvironment node = chain.get(index);
-                result = result.bind(node.name, node.value);
-            }
-            return result;
-        }
-    }
-
-    // ───────────────────────────────────────────────────────────────────────
     // 表达式推断(synth)
     // ───────────────────────────────────────────────────────────────────────
 
-    Fact synth(AstNode node, String statementId, LexicalEnvironment env, Set<String> resolving) {
+    /**
+     * 在给定词法环境下推断表达式。
+     *
+     * @param node 待推断表达式
+     * @param statementId 当前语句标识
+     * @param env 词法环境
+     * @param resolving 循环引用追踪集合
+     * @return 推断结果事实
+     */
+    public Fact synth(
+            AstNode node, String statementId, LexicalEnvironment env, Set<String> resolving) {
         if (node == null) {
             return Fact.unknown(Fact.Loss.MISSING_CONTEXT);
         }
@@ -1069,7 +1012,7 @@ public final class AnalysisSession {
      * @param issuePath 诊断定位路径
      * @return 参数检查结果
      */
-    Checks.CheckResult checkObligation(
+    public Checks.CheckResult checkObligation(
             String statementId,
             String useSite,
             String kind,
@@ -1103,7 +1046,7 @@ public final class AnalysisSession {
      *
      * @return 共享会话完整性标记的类型运算器
      */
-    TypeOps ops() {
+    public TypeOps ops() {
         return ops;
     }
 
@@ -1124,7 +1067,7 @@ public final class AnalysisSession {
      *
      * @return 未超限时返回 true;超限时标记不完整并返回 false
      */
-    boolean tryStartTraversal() {
+    public boolean tryStartTraversal() {
         if (traversalItems >= MAX_TRAVERSAL_ITEMS) {
             completeness.markIncomplete();
             return false;
@@ -1141,7 +1084,7 @@ public final class AnalysisSession {
      * @param statementId 使用处语句 id
      * @param declarationStatementId 模板声明语句 id
      */
-    void pushTemplateUseSite(
+    public void pushTemplateUseSite(
             String pathPrefix,
             String coverageUseSite,
             String statementId,
@@ -1152,7 +1095,7 @@ public final class AnalysisSession {
     }
 
     /** 离开模板使用位置。 */
-    void popTemplateUseSite() {
+    public void popTemplateUseSite() {
         templateUseSites.pop();
     }
 
@@ -1665,7 +1608,14 @@ public final class AnalysisSession {
         return resolved instanceof AstNode.Arr array ? array.els() : List.of();
     }
 
-    AstNode resolveNode(AstNode node, Set<String> resolving) {
+    /**
+     * 解析引用到其最终表达式。
+     *
+     * @param node 待解析表达式
+     * @param resolving 循环引用追踪集合
+     * @return 解析后的表达式
+     */
+    public AstNode resolveNode(AstNode node, Set<String> resolving) {
         if (node instanceof AstNode.Ref ref
                 && symbols.containsKey(ref.n())
                 && resolving.add(ref.n())) {
@@ -1739,7 +1689,17 @@ public final class AnalysisSession {
         return "err-" + errorSequence;
     }
 
-    void emit(
+    /**
+     * 发出一条诊断。
+     *
+     * @param code 诊断 code
+     * @param message 诊断消息
+     * @param statementId 当前语句标识
+     * @param component 组件名
+     * @param path 诊断路径
+     * @param hint 修复提示
+     */
+    public void emit(
             String code,
             String message,
             String statementId,

@@ -5,8 +5,8 @@
 package com.huawei.cloudsop.genui.core.validation.type.analysis;
 
 import com.huawei.cloudsop.genui.core.GenerationSdkException;
+import com.huawei.cloudsop.genui.core.contract.BuiltinDefinitionRules;
 import com.huawei.cloudsop.genui.core.contract.BuiltinSpec;
-import com.huawei.cloudsop.genui.core.contract.typeexpr.TypeExpr;
 import com.huawei.cloudsop.genui.core.validation.parser.AstNode;
 import com.huawei.cloudsop.genui.core.validation.parser.BuiltinCatalog;
 
@@ -27,7 +27,7 @@ import java.util.Set;
  * 取得实参角色与作用域,不读取模板下标,也不按函数名 分派;表格通过 {@link #checkCellTemplate} 提供 cell 表达式、单元格值与整行值,不自行识别模板构造。
  *
  * <p>无状态的定义能力({@link #validateDefinition}、{@link #walkArguments})供语义遍历与类型分析共用;会话 能力({@link
- * #analyze}、{@link #checkCellTemplate}、{@link #finish})复用 {@link AnalysisSession} 的预算、
+ * #analyze}、{@link #checkCellTemplate}、{@link #finish})复用 {@link BuiltinSession} 的预算、
  * 循环引用追踪、诊断身份与覆盖统计,不另建会话。
  *
  * <p>特殊函数的布局与语义都在本 module 内按名称固定,契约只声明名称、文案、params 与 returnType: 排序/过滤/选择/展平/对象覆盖与枚举走 {@link
@@ -96,7 +96,7 @@ public final class BuiltinAnalysis {
     private static final int TEMPLATE_PARAM_COUNT = 3;
 
     private final BuiltinCatalog catalog;
-    private final AnalysisSession session;
+    private final BuiltinSession session;
     private final Map<AstNode, DeferredTemplate> templates = new IdentityHashMap<>();
     private final List<DeferredTemplate> templateOrder = new ArrayList<>();
     private final Set<AstNode> contextCheckedTemplates =
@@ -108,7 +108,7 @@ public final class BuiltinAnalysis {
      * @param catalog 当前生效的 builtin 词表
      * @param session 承载共享状态的分析会话
      */
-    BuiltinAnalysis(BuiltinCatalog catalog, AnalysisSession session) {
+    BuiltinAnalysis(BuiltinCatalog catalog, BuiltinSession session) {
         this.catalog = catalog;
         this.session = session;
     }
@@ -136,7 +136,7 @@ public final class BuiltinAnalysis {
      * @return 布局由本 module 固定时为 {@code true}
      */
     public static boolean ownsCallLayout(String name) {
-        return EACH.equals(name) || RENDER.equals(name);
+        return BuiltinDefinitionRules.ownsCallLayout(name);
     }
 
     /**
@@ -184,279 +184,17 @@ public final class BuiltinAnalysis {
     }
 
     // ───────────────────────────────────────────────────────────────────────
-    // 定义期校验:特殊布局前提与返回声明覆盖
+    // 定义期校验:委托 core.contract,避免加载器反向依赖 validation
     // ───────────────────────────────────────────────────────────────────────
 
     /**
-     * 定义期结构校验:特殊函数的最低布局前提由本 module 统一检查,加载器不维护函数名单。
-     *
-     * <p>Each/Render/Switch 的参数角色必须与 Java 实现的固定布局一致;有 Java 额外结果语义的普通函数, 其 returnType
-     * 必须覆盖特殊语义可证明的结果上界——声明与处理器冲突时明确失败,不静默裁剪结果掩盖冲突。
+     * 定义期结构校验,委托 {@link BuiltinDefinitionRules}。
      *
      * @param spec 已解析的 builtin 声明
      * @throws GenerationSdkException 布局前提不满足或返回声明可证明冲突时
      */
     public static void validateDefinition(BuiltinSpec spec) {
-        switch (spec.name()) {
-            case EACH -> validateEach(spec);
-            case RENDER -> validateRender(spec);
-            case SWITCH -> validateSwitch(spec);
-            case SORT,
-                            FILTER,
-                            FIRST,
-                            LAST,
-                            FLATTEN,
-                            MERGE_OBJECT,
-                            OBJECT_KEYS,
-                            OBJECT_VALUES,
-                            OBJECT_ENTRIES,
-                            FORMAT_DATE ->
-                    validateSpecialReturn(spec);
-            default -> {
-                // 普通函数只需通用参数/返回校验。
-            }
-        }
-    }
-
-    private static void validateEach(BuiltinSpec spec) {
-        requireParamCount(spec, TEMPLATE_PARAM_COUNT);
-        TypeExpr source = paramType(spec, 0);
-        if (!(source instanceof TypeExpr.ArrayOf)
-                && !(source instanceof TypeExpr.Base base && "array".equals(base.name()))) {
-            throw invalid(
-                    spec,
-                    "Each parameter 0 must be an array of elements, got "
-                            + spec.params().get(0).type());
-        }
-        requireBase(spec, 1, "string", "a binder name");
-        requireNoOptionalOrVariadic(spec);
-    }
-
-    private static void validateRender(BuiltinSpec spec) {
-        requireParamCount(spec, TEMPLATE_PARAM_COUNT);
-        requireBase(spec, 0, "string", "a binder name");
-        requireBase(spec, 1, "string", "an optional row binder name");
-        if (!spec.params().get(1).optional()) {
-            throw invalid(spec, "Render parameter 'row' must be optional (2- or 3-argument calls)");
-        }
-        if (spec.params().get(2).optional() || spec.params().get(0).optional()) {
-            throw invalid(spec, "Render parameter 'v' and 'template' must be required");
-        }
-        if (spec.params().stream().anyMatch(BuiltinSpec.ParamSpec::variadic)) {
-            throw invalid(spec, "Render must not declare a variadic parameter");
-        }
-    }
-
-    private static void validateSwitch(BuiltinSpec spec) {
-        requireParamCount(spec, TEMPLATE_PARAM_COUNT);
-        if (!(spec.params().get(1).typeExpr() instanceof TypeExpr.RecordOf cases)) {
-            throw invalid(spec, "Switch parameter 'cases' must be Record<string, T>");
-        }
-        if (!spec.params().get(2).optional()) {
-            throw invalid(spec, "Switch parameter 'default' must be optional");
-        }
-        TypeExpr required =
-                new TypeExpr.UnionOf(List.of(cases.value(), spec.params().get(2).typeExpr()));
-        requireReturnCovers(spec, required);
-    }
-
-    /**
-     * 普通特殊函数:返回声明必须覆盖 Java 特殊语义可证明的结果上界。
-     *
-     * @param spec 已解析的 builtin 声明
-     */
-    private static void validateSpecialReturn(BuiltinSpec spec) {
-        TypeExpr required =
-                switch (spec.name()) {
-                    case SORT, FILTER -> paramType(spec, 0);
-                    case FIRST, LAST -> union(elementOf(paramType(spec, 0)), base("null"));
-                    case FLATTEN -> elementOf(paramType(spec, 0));
-                    case MERGE_OBJECT -> base("object");
-                    case OBJECT_KEYS -> new TypeExpr.ArrayOf(base("string"));
-                    case OBJECT_VALUES -> {
-                        TypeExpr value = recordValueOf(paramType(spec, 0));
-                        yield value == null ? null : new TypeExpr.ArrayOf(value);
-                    }
-                    case OBJECT_ENTRIES -> {
-                        TypeExpr value = recordValueOf(paramType(spec, 0));
-                        yield value == null
-                                ? null
-                                : new TypeExpr.ArrayOf(
-                                        new TypeExpr.ObjectLiteral(
-                                                List.of(
-                                                        new TypeExpr.ObjectLiteral.Field(
-                                                                "key", base("string")),
-                                                        new TypeExpr.ObjectLiteral.Field(
-                                                                "value", value))));
-                    }
-                    case FORMAT_DATE ->
-                            new TypeExpr.UnionOf(
-                                    List.of(base("string"), new TypeExpr.ArrayOf(base("string"))));
-                    default -> null;
-                };
-        if (required != null) {
-            requireReturnCovers(spec, required);
-        }
-    }
-
-    private static void requireParamCount(BuiltinSpec spec, int expected) {
-        if (spec.params().size() != expected) {
-            throw invalid(
-                    spec,
-                    spec.name()
-                            + " requires exactly "
-                            + expected
-                            + " parameters for its fixed Java layout, got "
-                            + spec.params().size());
-        }
-    }
-
-    private static void requireBase(BuiltinSpec spec, int index, String expected, String role) {
-        TypeExpr type = paramType(spec, index);
-        if (!(type instanceof TypeExpr.Base base) || !expected.equals(base.name())) {
-            throw invalid(
-                    spec,
-                    spec.name()
-                            + " parameter "
-                            + index
-                            + " must be "
-                            + expected
-                            + " ("
-                            + role
-                            + "), got "
-                            + spec.params().get(index).type());
-        }
-    }
-
-    private static void requireNoOptionalOrVariadic(BuiltinSpec spec) {
-        for (BuiltinSpec.ParamSpec param : spec.params()) {
-            if (param.optional() || param.variadic()) {
-                throw invalid(
-                        spec,
-                        spec.name()
-                                + " parameter '"
-                                + param.name()
-                                + "' must not be optional or variadic");
-            }
-        }
-    }
-
-    private static TypeExpr paramType(BuiltinSpec spec, int index) {
-        return spec.params().get(index).typeExpr();
-    }
-
-    private static TypeExpr elementOf(TypeExpr type) {
-        return type instanceof TypeExpr.ArrayOf array ? array.element() : null;
-    }
-
-    private static TypeExpr recordValueOf(TypeExpr type) {
-        return type instanceof TypeExpr.RecordOf record ? record.value() : null;
-    }
-
-    private static TypeExpr base(String name) {
-        return new TypeExpr.Base(name);
-    }
-
-    private static TypeExpr union(TypeExpr first, TypeExpr second) {
-        if (first == null) {
-            return second;
-        }
-        if (second == null) {
-            return first;
-        }
-        return new TypeExpr.UnionOf(List.of(first, second));
-    }
-
-    private static void requireReturnCovers(BuiltinSpec spec, TypeExpr required) {
-        if (spec.returnType() == null) {
-            throw invalid(
-                    spec,
-                    spec.name()
-                            + " must declare a returnType covering its Java result ("
-                            + required
-                            + ")");
-        }
-        if (!covers(spec.returnType(), required)) {
-            throw invalid(
-                    spec,
-                    spec.name()
-                            + " returnType does not cover the Java result shape required by"
-                            + " its special semantics");
-        }
-    }
-
-    /**
-     * 声明类型是否覆盖要求类型:union 全分支覆盖、{@code any} 覆盖一切、变量按名匹配。
-     *
-     * @param declared 声明类型
-     * @param required 要求类型
-     * @return 声明覆盖要求类型时为 {@code true}
-     */
-    private static boolean covers(TypeExpr declared, TypeExpr required) {
-        if (declared == null || required == null) {
-            return false;
-        }
-        if (required instanceof TypeExpr.UnionOf unionOf) {
-            return unionOf.alternatives().stream().allMatch(alt -> covers(declared, alt));
-        }
-        if (declared instanceof TypeExpr.UnionOf unionOf) {
-            return unionOf.alternatives().stream().anyMatch(alt -> covers(alt, required));
-        }
-        if (declared instanceof TypeExpr.Base base && "any".equals(base.name())) {
-            return true;
-        }
-        return coversSameKind(declared, required);
-    }
-
-    private static boolean coversSameKind(TypeExpr declared, TypeExpr required) {
-        if (declared instanceof TypeExpr.TypeVar declaredVar
-                && required instanceof TypeExpr.TypeVar requiredVar) {
-            return declaredVar.name().equals(requiredVar.name());
-        }
-        if (declared instanceof TypeExpr.ArrayOf declaredArray
-                && required instanceof TypeExpr.ArrayOf requiredArray) {
-            return covers(declaredArray.element(), requiredArray.element());
-        }
-        if (declared instanceof TypeExpr.RecordOf declaredRecord
-                && required instanceof TypeExpr.RecordOf requiredRecord) {
-            return covers(declaredRecord.value(), requiredRecord.value());
-        }
-        if (declared instanceof TypeExpr.ObjectLiteral declaredObject
-                && required instanceof TypeExpr.ObjectLiteral requiredObject) {
-            return coversObjectLiteral(declaredObject, requiredObject);
-        }
-        if (declared instanceof TypeExpr.Base declaredBase
-                && required instanceof TypeExpr.Base requiredBase) {
-            return declaredBase.name().equals(requiredBase.name());
-        }
-        return false;
-    }
-
-    /**
-     * 要求对象的每个字段都必须在声明对象里同名字段且类型被覆盖。
-     *
-     * @param declared 声明对象类型
-     * @param required 要求对象类型
-     * @return 所有要求字段都被覆盖时为 {@code true}
-     */
-    private static boolean coversObjectLiteral(
-            TypeExpr.ObjectLiteral declared, TypeExpr.ObjectLiteral required) {
-        for (TypeExpr.ObjectLiteral.Field field : required.fields()) {
-            boolean covered =
-                    declared.fields().stream()
-                            .anyMatch(
-                                    candidate ->
-                                            candidate.name().equals(field.name())
-                                                    && covers(candidate.type(), field.type()));
-            if (!covered) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static GenerationSdkException invalid(BuiltinSpec spec, String message) {
-        return new GenerationSdkException("builtin '" + spec.name() + "': " + message);
+        BuiltinDefinitionRules.validateDefinition(spec);
     }
 
     // ───────────────────────────────────────────────────────────────────────
@@ -566,9 +304,9 @@ public final class BuiltinAnalysis {
      * @since 2026
      */
     static final class AnalysisContext {
-        private final AnalysisSession session;
+        private final BuiltinSession session;
         private final String statementId;
-        private final AnalysisSession.LexicalEnvironment env;
+        private final LexicalEnvironment env;
         private final Set<String> resolving;
         private final String useSite;
         private final String useSitePath;
@@ -582,9 +320,9 @@ public final class BuiltinAnalysis {
          * @param resolving 循环引用追踪集合
          */
         AnalysisContext(
-                AnalysisSession session,
+                BuiltinSession session,
                 String statementId,
-                AnalysisSession.LexicalEnvironment env,
+                LexicalEnvironment env,
                 Set<String> resolving) {
             this(session, statementId, env, resolving, null, null);
         }
@@ -600,9 +338,9 @@ public final class BuiltinAnalysis {
          * @param useSitePath 诊断路径前缀
          */
         AnalysisContext(
-                AnalysisSession session,
+                BuiltinSession session,
                 String statementId,
-                AnalysisSession.LexicalEnvironment env,
+                LexicalEnvironment env,
                 Set<String> resolving,
                 String useSite,
                 String useSitePath) {
@@ -614,10 +352,7 @@ public final class BuiltinAnalysis {
             this.useSitePath = useSitePath;
         }
 
-        Fact synth(
-                AstNode node,
-                AnalysisSession.LexicalEnvironment bindings,
-                Set<String> resolvingSet) {
+        Fact synth(AstNode node, LexicalEnvironment bindings, Set<String> resolvingSet) {
             return session.synth(node, statementId, bindings, resolvingSet);
         }
 
@@ -629,7 +364,7 @@ public final class BuiltinAnalysis {
             return statementId;
         }
 
-        AnalysisSession.LexicalEnvironment env() {
+        LexicalEnvironment env() {
             return env;
         }
 
@@ -929,7 +664,7 @@ public final class BuiltinAnalysis {
         Fact boundElement = boundElement(inputFact, element, emptyPossible);
         // 保留元素存在性标记以约束缺字段诊断;标量类型误用仍可按安全上界检查。
         Fact checkElement = stripExistenceLosses(boundElement);
-        AnalysisSession.LexicalEnvironment bodyEnv = bindElement(call, checkElement, context.env());
+        LexicalEnvironment bodyEnv = bindElement(call, checkElement, context.env());
         Fact body =
                 context.synth(call.args().get(layout.bodyIndex()), bodyEnv, context.resolving());
         if (emptyPossible) {
@@ -988,9 +723,9 @@ public final class BuiltinAnalysis {
      * @param env 外层词法环境
      * @return 叠加 binder 绑定后的词法环境
      */
-    private static AnalysisSession.LexicalEnvironment bindElement(
-            AstNode.Comp call, Fact element, AnalysisSession.LexicalEnvironment env) {
-        AnalysisSession.LexicalEnvironment bodyEnv = env;
+    private static LexicalEnvironment bindElement(
+            AstNode.Comp call, Fact element, LexicalEnvironment env) {
+        LexicalEnvironment bodyEnv = env;
         Layout layout = layoutOf(call.name(), call.args().size());
         if (layout == null) {
             return bodyEnv;
@@ -1052,7 +787,7 @@ public final class BuiltinAnalysis {
         if (layout == null) {
             return Fact.unknown(Fact.Loss.MISSING_CONTEXT);
         }
-        AnalysisSession.LexicalEnvironment declared = context.env();
+        LexicalEnvironment declared = context.env();
         for (int binderIndex : layout.binderIndexes()) {
             String name = binderName(call, binderIndex);
             if (name != null) {
@@ -1218,9 +953,9 @@ public final class BuiltinAnalysis {
             return;
         }
         DeferredTemplate template = templates.get(render);
-        AnalysisSession.LexicalEnvironment base =
+        LexicalEnvironment base =
                 template == null ? context.env() : context.env().over(template.declarationEnv());
-        AnalysisSession.LexicalEnvironment useEnv = base;
+        LexicalEnvironment useEnv = base;
         for (int binderIndex : layout.binderIndexes()) {
             String name = binderName(render, binderIndex);
             if (name != null) {
@@ -1278,6 +1013,6 @@ public final class BuiltinAnalysis {
     private record DeferredTemplate(
             AstNode.Comp call,
             String statementId,
-            AnalysisSession.LexicalEnvironment declarationEnv,
+            LexicalEnvironment declarationEnv,
             int bodyIndex) {}
 }
