@@ -26,7 +26,11 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(propsOf("TextContent")).not.toHaveProperty("properties");
     expect(propsOf("TextContent")).not.toHaveProperty("style");
 
-    expect(Object.keys(propsOf("MarkDownRenderer"))).toEqual(["textMarkdown", "variant"]);
+    expect(Object.keys(propsOf("MarkDownRenderer"))).toEqual([
+      "textMarkdown",
+      "variant",
+      "tablePageSize",
+    ]);
 
     expect(Object.keys(propsOf("CardHeader"))).toEqual(["title", "subtitle"]);
 

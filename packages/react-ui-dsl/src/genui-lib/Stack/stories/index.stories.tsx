@@ -3,11 +3,10 @@ import type { ReactNode } from "react";
 import { Stack } from "../";
 
 type StackStoryProps = {
-  align?: "start" | "center" | "end" | "stretch" | "baseline";
+  align?: "center" | "stretch";
   children?: ReactNode;
   direction?: "row" | "column";
-  gap?: "none" | "xs" | "s" | "m" | "l" | "xl" | "2xl";
-  justify?: "start" | "center" | "end" | "between" | "around" | "evenly";
+  justify?: "start" | "center" | "between";
   wrap?: boolean;
 };
 
@@ -25,24 +24,19 @@ const meta = {
   component: StackStoryView,
   args: {
     direction: "column",
-    gap: "m",
   },
   argTypes: {
     align: {
       control: "select",
-      options: ["start", "center", "end", "stretch", "baseline"],
+      options: ["center", "stretch"],
     },
     direction: {
       control: "select",
       options: ["row", "column"],
     },
-    gap: {
-      control: "select",
-      options: ["none", "xs", "s", "m", "l", "xl", "2xl"],
-    },
     justify: {
       control: "select",
-      options: ["start", "center", "end", "between", "around", "evenly"],
+      options: ["start", "center", "between"],
     },
     wrap: { control: "boolean" },
   },

@@ -5,20 +5,32 @@ import { buildChartOption } from "../../view-utils";
 
 type PieChartViewProps = {
   labels: string[];
-  values: number[];
+  values: (number | string)[];
   variant?: "pie" | "donut";
+  isPercentage?: boolean;
 };
 
-export function PieChartView({ labels, values, variant }: PieChartViewProps) {
+function toPieValue(value: number | string): number {
+  if (typeof value === "number") return value;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function PieChartView({ labels, values, variant, isPercentage }: PieChartViewProps) {
   const radius = variant === "donut" ? ["40%", "70%"] : "70%";
   const option: echarts.EChartsOption = {
     series: [{
       type: "pie",
       radius,
-      data: (labels ?? []).map((name, i) => ({ name, value: (values ?? [])[i] })),
+      data: (labels ?? []).map((name, i) => ({
+        name,
+        value: toPieValue((values ?? [])[i] ?? 0),
+      })),
     }],
     legend: { orient: "vertical", left: "left" },
-    tooltip: { trigger: "item" },
+    tooltip: isPercentage
+      ? { trigger: "item", formatter: "{b}: {d}%" }
+      : { trigger: "item" },
   };
   return <BaseChart option={buildChartOption(option)} />;
 }

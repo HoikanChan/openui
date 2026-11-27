@@ -5,21 +5,53 @@ import type { ColumnType } from "antd/es/table";
 import type { ReactNode } from "react";
 import {
   formatCell,
-  getColumnProps,
   getFieldValue,
   isElementNode,
+  normalizeColumn,
   renderExpandRow,
 } from "./shared";
-import type { ColumnValue, TableRow, TableViewProps } from "./types";
+import type { ColumnValue, TableViewProps } from "./types";
 
 export { formatCell };
+
+function renderFixedValue(
+  value: unknown,
+  record: Record<string, unknown>,
+  renderNode?: (value: unknown) => ReactNode,
+): ReactNode {
+  // @Render slots arrive hydrated as functions; ExtraCol binds the current row.
+  if (typeof value === "function") {
+    return value(record);
+  }
+  if (isElementNode(value)) {
+    return renderNode ? renderNode(value) : null;
+  }
+  return formatCell(value);
+}
 
 export function mapColumnsToAntd(
   columns: ColumnValue[],
   renderNode?: (value: unknown) => ReactNode,
-): ColumnType<TableRow>[] {
-  return columns.map((columnValue) => {
-    const column = getColumnProps(columnValue);
+): ColumnType<Record<string, unknown>>[] {
+  return columns.map((columnValue, columnIndex) => {
+    const column = normalizeColumn(columnValue);
+
+    if (column.kind === "index") {
+      return {
+        key: `index-${columnIndex}`,
+        title: column.title,
+        render: (_value, _record, rowIndex) => formatCell((rowIndex ?? 0) + 1),
+      };
+    }
+
+    if (column.kind === "extra") {
+      return {
+        key: `extra-${columnIndex}`,
+        title: column.title,
+        render: (_value, record) => renderFixedValue(column.value, record, renderNode),
+      };
+    }
+
     const options = column.options ?? {};
 
     return {
@@ -33,7 +65,7 @@ export function mapColumnsToAntd(
         ? (value, record) => String(getFieldValue(record, column.field)) === String(value)
         : undefined,
       ellipsis: options.tooltip ? true : undefined,
-      render: (value: unknown, record: TableRow) => {
+      render: (value: unknown, record: Record<string, unknown>) => {
         if (typeof options.cell === "function") {
           return options.cell(value, record);
         }

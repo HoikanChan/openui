@@ -38,7 +38,7 @@ export { Stack } from "./genui-lib/Stack";
 export { Tabs } from "./genui-lib/Tabs";
 export { Tag } from "./genui-lib/Tag";
 export { TagBlock } from "./genui-lib/TagBlock";
-export { Col, Table } from "./genui-lib/Table";
+export { Col, ExtraCol, IndexCol, Table } from "./genui-lib/Table";
 export { TextContent } from "./genui-lib/TextContent";
 export { TimeLine } from "./genui-lib/TimeLine";
 export { CanvasCard } from "./canvas/CanvasCard";

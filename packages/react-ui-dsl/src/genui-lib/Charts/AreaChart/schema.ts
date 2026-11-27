@@ -8,4 +8,6 @@ export const AreaChartSchema = z.object({
   xLabel: z.string().optional(),
   yLabel: z.string().optional(),
   stacked: z.boolean().optional(),
+  thresholdType: z.enum(["low", "high"]).optional(),
+  thresholdValue: z.number().optional(),
 });

@@ -19,7 +19,9 @@ describe("react-ui-dsl Table schema redesign", () => {
 
     expect(spec.components.Table.propsSchema?.properties.columns).toEqual({
       type: "array",
-      items: { component: "Col" },
+      items: {
+        anyOf: [{ component: "Col" }, { component: "ExtraCol" }, { component: "IndexCol" }],
+      },
     });
     expect(spec.components.Table.propsSchema?.properties.rows).toEqual({
       type: "array",
@@ -182,6 +184,82 @@ devices = [{name: "Router-A", status: "up", interfaces: [{name: "eth0"}]}]`,
 
     expect(result.meta.errors).toHaveLength(0);
     expect(result.root?.props.expandRow).toBeDefined();
+  });
+});
+
+function createColumnNode(typeName: string, props: Record<string, unknown>) {
+  return { type: "element" as const, typeName, partial: false, props };
+}
+
+describe("Table ExtraCol and IndexCol columns", () => {
+  it("exposes ExtraCol and IndexCol schemas alongside Col", () => {
+    const defs = dslLibrary.toJSONSchema().$defs ?? {};
+    expect(defs.ExtraCol?.properties?.title).toEqual({ type: "string" });
+    expect(defs.ExtraCol?.required).toEqual(["title", "value"]);
+    expect(defs.IndexCol?.properties?.title).toEqual({ type: "string" });
+    expect(defs.IndexCol?.required).toEqual(["title"]);
+  });
+
+  it("parses IndexCol and ExtraCol columns in a table", () => {
+    const parser = createParser(dslLibrary.toJSONSchema());
+    const result = parser.parse(
+      `root = Table([IndexCol("No."), Col("Name", "name"), ExtraCol("Site", "Beijing")], rows)
+rows = [{name: "Alice"}]`,
+    );
+
+    expect(result.meta.errors).toHaveLength(0);
+    expect(result.root?.props.columns).toHaveLength(3);
+    expect(result.root?.props.columns[0]).toMatchObject({
+      type: "element",
+      typeName: "IndexCol",
+      props: { title: "No." },
+    });
+    expect(result.root?.props.columns[2]).toMatchObject({
+      type: "element",
+      typeName: "ExtraCol",
+      props: { title: "Site", value: "Beijing" },
+    });
+  });
+
+  it("renders one-based row index cells from IndexCol", () => {
+    const columns = mapColumnsToAntd([createColumnNode("IndexCol", { title: "No." })]);
+    expect(columns[0].title).toBe("No.");
+    expect(columns[0].render?.("ignored", {}, 0)).toBe("1");
+    expect(columns[0].render?.("ignored", {}, 4)).toBe("5");
+  });
+
+  it("renders the fixed ExtraCol value for every row", () => {
+    const columns = mapColumnsToAntd([
+      createColumnNode("ExtraCol", { title: "Site", value: "Beijing" }),
+    ]);
+    expect(columns[0].title).toBe("Site");
+    expect(columns[0].render?.("ignored", {})).toBe("Beijing");
+    expect(columns[0].render?.("ignored", {})).toBe("Beijing");
+  });
+
+  it("calls a hydrated @Render slot with the current row", () => {
+    const columns = mapColumnsToAntd([
+      createColumnNode("ExtraCol", {
+        title: "Action",
+        value: (record: { id: number }) => `row-${record.id}`,
+      }),
+    ]);
+    expect(columns[0].render?.("ignored", { id: 7 })).toBe("row-7");
+  });
+
+  it("renders an ExtraCol element value through renderNode", () => {
+    const element = {
+      type: "element" as const,
+      typeName: "TextContent",
+      partial: false,
+      props: { text: "Row action" },
+    };
+    const columns = mapColumnsToAntd(
+      [createColumnNode("ExtraCol", { title: "Action", value: element })],
+      (value) => <span data-rendered="true">{JSON.stringify(value)}</span>,
+    );
+    const rendered = columns[0].render?.("ignored", {});
+    expect(rendered.props["data-rendered"]).toBe("true");
   });
 });
 

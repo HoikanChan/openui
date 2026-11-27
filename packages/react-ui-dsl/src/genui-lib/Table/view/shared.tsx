@@ -3,7 +3,13 @@
 import type { ElementNode } from "@cloudsop/openui-react-lang";
 import type { ReactNode } from "react";
 import type { ExpandRowRenderer } from "../schema";
-import type { ColumnValue, ColViewProps, TableRow } from "./types";
+import type {
+  ColumnValue,
+  ColViewProps,
+  NormalizedColumn,
+  TableColumnViewProps,
+  TableRow,
+} from "./types";
 
 export function formatCell(value: unknown): string {
   if (value == null) return "";
@@ -12,12 +18,28 @@ export function formatCell(value: unknown): string {
 
 export function isColumnNode(
   column: ColumnValue,
-): column is Extract<ColumnValue, { props: ColViewProps }> {
+): column is Extract<ColumnValue, { props: TableColumnViewProps }> {
   return typeof column === "object" && column !== null && "props" in column;
 }
 
-export function getColumnProps(column: ColumnValue): ColViewProps {
+export function getColumnProps(column: ColumnValue): TableColumnViewProps {
   return isColumnNode(column) ? column.props : column;
+}
+
+/**
+ * Collapse a column node or plain props object into a discriminated shape.
+ * The three column kinds have disjoint prop names, so their shapes identify
+ * them without relying on the parsed node's typeName.
+ */
+export function normalizeColumn(column: ColumnValue): NormalizedColumn {
+  const props = getColumnProps(column);
+  if ("field" in props) {
+    return { kind: "field", ...props };
+  }
+  if ("value" in props) {
+    return { kind: "extra", ...props };
+  }
+  return { kind: "index", ...props };
 }
 
 export function getFieldValue(record: TableRow, field: string): unknown {

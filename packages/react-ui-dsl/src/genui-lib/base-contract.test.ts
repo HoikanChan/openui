@@ -13,7 +13,6 @@ describe("DSLEngine base contract", () => {
     expect(Object.keys(contract.components.Stack.propsSchema?.properties ?? {})).toEqual([
       "children",
       "direction",
-      "gap",
       "align",
       "justify",
       "wrap",

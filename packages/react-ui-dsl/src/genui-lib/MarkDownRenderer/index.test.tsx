@@ -39,4 +39,17 @@ describe("MarkDownRenderer renderer", () => {
     const spec = dslLibrary.toSpec();
     expect(spec.components).toHaveProperty("MarkDownRenderer");
   });
+
+  it("declares an optional tablePageSize prop", () => {
+    const schema = dslLibrary.toSpec().components.MarkDownRenderer.propsSchema;
+    expect(schema?.properties.tablePageSize).toEqual({ type: "number" });
+    expect(schema?.required ?? []).not.toContain("tablePageSize");
+  });
+
+  it("renders without tablePageSize and accepts it in the schema", () => {
+    const rendered = MarkDownRenderer.component({
+      props: { textMarkdown: "| a |\n| - |", tablePageSize: 10 },
+    });
+    expect(rendered.type).toBe("div");
+  });
 });

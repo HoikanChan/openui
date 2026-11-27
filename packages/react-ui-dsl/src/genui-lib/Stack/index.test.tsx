@@ -8,7 +8,6 @@ describe("Stack schema", () => {
     const result = StackSchema.safeParse({
       children: [],
       direction: "row",
-      gap: "l",
       align: "center",
       justify: "between",
       wrap: true,
@@ -25,8 +24,20 @@ describe("Stack schema", () => {
     expect(StackSchema.safeParse({ direction: "diagonal" }).success).toBe(false);
   });
 
-  it("rejects numeric gap", () => {
-    expect(StackSchema.safeParse({ gap: 16 }).success).toBe(false);
+  it("does not declare a gap prop", () => {
+    expect(Object.keys(StackSchema.shape)).not.toContain("gap");
+  });
+
+  it("rejects align values outside the contract enum", () => {
+    for (const align of ["start", "end", "baseline"]) {
+      expect(StackSchema.safeParse({ align }).success).toBe(false);
+    }
+  });
+
+  it("rejects justify values outside the contract enum", () => {
+    for (const justify of ["end", "around", "evenly"]) {
+      expect(StackSchema.safeParse({ justify }).success).toBe(false);
+    }
   });
 
   it("keeps direction as second positional prop", () => {
@@ -34,7 +45,6 @@ describe("Stack schema", () => {
     expect(Object.keys(spec.components.Stack.propsSchema?.properties ?? {})).toEqual([
       "children",
       "direction",
-      "gap",
       "align",
       "justify",
       "wrap",
@@ -43,13 +53,21 @@ describe("Stack schema", () => {
       type: "string",
       enum: ["row", "column"],
     });
+    expect(spec.components.Stack.propsSchema?.properties.align).toEqual({
+      type: "string",
+      enum: ["center", "stretch"],
+    });
+    expect(spec.components.Stack.propsSchema?.properties.justify).toEqual({
+      type: "string",
+      enum: ["start", "center", "between"],
+    });
   });
 });
 
 describe("Stack renderer", () => {
   it("renders column direction by default", () => {
     const rendered = Stack.component({
-      props: { children: ["A"], gap: "m" },
+      props: { children: ["A"] },
       renderNode: (v) => v as React.ReactNode,
     });
     expect(rendered.type).toBe("div");
@@ -59,23 +77,15 @@ describe("Stack renderer", () => {
 
   it("renders row direction when direction is row", () => {
     const rendered = Stack.component({
-      props: { children: ["A"], direction: "row", gap: "l" },
+      props: { children: ["A"], direction: "row" },
       renderNode: (v) => v as React.ReactNode,
     });
     expect(rendered.type).toBe("div");
     expect(rendered.props.style.flexDirection).toBe("row");
-    expect(rendered.props.style.gap).toBe("1.125rem");
+    expect(rendered.props.style.gap).toBe("0.75rem");
   });
 
-  it("maps gap token l to 1.125rem", () => {
-    const rendered = Stack.component({
-      props: { gap: "l" },
-      renderNode: (v) => v as React.ReactNode,
-    });
-    expect(rendered.props.style.gap).toBe("1.125rem");
-  });
-
-  it("defaults gap to 0.75rem when not specified", () => {
+  it("applies a fixed default gap independent of props", () => {
     const rendered = Stack.component({
       props: {},
       renderNode: (v) => v as React.ReactNode,
@@ -89,6 +99,21 @@ describe("Stack renderer", () => {
       renderNode: (v) => v as React.ReactNode,
     });
     expect(rendered.props.style.flexWrap).toBe("wrap");
+  });
+
+  it("maps align and justify to flex values", () => {
+    const centered = Stack.component({
+      props: { align: "center", justify: "center" },
+      renderNode: (v) => v as React.ReactNode,
+    });
+    expect(centered.props.style.alignItems).toBe("center");
+    expect(centered.props.style.justifyContent).toBe("center");
+
+    const stretched = Stack.component({
+      props: { align: "stretch" },
+      renderNode: (v) => v as React.ReactNode,
+    });
+    expect(stretched.props.style.alignItems).toBe("stretch");
   });
 
   it("falls back justifyContent to flex-start when wrap=true and justify=between", () => {
@@ -109,15 +134,14 @@ describe("Stack renderer", () => {
 });
 
 describe("Stack description", () => {
-  it("matches exact spec description for LLM", () => {
+  it("matches the contract description", () => {
     expect(Stack.description).toBe(
-      'Flex container. direction: "row"|"column" (default "column"). gap: "none"|"xs"|"s"|"m"|"l"|"xl"|"2xl" (default "m"). align: "start"|"center"|"end"|"stretch"|"baseline". justify: "start"|"center"|"end"|"between"|"around"|"evenly".',
+      'Flex container. justify defaults to "start" — omit unless you need "center" or "between" for 3+ items. Params: direction "row"|"column" (default "column"), align "center"|"stretch", justify "start"|"center"|"between", wrap boolean.',
     );
   });
 
-  it("description contains default column and default m", () => {
-    expect(Stack.description).toContain('default "column"');
-    expect(Stack.description).toContain('default "m"');
+  it("no longer advertises the removed gap prop", () => {
+    expect(Stack.description).not.toContain("gap");
   });
 });
 

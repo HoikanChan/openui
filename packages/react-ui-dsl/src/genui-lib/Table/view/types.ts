@@ -2,7 +2,12 @@
 
 import type { ElementNode } from "@cloudsop/openui-react-lang";
 import type { CSSProperties, ReactNode } from "react";
-import type { ColCellRenderer, ExpandRowRenderer } from "../schema";
+import type {
+  ColCellRenderer,
+  ExpandRowRenderer,
+  ExtraColProps,
+  IndexColProps,
+} from "../schema";
 
 export type TableRow = Record<string, unknown>;
 
@@ -18,10 +23,17 @@ export type ColViewProps = {
   title: string;
 };
 
+export type TableColumnViewProps = ColViewProps | ExtraColProps | IndexColProps;
+
+export type NormalizedColumn =
+  | ({ kind: "field" } & ColViewProps)
+  | ({ kind: "extra" } & ExtraColProps)
+  | ({ kind: "index" } & IndexColProps);
+
 export type ColumnValue =
-  | ColViewProps
+  | TableColumnViewProps
   | {
-      props: ColViewProps;
+      props: TableColumnViewProps;
       type: string;
       typeName?: string;
     };
