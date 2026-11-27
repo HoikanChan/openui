@@ -1,32 +1,28 @@
-import React from "react";
+// @vitest-environment jsdom
+import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Card } from "..";
+import { CardView } from ".";
 
 describe("Card renderer", () => {
-  it("defaults to card variant and standard width", () => {
-    const rendered = Card.component({
-      props: {
-        children: ["Body copy"],
-      },
-      renderNode: (value) => value as React.ReactNode,
-    });
+  it("defaults to a column flex container", () => {
+    const { container } = render(<CardView>Body copy</CardView>);
+    const element = container.querySelector<HTMLDivElement>("div");
 
-    expect(rendered.props.variant).toBe("card");
-    expect(rendered.props.width).toBe("standard");
-    expect(rendered.props.children).toEqual(["Body copy"]);
+    expect(element?.style.flexDirection).toBe("column");
+    expect(element?.textContent).toBe("Body copy");
   });
 
-  it("passes variant and width through to CardView", () => {
-    const rendered = Card.component({
-      props: {
-        children: ["Body copy"],
-        variant: "sunk",
-        width: "full",
-      },
-      renderNode: (value) => value as React.ReactNode,
-    });
+  it("maps contract flex props onto the container", () => {
+    const { container } = render(
+      <CardView align="center" direction="row" justify="between" wrap>
+        Body copy
+      </CardView>,
+    );
+    const element = container.querySelector<HTMLDivElement>("div");
 
-    expect(rendered.props.variant).toBe("sunk");
-    expect(rendered.props.width).toBe("full");
+    expect(element?.style.flexDirection).toBe("row");
+    expect(element?.style.alignItems).toBe("center");
+    expect(element?.style.justifyContent).toBe("space-between");
+    expect(element?.style.flexWrap).toBe("wrap");
   });
 });

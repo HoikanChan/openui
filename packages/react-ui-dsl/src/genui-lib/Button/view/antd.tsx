@@ -10,12 +10,13 @@ export function ButtonView(props: ButtonViewProps) {
 
   return (
     <AntButton
-      danger={appearance.danger}
       disabled={props.disabled}
+      onClick={props.onClick}
+      size={appearance.antSize}
       style={props.style}
       type={appearance.antType}
     >
-      {props.text}
+      {props.label}
     </AntButton>
   );
 }

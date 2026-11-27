@@ -5,15 +5,10 @@ const meta = {
   title: "DSL Components/Image",
   component: ImageView,
   args: {
-    content:
-      "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=900&q=80",
-    type: "url",
+    alt: "Team working together",
+    src: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=900&q=80",
   },
   argTypes: {
-    type: {
-      control: "select",
-      options: ["url", "base64", "svg"],
-    },
     style: {
       control: "object",
     },

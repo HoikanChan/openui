@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import meta from "./index.stories";
 
 describe("Card story", () => {
-  test("keeps only variant controls in args and composes header content through children", () => {
+  test("keeps only flex controls in args and composes header content through children", () => {
     if (!meta.render || !meta.args) {
       throw new Error("Card story meta must define render and args");
     }
@@ -12,9 +12,10 @@ describe("Card story", () => {
     const children = React.Children.toArray(rendered.props.children);
 
     expect(meta.args).toEqual({
-      variant: "card",
+      direction: "column",
     });
     expect(meta.args).not.toHaveProperty("header");
+    expect(meta.args).not.toHaveProperty("variant");
     expect(meta.args).not.toHaveProperty("width");
     expect(children).toHaveLength(2);
   });

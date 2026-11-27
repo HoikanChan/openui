@@ -6,12 +6,23 @@ const meta = {
   title: "DSL Components/Card",
   component: CardView,
   args: {
-    variant: "card",
+    direction: "column",
   },
   argTypes: {
-    variant: {
+    direction: {
       control: "select",
-      options: ["card", "clear", "sunk"],
+      options: ["row", "column"],
+    },
+    align: {
+      control: "select",
+      options: ["start", "center", "end", "stretch", "baseline"],
+    },
+    justify: {
+      control: "select",
+      options: ["start", "center", "end", "between", "around", "evenly"],
+    },
+    wrap: {
+      control: "boolean",
     },
     style: {
       control: "object",
@@ -19,10 +30,7 @@ const meta = {
   },
   render: (args) => (
     <CardView {...args}>
-      <CardHeaderView
-        subtitle="Deployment health"
-        title="Runtime rollout"
-      />
+      <CardHeaderView subtitle="Deployment health" title="Runtime rollout" />
       Stories now compose header content through a dedicated CardHeader child.
     </CardView>
   ),

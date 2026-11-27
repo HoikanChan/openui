@@ -6,18 +6,23 @@ const meta = {
   component: ButtonView,
   args: {
     disabled: false,
-    status: "primary",
-    text: "Run action",
+    label: "Run action",
+    size: "normal",
     type: "default",
+    variant: "primary",
   },
   argTypes: {
-    status: {
+    variant: {
       control: "select",
-      options: ["default", "primary", "risk"],
+      options: ["primary", "secondary", "tertiary"],
     },
     type: {
       control: "select",
       options: ["default", "text"],
+    },
+    size: {
+      control: "select",
+      options: ["extra-small", "small", "normal", "large"],
     },
     style: {
       control: "object",

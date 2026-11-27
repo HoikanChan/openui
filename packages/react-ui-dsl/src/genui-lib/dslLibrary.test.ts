@@ -7,10 +7,19 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     const propsOf = (name: keyof typeof spec.components) =>
       spec.components[name].propsSchema?.properties ?? {};
 
-    expect(Object.keys(propsOf("Button"))).toEqual(["text", "status", "disabled", "type"]);
+    expect(Object.keys(propsOf("Button"))).toEqual([
+      "label",
+      "action",
+      "variant",
+      "type",
+      "size",
+      "disabled",
+    ]);
     expect(propsOf("Button")).not.toHaveProperty("properties");
     expect(propsOf("Button")).not.toHaveProperty("style");
     expect(propsOf("Button")).not.toHaveProperty("actions");
+    expect(propsOf("Button")).not.toHaveProperty("text");
+    expect(propsOf("Button")).not.toHaveProperty("status");
 
     expect(Object.keys(propsOf("TextContent"))).toEqual(["text", "size"]);
     expect(propsOf("TextContent").text).toEqual({ type: "string" });
@@ -21,9 +30,15 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
 
     expect(Object.keys(propsOf("CardHeader"))).toEqual(["title", "subtitle"]);
 
-    expect(propsOf("Card")).toHaveProperty("variant");
-    expect(propsOf("Card")).toHaveProperty("width");
-    expect(propsOf("Card")).not.toHaveProperty("direction");
+    expect(Object.keys(propsOf("Card"))).toEqual([
+      "children",
+      "direction",
+      "align",
+      "justify",
+      "wrap",
+    ]);
+    expect(propsOf("Card")).not.toHaveProperty("variant");
+    expect(propsOf("Card")).not.toHaveProperty("width");
     expect(propsOf("Card")).not.toHaveProperty("gap");
     expect(propsOf("Card")).not.toHaveProperty("style");
     expect(propsOf("Card")).not.toHaveProperty("actions");
@@ -73,11 +88,15 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     const miniChart = defs.MiniChart;
 
     expect(button.properties).toMatchObject({
-      status: expect.anything(),
-      disabled: expect.anything(),
-      text: expect.anything(),
+      label: expect.anything(),
+      action: expect.anything(),
+      variant: expect.anything(),
       type: expect.anything(),
+      size: expect.anything(),
+      disabled: expect.anything(),
     });
+    expect(button.properties).not.toHaveProperty("text");
+    expect(button.properties).not.toHaveProperty("status");
     expect(button.properties).not.toHaveProperty("properties");
     expect(button.properties).not.toHaveProperty("style");
     expect(button.properties).not.toHaveProperty("actions");
@@ -111,14 +130,15 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
 
     expect(card.properties).not.toHaveProperty("style");
     expect(card.properties).not.toHaveProperty("header");
-    expect(card.properties).not.toHaveProperty("direction");
+    expect(card.properties).not.toHaveProperty("variant");
+    expect(card.properties).not.toHaveProperty("width");
     expect(card.properties).not.toHaveProperty("gap");
-    expect(card.properties).not.toHaveProperty("align");
-    expect(card.properties).not.toHaveProperty("justify");
-    expect(card.properties).not.toHaveProperty("wrap");
     expect(card.properties).toMatchObject({
-      variant: expect.anything(),
-      width: expect.anything(),
+      children: expect.anything(),
+      direction: expect.anything(),
+      align: expect.anything(),
+      justify: expect.anything(),
+      wrap: expect.anything(),
     });
     expect(JSON.stringify(card.properties)).not.toContain('"actions"');
 

@@ -11,9 +11,14 @@ export const Card = defineComponent({
   name: "Card",
   props: CardSchema,
   description:
-    'Styled container. variant: "card" (default, elevated) | "sunk" (recessed) | "clear" (transparent). width: "standard" (default) | "full". Accepts any DSL component as children. For internal layout (spacing, direction), wrap children in VLayout or HLayout.',
+    'Styled container. Always full width. Accepts Stack flex params (default: direction "column"). Cards flex to share space in row/wrap layouts.',
   component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof CardSchema>>) => (
-    <CardView variant={props.variant ?? "card"} width={props.width ?? "standard"}>
+    <CardView
+      align={props.align}
+      direction={props.direction}
+      justify={props.justify}
+      wrap={props.wrap}
+    >
       {renderNode(props.children)}
     </CardView>
   ),

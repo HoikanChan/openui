@@ -5,16 +5,16 @@ const meta = {
   title: "DSL Components/Select",
   component: SelectView,
   args: {
-    allowClear: true,
-    defaultValue: "north-america",
-    options: [
+    items: [
       { label: "North America", value: "north-america" },
       { label: "Europe", value: "europe" },
       { label: "Asia Pacific", value: "apac" },
     ],
+    placeholder: "Choose a region",
+    value: "north-america",
   },
   argTypes: {
-    options: {
+    items: {
       control: "object",
     },
     style: {

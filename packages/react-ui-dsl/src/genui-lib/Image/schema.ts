@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const ImageSchema = z.object({
-  content: z.string(),
-  type: z.enum(["url", "base64", "svg"]),
+  src: z.string(),
+  alt: z.string().optional(),
 });
+
+export type ImageProps = z.infer<typeof ImageSchema>;

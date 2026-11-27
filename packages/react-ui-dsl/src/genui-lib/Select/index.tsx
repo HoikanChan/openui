@@ -8,12 +8,8 @@ import { SelectView } from "./view";
 export const Select = defineComponent({
   name: "Select",
   props: SelectSchema,
-  description: "Dropdown select",
+  description: "Dropdown select with named items",
   component: ({ props }: ComponentRenderProps<z.infer<typeof SelectSchema>>) => (
-    <SelectView
-      allowClear={props.allowClear}
-      defaultValue={props.defaultValue}
-      options={props.options}
-    />
+    <SelectView items={props.items} placeholder={props.placeholder} value={props.value} />
   ),
 });

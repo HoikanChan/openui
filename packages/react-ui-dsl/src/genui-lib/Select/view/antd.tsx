@@ -6,10 +6,10 @@ import type { SelectViewProps } from "./types";
 export function SelectView(props: SelectViewProps) {
   return (
     <AntSelect
-      allowClear={props.allowClear}
-      defaultValue={props.defaultValue}
-      options={props.options}
+      options={props.items}
+      placeholder={props.placeholder}
       style={{ width: "100%", ...props.style }}
+      value={props.value}
     />
   );
 }

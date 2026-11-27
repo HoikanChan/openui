@@ -1,29 +1,43 @@
 // @vitest-environment jsdom
-import React from "react";
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { buildChartOption } from "../components/chart/utils";
 import { resolveButtonAppearance } from "./Button";
 import { DescriptionsView, formatDescriptionValue, resolveAutoSpan } from "./Descriptions";
-import { resolveTagAppearance, TagView } from "./Tag";
 import { formatCell } from "./Table";
+import { resolveTagAppearance, TagView } from "./Tag";
 import { buildTimelineItems } from "./TimeLine";
 
 describe("react-ui-dsl view layer helpers", () => {
   it("maps DSL button props to antd button appearance", () => {
-    expect(resolveButtonAppearance({ status: "primary" })).toEqual({
+    expect(resolveButtonAppearance({ variant: "primary" })).toEqual({
       antType: "primary",
-      danger: false,
+      antSize: "middle",
     });
 
-    expect(resolveButtonAppearance({ status: "risk" })).toEqual({
+    expect(resolveButtonAppearance({ variant: "secondary" })).toEqual({
       antType: "default",
-      danger: true,
+      antSize: "middle",
     });
 
-    expect(resolveButtonAppearance({ type: "text", status: "risk" })).toEqual({
+    expect(resolveButtonAppearance({ variant: "tertiary" })).toEqual({
       antType: "text",
-      danger: true,
+      antSize: "middle",
+    });
+
+    expect(resolveButtonAppearance({ type: "text", variant: "primary" })).toEqual({
+      antType: "text",
+      antSize: "middle",
+    });
+
+    expect(resolveButtonAppearance({ size: "extra-small" })).toEqual({
+      antType: "default",
+      antSize: "small",
+    });
+
+    expect(resolveButtonAppearance({ size: "large" })).toEqual({
+      antType: "default",
+      antSize: "large",
     });
   });
 
@@ -41,11 +55,21 @@ describe("react-ui-dsl view layer helpers", () => {
           xAxis: { type: "category" },
           yAxis: { type: "value" },
         },
-        { source: [["month", "value"], ["Jan", 10]] },
+        {
+          source: [
+            ["month", "value"],
+            ["Jan", 10],
+          ],
+        },
       ),
     ).toMatchObject({
       title: { text: "Revenue" },
-      dataset: { source: [["month", "value"], ["Jan", 10]] },
+      dataset: {
+        source: [
+          ["month", "value"],
+          ["Jan", 10],
+        ],
+      },
       xAxis: { type: "category" },
       yAxis: { type: "value" },
     });
@@ -96,7 +120,9 @@ describe("react-ui-dsl view layer helpers", () => {
 
   it("computes auto span for long metric-card values", () => {
     expect(resolveAutoSpan("OK", 220)).toBe(1);
-    expect(resolveAutoSpan("this-is-a-very-long-value-that-should-span-multiple-columns", 140)).toBeGreaterThan(1);
+    expect(
+      resolveAutoSpan("this-is-a-very-long-value-that-should-span-multiple-columns", 140),
+    ).toBeGreaterThan(1);
   });
 
   it("keeps component values untouched during formatting", () => {
@@ -110,7 +136,12 @@ describe("react-ui-dsl view layer helpers", () => {
       columns: 3,
       items: [
         { kind: "field", label: "Name", renderedValue: "Alice", resolvedSpan: 1 },
-        { kind: "field", label: "Status", renderedValue: <TagView text="Active" variant="success" />, resolvedSpan: 1 },
+        {
+          kind: "field",
+          label: "Status",
+          renderedValue: <TagView text="Active" variant="success" />,
+          resolvedSpan: 1,
+        },
       ],
     });
 
@@ -202,7 +233,12 @@ describe("react-ui-dsl view layer helpers", () => {
             ),
             resolvedSpan: 2,
           },
-          { kind: "field", label: "Status", renderedValue: <TagView text="Running" variant="success" />, resolvedSpan: 1 },
+          {
+            kind: "field",
+            label: "Status",
+            renderedValue: <TagView text="Running" variant="success" />,
+            resolvedSpan: 1,
+          },
           { kind: "field", label: "Discount", renderedValue: "$20.00", resolvedSpan: 1 },
         ],
       }),

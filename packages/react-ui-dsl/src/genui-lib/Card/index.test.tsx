@@ -2,19 +2,14 @@ import { describe, expect, it } from "vitest";
 import { CardSchema } from "./schema";
 
 describe("react-ui-dsl Card schema", () => {
-  it("accepts variant and width props", () => {
+  it("accepts the contract flex props", () => {
     expect(
       CardSchema.safeParse({
         children: [],
-        variant: "sunk",
-        width: "full",
-      }).success,
-    ).toBe(true);
-
-    expect(
-      CardSchema.safeParse({
-        variant: "clear",
-        width: "standard",
+        direction: "row",
+        align: "center",
+        justify: "between",
+        wrap: true,
       }).success,
     ).toBe(true);
   });
@@ -23,12 +18,10 @@ describe("react-ui-dsl Card schema", () => {
     expect(CardSchema.safeParse({}).success).toBe(true);
   });
 
-  it("rejects flex layout props", () => {
-    expect(CardSchema.safeParse({ direction: "row" }).success).toBe(false);
+  it("rejects renderer-only props removed by the contract", () => {
+    expect(CardSchema.safeParse({ variant: "sunk" }).success).toBe(false);
+    expect(CardSchema.safeParse({ width: "full" }).success).toBe(false);
     expect(CardSchema.safeParse({ gap: "l" }).success).toBe(false);
-    expect(CardSchema.safeParse({ align: "stretch" }).success).toBe(false);
-    expect(CardSchema.safeParse({ justify: "between" }).success).toBe(false);
-    expect(CardSchema.safeParse({ wrap: true }).success).toBe(false);
   });
 
   it("rejects unknown props like header", () => {

@@ -8,11 +8,8 @@ import { ImageView } from "./view";
 export const Image = defineComponent({
   name: "Image",
   props: ImageSchema,
-  description: "Image that supports url, base64, or inline SVG",
+  description: "Image that supports url.",
   component: ({ props }: ComponentRenderProps<z.infer<typeof ImageSchema>>) => (
-    <ImageView
-      content={props.content}
-      type={props.type}
-    />
+    <ImageView alt={props.alt} src={props.src} />
   ),
 });
