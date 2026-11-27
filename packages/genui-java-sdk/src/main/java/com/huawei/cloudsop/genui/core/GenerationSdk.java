@@ -389,7 +389,7 @@ public final class GenerationSdk {
      * @return the fired insights, or an empty list when there is no data model
      */
     private List<DataInsight> profileInsights(DataModelSpec in) {
-        if (in == null) {
+        if (in == null || !characterization.insightsEnabled()) {
             return List.of();
         }
         return DataProfiler.profile(in.raw(), characterization);

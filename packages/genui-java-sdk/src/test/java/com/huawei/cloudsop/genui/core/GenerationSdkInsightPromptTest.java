@@ -14,6 +14,7 @@ import com.huawei.cloudsop.genui.core.contract.DataModelSpec;
 import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.contract.GenerationContractLoader;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
+import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig;
 
 import org.junit.jupiter.api.Test;
 
@@ -117,6 +118,38 @@ class GenerationSdkInsightPromptTest {
         String ackPrompt = assemble(orderedMap("code", 200L, "message", "success"));
         assertTrue(ackPrompt.contains("API 状态回执"), "status ack gate prompt must appear");
         assertFalse(ackPrompt.contains("数据集为空"), "empty gate must not fire for status ack");
+    }
+
+    @Test
+    void insightsDisabledKeepsPromptFreeOfInsightRules() {
+        List<Object> readings = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            readings.add(orderedMap("cellId", "cell-" + (i % 3), "signal", (long) (10 + i % 7)));
+        }
+        GenerationSdk sdk =
+                GenerationSdk.builder()
+                        .baseContract(contract())
+                        .characterization(
+                                CharacterizationConfig.builder().insightsEnabled(false).build())
+                        .build();
+        String prompt =
+                sdk.assemblePrompt(
+                                new GenUIPromptRequest(
+                                        null,
+                                        new DataModelSpec(
+                                                "Test data", orderedMap("readings", readings)),
+                                        null,
+                                        null,
+                                        null,
+                                        null,
+                                        null))
+                        .prompt();
+
+        assertFalse(prompt.contains("各组精确行数"), "insight rule prompt must not be injected");
+        assertFalse(
+                prompt.contains("root = Stack([Table(readings"),
+                "matched example must not be injected");
+        assertTrue(prompt.contains("root = Stack([])"), "static example must still pass through");
     }
 
     // ─── helpers ───────────────────────────────────────────────────────────────

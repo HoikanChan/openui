@@ -21,6 +21,7 @@ class CharacterizationConfigTest {
         assertEquals(50, config.enumMaxDistinct());
         assertEquals(0.5, config.enumMaxRatio());
         assertEquals(10000, config.deepScanLimit());
+        assertTrue(config.insightsEnabled());
     }
 
     @Test
