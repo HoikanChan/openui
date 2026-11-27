@@ -1,0 +1,157 @@
+{
+  "meta": {
+    "prompt": "查询有线指标趋势\n\nAPI Schema:\n{\n  \"apiId\": \"查询有线指标趋势\",\n  \"apiName\": \"查询有线指标趋势\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/pmservice/v1/ai/kpi/query/trend\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"aggregationType\",\n      \"description\": \"汇聚类型 最新值(last)、最大值(max)、最小值(min)、平均值(average)和累计值(sum)\"\n    },\n    {\n      \"paramName\": \"deviceConf\",\n      \"description\": \"设备过滤信息\",\n      \"childParams\": [\n        {\n          \"paramName\": \"neName\",\n          \"description\": \"设备的名称\"\n        },\n        {\n          \"paramName\": \"neIp\",\n          \"description\": \"ip\"\n        },\n        {\n          \"paramName\": \"neMac\",\n          \"description\": \"设备的Mac地址\"\n        },\n        {\n          \"paramName\": \"neCategory\",\n          \"description\": \"设备类型\"\n        },\n        {\n          \"paramName\": \"slotName\",\n          \"description\": \"设备上单板的名称\"\n        },\n        {\n          \"paramName\": \"ifName\",\n          \"description\": \"设备接口名称\"\n        },\n        {\n          \"paramName\": \"queueId\",\n          \"description\": \"队列ID\"\n        },\n        {\n          \"paramName\": \"laneId\",\n          \"description\": \"设备上光模块的通道号\"\n        }\n      ]\n    },\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"id\",\n      \"description\": \"站点或区域id、\\\"/\\\" 为根区域\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"description\": \"区域层级，global为0，站点为1，楼栋为8，楼层为9\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"example 1683302400000\"\n    },\n    {\n      \"paramName\": \"telemetryMetric\",\n      \"description\": \"查询的指标类别\",\n      \"childParams\": [\n        {\n          \"paramName\": null,\n          \"description\": null\n        }\n      ]\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"description\": \"租户ID\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"error_code\",\n      \"description\": \"状态码\"\n    },\n    {\n      \"paramName\": \"error_msg\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"telemetryData\",\n      \"description\": \"对象具体指标结果集合\",\n      \"childParams\": [\n        {\n          \"paramName\": \"telemetryData\",\n          \"description\": \"指标项具体信息，如设备名称、指标值等\"\n        }\n      ]\n    }\n  ]\n}",
+    "taxonomy": [
+      "api-response-envelope",
+      "homogeneous",
+      "epoch-ms, string-enum",
+      "single-entity",
+      "full",
+      "raw-only"
+    ],
+    "evalHints": [
+      "折线图/面积图（趋势数据）"
+    ]
+  },
+  "data": {
+    "error_code": 200,
+    "error_msg": "Successful.",
+    "telemetryData": [
+      {
+        "timestamp": 1683302400000,
+        "metric": "cpu_rate",
+        "value": 45.1,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683302460000,
+        "metric": "cpu_rate",
+        "value": 45.5,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683302520000,
+        "metric": "cpu_rate",
+        "value": 46.2,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683302580000,
+        "metric": "cpu_rate",
+        "value": 47,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683302640000,
+        "metric": "cpu_rate",
+        "value": 46.8,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683302700000,
+        "metric": "cpu_rate",
+        "value": 60.9,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683302760000,
+        "metric": "cpu_rate",
+        "value": 45.5,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683302820000,
+        "metric": "cpu_rate",
+        "value": 46.1,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683302880000,
+        "metric": "cpu_rate",
+        "value": 55.5,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683302940000,
+        "metric": "cpu_rate",
+        "value": 48.2,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683303000000,
+        "metric": "cpu_rate",
+        "value": 78,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683303060000,
+        "metric": "cpu_rate",
+        "value": 48.5,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683303120000,
+        "metric": "cpu_rate",
+        "value": 33.8,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683303180000,
+        "metric": "cpu_rate",
+        "value": 47.2,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      },
+      {
+        "timestamp": 1683303240000,
+        "metric": "cpu_rate",
+        "value": 46.9,
+        "unit": "%",
+        "neName": "Device-Switch-01",
+        "neIp": "192.168.10.1",
+        "aggregationType": "average"
+      }
+    ]
+  }
+}

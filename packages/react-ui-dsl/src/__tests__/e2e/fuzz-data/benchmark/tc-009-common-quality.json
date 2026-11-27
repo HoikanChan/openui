@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "prompt": "查询区域通用质量指标\n\nAPI Schema:\n{\n  \"apiId\": \"查询无线健康度单个维度数据统计和趋势数据\",\n  \"apiName\": \"查询无线健康度单个维度数据统计和趋势数据\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/campuswlanqualityservice/v1/expmonitor/common/intent/common\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"endTime\",\n      \"paramType\": \"integer\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"id\",\n      \"paramType\": \"string\",\n      \"description\": \"区域id\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"paramType\": \"integer\",\n      \"description\": \"区域层级\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"paramType\": \"integer\",\n      \"description\": \"开始时间\"\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"paramType\": \"string\",\n      \"description\": \"租户id\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"data\",\n      \"paramType\": \"array\",\n      \"description\": \"data\",\n      \"childParams\": [\n        {\n          \"paramName\": \"data\",\n          \"paramType\": \"object\",\n          \"description\": \"键值对模型\",\n          \"childParams\": [\n            {\n              \"paramName\": \"key\",\n              \"paramType\": \"string\",\n              \"description\": \"列举值 accessSuccessRate,roam,accessConsume,capacity,coverage,throughput\"\n            },\n            {\n              \"paramName\": \"value\",\n              \"paramType\": \"object\",\n              \"description\": \"质量评估数据模型\",\n              \"childParams\": [\n                {\n                  \"paramName\": \"rootValue\",\n                  \"paramType\": \"number\",\n                  \"description\": \"rootValue\"\n                },\n                {\n                  \"paramName\": \"rank\",\n                  \"paramType\": \"integer\",\n                  \"description\": \"rank\"\n                },\n                {\n                  \"paramName\": \"rankList\",\n                  \"paramType\": \"array\",\n                  \"description\": \"rankList\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"rankList\",\n                      \"paramType\": \"object\",\n                      \"description\": \"质量评估排名数据模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"regionId\",\n                          \"paramType\": \"string\",\n                          \"description\": \"regionId。\"\n                        },\n                        {\n                          \"paramName\": \"regionName\",\n                          \"paramType\": \"string\",\n                          \"description\": \"regionName。\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"paramType\": \"number\",\n                          \"description\": \"value。\"\n                        },\n                        {\n                          \"paramName\": \"level\",\n                          \"paramType\": \"integer\",\n                          \"description\": \"区域level\"\n                        }\n                      ]\n                    }\n                  ]\n                },\n                {\n                  \"paramName\": \"subValues\",\n                  \"paramType\": \"array\",\n                  \"description\": \"subValues\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"subValues\",\n                      \"paramType\": \"object\",\n                      \"description\": \"单维度下子维度度量集合，使用键值对MAP格式\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"key\",\n                          \"paramType\": \"string\",\n                          \"description\": \"key。\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"paramType\": \"string\",\n                          \"description\": \"子维度度量数据。\"\n                        }\n                      ]\n                    }\n                  ]\n                },\n                {\n                  \"paramName\": \"baseline\",\n                  \"paramType\": \"array\",\n                  \"description\": \"baseline\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"baseline\",\n                      \"paramType\": \"object\",\n                      \"description\": \"质量评估趋势基本数据模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"timestamp\",\n                          \"paramType\": \"integer\",\n                          \"description\": \"时间戳。\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"paramType\": \"number\",\n                          \"description\": \"单维度评估值。\"\n                        }\n                      ]\n                    }\n                  ]\n                },\n                {\n                  \"paramName\": \"essential\",\n                  \"paramType\": \"array\",\n                  \"description\": \"essential\",\n                  \"childParams\": [\n                    {\n                      \"paramName\": \"essential\",\n                      \"paramType\": \"object\",\n                      \"description\": \"质量评估趋势基本数据模型\",\n                      \"childParams\": [\n                        {\n                          \"paramName\": \"timestamp\",\n                          \"paramType\": \"integer\",\n                          \"description\": \"时间戳。\"\n                        },\n                        {\n                          \"paramName\": \"value\",\n                          \"paramType\": \"number\",\n                          \"description\": \"单维度评估值。\"\n                        }\n                      ]\n                    }\n                  ]\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    },\n    {\n      \"paramName\": \"detailUrl\",\n      \"paramType\": \"string\",\n      \"description\": \"properties\"\n    },\n    {\n      \"paramName\": \"errorAdvice\",\n      \"paramType\": \"string\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDes\",\n      \"paramType\": \"string\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDetail\",\n      \"paramType\": \"string\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorReson\",\n      \"paramType\": \"string\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"healthScore\",\n      \"paramType\": \"number\",\n      \"description\": \"健康度分数\"\n    },\n    {\n      \"paramName\": \"resultCode\",\n      \"paramType\": \"integer\",\n      \"description\": \"状态码\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "api-response-envelope",
+      "schema-inconsistent",
+      "epoch-ms",
+      "single-entity",
+      "sparse-nullable",
+      "stats-plus-rows"
+    ],
+    "evalHints": [
+      "折线图/面积图（趋势数据）"
+    ]
+  },
+  "data": {
+    "resultCode": 200,
+    "errorDes": "Successful.",
+    "errorReson": "Successful.",
+    "errorDetail": "Successful.",
+    "errorAdvice": "Successful.",
+    "detailUrl": "",
+    "healthScore": 98.5,
+    "data": [
+      {
+        "key": "throughput",
+        "value": {
+          "rootValue": 96.2,
+          "rank": 1,
+          "rankList": [
+            {
+              "regionId": "region-uuid-001",
+              "regionName": "Building A",
+              "value": 96.2,
+              "level": 1
+            },
+            {
+              "regionId": "region-uuid-002",
+              "regionName": "Building B",
+              "value": 92.5,
+              "level": 1
+            }
+          ],
+          "subValues": [
+            {
+              "key": "download",
+              "value": "120.5"
+            },
+            {
+              "key": "upload",
+              "value": "45.2"
+            }
+          ],
+          "baseline": [
+            {
+              "timestamp": 1698372000000,
+              "value": 90
+            },
+            {
+              "timestamp": 1698372300000,
+              "value": 91.5
+            },
+            {
+              "timestamp": 1698372600000,
+              "value": 92
+            }
+          ],
+          "essential": [
+            {
+              "timestamp": 1698372000000,
+              "value": 95
+            },
+            {
+              "timestamp": 1698372300000,
+              "value": 95.5
+            },
+            {
+              "timestamp": 1698372600000,
+              "value": 96.2
+            }
+          ]
+        }
+      },
+      {
+        "key": "coverage",
+        "value": {
+          "rootValue": 88.4,
+          "rank": 2,
+          "rankList": [],
+          "subValues": [
+            {
+              "key": "signalStrength",
+              "value": "-65dBm"
+            }
+          ],
+          "baseline": [
+            {
+              "timestamp": 1698372000000,
+              "value": 85
+            },
+            {
+              "timestamp": 1698372300000,
+              "value": 86.2
+            },
+            {
+              "timestamp": 1698372600000,
+              "value": 88.4
+            }
+          ],
+          "essential": []
+        }
+      }
+    ]
+  }
+}

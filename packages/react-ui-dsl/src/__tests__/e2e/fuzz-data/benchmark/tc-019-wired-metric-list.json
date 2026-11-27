@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "prompt": "查询有线类指标列表\n\nAPI Schema:\n{\n  \"apiId\": \"查询有线类指标列表\",\n  \"apiName\": \"查询有线类指标列表\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/pmservice/v1/ai/kpi/query/list\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"aggregationType\",\n      \"description\": \"汇聚类型 最新值(last)、最大值(max)、最小值(min)、平均值(average)和累计值(sum)\"\n    },\n    {\n      \"paramName\": \"deviceConf\",\n      \"description\": \"设备过滤信息\",\n      \"childParams\": [\n        {\n          \"paramName\": \"neName\",\n          \"description\": \"设备的名称\"\n        },\n        {\n          \"paramName\": \"neIp\",\n          \"description\": \"ip\"\n        },\n        {\n          \"paramName\": \"neMac\",\n          \"description\": \"设备的Mac地址\"\n        },\n        {\n          \"paramName\": \"neCategory\",\n          \"description\": \"设备类型\"\n        },\n        {\n          \"paramName\": \"slotName\",\n          \"description\": \"设备上单板的名称\"\n        },\n        {\n          \"paramName\": \"ifName\",\n          \"description\": \"设备接口名称\"\n        },\n        {\n          \"paramName\": \"queueId\",\n          \"description\": \"队列ID\"\n        },\n        {\n          \"paramName\": \"laneId\",\n          \"description\": \"设备上光模块的通道号\"\n        }\n      ]\n    },\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"filter\",\n      \"description\": \"过滤条件，按指标大于/小于过滤网元，如 CPU利用率 > 10%\",\n      \"childParams\": [\n        {\n          \"paramName\": null,\n          \"description\": null\n        }\n      ]\n    },\n    {\n      \"paramName\": \"id\",\n      \"description\": \"站点或区域id、\\\"/\\\" 为根区域\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"description\": \"区域层级，global为0，站点为1，楼栋为8，楼层为9\"\n    },\n    {\n      \"paramName\": \"limit\",\n      \"description\": \"返回的最大设备数量\"\n    },\n    {\n      \"paramName\": \"pageNo\",\n      \"description\": \"分页页码\"\n    },\n    {\n      \"paramName\": \"pageSize\",\n      \"description\": \"分页大小\"\n    },\n    {\n      \"paramName\": \"sortType\",\n      \"description\": \"排序类型，desc：降序；asc：升序\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"example 1683302400000\"\n    },\n    {\n      \"paramName\": \"telemetryMetric\",\n      \"description\": \"查询的指标类别\",\n      \"childParams\": [\n        {\n          \"paramName\": null,\n          \"description\": null\n        }\n      ]\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"description\": \"租户ID\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"error_code\",\n      \"description\": \"状态码\"\n    },\n    {\n      \"paramName\": \"error_msg\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"telemetryData\",\n      \"description\": \"对象具体指标结果集合\",\n      \"childParams\": [\n        {\n          \"paramName\": \"telemetryData\",\n          \"description\": \"指标项具体信息，如设备名称、指标值等\"\n        }\n      ]\n    },\n    {\n      \"paramName\": \"telemetryTotal\",\n      \"description\": \"指标总数\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "api-response-envelope",
+      "homogeneous",
+      "string-enum",
+      "none",
+      "full",
+      "stats-plus-rows"
+    ],
+    "evalHints": [
+      "表格（列表数据）"
+    ]
+  },
+  "data": {
+    "error_code": 200,
+    "error_msg": "Successful.",
+    "telemetryTotal": 5,
+    "telemetryData": [
+      {
+        "deviceName": "Switch-001",
+        "cpu_rate": "75%",
+        "memory_rate": "60%",
+        "realtime_power": "1200mW",
+        "input_bandwidth_percent": "85%",
+        "output_bandwidth_percent": "78%"
+      },
+      {
+        "deviceName": "Switch-002",
+        "cpu_rate": "45%",
+        "memory_rate": "50%",
+        "realtime_power": "950mW",
+        "input_bandwidth_percent": "60%",
+        "output_bandwidth_percent": "55%"
+      },
+      {
+        "deviceName": "Switch-003",
+        "cpu_rate": "90%",
+        "memory_rate": "70%",
+        "realtime_power": "1500mW",
+        "input_bandwidth_percent": "92%",
+        "output_bandwidth_percent": "88%"
+      },
+      {
+        "deviceName": "Switch-004",
+        "cpu_rate": "30%",
+        "memory_rate": "40%",
+        "realtime_power": "800mW",
+        "input_bandwidth_percent": "40%",
+        "output_bandwidth_percent": "35%"
+      },
+      {
+        "deviceName": "Switch-005",
+        "cpu_rate": "65%",
+        "memory_rate": "55%",
+        "realtime_power": "1100mW",
+        "input_bandwidth_percent": "70%",
+        "output_bandwidth_percent": "65%"
+      }
+    ]
+  }
+}

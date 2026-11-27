@@ -1,0 +1,87 @@
+{
+  "meta": {
+    "prompt": "查询无线区域质量指标趋势\n\nAPI Schema:\n{\n  \"apiId\": \"查询无线区域质量指标趋势\",\n  \"apiName\": \"查询无线区域质量指标趋势\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/campuswlanqualityservice/v1/intent/quality/trend\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"id\",\n      \"description\": \"区域id\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"description\": \"区域层级\"\n    },\n    {\n      \"paramName\": \"metricType\",\n      \"description\": \"指标类型\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"开始时间\"\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"description\": \"租户id\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"data\",\n      \"description\": \"整体健康度趋势、6维趋势、16度趋势\"\n    },\n    {\n      \"paramName\": \"errorAdvice\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDes\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorDetail\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"errorReson\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"resultCode\",\n      \"description\": \"状态码\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "api-response-envelope",
+      "polymorphic",
+      "epoch-ms",
+      "multi-entity-interleaved",
+      "full",
+      "raw-only"
+    ],
+    "evalHints": [
+      "折线图/面积图（趋势数据）"
+    ]
+  },
+  "data": {
+    "resultCode": 200,
+    "errorDes": "健康度趋势",
+    "errorReson": "Successful.",
+    "errorDetail": null,
+    "errorAdvice": null,
+    "data": {
+      "all": {
+        "healthTrend": [
+          {
+            "timestamp": 1640995200000,
+            "value": 85.5,
+            "baseline": 90
+          },
+          {
+            "timestamp": 1641001200000,
+            "value": 83.2,
+            "baseline": 89.5
+          },
+          {
+            "timestamp": 1641007200000,
+            "value": 87.8,
+            "baseline": 91.2
+          }
+        ]
+      },
+      "accessSuccessRate": [
+        {
+          "timestamp": 1640995200000,
+          "value": 95.5
+        },
+        {
+          "timestamp": 1641001200000,
+          "value": 94.8
+        }
+      ],
+      "channelUsage": [
+        {
+          "timestamp": 1640995200000,
+          "value": 45.2,
+          "baseline": 60
+        }
+      ],
+      "throughput": {
+        "distribution": [
+          {
+            "range": "0-10",
+            "count": 5
+          },
+          {
+            "range": "10-100",
+            "count": 15
+          },
+          {
+            "range": "100-500",
+            "count": 8
+          }
+        ],
+        "trend": [
+          {
+            "timestamp": 1640995200000,
+            "value": 125.5
+          },
+          {
+            "timestamp": 1641001200000,
+            "value": 118.3
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "prompt": "显示当前网络整体运行状况摘要",
+    "taxonomy": ["flat-object", "none", "full", "aggregated-only"],
+    "evalHints": [
+      "data contains only scalar summary metrics, no detail rows — must render as a KPI card or summary dashboard",
+      "availabilityRate is a 0.0–1.0 decimal — must display as percentage",
+      "must not render as a single-row table",
+      "critical metrics (alarm counts, availability) should be visually prominent"
+    ]
+  },
+  "data": {
+    "totalDevices": 128,
+    "activeDevices": 125,
+    "inactiveDevices": 3,
+    "totalAlarms": 47,
+    "criticalAlarms": 5,
+    "availabilityRate": 0.9766,
+    "avgCpuUtil": 0.423,
+    "avgMemUtil": 0.651
+  }
+}

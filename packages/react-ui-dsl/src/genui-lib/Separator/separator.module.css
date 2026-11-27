@@ -1,0 +1,16 @@
+.root {
+  background-color: var(--openui-border-default, #d9dde6);
+  flex-shrink: 0;
+}
+
+.horizontal {
+  height: 1px;
+  width: 100%;
+}
+
+.vertical {
+  align-self: stretch;
+  height: auto;
+  min-height: 1px;
+  width: 1px;
+}

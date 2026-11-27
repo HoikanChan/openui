@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "prompt": "显示网络拓扑图（节点和连接）",
+    "taxonomy": ["multi-top-arrays", "graph-nodes-edges", "none", "full", "raw-only"],
+    "evalHints": [
+      "nodes and edges are separate arrays — must render both as a graph or topology diagram",
+      "edges.source and edges.target reference node ids — must show connections between nodes",
+      "node type should be visually distinguished",
+      "must not render nodes and edges as two unrelated flat tables"
+    ]
+  },
+  "data": {
+    "nodes": [
+      { "id": "n-001", "label": "GZ-Core-01", "type": "core-switch" },
+      { "id": "n-002", "label": "GZ-Core-02", "type": "core-switch" },
+      { "id": "n-003", "label": "GZ-Access-01", "type": "access-switch" },
+      { "id": "n-004", "label": "GZ-Access-02", "type": "access-switch" },
+      { "id": "n-005", "label": "Internet", "type": "cloud" }
+    ],
+    "edges": [
+      { "source": "n-001", "target": "n-002", "bandwidth": "10G" },
+      { "source": "n-001", "target": "n-003", "bandwidth": "1G" },
+      { "source": "n-002", "target": "n-004", "bandwidth": "1G" },
+      { "source": "n-001", "target": "n-005", "bandwidth": "1G" },
+      { "source": "n-002", "target": "n-005", "bandwidth": "1G" }
+    ]
+  }
+}

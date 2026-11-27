@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "prompt": "显示各存储卷容量及使用情况",
+    "taxonomy": ["named-list", "homogeneous", "cross-magnitude", "byte-values", "none", "full", "raw-only"],
+    "evalHints": [
+      "totalBytes values span from kilobytes to petabytes — must use adaptive unit formatting per record",
+      "usedBytes must be formatted with the same unit scale as totalBytes for each record",
+      "must not use a single fixed unit for all records when magnitudes differ by millions",
+      "usagePercent derived from used/total should be shown or implied"
+    ]
+  },
+  "data": {
+    "volumes": [
+      { "volumeId": "vol-001", "name": "OS Disk", "totalBytes": 107374182400, "usedBytes": 45678901234 },
+      { "volumeId": "vol-002", "name": "Data Tier", "totalBytes": 10995116277760, "usedBytes": 7896543210987 },
+      { "volumeId": "vol-003", "name": "Backup Archive", "totalBytes": 1125899906842624, "usedBytes": 456789012345678 },
+      { "volumeId": "vol-004", "name": "Temp Scratch", "totalBytes": 10737418, "usedBytes": 1234567 },
+      { "volumeId": "vol-005", "name": "Log Volume", "totalBytes": 53687091200, "usedBytes": 48318382080 }
+    ]
+  }
+}

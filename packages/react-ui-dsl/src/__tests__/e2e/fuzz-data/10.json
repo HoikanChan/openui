@@ -1,0 +1,18 @@
+{
+  "commuState": "1",
+  "lsrId": "10.39.9.231",
+  "ipAddress": "129.31.10.166",
+  "neName": "2535-佛山南海盐步河西二-PTN-南海综合汇聚40",
+  "version": "V800R022C00",
+  "subnetName": "/根子网/GD-FS-PTN-1/汇聚子网/佛山南海PTN综合承载汇聚环40",
+  "mac": "f479-6009-4f52",
+  "manufacturer": "Huawei",
+  "detailDevTypeName": "OptiX PTN 7900E-12",
+  "hardVersion": "OptiX PTN 7900E-12",
+  "createTime": 1575876504000,
+  "patchVersion": "SPCe00_SPH280",
+  "adminState": "active",
+  "location": "GD-FS",
+  "sn": "2102301393P0K5000235",
+  "neResId": "7c1402d8-1a55-11ea-9ea9-286ed4bd89cb"
+}

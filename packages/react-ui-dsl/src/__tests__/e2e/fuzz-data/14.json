@@ -1,0 +1,71 @@
+{
+  "physicalPortList": [
+    {
+      "operateState": "Down",
+      "portResId": "ed5d3247-3c0c-4120-9a94-da4b304a7967",
+      "ipv6Address": "",
+      "bandwidth": 10000000,
+      "adminState": "inactive",
+      "portName": "10GE11/0/1"
+    },
+    {
+      "operateState": "Down",
+      "portResId": "26cdf36d-9170-42c9-b8c4-f6fa255b411a",
+      "ipv6Address": "",
+      "bandwidth": 10000000,
+      "adminState": "active",
+      "portName": "10GE11/0/8"
+    },
+    {
+      "operateState": "Down",
+      "portResId": "4c119fbb-4a4f-44ff-b0ec-096cee759811",
+      "ipv6Address": "",
+      "bandwidth": 10000000,
+      "adminState": "active",
+      "portName": "10GE11/0/5"
+    },
+    {
+      "operateState": "Down",
+      "portResId": "c6b03f19-8dd7-458c-9601-09eaaee253d8",
+      "ipv6Address": "",
+      "bandwidth": 10000000,
+      "adminState": "active",
+      "portName": "10GE11/0/6"
+    },
+    {
+      "operateState": "Down",
+      "portResId": "e435f052-10c0-460e-b7ad-bedaac756a2b",
+      "ipv6Address": "",
+      "bandwidth": 10000000,
+      "adminState": "active",
+      "portName": "10GE11/0/7"
+    },
+    {
+      "operateState": "UP",
+      "portResId": "3a7717db-3d1a-4621-b098-92efad798f0a",
+      "ipv6Address": "",
+      "bandwidth": 10000000,
+      "adminState": "active",
+      "ipv4Address": "10.14.197.50",
+      "portName": "10GE11/0/2"
+    },
+    {
+      "operateState": "UP",
+      "portResId": "aff656ec-3a9d-46ce-ac65-32af2721830b",
+      "ipv6Address": "",
+      "bandwidth": 10000000,
+      "adminState": "active",
+      "ipv4Address": "10.14.197.58",
+      "portName": "10GE11/0/4"
+    },
+    {
+      "operateState": "UP",
+      "portResId": "a0dad877-ba22-4d07-b387-93bc6437d349",
+      "ipv6Address": "",
+      "bandwidth": 10000000,
+      "adminState": "active",
+      "ipv4Address": "10.14.197.54",
+      "portName": "10GE11/0/3"
+    }
+  ]
+}

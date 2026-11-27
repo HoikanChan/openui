@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "prompt": "显示响应时间范围带（最小值/最大值/平均值）时序趋势",
+    "taxonomy": ["named-list", "homogeneous", "epoch-ms", "min-max-band", "single-entity", "full", "raw-only"],
+    "evalHints": [
+      "each record has value/upper/lower — must render as a band chart (area between upper and lower, line for value)",
+      "timestamp is epoch milliseconds — must format on time axis",
+      "upper is max, lower is min, value is average — labels should make this clear",
+      "must not render upper/lower/value as three independent unrelated lines"
+    ]
+  },
+  "data": {
+    "service": "api-gateway",
+    "metric": "response_time_ms",
+    "samples": [
+      { "timestamp": 1717190400000, "value": 45.2, "upper": 120.7, "lower": 12.1 },
+      { "timestamp": 1717194000000, "value": 52.8, "upper": 145.3, "lower": 14.5 },
+      { "timestamp": 1717197600000, "value": 38.4, "upper": 98.6, "lower": 10.2 },
+      { "timestamp": 1717201200000, "value": 67.1, "upper": 210.4, "lower": 18.9 },
+      { "timestamp": 1717204800000, "value": 43.7, "upper": 112.8, "lower": 11.3 },
+      { "timestamp": 1717208400000, "value": 55.9, "upper": 167.2, "lower": 15.7 }
+    ]
+  }
+}

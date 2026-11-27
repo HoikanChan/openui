@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "prompt": "显示设备列表及其流量汇总（通过 deviceId 关联）",
+    "taxonomy": ["multi-top-arrays", "homogeneous", "byte-values", "none", "full", "stats-plus-rows"],
+    "evalHints": [
+      "devices and trafficSummary are joinable via deviceId — must correlate data from both arrays by deviceId",
+      "totalIn/totalOut in trafficSummary are raw bytes — must format with MB/GB unit",
+      "must not render devices and trafficSummary as completely separate unrelated sections",
+      "ideally merge or show devices with their corresponding traffic data"
+    ]
+  },
+  "data": {
+    "devices": [
+      { "deviceId": "d-001", "name": "GZ-Core-01", "ip": "10.72.168.1", "type": "core-switch" },
+      { "deviceId": "d-002", "name": "GZ-Core-02", "ip": "10.72.168.2", "type": "core-switch" },
+      { "deviceId": "d-003", "name": "GZ-Access-01", "ip": "10.72.168.10", "type": "access-switch" }
+    ],
+    "trafficSummary": [
+      { "deviceId": "d-001", "totalIn": 9876543210987, "totalOut": 8765432109876, "peakUtil": 0.921 },
+      { "deviceId": "d-002", "totalIn": 7654321098765, "totalOut": 6543210987654, "peakUtil": 0.734 },
+      { "deviceId": "d-003", "totalIn": 1234567890123, "totalOut": 987654321098, "peakUtil": 0.412 }
+    ]
+  }
+}

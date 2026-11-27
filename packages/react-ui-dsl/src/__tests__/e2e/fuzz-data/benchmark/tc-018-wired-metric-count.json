@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "prompt": "查询有线类指标的统计数量\n\nAPI Schema:\n{\n  \"apiId\": \"查询有线类指标的统计数量\",\n  \"apiName\": \"查询有线类指标的统计数量\",\n  \"method\": \"POST\",\n  \"url\": \"/rest/pmservice/v1/ai/kpi/query/count\",\n  \"renderPolling\": false,\n  \"renderUrl\": null,\n  \"summaryUrl\": null,\n  \"apiParamNames\": [\n    {\n      \"paramName\": \"aggregationType\",\n      \"description\": \"汇聚类型 最新值(last)、最大值(max)、最小值(min)、平均值(average)和累计值(sum)\"\n    },\n    {\n      \"paramName\": \"deviceConf\",\n      \"description\": \"设备过滤信息\",\n      \"childParams\": [\n        {\n          \"paramName\": \"neName\",\n          \"description\": \"设备的名称\"\n        },\n        {\n          \"paramName\": \"neIp\",\n          \"description\": \"ip\"\n        },\n        {\n          \"paramName\": \"neMac\",\n          \"description\": \"设备的Mac地址\"\n        },\n        {\n          \"paramName\": \"neCategory\",\n          \"description\": \"设备类型\"\n        },\n        {\n          \"paramName\": \"slotName\",\n          \"description\": \"设备上单板的名称\"\n        },\n        {\n          \"paramName\": \"ifName\",\n          \"description\": \"设备接口名称\"\n        },\n        {\n          \"paramName\": \"queueId\",\n          \"description\": \"队列ID\"\n        },\n        {\n          \"paramName\": \"laneId\",\n          \"description\": \"设备上光模块的通道号\"\n        }\n      ]\n    },\n    {\n      \"paramName\": \"endTime\",\n      \"description\": \"结束时间\"\n    },\n    {\n      \"paramName\": \"filter\",\n      \"description\": \"过滤条件，按指标大于/小于过滤网元，如 CPU利用率 > 10%\",\n      \"childParams\": [\n        {\n          \"paramName\": null,\n          \"description\": null\n        }\n      ]\n    },\n    {\n      \"paramName\": \"id\",\n      \"description\": \"站点或区域id、\\\"/\\\" 为根区域\"\n    },\n    {\n      \"paramName\": \"level\",\n      \"description\": \"区域层级，global为0，站点为1，楼栋为8，楼层为9\"\n    },\n    {\n      \"paramName\": \"startTime\",\n      \"description\": \"example 1683302400000\"\n    },\n    {\n      \"paramName\": \"telemetryMetric\",\n      \"description\": \"查询的指标类别\",\n      \"childParams\": [\n        {\n          \"paramName\": null,\n          \"description\": null\n        }\n      ]\n    },\n    {\n      \"paramName\": \"tenantId\",\n      \"description\": \"租户ID\"\n    }\n  ],\n  \"apiReturnNames\": [\n    {\n      \"paramName\": \"error_code\",\n      \"description\": \"状态码\"\n    },\n    {\n      \"paramName\": \"error_msg\",\n      \"description\": \"错误消息\"\n    },\n    {\n      \"paramName\": \"telemetryTotal\",\n      \"description\": \"对象具体指标结果集合\"\n    }\n  ]\n}",
+    "taxonomy": [
+      "nested-object",
+      "homogeneous",
+      "—",
+      "none",
+      "nearly-all-null",
+      "aggregated-only"
+    ],
+    "evalHints": [
+      "柱状图/饼图（统计/分布数据）"
+    ]
+  },
+  "data": {
+    "tenantId": "string",
+    "id": "/",
+    "level": 0,
+    "aggregationType": "string",
+    "startTime": "string",
+    "endTime": "string",
+    "telemetryMetric": [
+      "string"
+    ],
+    "deviceConf": {
+      "neName": "string",
+      "neIp": "string",
+      "neMac": "string",
+      "neCategory": "string",
+      "slotName": "string",
+      "ifName": "string",
+      "queueId": 0,
+      "laneId": 0
+    },
+    "filter": [
+      {
+        "key": "string",
+        "operate": "string",
+        "value": 0
+      }
+    ]
+  }
+}
