@@ -1,0 +1,438 @@
+{
+  "b5-exec": {
+    "quarter": "2026-Q4",
+    "quarters": ["2026-Q1", "2026-Q2", "2026-Q3", "2026-Q4"],
+    "regions": ["Global", "North America", "EMEA", "APAC"],
+    "revenue": 24800000,
+    "costs": 18900000,
+    "profit": 5900000,
+    "runwayMonths": 34,
+    "salesPipelineValue": 41200000,
+    "winRatePercent": 28.4,
+    "customerCount": 1420,
+    "churnPercent": 1.6,
+    "nps": 62,
+    "quarterlyFinancials": [
+      { "quarter": "2026-Q1", "revenue": 19200000, "costs": 16100000 },
+      { "quarter": "2026-Q2", "revenue": 21100000, "costs": 17000000 },
+      { "quarter": "2026-Q3", "revenue": 22900000, "costs": 17900000 },
+      { "quarter": "2026-Q4", "revenue": 24800000, "costs": 18900000 }
+    ],
+    "departments": [
+      { "department": "Engineering", "headcount": 145, "budgetActual": 7200000, "budgetPlan": 7400000 },
+      { "department": "Sales", "headcount": 92, "budgetActual": 5100000, "budgetPlan": 4900000 },
+      { "department": "Marketing", "headcount": 38, "budgetActual": 3100000, "budgetPlan": 3200000 },
+      { "department": "Operations", "headcount": 46, "budgetActual": 2100000, "budgetPlan": 2150000 },
+      { "department": "G&A", "headcount": 29, "budgetActual": 1400000, "budgetPlan": 1450000 }
+    ],
+    "topRisks": [
+      { "risk": "EU AI Act compliance audit deadline", "owner": "General Counsel", "severity": "high" },
+      { "risk": "GPU supply pricing volatility", "owner": "VP Infra", "severity": "medium" },
+      { "risk": "Enterprise sales cycle lengthening in EMEA", "owner": "CRO", "severity": "medium" }
+    ],
+    "strategicInitiatives": [
+      { "initiative": "APAC Regional Data Center", "status": "on_track", "owner": "VP Infra" },
+      { "initiative": "Enterprise Copilot GA", "status": "at_risk", "owner": "VP Product" },
+      { "initiative": "Channel Partner Program", "status": "on_track", "owner": "CRO" }
+    ],
+    "boardAgendaItems": [
+      "Approve 2027 annual operating plan and hiring envelope",
+      "Review Series D secondary liquidity options",
+      "Sign off on EMEA regional headquarters lease"
+    ]
+  },
+  "b5-city": {
+    "districts": ["All Districts", "Downtown", "Harbor", "Northside", "West End"],
+    "congestionIndex": 64,
+    "transitPunctualityPercent": 92.3,
+    "waterUseTodayMl": 418,
+    "downtownParkingAvailableSpots": 1240,
+    "downtownParkingTotalSpots": 3800,
+    "serviceRequestBacklog": 312,
+    "weather": { "temperatureC": 14, "condition": "Light Rain", "windKmh": 18 },
+    "airQualityByDistrict": [
+      { "district": "Downtown", "aqi": 58, "rating": "Moderate" },
+      { "district": "Harbor", "aqi": 72, "rating": "Moderate" },
+      { "district": "Northside", "aqi": 34, "rating": "Good" },
+      { "district": "West End", "aqi": 41, "rating": "Good" }
+    ],
+    "energyUseWeekMwh": [
+      { "day": "Mon", "mwh": 11200 },
+      { "day": "Tue", "mwh": 11450 },
+      { "day": "Wed", "mwh": 11800 },
+      { "day": "Thu", "mwh": 11620 },
+      { "day": "Fri", "mwh": 11910 },
+      { "day": "Sat", "mwh": 10300 },
+      { "day": "Sun", "mwh": 9850 }
+    ],
+    "openIncidents": [
+      { "id": "CIT-401", "location": "5th & Pine", "district": "Downtown", "severity": "high", "type": "Water main break" },
+      { "id": "CIT-402", "location": "Harbor Tunnel East", "district": "Harbor", "severity": "medium", "type": "Multi-vehicle stall" },
+      { "id": "CIT-403", "location": "Oak Park Substation", "district": "West End", "severity": "low", "type": "Streetlight outage" }
+    ],
+    "emergencyDeployments": [
+      { "unit": "Fire Engine 12", "district": "Downtown", "status": "on_scene" },
+      { "unit": "Medic 7", "district": "Harbor", "status": "en_route" },
+      { "unit": "Police Patrol 24", "district": "Northside", "status": "available" }
+    ],
+    "weekendEvents": [
+      { "name": "Winter Lantern Festival", "district": "Harbor", "expectedAttendance": 18000 },
+      { "name": "City Half Marathon", "district": "Downtown", "expectedAttendance": 12000 }
+    ],
+    "citizenReports": [
+      { "time": "08:50", "district": "Downtown", "issue": "Traffic signal stuck red at 4th Ave" },
+      { "time": "08:35", "district": "West End", "issue": "Fallen tree branch blocking bike lane" }
+    ],
+    "plannedRoadworks": [
+      { "corridor": "Broadway Ave (3rd to 9th)", "district": "Downtown", "window": "Dec 2 - Dec 10" },
+      { "corridor": "Harbor Blvd Bridge", "district": "Harbor", "window": "Dec 8 - Dec 14" }
+    ],
+    "infrastructureMaintenanceDue": [
+      { "asset": "Pump Station #4", "district": "Northside", "dueDate": "2026-12-05" },
+      { "asset": "Signal Controller Grid B", "district": "Downtown", "dueDate": "2026-12-09" }
+    ]
+  },
+  "b5-game": {
+    "regions": ["All Regions", "NA-East", "EU-Central", "AP-Tokyo", "SA-East"],
+    "playersOnlineNow": 148200,
+    "dau": 1240000,
+    "mau": 8950000,
+    "revenueTodayUsd": 312400,
+    "arpuUsd": 0.25,
+    "currencyInflationIndex": 1.07,
+    "sessionLength14d": [
+      { "day": "D-13", "minutes": 34.2 },
+      { "day": "D-10", "minutes": 35.1 },
+      { "day": "D-7", "minutes": 36.8 },
+      { "day": "D-4", "minutes": 37.4 },
+      { "day": "Today", "minutes": 38.6 }
+    ],
+    "bestSellingItems": [
+      { "item": "Season 9 Battle Pass", "units": 24800, "revenueUsd": 248000 },
+      { "item": "Frostblade Mythic Skin", "units": 8420, "revenueUsd": 126300 },
+      { "item": "Starter Gem Bundle", "units": 15200, "revenueUsd": 76000 }
+    ],
+    "serverRegions": [
+      { "region": "NA-East", "health": "healthy", "latencyMs": 28, "loadPercent": 72 },
+      { "region": "EU-Central", "health": "healthy", "latencyMs": 31, "loadPercent": 68 },
+      { "region": "AP-Tokyo", "health": "degraded", "latencyMs": 89, "loadPercent": 91 },
+      { "region": "SA-East", "health": "healthy", "latencyMs": 44, "loadPercent": 54 }
+    ],
+    "crashRateByVersion": [
+      { "version": "4.8.2", "crashRatePercent": 0.18 },
+      { "version": "4.8.1", "crashRatePercent": 0.42 },
+      { "version": "4.8.0", "crashRatePercent": 0.95 }
+    ],
+    "liveEvents": [
+      { "name": "Winter Siege Co-op", "state": "running", "window": "Nov 25 - Dec 5" },
+      { "name": "Double XP Weekend", "state": "upcoming", "window": "Dec 6 - Dec 8" }
+    ],
+    "playerReportsQueue": [
+      { "id": "RPT-8812", "category": "Aimbot suspicion", "region": "AP-Tokyo", "priority": "high" },
+      { "id": "RPT-8815", "category": "Voice chat abuse", "region": "NA-East", "priority": "medium" }
+    ],
+    "banAppealsQueue": [
+      { "id": "APL-309", "player": "KuroKnight99", "reason": "Third-party overlay false positive" },
+      { "id": "APL-312", "player": "ValkyrieGG", "reason": "Account compromise claim" }
+    ],
+    "experiments": [
+      { "name": "Dynamic Matchmaking Bracket", "variant": "B (+12% D7 retention)", "status": "winning" },
+      { "name": "Shop Featured Slot Layout", "variant": "B (+4.1% conversion)", "status": "running" }
+    ]
+  },
+  "b5-fund": {
+    "timeframe": "1M",
+    "timeframes": ["1D", "1W", "1M", "YTD", "1Y"],
+    "portfolioValueUsd": 142800000,
+    "pnlTodayUsd": 1142000,
+    "pnlTodayPercent": 0.81,
+    "valueAtRisk95Usd": 2450000,
+    "marginInUsePercent": 46.5,
+    "positions": [
+      { "ticker": "NVDA", "sector": "Tech", "size": 45000, "entryPrice": 124.5, "currentPrice": 141.2 },
+      { "ticker": "MSFT", "sector": "Tech", "size": 28000, "entryPrice": 412.0, "currentPrice": 428.6 },
+      { "ticker": "JPM", "sector": "Financials", "size": 36000, "entryPrice": 208.4, "currentPrice": 224.1 },
+      { "ticker": "LLY", "sector": "Healthcare", "size": 12000, "entryPrice": 845.0, "currentPrice": 821.5 },
+      { "ticker": "XOM", "sector": "Energy", "size": 52000, "entryPrice": 118.2, "currentPrice": 115.8 }
+    ],
+    "exposureBySector": [
+      { "sector": "Tech", "percent": 38 },
+      { "sector": "Financials", "percent": 22 },
+      { "sector": "Healthcare", "percent": 19 },
+      { "sector": "Energy", "percent": 12 },
+      { "sector": "Cash & Hedges", "percent": 9 }
+    ],
+    "movers": {
+      "gainers": [
+        { "ticker": "NVDA", "changePercent": 3.4 },
+        { "ticker": "AVGO", "changePercent": 2.7 }
+      ],
+      "losers": [
+        { "ticker": "LLY", "changePercent": -2.1 },
+        { "ticker": "XOM", "changePercent": -1.4 }
+      ]
+    },
+    "watchlist": [
+      { "ticker": "AAPL", "price": 236.4, "changePercent": 0.9 },
+      { "ticker": "AMZN", "price": 211.8, "changePercent": 1.6 },
+      { "ticker": "META", "price": 592.0, "changePercent": -0.3 }
+    ],
+    "workingOrders": [
+      { "orderId": "WO-71", "ticker": "MSFT", "side": "BUY", "quantity": 5000, "limitPrice": 425.0, "status": "working" },
+      { "orderId": "WO-72", "ticker": "XOM", "side": "SELL", "quantity": 10000, "limitPrice": 117.0, "status": "working" }
+    ],
+    "headlines": [
+      { "headline": "US Core PCE cools 10bps below consensus", "sentiment": "bullish" },
+      { "headline": "OPEC+ signals steady Q1 output quotas", "sentiment": "neutral" },
+      { "headline": "EU opens antitrust inquiry into cloud licensing", "sentiment": "bearish" }
+    ],
+    "economicReleases": [
+      { "date": "Wed 08:30", "event": "US GDP Revision (Q3)", "consensus": "2.8%" },
+      { "date": "Fri 08:30", "event": "Non-Farm Payrolls", "consensus": "185K" }
+    ],
+    "strategyReturnsYtd": [
+      { "strategy": "Long/Short Tech", "returnPercent": 18.4 },
+      { "strategy": "Macro Rates", "returnPercent": 9.2 },
+      { "strategy": "Stat Arb Neutral", "returnPercent": 11.7 }
+    ],
+    "drawdown1y": [
+      { "month": "Jan", "drawdownPercent": -1.2 },
+      { "month": "Apr", "drawdownPercent": -4.6 },
+      { "month": "Jul", "drawdownPercent": -2.1 },
+      { "month": "Oct", "drawdownPercent": -3.3 },
+      { "month": "Nov", "drawdownPercent": -0.8 }
+    ],
+    "riskLimitWarnings": [
+      { "limit": "Single-sector gross cap (Tech)", "current": "38.0%", "ceiling": "40.0%" }
+    ]
+  },
+  "b5-university": {
+    "departments": ["All Departments", "Computer Science", "Economics", "Biology", "Mechanical Engineering"],
+    "totalEnrollment": 14820,
+    "acceptanceRatePercent": 18.6,
+    "tuitionRevenueYearUsd": 186400000,
+    "scholarshipUsedUsd": 28400000,
+    "scholarshipTotalUsd": 34000000,
+    "housingOccupancyPercent": 94.2,
+    "semesterComparison": {
+      "thisSemesterGpaAvg": 3.42,
+      "lastSemesterGpaAvg": 3.36,
+      "thisSemesterRetentionPercent": 95.8,
+      "lastSemesterRetentionPercent": 94.9
+    },
+    "enrollment5y": [
+      { "year": "2022", "students": 13100 },
+      { "year": "2023", "students": 13540 },
+      { "year": "2024", "students": 13980 },
+      { "year": "2025", "students": 14410 },
+      { "year": "2026", "students": 14820 }
+    ],
+    "applicationsByProgram": [
+      { "program": "Computer Science", "applications": 9400, "waitlisted": 340 },
+      { "program": "Economics", "applications": 5200, "waitlisted": 145 },
+      { "program": "Biology", "applications": 4650, "waitlisted": 110 },
+      { "program": "Mechanical Engineering", "applications": 3890, "waitlisted": 95 }
+    ],
+    "courseOfferings": [
+      { "code": "CS-301", "title": "Operating Systems", "enrolled": 148, "capacity": 150, "department": "Computer Science" },
+      { "code": "ECON-210", "title": "Econometrics", "enrolled": 112, "capacity": 120, "department": "Economics" },
+      { "code": "BIO-105", "title": "Molecular Genetics", "enrolled": 96, "capacity": 100, "department": "Biology" }
+    ],
+    "facultyLoad": [
+      { "faculty": "Prof. Alan Morales", "department": "Computer Science", "courses": 3, "students": 310 },
+      { "faculty": "Prof. Ingrid Solberg", "department": "Economics", "courses": 2, "students": 195 },
+      { "faculty": "Prof. Wei Zhang", "department": "Biology", "courses": 3, "students": 240 }
+    ],
+    "atRiskStudents": [
+      { "id": "STU-4410", "name": "Marcus Vance", "department": "Computer Science", "gpa": 1.85, "missedAssignments": 5 },
+      { "id": "STU-4482", "name": "Chloe Evans", "department": "Biology", "gpa": 1.92, "missedAssignments": 4 }
+    ],
+    "campusEventsMonth": [
+      { "date": "Dec 4", "event": "Fall Research Symposium", "venue": "Science Hall" },
+      { "date": "Dec 11", "event": "Winter Convocation Rehearsal", "venue": "Main Auditorium" }
+    ],
+    "alumniGiving4y": [
+      { "year": "2023", "amountUsd": 22400000 },
+      { "year": "2024", "amountUsd": 25100000 },
+      { "year": "2025", "amountUsd": 27800000 },
+      { "year": "2026", "amountUsd": 31200000 }
+    ]
+  },
+  "b5-plant": {
+    "lines": ["All Lines", "Line A", "Line B", "Line C", "Line D"],
+    "oeePercent": 83.4,
+    "unitsProducedToday": 14280,
+    "dailyTargetUnits": 16000,
+    "safetyIncidentsThisYear": 2,
+    "daysSinceLastSafetyIncident": 118,
+    "energyUseTodayKwh": 48200,
+    "productionLines": [
+      { "line": "Line A", "ratePerHour": 640, "status": "running" },
+      { "line": "Line B", "ratePerHour": 590, "status": "running" },
+      { "line": "Line C", "ratePerHour": 0, "status": "maintenance" },
+      { "line": "Line D", "ratePerHour": 615, "status": "running" }
+    ],
+    "defectRateMonth": [
+      { "week": "W1", "defectPercent": 1.4 },
+      { "week": "W2", "defectPercent": 1.2 },
+      { "week": "W3", "defectPercent": 1.5 },
+      { "week": "W4", "defectPercent": 1.1 }
+    ],
+    "downtimeByCause": [
+      { "cause": "Tooling Changeover", "minutes": 145 },
+      { "cause": "Sensor Fault", "minutes": 82 },
+      { "cause": "Material Starvation", "minutes": 54 },
+      { "cause": "Planned Calibration", "minutes": 60 }
+    ],
+    "machinesDueMaintenance": [
+      { "machine": "CNC Press #3", "line": "Line C", "dueDate": "2026-11-30" },
+      { "machine": "Injection Molder #7", "line": "Line B", "dueDate": "2026-12-03" }
+    ],
+    "rawMaterialStock": [
+      { "material": "Steel", "quantity": 42.5, "unit": "tons", "daysCover": 11 },
+      { "material": "Resin", "quantity": 18.2, "unit": "tons", "daysCover": 7 },
+      { "material": "Packaging", "quantity": 64000, "unit": "units", "daysCover": 14 }
+    ],
+    "supplierDeliveriesWeek": [
+      { "supplier": "Midwest Steel Co", "material": "Steel", "eta": "2026-12-01", "status": "confirmed" },
+      { "supplier": "PolyCore Supply", "material": "Resin", "eta": "2026-12-02", "status": "in_transit" }
+    ],
+    "shiftComparison": [
+      { "shift": "Morning (06-14)", "units": 5420 },
+      { "shift": "Afternoon (14-22)", "units": 5110 },
+      { "shift": "Night (22-06)", "units": 3750 }
+    ],
+    "batchesOnQualityHold": [
+      { "batchId": "B-261128-04", "line": "Line B", "reason": "Dimensional tolerance drift +0.08mm" }
+    ],
+    "openWorkOrders": [
+      { "id": "WO-910", "machine": "CNC Press #3", "priority": "high", "task": "Replace hydraulic seal" },
+      { "id": "WO-914", "machine": "Conveyor Belt A2", "priority": "medium", "task": "Tension alignment" }
+    ],
+    "andonAlerts": [
+      { "time": "09:12", "line": "Line C", "severity": "critical", "message": "Hydraulic pressure below threshold" },
+      { "time": "08:55", "line": "Line B", "severity": "warning", "message": "Resin hopper level at 20%" }
+    ]
+  },
+  "b5-streaming": {
+    "regions": ["All Regions", "North America", "Europe", "APAC", "LATAM"],
+    "viewersWatchingNow": 2840000,
+    "bufferingRatePercent": 0.64,
+    "recommendationClickRatePercent": 14.8,
+    "newSubscribersMonth": 184000,
+    "cancellationsMonth": 62000,
+    "mostWatchedTitles": [
+      { "title": "Meridian Zero (S2)", "genre": "Sci-Fi", "hoursWatchedM": 18.4 },
+      { "title": "Chef's Night Market", "genre": "Documentary", "hoursWatchedM": 12.9 },
+      { "title": "The Last Signal", "genre": "Thriller", "hoursWatchedM": 11.2 },
+      { "title": "Harbor City Blues", "genre": "Drama", "hoursWatchedM": 9.6 }
+    ],
+    "watchTimeMonth": [
+      { "week": "W1", "hoursM": 112 },
+      { "week": "W2", "hoursM": 118 },
+      { "week": "W3", "hoursM": 125 },
+      { "week": "W4", "hoursM": 134 }
+    ],
+    "performanceByGenre": [
+      { "genre": "Sci-Fi", "hoursM": 42 },
+      { "genre": "Drama", "hoursM": 38 },
+      { "genre": "Thriller", "hoursM": 29 },
+      { "genre": "Documentary", "hoursM": 25 }
+    ],
+    "deliveryHealthByRegion": [
+      { "region": "North America", "status": "healthy", "bufferingPercent": 0.45 },
+      { "region": "Europe", "status": "healthy", "bufferingPercent": 0.58 },
+      { "region": "APAC", "status": "degraded", "bufferingPercent": 1.12 },
+      { "region": "LATAM", "status": "healthy", "bufferingPercent": 0.72 }
+    ],
+    "upcomingReleases": [
+      { "title": "Orbit 9", "releaseDate": "2026-12-05", "genre": "Sci-Fi" },
+      { "title": "Winter in Lisbon", "releaseDate": "2026-12-12", "genre": "Drama" }
+    ],
+    "expiringLicenses": [
+      { "title": "Classic Noir Anthology", "expiresOn": "2026-12-15", "region": "Europe" },
+      { "title": "Summit Racing 2024", "expiresOn": "2026-12-20", "region": "Global" }
+    ],
+    "zeroPlaybackSearches": [
+      { "query": "live champions cup", "count": 14200 },
+      { "query": "dune part three", "count": 9800 },
+      { "query": "studio ghibli classics", "count": 7400 }
+    ],
+    "revenueByPlan": [
+      { "plan": "Premium 4K", "revenueM": 48.2 },
+      { "plan": "Standard", "revenueM": 39.6 },
+      { "plan": "Ad-Supported", "revenueM": 21.4 }
+    ],
+    "viewingByDevice": [
+      { "device": "Smart TV", "sharePercent": 54 },
+      { "device": "Mobile", "sharePercent": 24 },
+      { "device": "Web", "sharePercent": 14 },
+      { "device": "Tablet", "sharePercent": 8 }
+    ],
+    "featureFlags": [
+      { "flag": "adaptive-av1-encoding", "state": "enabled" },
+      { "flag": "instant-preview-autoplay", "state": "enabled" },
+      { "flag": "live-watch-party", "state": "canary_10pct" }
+    ]
+  },
+  "b5-disaster": {
+    "zones": ["All Zones", "Zone A - Coastal", "Zone B - River Valley", "Zone C - Foothills"],
+    "overallSeveritySummary": "Level 3 Regional Emergency: River Valley flooding active; Coastal surge subsiding.",
+    "rescuedCount": 412,
+    "casualtiesCount": 3,
+    "donationsReceivedUsd": 1285000,
+    "availableResources": {
+      "vehicles": 34,
+      "personnel": 186,
+      "supplyPallets": 240
+    },
+    "activeIncidents": [
+      { "id": "EM-101", "zone": "Zone B - River Valley", "incident": "Levee breach near Bridge 4", "severity": "critical" },
+      { "id": "EM-102", "zone": "Zone A - Coastal", "incident": "Substation flood shutdown", "severity": "high" },
+      { "id": "EM-103", "zone": "Zone C - Foothills", "incident": "Landslide blocking access road", "severity": "medium" }
+    ],
+    "shelters": [
+      { "name": "Central High Gymnasium", "zone": "Zone B - River Valley", "occupancy": 285, "capacity": 350 },
+      { "name": "Civic Convention Hall", "zone": "Zone A - Coastal", "occupancy": 410, "capacity": 500 },
+      { "name": "Foothills Community Center", "zone": "Zone C - Foothills", "occupancy": 92, "capacity": 200 }
+    ],
+    "evacuationRoutes": [
+      { "route": "Highway 101 North", "status": "open" },
+      { "route": "River Parkway East", "status": "closed" },
+      { "route": "Ridge Bypass SR-14", "status": "congested" }
+    ],
+    "weatherForecast48h": [
+      { "window": "Next 12h", "condition": "Heavy Rain", "windKmh": 52, "precipMm": 48 },
+      { "window": "12-24h", "condition": "Moderate Rain", "windKmh": 34, "precipMm": 22 },
+      { "window": "24-48h", "condition": "Clearing", "windKmh": 18, "precipMm": 4 }
+    ],
+    "volunteersOnDuty": [
+      { "name": "Team Alpha (18)", "assignment": "Zone B boat rescue support" },
+      { "name": "Medical Corps B (12)", "assignment": "Civic Convention Hall triage" },
+      { "name": "Logistics Squad (15)", "assignment": "Water & food distribution" }
+    ],
+    "aidRequests": [
+      { "id": "AID-77", "zone": "Zone B - River Valley", "request": "500 thermal blankets & portable generators", "priority": "urgent" },
+      { "id": "AID-79", "zone": "Zone A - Coastal", "request": "Clean drinking water pallets (20)", "priority": "high" }
+    ],
+    "communicationChannels": [
+      { "channel": "VHF Emergency Radio", "up": true },
+      { "channel": "Satellite Uplink Net", "up": true },
+      { "channel": "Municipal Cellular Tower B", "up": false }
+    ],
+    "closedRoads": [
+      { "road": "River Parkway East (Mile 4-11)", "reason": "Submerged" },
+      { "road": "Foothill Rd Connector", "reason": "Debris slide" }
+    ],
+    "nearbyHospitals": [
+      { "hospital": "St. Jude Regional Medical", "freeBeds": 24, "erStatus": "open" },
+      { "hospital": "Valley General Hospital", "freeBeds": 9, "erStatus": "diverting" },
+      { "hospital": "Northside Trauma Center", "freeBeds": 31, "erStatus": "open" }
+    ],
+    "openTasks": [
+      { "task": "Deploy mobile cell repeater to Zone B", "assignee": "Comms Ops" },
+      { "task": "Inspect Bridge 7 structural pilings", "assignee": "Civil Eng Team 2" },
+      { "task": "Deliver insulin cold-packs to Central High", "assignee": "Med Logistics" }
+    ]
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "b1-uptime": {
+    "service": "Core Platform API",
+    "month": "2026-11",
+    "uptimePercent": 99.97,
+    "status": "operational",
+    "recentIncident": {
+      "id": "INC-412",
+      "title": "Elevated 5xx errors in eu-central gateway",
+      "summary": "A misconfigured rate-limit rule caused elevated 503 responses for 14 minutes before rollback.",
+      "resolvedAt": "2026-11-24T14:22:00Z"
+    }
+  },
+  "b1-profile": {
+    "name": "Maya Lin",
+    "role": "Staff Product Designer",
+    "department": "Design Systems",
+    "location": "Seattle, WA",
+    "email": "maya.lin@company.com",
+    "bio": "Leads component accessibility and cross-platform layout patterns for enterprise analytics products."
+  },
+  "b1-invoice": {
+    "invoiceNumber": "INV-2026-089",
+    "clientName": "Northstar Labs",
+    "project": "Brand Design System Phase 2",
+    "amountDue": 4850.0,
+    "currency": "USD",
+    "dueDate": "2026-12-10",
+    "status": "unpaid",
+    "paymentUrl": "https://pay.example.com/inv/INV-2026-089"
+  },
+  "b1-newsletter": {
+    "title": "Product Craft Weekly",
+    "cadence": "Every Tuesday morning",
+    "valueProp": "One concise breakdown of a real product tear-down, two actionable metrics frameworks, and zero fluff.",
+    "subscriberCount": 18400
+  },
+  "b1-meeting": {
+    "title": "Q4 Architecture Review",
+    "startTime": "2026-11-29T10:30:00Z",
+    "durationMinutes": 45,
+    "joinUrl": "https://meet.example.com/q4-arch-review",
+    "attendees": [
+      { "name": "Elena Rostova", "role": "VP Engineering" },
+      { "name": "Marcus Chen", "role": "Principal Architect" },
+      { "name": "Priya Nair", "role": "Product Lead" },
+      { "name": "David Kim", "role": "SRE Manager" }
+    ]
+  },
+  "b1-revenue": {
+    "asOf": "2026-11-29 10:30",
+    "currency": "USD",
+    "revenueToday": 3420.5,
+    "revenueYesterdaySameTime": 2980.0,
+    "deltaAmount": 440.5,
+    "deltaPercent": 14.8,
+    "ordersToday": 64
+  },
+  "b1-task": {
+    "id": "TASK-309",
+    "title": "Finalize SOC-2 access control audit evidence",
+    "priority": "urgent",
+    "deadline": "2026-11-29T17:00:00Z",
+    "status": "in_progress",
+    "owner": "Alex Rivera",
+    "notes": "Upload IAM policy screenshots and quarterly review sign-off."
+  },
+  "b1-weather": {
+    "city": "Bengaluru",
+    "current": {
+      "temperatureC": 23,
+      "feelsLikeC": 24,
+      "condition": "Partly Cloudy",
+      "humidityPercent": 62
+    },
+    "sunrise": "06:24 AM",
+    "sunset": "05:51 PM",
+    "forecast": [
+      { "day": "Mon", "condition": "Light Showers", "highC": 27, "lowC": 19, "rainChancePercent": 45 },
+      { "day": "Tue", "condition": "Partly Cloudy", "highC": 28, "lowC": 18, "rainChancePercent": 20 },
+      { "day": "Wed", "condition": "Sunny", "highC": 29, "lowC": 18, "rainChancePercent": 10 }
+    ]
+  },
+  "b1-order": {
+    "orderNumber": "ORD-774921",
+    "carrier": "ExpressLine",
+    "currentLocation": "Regional Sorting Hub, Oakland, CA",
+    "status": "In Transit",
+    "estimatedDeliveryDate": "2026-12-01",
+    "lastUpdated": "2026-11-29T06:40:00Z"
+  },
+  "b1-poll": {
+    "pollId": "POLL-LUNCH-48",
+    "question": "Where should we go for lunch on Friday?",
+    "closesAt": "2026-11-30T11:00:00Z",
+    "options": [
+      { "id": "bento", "name": "Kuro Bento House", "cuisine": "Japanese", "votes": 6 },
+      { "id": "tacos", "name": "Sol & Masa Taqueria", "cuisine": "Mexican", "votes": 9 },
+      { "id": "bistro", "name": "Olive & Fig Bistro", "cuisine": "Mediterranean", "votes": 5 }
+    ]
+  }
+}
