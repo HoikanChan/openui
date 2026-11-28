@@ -36,7 +36,8 @@ class RepairCorpusObjectEnumerationRulesTest {
      * SDK 默认契约下全部被跟踪案例的诊断基线（{@code 目录|状态|[code@path, ...]}）。
      *
      * <p>case-21 是本次同步的有意差异：它把 {@code @Each(...)} 数组传给 {@code @ObjectEntries}，与该案例 issues.json 记录的
-     * {@code builtin-argument-type-mismatch} 一致，因此由 VALID 变为 INVALID。其余案例必须保持不变。
+     * {@code builtin-argument-type-mismatch} 一致，因此由 VALID 变为 INVALID。case-12 额外检出 {@code @Filter} 与
+     * {@code @Sort} 中对不存在字段 {@code cpu_usage} 的引用（此前只在下游 Table 列检查暴露）。其余案例必须保持不变。
      */
     private static final List<String> CORPUS_BASELINE =
             List.of(
@@ -49,7 +50,7 @@ class RepairCorpusObjectEnumerationRulesTest {
                     "case-09_GEN-00042 | INVALID | [type-table-column-missing@/columns/patchFileVersion]",
                     "case-10_GEN-00116 | INVALID | [type-table-column-missing@/columns/cpu_usage]",
                     "case-11_GEN-00118 | INVALID | [type-table-column-missing@/columns/memory_usage]",
-                    "case-12_GEN-00120 | INVALID | [type-table-column-missing@/columns/cpu_usage]",
+                    "case-12_GEN-00120 | INVALID | [builtin-argument-type-mismatch@/args/1, builtin-argument-type-mismatch@/args/1, type-table-column-missing@/columns/cpu_usage]",
                     "case-13_GEN-00124 | INVALID | [type-table-column-missing@/columns/send_drop_pkts_cnt]",
                     "case-14_GEN-00030 | INVALID | [type-data-path-missing@data.deviceIp]",
                     "case-15_GEN-00056 | INVALID | [unresolved-ref@null, type-data-path-missing@data.bash[0].bgp]",

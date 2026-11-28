@@ -43,10 +43,16 @@ public final class AnalysisSession {
 
     private static final int MAX_TRAVERSAL_ITEMS = 2_048;
 
-    /** 带 cell 模板的 Table 列形如 {@code column(field, label, {cell: Render(...)})}。 */
-    private static final int COLUMN_OPTIONS_ARG_INDEX = 2;
-
-    private static final int COLUMN_MIN_ARGS_FOR_OPTIONS = COLUMN_OPTIONS_ARG_INDEX + 1;
+    /**
+     * 一次参数检查的覆盖与定位身份。
+     *
+     * @param statementId 语句 id,用于覆盖登记
+     * @param useSite 使用位置标识
+     * @param kind 检查种类
+     * @param contractPath 契约路径
+     * @since 2026
+     */
+    record ObligationTarget(String statementId, String useSite, String kind, String contractPath) {}
 
     /**
      * 会话输入:程序、组件目录、builtin 词表、Render Data Model 快照(可空)、根语句 id。
@@ -102,6 +108,7 @@ public final class AnalysisSession {
     private int traversalItems;
     private final TypeOps ops;
     private final BuiltinAnalysis builtinAnalysis;
+    private final ComponentConsumerValidator consumerValidator;
     private final DataPathResolver pathResolver = new DataPathResolver();
     private final TypeAnalysisReport coverage = new TypeAnalysisReport(completeness);
     private final List<ValidationIssue> issues = new ArrayList<>();
@@ -115,6 +122,7 @@ public final class AnalysisSession {
         this.input = input;
         this.ops = new TypeOps(completeness);
         this.builtinAnalysis = new BuiltinAnalysis(input.builtins(), this);
+        this.consumerValidator = new ComponentConsumerValidator(this);
         for (Statement statement : input.program().statements()) {
             spans.put(statement.id(), statement.span());
         }
@@ -420,45 +428,56 @@ public final class AnalysisSession {
             return resolveDataPath(dataPath.get(), statementId);
         }
         Fact base = synth(member.obj(), statementId, env, resolving);
-        Fact field = ops.readField(base, member.field());
+        return readCheckedField(base, member.field(), statementId);
+    }
+
+    /**
+     * 读取已知字段名并在关闭对象或观察行确定缺失时报错;属性访问与字符串字面量下标共用同一语义。
+     *
+     * @param base 基值事实
+     * @param fieldName 字段名
+     * @param statementId 语句 id
+     * @return 字段值事实;确定缺失时记 BLOCKED_BY_ERROR 并携带上游错误身份
+     */
+    private Fact readCheckedField(Fact base, String fieldName, String statementId) {
+        Fact field = ops.readField(base, fieldName);
         if (field.type() instanceof Type.Never && !base.hasUpstreamErrors()) {
             // 不确定存在的 binder 元素保留专用标记;本地对象即使没有观察值,关闭形状仍能证明缺字段。
-            boolean existenceUnproven = base.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE);
-            if (existenceUnproven) {
+            if (base.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)) {
                 return Fact.unknown(Fact.Loss.NO_ELEMENT_EVIDENCE);
             }
             // 确定缺失:对象关闭且未列出该字段(基值与空数组可能性无关,或观察证据覆盖)。
-            String errorId = nextErrorId();
-            emit(
-                    "type-field-missing",
-                    "Field \""
-                            + member.field()
-                            + "\" is absent from "
-                            + base.type().displayName()
-                            + ".",
-                    statementId,
-                    null,
-                    null,
-                    "Use a field present on the object shape.");
+            String errorId =
+                    emit(
+                            "type-field-missing",
+                            "Field \""
+                                    + fieldName
+                                    + "\" is absent from "
+                                    + base.type().displayName()
+                                    + ".",
+                            statementId,
+                            null,
+                            null,
+                            "Use a field present on the object shape.");
             return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamError(errorId);
         }
         if (!base.hasUpstreamErrors()
                 && !base.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)
-                && observedMissingRow(base, member.field())) {
+                && observedMissingRow(base, fieldName)) {
             // 观察到的行确定缺该字段是具体反例(#77 §6.2):上界合并掩盖部分缺失(异构行)时,
             // 当前快照里该行确实存在且没有该字段;与纯类型级确定缺失同一诊断。
-            String errorId = nextErrorId();
-            emit(
-                    "type-field-missing",
-                    "Field \""
-                            + member.field()
-                            + "\" is absent from an observed row of "
-                            + base.type().displayName()
-                            + ".",
-                    statementId,
-                    null,
-                    null,
-                    "Use a field present on every observed row.");
+            String errorId =
+                    emit(
+                            "type-field-missing",
+                            "Field \""
+                                    + fieldName
+                                    + "\" is absent from an observed row of "
+                                    + base.type().displayName()
+                                    + ".",
+                            statementId,
+                            null,
+                            null,
+                            "Use a field present on every observed row.");
             return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamError(errorId);
         }
         return field;
@@ -503,7 +522,7 @@ public final class AnalysisSession {
         }
         if (indexFact.type() instanceof Type.StringLiterals literals
                 && literals.values().size() == 1) {
-            return ops.readField(base, literals.values().iterator().next());
+            return readCheckedField(base, literals.values().iterator().next(), statementId);
         }
         if (isStringIndex(indexFact.type())) {
             // 动态字符串键:全部字段值类型的并集;键是否存在未知,不能按确定缺失返回 Never。
@@ -610,8 +629,7 @@ public final class AnalysisSession {
         } else {
             return Fact.unknown(Fact.Loss.UNKNOWN_INPUT);
         }
-        String errorId = nextErrorId();
-        emit(code, message, statementId, null, resolution.path(), hint);
+        String errorId = emit(code, message, statementId, null, resolution.path(), hint);
         return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamError(errorId);
     }
 
@@ -640,20 +658,21 @@ public final class AnalysisSession {
                             ? isComposite(left.type()) || isComposite(right.type())
                             : !isNumberLike(left.type()) || !isNumberLike(right.type());
             if (arithmeticMismatch) {
-                emit(
-                        "type-operator-mismatch",
-                        "Operator "
-                                + binary.op()
-                                + " cannot combine "
-                                + left.type().displayName()
-                                + " with "
-                                + right.type().displayName()
-                                + ".",
-                        statementId,
-                        null,
-                        null,
-                        "Use scalar operands; use @Each or a data builtin for arrays and objects.");
-                return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamError(lastErrorId());
+                String errorId =
+                        emit(
+                                "type-operator-mismatch",
+                                "Operator "
+                                        + binary.op()
+                                        + " cannot combine "
+                                        + left.type().displayName()
+                                        + " with "
+                                        + right.type().displayName()
+                                        + ".",
+                                statementId,
+                                null,
+                                null,
+                                "Use scalar operands; use @Each or a data builtin for arrays and objects.");
+                return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamError(errorId);
             }
             Type result =
                     Types.scalar(
@@ -679,20 +698,21 @@ public final class AnalysisSession {
         if (!left.hasUpstreamErrors()
                 && !right.hasUpstreamErrors()
                 && isObviousOperatorMismatch(binary.op(), left.type(), right.type())) {
-            emit(
-                    "type-operator-mismatch",
-                    "Operator "
-                            + binary.op()
-                            + " cannot compare "
-                            + left.type().displayName()
-                            + " with "
-                            + right.type().displayName()
-                            + ".",
-                    statementId,
-                    null,
-                    null,
-                    "Compare compatible scalar values; use @Each/@Filter for arrays.");
-            return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamError(lastErrorId());
+            String errorId =
+                    emit(
+                            "type-operator-mismatch",
+                            "Operator "
+                                    + binary.op()
+                                    + " cannot compare "
+                                    + left.type().displayName()
+                                    + " with "
+                                    + right.type().displayName()
+                                    + ".",
+                            statementId,
+                            null,
+                            null,
+                            "Compare compatible scalar values; use @Each/@Filter for arrays.");
+            return Fact.unknown(Fact.Loss.BLOCKED_BY_ERROR).withUpstreamError(errorId);
         }
         return Fact.of(Types.scalar(Type.ScalarKind.BOOLEAN));
     }
@@ -730,7 +750,7 @@ public final class AnalysisSession {
                 && union.alternatives().stream().allMatch(AnalysisSession::isStringLike);
     }
 
-    private static boolean isComposite(Type type) {
+    static boolean isComposite(Type type) {
         if (type instanceof Type.Sequence
                 || type instanceof Type.RecordType
                 || type instanceof Type.Component
@@ -825,11 +845,13 @@ public final class AnalysisSession {
             LexicalEnvironment env,
             Set<String> resolving) {
         List<ParamDef> params = definition.params();
+        List<Fact> argFacts = new ArrayList<>(comp.args().size());
         // 位置参数按声明参数顺序映射;超出参数数的实参仍推断(供下游诊断),但不按具名参数检查
         // (多余实参的语义归既有合约检查)。
         for (int index = 0; index < comp.args().size(); index++) {
             AstNode argument = comp.args().get(index);
             Fact actual = synth(argument, statementId, env, resolving);
+            argFacts.add(actual);
             if (index >= params.size()) {
                 continue;
             }
@@ -838,15 +860,9 @@ public final class AnalysisSession {
             if (expectation == null) {
                 continue;
             }
-            checkComponentParam(
-                    comp, param, argument, actual, expectation, statementId, env, resolving);
+            checkComponentParam(comp, param, argument, actual, expectation, statementId);
         }
-        if ("Table".equals(comp.name())) {
-            validateTable(comp, statementId, env, resolving);
-        }
-        if ("LineChart".equals(comp.name()) || "BarChart".equals(comp.name())) {
-            validateChart(comp, statementId, env, resolving);
-        }
+        consumerValidator.validate(comp, argFacts, statementId, env, resolving);
         return Fact.of(new Type.Component(comp.name()));
     }
 
@@ -856,20 +872,17 @@ public final class AnalysisSession {
             AstNode argument,
             Fact actual,
             Expectation expectation,
-            String statementId,
-            LexicalEnvironment env,
-            Set<String> resolving) {
+            String statementId) {
         Checks.CheckResult result =
                 checkObligation(
-                        statementId,
-                        comp.name() + "." + param.name(),
-                        "param",
-                        "/components/" + comp.name() + "/properties/" + param.name(),
+                        new ObligationTarget(
+                                statementId,
+                                comp.name() + "." + param.name(),
+                                "param",
+                                "/components/" + comp.name() + "/properties/" + param.name()),
                         actual,
                         expectation,
-                        null,
-                        comp.name(),
-                        "/" + param.name());
+                        null);
         boolean componentSlot = containsComponentConstraint(expectation);
         if (componentSlot) {
             reportComponentSlotResult(
@@ -1056,46 +1069,33 @@ public final class AnalysisSession {
     }
 
     /**
-     * builtin module 协作入口:登记一次参数检查,并沿用当前模板使用位置的覆盖身份。
+     * 协作者检查入口:登记一次参数检查,并沿用当前模板使用位置的覆盖身份。
      *
-     * @param statementId 语句 id,用于覆盖登记
-     * @param useSite 使用位置标识
-     * @param kind 检查种类
-     * @param contractPath 契约路径
+     * @param target 覆盖与定位身份
      * @param fact 待检查的类型事实
      * @param expectation 参数检查要求
      * @param checkedPath 被检查值的路径;无路径时为 null
-     * @param component 组件名
-     * @param issuePath 诊断定位路径
      * @return 参数检查结果
      */
     Checks.CheckResult checkObligation(
-            String statementId,
-            String useSite,
-            String kind,
-            String contractPath,
-            Fact fact,
-            Expectation expectation,
-            String checkedPath,
-            String component,
-            String issuePath) {
+            ObligationTarget target, Fact fact, Expectation expectation, String checkedPath) {
         Checks.CheckResult result = Checks.check(fact, expectation, checkedPath);
         // 模板使用位置的检查要求带使用位置身份(#77 第 11.3 节):同一模板用于多列时各列独立计数。
         TemplateUseSite site = templateUseSites.peek();
         coverage.record(
-                new TypeAnalysisReport.Entry(
-                        new TypeAnalysisReport.Obligation(
-                                site == null ? statementId : site.statementId(),
-                                site == null ? useSite : site.coverageUseSite() + ":" + useSite,
-                                kind,
-                                contractPath),
-                        result.verdict(),
-                        List.copyOf(result.reasons())));
+                new TypeAnalysisReport.Obligation(
+                        site == null ? target.statementId() : site.statementId(),
+                        site == null
+                                ? target.useSite()
+                                : site.coverageUseSite() + ":" + target.useSite(),
+                        target.kind(),
+                        target.contractPath()),
+                result);
         return result;
     }
 
     // ───────────────────────────────────────────────────────────────────────
-    // builtin module 协作:共享覆盖、诊断身份与符号解析
+    // 协作者访问器:共享类型运算、覆盖、模板检查、长度区间与符号解析
     // ───────────────────────────────────────────────────────────────────────
 
     /**
@@ -1107,16 +1107,18 @@ public final class AnalysisSession {
         return ops;
     }
 
+    BuiltinAnalysis builtinAnalysis() {
+        return builtinAnalysis;
+    }
+
     /**
-     * 登记一条 builtin 参数检查结论,与组件/模板检查共用覆盖口径。
+     * 登记一条检查结论,与组件/模板检查共用覆盖口径。
      *
      * @param obligation 检查要求身份
      * @param result 参数检查结果
      */
     void recordCoverage(TypeAnalysisReport.Obligation obligation, Checks.CheckResult result) {
-        coverage.record(
-                new TypeAnalysisReport.Entry(
-                        obligation, result.verdict(), List.copyOf(result.reasons())));
+        coverage.record(obligation, result);
     }
 
     /**
@@ -1156,7 +1158,7 @@ public final class AnalysisSession {
         templateUseSites.pop();
     }
 
-    private static String displayExpectation(Expectation expectation) {
+    static String displayExpectation(Expectation expectation) {
         if (expectation instanceof Expectation.Accept accept) {
             return accept.type().displayName();
         }
@@ -1178,438 +1180,13 @@ public final class AnalysisSession {
         return expectation.getClass().getSimpleName();
     }
 
-    // ───────────────────────────────────────────────────────────────────────
-    // Table / Chart 消费者检查
-    // ───────────────────────────────────────────────────────────────────────
-
-    private void validateTable(
-            AstNode.Comp table, String statementId, LexicalEnvironment env, Set<String> resolving) {
-        if (table.args().size() < 2) {
-            return;
-        }
-        Fact rows = synth(table.args().get(1), statementId, env, resolving);
-        if (rows.hasUpstreamErrors()) {
-            return;
-        }
-        Fact rowElement = ops.element(rows);
-        boolean noRowEvidence = checkTableRowShape(rows, rowElement, statementId);
-        // 字段集合为空不是退出条件:逐列独立检查,某一列未证明不影响其他列。
-        for (AstNode column : arrayElements(table.args().get(0))) {
-            AstNode resolvedColumn = resolveNode(column, new LinkedHashSet<>());
-            if (!(resolvedColumn instanceof AstNode.Comp call)
-                    || !"Col".equals(call.name())
-                    || call.args().size() < 2) {
-                continue;
-            }
-            AstNode resolvedField = resolveNode(call.args().get(1), new LinkedHashSet<>());
-            if (!(resolvedField instanceof AstNode.Str field)) {
-                continue;
-            }
-            // 列的诊断归属:命名 Col 语句用其 id,内联列退回 Table 语句;仅供 cell 使用位置定位。
-            String columnStatementId =
-                    column instanceof AstNode.Ref ref && symbols.containsKey(ref.n())
-                            ? ref.n()
-                            : statementId;
-            checkTableColumn(
-                    call,
-                    field.v(),
-                    rowElement,
-                    rows,
-                    statementId,
-                    env,
-                    resolving,
-                    noRowEvidence,
-                    columnStatementId);
-        }
-    }
-
-    /**
-     * 检查 Table 行值形状,并在确定不是扁平对象数组时报错。
-     *
-     * @param rows 行值事实
-     * @param rowElement 行元素事实
-     * @param statementId 语句 id,用于诊断归属
-     * @return 行元素是否缺少可用证据(空数组、元素 Never 或证据丢失)
-     */
-    private boolean checkTableRowShape(Fact rows, Fact rowElement, String statementId) {
-        // 无元素证据(空数组/元素 Never/元素依赖证据丢失)时,行形状与列存在性属于“无法证明”,不据此报错
-        // (第 7.5 节:空数组不能为 Table 推导列结构);元素类型未知的同样不虚构行形状错误。
-        boolean noRowEvidence =
-                rowElement.type() instanceof Type.Never
-                        || rowElement.losses().contains(Fact.Loss.NO_ELEMENT_EVIDENCE)
-                        || rowElement.losses().contains(Fact.Loss.UNKNOWN_INPUT);
-        boolean rowShapeKnown = isObjectShape(rowElement.type());
-        if (!rowShapeKnown
-                && !(rowElement.type() instanceof Type.Unknown)
-                && !(rowElement.type() instanceof Type.Never)
-                && !(rowElement.losses().contains(Fact.Loss.UNKNOWN_INPUT))) {
-            emit(
-                    "type-table-row-shape-mismatch",
-                    "Table rows must be a flat object array, but received "
-                            + rows.type().displayName()
-                            + ".",
-                    statementId,
-                    "Table",
-                    "/rows",
-                    "Flatten nested @Each results before passing them to Table.");
-        }
-        return noRowEvidence;
-    }
-
-    private void checkTableColumn(
-            AstNode.Comp column,
-            String field,
-            Fact rowElement,
-            Fact rows,
-            String statementId,
-            LexicalEnvironment env,
-            Set<String> resolving,
-            boolean noRowEvidence,
-            String columnStatementId) {
-        // 列字段存在性按"任意一行带该字段即满足"判定:部分行缺值是合法用法,只有所有行形状都没有才报。
-        Checks.CheckResult existence = Checks.checkColumnField(rowElement, field);
-        // 所有已知行形状都没有该列是静态用法错误;Filter 仅删除行存在证据,不新增字段。
-        boolean absentFromShape =
-                isObjectShape(rowElement.type())
-                        && TypeOps.flatten(rows.type()).stream()
-                                .noneMatch(
-                                        branch ->
-                                                branch instanceof Type.Sequence sequence
-                                                        && sequence.maxLength() == 0)
-                        && TypeOps.flatten(rowElement.type()).stream()
-                                .allMatch(
-                                        branch -> {
-                                            Type.RecordType record = (Type.RecordType) branch;
-                                            return record.extra().isClosed()
-                                                    && !record.fields().containsKey(field);
-                                        });
-        if (existence.verdict() == Checks.Verdict.MISMATCH && noRowEvidence && !absentFromShape) {
-            existence =
-                    new Checks.CheckResult(
-                            Checks.Verdict.UNPROVEN,
-                            Set.of(Fact.Loss.NO_ELEMENT_EVIDENCE),
-                            "no retained row counterexample");
-        }
-        coverage.record(
-                new TypeAnalysisReport.Entry(
-                        new TypeAnalysisReport.Obligation(
-                                statementId,
-                                "Table.columns[" + field + "]",
-                                "presentInAnyRow",
-                                "/components/Table/columns/" + field),
-                        existence.verdict(),
-                        List.copyOf(existence.reasons())));
-        if (existence.verdict() == Checks.Verdict.MISMATCH) {
-            emit(
-                    "type-table-column-missing",
-                    "Table column field \"" + field + "\" " + existence.detail() + ".",
-                    statementId,
-                    "Table",
-                    "/columns/" + field,
-                    "Remove this column from the Table if its metric/attribute is absent from the data (or replace the Table columns with Col definitions matching the actual fields in the rows); never bind a column title to a semantically different field or replace Col with ExtraCol.");
-        }
-        // 元素 Never(空数组)时不再检查 cell 模板——无行结构可用。行存在性未证明(Filter 等)不妨碍
-        // 按行形状上界检查 cell 模板:列存在性已在上方按 noRowEvidence 口径处理;字段值类型上界确定可知,
-        // cell 参数级误用(如对 string 列取 Count)按类型报,存在性不影响逐元素类型判定(#83 口径)。
-        if (rowElement.type() instanceof Type.Never) {
-            return;
-        }
-        Fact cellFact = ops.readField(rowElement, field);
-        validateCellTemplate(
-                column, field, cellFact, rowElement, env, resolving, columnStatementId);
-    }
-
-    private void validateCellTemplate(
-            AstNode.Comp column,
-            String field,
-            Fact cellFact,
-            Fact rowFact,
-            LexicalEnvironment env,
-            Set<String> resolving,
-            String columnStatementId) {
-        if (column.args().size() < COLUMN_MIN_ARGS_FOR_OPTIONS
-                || !(column.args().get(COLUMN_OPTIONS_ARG_INDEX) instanceof AstNode.Obj options)) {
-            return;
-        }
-        AstNode cell =
-                options.entries().stream()
-                        .filter(entry -> "cell".equals(entry.key()))
-                        .map(AstNode.Obj.Entry::value)
-                        .findFirst()
-                        .orElse(null);
-        // 表格只提供原 cell 表达式、单元格值与整行值;识别模板、绑定名称与使用位置检查归 builtin module。
-        builtinAnalysis.checkCellTemplate(
-                cell,
-                cellFact,
-                rowFact,
-                new BuiltinAnalysis.AnalysisContext(
-                        this,
-                        columnStatementId,
-                        env,
-                        resolving,
-                        "Table.cell[" + field + "]",
-                        "/columns/" + field + "/cell"));
-    }
-
-    private void validateChart(
-            AstNode.Comp chart, String statementId, LexicalEnvironment env, Set<String> resolving) {
-        if (chart.args().size() < 2) {
-            return;
-        }
-        AstNode labelsNode = chart.args().get(0);
-        Fact labels = synth(labelsNode, statementId, env, resolving);
-        // 元素要求与长度关系是独立要求(#77 §11.1):元素检查先登记,不受长度是否可证影响。
-        checkChartElement(
-                chart,
-                "labels",
-                labelsNode,
-                labels,
-                chartLabelsExpectation(),
-                "/labels",
-                statementId);
-        long[] labelRange = lengthRangeOf(labels);
-        int seriesIndex = 0;
-        for (AstNode seriesNode : arrayElements(chart.args().get(1))) {
-            AstNode resolvedSeries = resolveNode(seriesNode, new LinkedHashSet<>());
-            if (!(resolvedSeries instanceof AstNode.Comp series)
-                    || !"Series".equals(series.name())
-                    || series.args().size() < 2) {
-                seriesIndex++;
-                continue;
-            }
-            AstNode valuesNode = series.args().get(1);
-            Fact values = synth(valuesNode, statementId, env, resolving);
-            checkChartElement(
-                    chart,
-                    "series[" + seriesIndex + "].values",
-                    valuesNode,
-                    values,
-                    chartSeriesValuesExpectation(),
-                    "/series/" + seriesIndex + "/values",
-                    statementId);
-            long[] valueRange = lengthRangeOf(values);
-            checkChartLengthRelation(
-                    chart, labelRange, labels, valueRange, values, seriesIndex, statementId);
-            reportInsufficientLineData(chart, seriesIndex, valueRange, values, statementId);
-            validateDuplicateSeriesValues(chart, series, seriesIndex, statementId);
-            seriesIndex++;
-        }
-    }
-
-    /**
-     * LineChart 至少需要两个有序数据点才能画趋势线;已证明点数不足时报错。
-     *
-     * @param chart 图表组件调用节点
-     * @param seriesIndex series 下标
-     * @param valueRange series values 的长度区间;null 表示未证明
-     * @param values series values 事实
-     * @param statementId 语句 id,用于诊断归属
-     */
-    private void reportInsufficientLineData(
-            AstNode.Comp chart,
-            int seriesIndex,
-            long[] valueRange,
-            Fact values,
-            String statementId) {
-        if ("LineChart".equals(chart.name())
-                && valueRange != null
-                && valueRange[1] < 2
-                && !values.hasUpstreamErrors()) {
-            emit(
-                    "type-chart-insufficient-data",
-                    "LineChart series "
-                            + seriesIndex
-                            + " has only "
-                            + valueRange[1]
-                            + " point(s), so it cannot draw a trend line.",
-                    statementId,
-                    chart.name(),
-                    "/series/" + seriesIndex,
-                    "Provide at least two ordered points for a trend line.");
-        }
-    }
-
-    /**
-     * Chart 元素要求(标签为 string 或 number 数组;series values 为 number 数组),与长度关系分开登记与检查。
-     * 长度不可证明时元素检查照常进行;只有已证明的元素类型冲突才产生诊断。
-     *
-     * @param chart 图表组件调用节点
-     * @param requirement 要求名称
-     * @param node 被检查的表达式节点
-     * @param fact 被检查值的类型事实
-     * @param expectation 元素检查要求
-     * @param usagePath 使用位置路径
-     * @param statementId 语句 id,用于诊断归属
-     */
-    private void checkChartElement(
-            AstNode.Comp chart,
-            String requirement,
-            AstNode node,
-            Fact fact,
-            Expectation expectation,
-            String usagePath,
-            String statementId) {
-        String checkedPath = dataPathOf(node).map(DataPath::source).orElse(null);
-        Checks.CheckResult result =
-                checkObligation(
-                        statementId,
-                        chart.name() + "." + requirement,
-                        "chartElement",
-                        "/components/" + chart.name() + "/properties/" + requirement,
-                        fact,
-                        expectation,
-                        checkedPath,
-                        chart.name(),
-                        usagePath);
-        if (result.verdict() == Checks.Verdict.MISMATCH) {
-            emit(
-                    "type-prop-mismatch",
-                    chart.name()
-                            + "."
-                            + requirement
-                            + " expects "
-                            + displayExpectation(expectation)
-                            + ", but received "
-                            + fact.type().displayName()
-                            + ".",
-                    statementId,
-                    chart.name(),
-                    usagePath,
-                    "Provide values compatible with " + displayExpectation(expectation) + ".");
-        }
-    }
-
-    private static Expectation chartLabelsExpectation() {
-        Type stringElements =
-                Types.sequence(Types.scalar(Type.ScalarKind.STRING), 0L, Type.Sequence.UNBOUNDED);
-        Type numberElements =
-                Types.sequence(Types.scalar(Type.ScalarKind.NUMBER), 0L, Type.Sequence.UNBOUNDED);
-        return new Expectation.AnyOf(
-                List.of(
-                        new Expectation.Accept(stringElements),
-                        new Expectation.Accept(numberElements)));
-    }
-
-    private static Expectation chartSeriesValuesExpectation() {
-        return new Expectation.SequenceOf(
-                new Expectation.Accept(Types.scalar(Type.ScalarKind.NUMBER)));
-    }
-
-    /**
-     * 长度关系独立检查(#77 §11.1):区间互斥可证明长度不等;精确长度相同,或两侧事实携带同一个已证明保长度的
-     * 来源,才证明相等。区间相同但非精确不足以证明相等——记为未证明,不报错也不宣称通过。
-     *
-     * @param chart 图表组件调用节点
-     * @param labelRange 标签长度区间;null 表示未证明
-     * @param labels 标签事实
-     * @param valueRange series 值长度区间;null 表示未证明
-     * @param values series 值事实
-     * @param seriesIndex series 下标
-     * @param statementId 语句 id,用于诊断归属
-     */
-    private void checkChartLengthRelation(
-            AstNode.Comp chart,
-            long[] labelRange,
-            Fact labels,
-            long[] valueRange,
-            Fact values,
-            int seriesIndex,
-            String statementId) {
-        Checks.CheckResult result = chartLengthResult(labelRange, labels, valueRange, values);
-        String useSite = chart.name() + ".series[" + seriesIndex + "].length";
-        coverage.record(
-                new TypeAnalysisReport.Entry(
-                        new TypeAnalysisReport.Obligation(
-                                statementId,
-                                useSite,
-                                "chartLengthRelation",
-                                "/components/" + chart.name() + "/series"),
-                        result.verdict(),
-                        List.copyOf(result.reasons())));
-        if (result.verdict() == Checks.Verdict.MISMATCH) {
-            emit(
-                    "type-chart-length-mismatch",
-                    chart.name()
-                            + " labels length ["
-                            + labelRange[0]
-                            + ".."
-                            + labelRange[1]
-                            + "] cannot match series "
-                            + seriesIndex
-                            + " values length ["
-                            + valueRange[0]
-                            + ".."
-                            + valueRange[1]
-                            + "].",
-                    statementId,
-                    chart.name(),
-                    "/series/" + seriesIndex,
-                    "Provide one series value for every chart label.");
-        }
-    }
-
-    /**
-     * 计算图表标签与 series 值的长度关系结论。
-     *
-     * @param labelRange 标签长度区间;null 表示未证明
-     * @param labels 标签事实
-     * @param valueRange series 值长度区间;null 表示未证明
-     * @param values series 值事实
-     * @return 长度关系检查结果
-     */
-    private static Checks.CheckResult chartLengthResult(
-            long[] labelRange, Fact labels, long[] valueRange, Fact values) {
-        if (labelRange == null || valueRange == null) {
-            return Checks.CheckResult.unproven(
-                    Set.of(Fact.Loss.INSUFFICIENT_EVIDENCE), "chart length cannot be proven");
-        }
-        if (labelRange[0] > valueRange[1] || valueRange[0] > labelRange[1]) {
-            return Checks.CheckResult.mismatch(
-                    "labels length ["
-                            + labelRange[0]
-                            + ".."
-                            + labelRange[1]
-                            + "] cannot match series values length ["
-                            + valueRange[0]
-                            + ".."
-                            + valueRange[1]
-                            + "]");
-        }
-        if (provenSameLength(labelRange, labels, valueRange, values)) {
-            return Checks.CheckResult.match();
-        }
-        return Checks.CheckResult.unproven(
-                Set.of(Fact.Loss.INSUFFICIENT_EVIDENCE),
-                "overlapping length ranges do not prove equal length");
-    }
-
-    /**
-     * 精确长度相同,或两侧事实携带同一组长度来源(Each/Sort 已把输入来源传递到结果),才证明长度相等。
-     *
-     * <p>长度来源由表达式分析写入 {@link Fact.Evidence.LengthSource};这里不再按函数名回溯表达式。
-     *
-     * @param labelRange 标签长度区间
-     * @param labels 标签事实
-     * @param valueRange series 值长度区间
-     * @param values series 值事实
-     * @return 两侧长度可证明相等时返回 true
-     */
-    static boolean provenSameLength(
-            long[] labelRange, Fact labels, long[] valueRange, Fact values) {
-        if (labelRange[0] == labelRange[1] && valueRange[0] == valueRange[1]) {
-            return labelRange[0] == valueRange[0];
-        }
-        Set<String> labelSources = labels.lengthSourceIdentities();
-        return !labelSources.isEmpty() && labelSources.equals(values.lengthSourceIdentities());
-    }
-
     /**
      * 长度区间:类型事实的数量区间若精确(上界有限)直接使用;无界时使用事实已知的精确数量(数据路径快照基数), 否则保持无界。
      *
      * @param fact 类型事实
      * @return 长度区间 {@code [下界, 上界]};无法确定时可能为 null
      */
-    private long[] lengthRangeOf(Fact fact) {
+    long[] lengthRangeOf(Fact fact) {
         long[] range = ops.lengthRange(fact);
         if (range != null && range[1] != Type.Sequence.UNBOUNDED) {
             return range;
@@ -1618,51 +1195,15 @@ public final class AnalysisSession {
         return known.isPresent() ? new long[] {known.getAsLong(), known.getAsLong()} : range;
     }
 
-    /**
-     * 既有产品检查:同一 series 内重复派生序列表达式(独立于类型层,不可遗漏)。
-     *
-     * @param chart 图表组件调用节点
-     * @param series series 组件调用节点
-     * @param seriesIndex series 下标
-     * @param statementId 语句 id,用于诊断归属
-     */
-    private void validateDuplicateSeriesValues(
-            AstNode.Comp chart, AstNode.Comp series, int seriesIndex, String statementId) {
-        List<AstNode> values = arrayElements(series.args().get(1));
-        Set<AstNode> derivedValues = new LinkedHashSet<>();
-        for (AstNode value : values) {
-            if (!(value instanceof AstNode.Ref)) {
-                continue;
-            }
-            AstNode resolved = resolveNode(value, new LinkedHashSet<>());
-            if (isDerivedExpression(resolved) && !derivedValues.add(resolved)) {
-                emit(
-                        "type-chart-duplicate-series-value",
-                        chart.name()
-                                + " series "
-                                + seriesIndex
-                                + " repeats the same derived expression for multiple categories.",
-                        statementId,
-                        chart.name(),
-                        "/series/" + seriesIndex,
-                        "Use a distinct data expression for each category or remove the duplicate category.");
-                return;
-            }
-        }
-    }
-
-    private static boolean isDerivedExpression(AstNode node) {
-        return node instanceof AstNode.Comp
-                || node instanceof AstNode.Member
-                || node instanceof AstNode.Index
-                || node instanceof AstNode.BinOp
-                || node instanceof AstNode.UnaryOp
-                || node instanceof AstNode.Ternary;
-    }
-
-    private List<AstNode> arrayElements(AstNode node) {
+    List<AstNode> arrayElements(AstNode node) {
         AstNode resolved = resolveNode(node, new LinkedHashSet<>());
         return resolved instanceof AstNode.Arr array ? array.els() : List.of();
+    }
+
+    String statementIdOfRef(AstNode node, String fallbackStatementId) {
+        return node instanceof AstNode.Ref ref && symbols.containsKey(ref.n())
+                ? ref.n()
+                : fallbackStatementId;
     }
 
     AstNode resolveNode(AstNode node, Set<String> resolving) {
@@ -1678,20 +1219,20 @@ public final class AnalysisSession {
         return node;
     }
 
-    private boolean isObjectShape(Type type) {
+    static boolean isObjectShape(Type type) {
         if (type instanceof Type.RecordType) {
             return true;
         }
         return type instanceof Type.Union union
                 && !union.alternatives().isEmpty()
-                && union.alternatives().stream().allMatch(this::isObjectShape);
+                && union.alternatives().stream().allMatch(AnalysisSession::isObjectShape);
     }
 
     // ───────────────────────────────────────────────────────────────────────
     // 数据路径识别(沿用既有规则)
     // ───────────────────────────────────────────────────────────────────────
 
-    private Optional<DataPath> dataPathOf(AstNode node) {
+    Optional<DataPath> dataPathOf(AstNode node) {
         String source = dataPathSource(node);
         if (source == null) {
             return Optional.empty();
@@ -1735,11 +1276,7 @@ public final class AnalysisSession {
         return "err-" + (++errorSequence);
     }
 
-    private String lastErrorId() {
-        return "err-" + errorSequence;
-    }
-
-    void emit(
+    String emit(
             String code,
             String message,
             String statementId,
@@ -1762,10 +1299,12 @@ public final class AnalysisSession {
                             + ".";
         }
         String key = code + "|" + effectiveStatementId + "|" + component + "|" + effectivePath;
-        if (emitted.putIfAbsent(key, code) != null) {
-            return;
+        String existing = emitted.get(key);
+        if (existing != null) {
+            return existing;
         }
-        nextErrorId();
+        String errorId = nextErrorId();
+        emitted.put(key, errorId);
         SourceSpan span = spans.getOrDefault(effectiveStatementId, SourceSpan.UNKNOWN);
         issues.add(
                 new ValidationIssue(
@@ -1780,5 +1319,6 @@ public final class AnalysisSession {
                         span.column(),
                         effectiveHint,
                         false));
+        return errorId;
     }
 }
