@@ -350,6 +350,27 @@ export const BUILTINS: Record<string, BuiltinDef> = {
       return out;
     },
   },
+  Join: {
+    name: "Join",
+    signature: "Join(array, separator?) -> string",
+    description:
+      'Join array elements into a single string with an optional separator (default ", "). Each element is converted to a string; null/undefined elements are skipped. Returns "" for null, non-array, or empty input.',
+    fn: (_runtime, arr, separator) => {
+      if (!Array.isArray(arr)) return "";
+      const sep = separator == null ? ", " : String(separator);
+      return arr
+        .filter((item) => item != null)
+        .map((item) => String(item))
+        .join(sep);
+    },
+  },
+  String: {
+    name: "String",
+    signature: "String(value) -> string",
+    description: "Convert a number or boolean to string. Returns empty string for other types.",
+    fn: (_runtime, value) =>
+      typeof value === "number" || typeof value === "boolean" ? String(value) : "",
+  },
   Sort: {
     name: "Sort",
     signature: "Sort(array, field, direction?) -> sorted array",

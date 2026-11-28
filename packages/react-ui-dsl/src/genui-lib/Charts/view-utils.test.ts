@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildChartOption,
-  buildScatterSeries,
-  normalizeSeriesItems,
-} from "./view-utils";
+import { buildChartOption, buildScatterSeries, normalizeSeriesItems } from "./view-utils";
 
 describe("chart view utils", () => {
   it("maps scatter z values to bubble sizes", () => {
@@ -26,8 +22,12 @@ describe("chart view utils", () => {
       ],
     });
     expect(series).toHaveProperty("symbolSize");
-    expect((series as { symbolSize: (value: number[]) => number }).symbolSize([10, 0.5, 20])).toBeGreaterThan(0);
-    expect((series as { symbolSize: (value: number[]) => number }).symbolSize([20, 1.2, 40])).toBeGreaterThan(
+    expect(
+      (series as { symbolSize: (value: number[]) => number }).symbolSize([10, 0.5, 20]),
+    ).toBeGreaterThan(0);
+    expect(
+      (series as { symbolSize: (value: number[]) => number }).symbolSize([20, 1.2, 40]),
+    ).toBeGreaterThan(
       (series as { symbolSize: (value: number[]) => number }).symbolSize([10, 0.5, 20]),
     );
   });
@@ -81,7 +81,7 @@ describe("chart view utils", () => {
     ]);
   });
 
-  it("normalizes chart legends to bottom center", () => {
+  it("normalizes chart legends to bottom center with a safe inset", () => {
     expect(
       buildChartOption({
         legend: {
@@ -93,8 +93,37 @@ describe("chart view utils", () => {
       legend: {
         orient: "horizontal",
         left: "center",
-        bottom: 0,
+        bottom: 10,
       },
     });
+  });
+
+  it("reserves space for cartesian tick labels and centers axis names", () => {
+    const option = buildChartOption({
+      xAxis: { type: "category", data: ["Cardiology"], name: "Department" },
+      yAxis: { type: "value", name: "Patients" },
+    });
+
+    expect(option.xAxis).toMatchObject({ nameLocation: "middle", nameGap: 28 });
+    expect(option.grid).toMatchObject({ containLabel: true, bottom: 56 });
+  });
+
+  it("does not center an unnamed axis or reserve x-name space", () => {
+    const option = buildChartOption({
+      xAxis: { type: "category", data: ["Cardiology"] },
+      yAxis: { type: "value", name: "Patients" },
+    });
+
+    expect(option.xAxis).not.toHaveProperty("nameLocation");
+    expect(option.grid).toMatchObject({ containLabel: true });
+    expect(option.grid).not.toHaveProperty("bottom");
+  });
+
+  it("leaves non-cartesian charts without a grid", () => {
+    const option = buildChartOption({
+      series: [{ type: "radar", data: [] }],
+    });
+
+    expect(option).not.toHaveProperty("grid");
   });
 });

@@ -1,4 +1,5 @@
 import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { TextContent } from ".";
 import { MarkdownView } from "../../components/MarkdownView";
@@ -33,6 +34,13 @@ describe("TextContent renderer", () => {
     const rendered = TextContent.component({ props: { text: "Release notes" } });
     const child = React.Children.only(rendered.props.children) as React.ReactElement;
     expect(child.props.content).toBe("Release notes");
+  });
+
+  it("renders a numeric text value as visible text", () => {
+    const rendered = TextContent.component({ props: { text: 42 } });
+    const html = renderToStaticMarkup(rendered);
+    const visibleText = html.replace(/<[^>]+>/g, "").trim();
+    expect(visibleText).toBe("42");
   });
 
   it("Text component is not in the DSL registry", () => {

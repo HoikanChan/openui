@@ -22,7 +22,9 @@ describe("react-ui-dsl exported prompt and schema surface", () => {
     expect(propsOf("Button")).not.toHaveProperty("status");
 
     expect(Object.keys(propsOf("TextContent"))).toEqual(["text", "size"]);
-    expect(propsOf("TextContent").text).toEqual({ type: "string" });
+    expect(propsOf("TextContent").text).toEqual({
+      anyOf: [{ type: "string" }, { type: "number" }],
+    });
     expect(propsOf("TextContent")).not.toHaveProperty("properties");
     expect(propsOf("TextContent")).not.toHaveProperty("style");
 

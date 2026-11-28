@@ -85,6 +85,21 @@ describe("Stack renderer", () => {
     expect(rendered.props.style.gap).toBe("0.75rem");
   });
 
+  it("marks row Stacks so nested Stacks can share the row width", () => {
+    const row = Stack.component({
+      props: { children: ["A"], direction: "row" },
+      renderNode: (v) => v as React.ReactNode,
+    });
+    const column = Stack.component({
+      props: { children: ["A"] },
+      renderNode: (v) => v as React.ReactNode,
+    });
+
+    expect(row.props.className).toBeTruthy();
+    expect(column.props.className).toBeTruthy();
+    expect(row.props.className).not.toBe(column.props.className);
+  });
+
   it("applies a fixed default gap independent of props", () => {
     const rendered = Stack.component({
       props: {},
