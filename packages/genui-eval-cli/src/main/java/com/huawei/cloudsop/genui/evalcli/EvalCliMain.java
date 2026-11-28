@@ -15,6 +15,10 @@ import com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig;
 import com.huawei.cloudsop.genui.core.llm.UiGenerationRequest;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
 import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
+import com.huawei.cloudsop.genui.eval.langsmith.BatchRunBuffer;
+import com.huawei.cloudsop.genui.eval.langsmith.LangSmithClient;
+import com.huawei.cloudsop.genui.eval.langsmith.LangSmithConfig;
+import com.huawei.cloudsop.genui.eval.langsmith.SharedOpenAiTransport;
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
@@ -22,20 +26,24 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Eval Generation CLI:无状态计算器。用例清单进(--jobs JSON),生成的 openui-lang 逐行出(stdout JSONL); 所有文件簿记(快照、run
- * 清单、prompt 存档)由 Node 侧负责。用法:
+ * Eval Generation CLI:无状态计算器。用例清单进(--jobs JSON),生成的 openui-lang 逐行出(stdout JSONL); 配置 {@code
+ * LANGSMITH_API_KEY} 时自动上报生成轨迹并在每行 JSONL 输出 {@code langsmithRunId} 和 {@code langsmithSessionId}
+ * 供前端视觉打分回挂。用法:
  *
  * <pre>
- *   java -jar genui-eval-cli.jar generate --base-contract=&lt;path&gt; --jobs=&lt;path&gt; [--concurrency=6]
+ *   java -jar genui-eval-cli.jar generate --base-contract=&lt;path&gt; --jobs=&lt;path&gt; [--concurrency=6] [--validate]
  *   java -jar genui-eval-cli.jar print-prompt --base-contract=&lt;path&gt;
  * </pre>
  *
- * LLM 连接配置经环境变量:LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / HTTPS_PROXY(print-prompt 均不需要)。
+ * LLM 连接配置经环境变量:LLM_BASE_URL / LLM_API_KEY / LLM_MODEL / HTTPS_PROXY(本地模型允许省略 LLM_API_KEY)。
  *
  * @since 2026
  */
@@ -47,8 +55,8 @@ public final class EvalCliMain {
             "Fixture data is recorded in report-data.json entries[].dataModel";
 
     private static final int DEFAULT_CONCURRENCY = 6;
-
     private static final int EXIT_USAGE = 2;
+    private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
     private EvalCliMain() {}
 
@@ -58,7 +66,6 @@ public final class EvalCliMain {
      * @param args 命令行参数
      */
     public static void main(String[] args) {
-        // stdout 承载 prompt/DSL 内容,必须无条件 UTF-8,不随平台控制台编码漂移
         PrintStream out =
                 new PrintStream(
                         new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
@@ -86,7 +93,6 @@ public final class EvalCliMain {
     static String assembleCanonicalPrompt(GenerationSdk sdk) {
         LinkedHashMap<String, Object> placeholder = new LinkedHashMap<>();
         placeholder.put(PLACEHOLDER_KEY, PLACEHOLDER_VALUE);
-        // 与 GenUiGenerator.toPromptRequest 相同的 DataModelSpec 描述,保证存档与实际发送字节一致
         GenUIPromptRequest request =
                 new GenUIPromptRequest(
                         null,
@@ -106,20 +112,37 @@ public final class EvalCliMain {
         if (model == null || model.isBlank()) {
             throw new CliUsageException("LLM_MODEL is not set");
         }
-        OpenAiCompatibleLlmTransport transport =
-                new OpenAiCompatibleLlmTransport(
+        SharedOpenAiTransport transport =
+                new SharedOpenAiTransport(
                         env.get("LLM_BASE_URL"), env.get("LLM_API_KEY"), env.get("HTTPS_PROXY"));
         GenUiLlmConfig config = GenUiLlmConfig.builder().defaultModel(model).temperature(0).build();
-        // Eval regen records the model's raw DSL (including invalid output); it must not spend the
-        // 20s budget on
-        // validation/repair, and a Markdown fallback must still be reported as a failure by
-        // JobRunner.
+        GenUiValidationConfig validationConfig =
+                cli.validate() ? GenUiValidationConfig.enabled() : GenUiValidationConfig.disabled();
         GenUiGenerator generator =
-                GenUiGenerator.withTransport(
-                        sdk, config, transport, GenUiValidationConfig.disabled(), null);
+                GenUiGenerator.withTransport(sdk, config, transport, validationConfig, null);
 
         List<GenerationJob> jobs = GenerationJob.parseAll(readFile(cli.jobsPath(), "jobs"));
-        JobRunner.runAll(jobs, cli.concurrency(), generator, out);
+        LangSmithConfig lsConfig = LangSmithConfig.fromEnvOrNull(env);
+        if (lsConfig == null) {
+            JobRunner.runAll(jobs, cli.concurrency(), generator, cli.validate(), null, null, out);
+            return;
+        }
+        LangSmithClient client = new LangSmithClient(lsConfig);
+        String sessionName =
+                cli.langsmithSession() != null
+                        ? cli.langsmithSession()
+                        : "genui-e2e-regen-" + LocalDateTime.now().format(STAMP);
+        LangSmithClient.SessionRecord session =
+                client.createExperimentSession(
+                        sessionName,
+                        null,
+                        Map.of("track", "e2e-regen", "model", model, "validate", cli.validate()));
+        try (BatchRunBuffer buffer = new BatchRunBuffer(client)) {
+            JobRunner.runAll(
+                    jobs, cli.concurrency(), generator, cli.validate(), buffer, session.id(), out);
+        } finally {
+            client.finishSession(session.id(), Instant.now(), null);
+        }
     }
 
     private static GenerationSdk loadSdk(String baseContractPath) {
@@ -142,17 +165,26 @@ public final class EvalCliMain {
      *
      * @since 2026
      */
-    record CliArgs(String command, String baseContractPath, String jobsPath, int concurrency) {
+    record CliArgs(
+            String command,
+            String baseContractPath,
+            String jobsPath,
+            int concurrency,
+            boolean validate,
+            String langsmithSession) {
         static CliArgs parse(String[] args) {
             if (args == null || args.length == 0) {
                 throw new CliUsageException(
-                        "Usage: generate --base-contract=<path> --jobs=<path> [--concurrency=N] | "
+                        "Usage: generate --base-contract=<path> --jobs=<path> [--concurrency=N]"
+                                + " [--validate] [--langsmith-session=<name>] | "
                                 + "print-prompt --base-contract=<path>");
             }
             String command = normalizeCommand(args[0]);
             String baseContract = null;
             String jobs = null;
             int concurrency = DEFAULT_CONCURRENCY;
+            boolean validate = false;
+            String langsmithSession = null;
             for (int i = 1; i < args.length; i++) {
                 String arg = args[i];
                 if (arg.startsWith("--base-contract=")) {
@@ -161,6 +193,10 @@ public final class EvalCliMain {
                     jobs = arg.substring("--jobs=".length());
                 } else if (arg.startsWith("--concurrency=")) {
                     concurrency = parseConcurrency(arg.substring("--concurrency=".length()));
+                } else if ("--validate".equals(arg)) {
+                    validate = true;
+                } else if (arg.startsWith("--langsmith-session=")) {
+                    langsmithSession = arg.substring("--langsmith-session=".length());
                 } else {
                     throw new CliUsageException("Unknown argument: " + arg);
                 }
@@ -171,7 +207,8 @@ public final class EvalCliMain {
             if ("generate".equals(command) && (jobs == null || jobs.isBlank())) {
                 throw new CliUsageException("--jobs=<path> is required for generate");
             }
-            return new CliArgs(command, baseContract, jobs, concurrency);
+            return new CliArgs(
+                    command, baseContract, jobs, concurrency, validate, langsmithSession);
         }
 
         private static String normalizeCommand(String raw) {
@@ -228,12 +265,17 @@ public final class EvalCliMain {
                     .toList();
         }
 
-        static GenUiGenerationResult execute(GenerationJob job, GenUiGenerator generator) {
-            return generator.generate(
+        static GenUiGenerationResult execute(
+                GenerationJob job, GenUiGenerator generator, boolean validate) {
+            UiGenerationRequest request =
                     UiGenerationRequest.builder()
                             .userInput(job.userInput())
                             .response(new LinkedHashMap<>(job.dataModel()))
-                            .build());
+                            .build();
+            if (validate) {
+                return generator.generateStream(request, event -> {});
+            }
+            return generator.generate(request);
         }
     }
 
