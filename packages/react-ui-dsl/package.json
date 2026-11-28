@@ -41,6 +41,7 @@
     "test:fuzz:regen": "cross-env REGEN_SNAPSHOTS=1 REACT_UI_DSL_E2E_SUITE=fuzz vitest run src/__tests__/e2e/dsl-fuzz.test.tsx",
     "report:view": "npx serve ./src/__tests__/e2e/reports",
     "eval": "tsx --import ./src/__tests__/e2e/css-stub-loader.mjs ./src/__tests__/e2e/eval-loop.ts",
+    "eval:visual-bridge": "tsx --import ./src/__tests__/e2e/css-stub-loader.mjs ./src/__tests__/e2e/eval/visual-bridge.ts",
     "generate:package-metadata": "tsx ./scripts/generate-package-metadata.mts",
     "generate:base-contract": "tsx --import ./src/__tests__/e2e/css-stub-loader.mjs ./scripts/generate-base-contract.mts",
     "check:contract": "tsx --import ./src/__tests__/e2e/css-stub-loader.mjs ./scripts/compare-contract.mts",

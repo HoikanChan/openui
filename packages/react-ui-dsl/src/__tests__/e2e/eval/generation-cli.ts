@@ -25,6 +25,8 @@ export interface GenerationCliResult {
   status: "ok" | "error";
   dsl?: string;
   error?: string;
+  langsmithRunId?: string;
+  langsmithSessionId?: string;
 }
 
 /**
