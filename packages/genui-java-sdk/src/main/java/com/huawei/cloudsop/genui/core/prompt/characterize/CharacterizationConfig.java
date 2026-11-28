@@ -19,6 +19,8 @@ package com.huawei.cloudsop.genui.core.prompt.characterize;
  * @param enumMaxRatio maximum distinct-to-total ratio that still qualifies a string column as an
  *     enum
  * @param deepScanLimit maximum number of nested object/array values deep-scanned per table column
+ * @param insightsEnabled whether {@code DataProfiler} insights are injected into the prompt; {@code
+ *     false} keeps every other characterization behavior unchanged
  * @since 2026
  */
 public record CharacterizationConfig(
@@ -28,7 +30,8 @@ public record CharacterizationConfig(
         int maxStringLen,
         int enumMaxDistinct,
         double enumMaxRatio,
-        int deepScanLimit) {
+        int deepScanLimit,
+        boolean insightsEnabled) {
 
     private static final boolean DEFAULT_ENABLED = true;
     private static final int DEFAULT_TRIGGER_BYTES = 2048;
@@ -37,6 +40,7 @@ public record CharacterizationConfig(
     private static final int DEFAULT_ENUM_MAX_DISTINCT = 50;
     private static final double DEFAULT_ENUM_MAX_RATIO = 0.5;
     private static final int DEFAULT_DEEP_SCAN_LIMIT = 10000;
+    private static final boolean DEFAULT_INSIGHTS_ENABLED = true;
 
     /**
      * Returns the out-of-the-box configuration using every field's default value.
@@ -69,6 +73,7 @@ public record CharacterizationConfig(
         private int enumMaxDistinct = DEFAULT_ENUM_MAX_DISTINCT;
         private double enumMaxRatio = DEFAULT_ENUM_MAX_RATIO;
         private int deepScanLimit = DEFAULT_DEEP_SCAN_LIMIT;
+        private boolean insightsEnabled = DEFAULT_INSIGHTS_ENABLED;
 
         private Builder() {}
 
@@ -150,6 +155,17 @@ public record CharacterizationConfig(
         }
 
         /**
+         * Sets whether {@code DataProfiler} insights are injected into the prompt.
+         *
+         * @param insightsEnabled {@code true} to append fired insight rules and matched examples
+         * @return this builder
+         */
+        public Builder insightsEnabled(boolean insightsEnabled) {
+            this.insightsEnabled = insightsEnabled;
+            return this;
+        }
+
+        /**
          * Builds an immutable configuration from the current builder values.
          *
          * @return the configuration snapshot
@@ -162,7 +178,8 @@ public record CharacterizationConfig(
                     maxStringLen,
                     enumMaxDistinct,
                     enumMaxRatio,
-                    deepScanLimit);
+                    deepScanLimit,
+                    insightsEnabled);
         }
     }
 }

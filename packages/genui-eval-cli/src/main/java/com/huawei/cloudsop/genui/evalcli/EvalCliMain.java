@@ -14,6 +14,7 @@ import com.huawei.cloudsop.genui.core.llm.GenUiGenerator;
 import com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig;
 import com.huawei.cloudsop.genui.core.llm.UiGenerationRequest;
 import com.huawei.cloudsop.genui.core.prompt.GenUIPromptRequest;
+import com.huawei.cloudsop.genui.core.prompt.characterize.CharacterizationConfig;
 import com.huawei.cloudsop.genui.core.validation.GenUiValidationConfig;
 import com.huawei.cloudsop.genui.eval.langsmith.BatchRunBuffer;
 import com.huawei.cloudsop.genui.eval.langsmith.LangSmithClient;
@@ -82,7 +83,7 @@ public final class EvalCliMain {
 
     static void run(String[] args, PrintStream out, Map<String, String> env) throws Exception {
         CliArgs cli = CliArgs.parse(args);
-        GenerationSdk sdk = loadSdk(cli.baseContractPath());
+        GenerationSdk sdk = loadSdk(cli.baseContractPath(), env);
         if ("print-prompt".equals(cli.command())) {
             out.println(assembleCanonicalPrompt(sdk));
             return;
@@ -145,10 +146,17 @@ public final class EvalCliMain {
         }
     }
 
-    private static GenerationSdk loadSdk(String baseContractPath) {
+    private static GenerationSdk loadSdk(String baseContractPath, Map<String, String> env) {
         GenerationContract contract =
                 GenerationContractLoader.fromJson(readFile(baseContractPath, "base contract"));
-        return GenerationSdk.builder().baseContract(contract).build();
+        CharacterizationConfig.Builder characterization = CharacterizationConfig.builder();
+        if ("off".equalsIgnoreCase(env.get("GENUI_INSIGHTS"))) {
+            characterization.insightsEnabled(false);
+        }
+        return GenerationSdk.builder()
+                .baseContract(contract)
+                .characterization(characterization.build())
+                .build();
     }
 
     private static String readFile(String path, String label) {
