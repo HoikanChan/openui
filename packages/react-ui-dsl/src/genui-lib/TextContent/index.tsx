@@ -23,7 +23,7 @@ export const TextContent = defineComponent({
     const size = props.size ?? "default";
     return (
       <div className={sizeClassMap[size]}>
-        <MarkdownView content={props.text} />
+        <MarkdownView content={String(props.text)} />
       </div>
     );
   },

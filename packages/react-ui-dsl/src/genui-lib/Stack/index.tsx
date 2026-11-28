@@ -3,6 +3,7 @@
 import { type ComponentRenderProps, defineComponent } from "@cloudsop/openui-react-lang";
 import type { CSSProperties } from "react";
 import { z } from "zod";
+import styles from "./stack.module.css";
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
@@ -40,8 +41,7 @@ export const Stack = defineComponent({
     'Flex container. justify defaults to "start" — omit unless you need "center" or "between" for 3+ items. Params: direction "row"|"column" (default "column"), align "center"|"stretch", justify "start"|"center"|"between", wrap boolean.',
   component: ({ props, renderNode }: ComponentRenderProps<z.infer<typeof StackSchema>>) => {
     const direction = props.direction ?? "column";
-    const effectiveJustify =
-      props.wrap && props.justify === "between" ? "start" : props.justify;
+    const effectiveJustify = props.wrap && props.justify === "between" ? "start" : props.justify;
     const style: CSSProperties = {
       display: "flex",
       flexDirection: direction === "column" ? "column" : "row",
@@ -51,6 +51,15 @@ export const Stack = defineComponent({
       justifyContent: effectiveJustify ? justifyMap[effectiveJustify] : undefined,
     };
 
-    return <div style={style}>{renderNode(props.children)}</div>;
+    const className =
+      direction === "row"
+        ? `${styles["nestedStack"]} ${styles["row"]}`
+        : styles["nestedStack"];
+
+    return (
+      <div className={className} style={style}>
+        {renderNode(props.children)}
+      </div>
+    );
   },
 });
