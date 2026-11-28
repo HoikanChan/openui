@@ -1,0 +1,270 @@
+{
+  "b3-marketing": {
+    "dateRange": "Last 30 days",
+    "availableDateRanges": ["Last 7 days", "Last 30 days", "Last 90 days", "Quarter to date"],
+    "conversionRatePercent": 3.8,
+    "emailSubscriberGrowth": { "newSubscribersThisMonth": 4280, "growthPercent": 12.4 },
+    "dailyVisitors": [
+      { "date": "11-01", "visitors": 8200 },
+      { "date": "11-08", "visitors": 9150 },
+      { "date": "11-15", "visitors": 10400 },
+      { "date": "11-22", "visitors": 11250 },
+      { "date": "11-29", "visitors": 12100 }
+    ],
+    "topTrafficSources": [
+      { "source": "Organic Search", "sharePercent": 42 },
+      { "source": "Direct", "sharePercent": 21 },
+      { "source": "Paid Search", "sharePercent": 18 },
+      { "source": "Social", "sharePercent": 11 },
+      { "source": "Referral", "sharePercent": 8 }
+    ],
+    "bestCampaign": {
+      "name": "Q4 Product Launch Search",
+      "roas": 4.9,
+      "conversions": 612,
+      "spend": 14500
+    },
+    "campaigns": [
+      { "name": "Q4 Product Launch Search", "channel": "Google Ads", "spend": 14500, "conversions": 612, "status": "active" },
+      { "name": "Developer Newsletter Sponsorship", "channel": "Newsletter", "spend": 6800, "conversions": 240, "status": "active" },
+      { "name": "LinkedIn ABM Enterprise", "channel": "LinkedIn", "spend": 11200, "conversions": 185, "status": "active" },
+      { "name": "Retargeting Display", "channel": "Programmatic", "spend": 4900, "conversions": 118, "status": "active" }
+    ]
+  },
+  "b3-orders": {
+    "ordersToday": 318,
+    "revenueToday": 44290,
+    "averageOrderValue": 139.28,
+    "refundRateMonthPercent": 2.1,
+    "weeklyVolume": [
+      { "week": "W44", "orders": 1840 },
+      { "week": "W45", "orders": 1965 },
+      { "week": "W46", "orders": 2110 },
+      { "week": "W47", "orders": 2295 }
+    ],
+    "recentOrders": [
+      { "id": "ORD-8821", "customer": "Rachel Torres", "total": 245.0, "status": "pending" },
+      { "id": "ORD-8820", "customer": "Liam O'Connor", "total": 89.5, "status": "processing" },
+      { "id": "ORD-8819", "customer": "Yuki Tanaka", "total": 312.0, "status": "fulfilled" },
+      { "id": "ORD-8818", "customer": "Samuel Boateng", "total": 154.2, "status": "pending" },
+      { "id": "ORD-8817", "customer": "Hannah Weber", "total": 67.0, "status": "refunded" }
+    ]
+  },
+  "b3-hr": {
+    "currentHeadcount": 284,
+    "avgTimeToHireDays": 31,
+    "openRoles": [
+      { "title": "Staff Backend Engineer", "department": "Engineering", "location": "Remote", "applicants": 48 },
+      { "title": "Senior Product Designer", "department": "Design", "location": "SF", "applicants": 36 },
+      { "title": "Enterprise Account Executive", "department": "Sales", "location": "NYC", "applicants": 29 },
+      { "title": "Data Scientist", "department": "Data", "location": "Remote", "applicants": 54 }
+    ],
+    "pipelineStages": [
+      { "stage": "Applied", "candidates": 167 },
+      { "stage": "Screening", "candidates": 62 },
+      { "stage": "Technical", "candidates": 28 },
+      { "stage": "Onsite", "candidates": 11 },
+      { "stage": "Offer", "candidates": 4 }
+    ],
+    "headcountByDepartment": [
+      { "department": "Engineering", "count": 118 },
+      { "department": "Sales", "count": 64 },
+      { "department": "Product & Design", "count": 38 },
+      { "department": "Operations", "count": 36 },
+      { "department": "G&A", "count": 28 }
+    ],
+    "interviewsThisWeek": [
+      { "candidate": "Noah Bennett", "role": "Staff Backend Engineer", "stage": "Onsite", "time": "Tue 10:00 AM" },
+      { "candidate": "Aisha Khan", "role": "Senior Product Designer", "stage": "Portfolio Review", "time": "Wed 2:00 PM" },
+      { "candidate": "Mateo Silva", "role": "Data Scientist", "stage": "Technical", "time": "Thu 11:30 AM" }
+    ],
+    "monthlyAttrition": [
+      { "month": "Jun", "ratePercent": 1.4 },
+      { "month": "Jul", "ratePercent": 1.2 },
+      { "month": "Aug", "ratePercent": 1.6 },
+      { "month": "Sep", "ratePercent": 1.1 },
+      { "month": "Oct", "ratePercent": 0.9 },
+      { "month": "Nov", "ratePercent": 1.0 }
+    ]
+  },
+  "b3-server": {
+    "regions": ["all", "us-east-1", "eu-west-1", "ap-southeast-1"],
+    "uptimeQuarterPercent": 99.94,
+    "currentErrorRatePercent": 0.42,
+    "currentAlertThresholdPercent": 1.0,
+    "resourceUsage24h": [
+      { "hour": "00:00", "cpuPercent": 38, "memoryPercent": 61 },
+      { "hour": "04:00", "cpuPercent": 32, "memoryPercent": 59 },
+      { "hour": "08:00", "cpuPercent": 54, "memoryPercent": 66 },
+      { "hour": "12:00", "cpuPercent": 71, "memoryPercent": 74 },
+      { "hour": "16:00", "cpuPercent": 68, "memoryPercent": 72 },
+      { "hour": "20:00", "cpuPercent": 49, "memoryPercent": 65 }
+    ],
+    "openIncidents": [
+      { "id": "INC-902", "title": "Search index lag in eu-west-1", "region": "eu-west-1", "severity": "high", "status": "open" },
+      { "id": "INC-901", "title": "Elevated webhook timeouts", "region": "us-east-1", "severity": "medium", "status": "open" },
+      { "id": "INC-899", "title": "Cache eviction spike on shard-4", "region": "ap-southeast-1", "severity": "low", "status": "open" }
+    ],
+    "slowestEndpoints": [
+      { "endpoint": "POST /v1/reports/export", "p95LatencyMs": 1480, "region": "us-east-1" },
+      { "endpoint": "GET /v1/search/semantic", "p95LatencyMs": 920, "region": "eu-west-1" },
+      { "endpoint": "POST /v1/billing/reconcile", "p95LatencyMs": 760, "region": "us-east-1" },
+      { "endpoint": "GET /v1/analytics/funnel", "p95LatencyMs": 640, "region": "ap-southeast-1" },
+      { "endpoint": "PUT /v1/workflows/deploy", "p95LatencyMs": 510, "region": "eu-west-1" }
+    ]
+  },
+  "b3-crm": {
+    "accountName": "Meridian Logistics Group",
+    "owner": "Jordan Blake",
+    "totalDealValue": 240000,
+    "dealStage": "Procurement & Legal",
+    "renewal": {
+      "date": "2026-12-19",
+      "daysUntilRenewal": 20,
+      "isNearWarning": true,
+      "warningMessage": "Renewal is 20 days away and security addendum is still pending."
+    },
+    "recentActivity": [
+      { "date": "2026-11-28", "type": "Call", "summary": "Reviewed SOC-2 bridge letter with CISO office" },
+      { "date": "2026-11-25", "type": "Email", "summary": "Sent updated 3-year volume pricing schedule" },
+      { "date": "2026-11-21", "type": "Meeting", "summary": "Completed regional rollout workshop with ops leads" }
+    ],
+    "contacts": [
+      { "name": "claire.wu@meridian.com", "fullName": "Claire Wu", "role": "VP Operations" },
+      { "name": "m.alvarez@meridian.com", "fullName": "Miguel Alvarez", "role": "Director of IT Security" },
+      { "name": "s.patterson@meridian.com", "fullName": "Sarah Patterson", "role": "Procurement Manager" }
+    ],
+    "openFollowUps": [
+      { "task": "Send redlined DPA to legal", "dueDate": "2026-12-01", "owner": "Jordan Blake" },
+      { "task": "Confirm 250-seat onboarding timeline", "dueDate": "2026-12-04", "owner": "Claire Wu" },
+      { "task": "Executive sponsor check-in", "dueDate": "2026-12-08", "owner": "Jordan Blake" }
+    ]
+  },
+  "b3-clinic": {
+    "date": "2026-11-29",
+    "expectedPatientsCount": 18,
+    "noShowRateMonthPercent": 6.4,
+    "nextPatient": {
+      "time": "09:30 AM",
+      "name": "Evelyn Brooks",
+      "doctor": "Dr. Patel",
+      "reason": "Annual physical follow-up",
+      "room": "Room 204"
+    },
+    "freeRooms": ["Room 102", "Room 205", "Room 301"],
+    "appointments": [
+      { "time": "09:30 AM", "patient": "Evelyn Brooks", "doctor": "Dr. Patel", "status": "waiting" },
+      { "time": "10:00 AM", "patient": "Carlos Mendez", "doctor": "Dr. Chen", "status": "scheduled" },
+      { "time": "10:30 AM", "patient": "Grace Kim", "doctor": "Dr. Patel", "status": "scheduled" },
+      { "time": "11:00 AM", "patient": "Arthur Pendelton", "doctor": "Dr. Ortiz", "status": "checked_in" },
+      { "time": "11:30 AM", "patient": "Fatima Al-Mansoor", "doctor": "Dr. Chen", "status": "scheduled" }
+    ]
+  },
+  "b3-content": {
+    "categories": ["All", "Engineering", "Product", "Design", "AI"],
+    "publishedThisWeek": 7,
+    "mostReadArticle": {
+      "title": "Why Declarative UI Beats Raw JSON Streaming",
+      "category": "Engineering",
+      "views": 42800,
+      "avgReadMinutes": 6.4
+    },
+    "readership30d": [
+      { "week": "W1", "readers": 24500 },
+      { "week": "W2", "readers": 28900 },
+      { "week": "W3", "readers": 33400 },
+      { "week": "W4", "readers": 38200 }
+    ],
+    "drafts": [
+      { "title": "Designing Low-Latency Data Tables", "category": "Design", "author": "M. Lin", "status": "in_review" },
+      { "title": "Zero-Downtime Postgres Partitioning", "category": "Engineering", "author": "K. Rao", "status": "draft" },
+      { "title": "Evaluating LLM Tool Calling Reliability", "category": "AI", "author": "S. Park", "status": "ready_to_schedule" },
+      { "title": "Pricing Page Experiments That Worked", "category": "Product", "author": "J. Bell", "status": "in_review" }
+    ],
+    "commentsAwaitingReply": [
+      { "reader": "Daniel K.", "article": "Why Declarative UI Beats Raw JSON Streaming", "comment": "How do you handle partial array streaming on slow mobile networks?" },
+      { "reader": "Meera S.", "article": "Schema-First Component Contracts", "comment": "Is there a Java validator example for custom extensions?" }
+    ]
+  },
+  "b3-freight": {
+    "lastRefreshedAt": "2026-11-29T08:45:00Z",
+    "onTimeMonthPercent": 91.8,
+    "avgCostPerShipmentUsd": 1420,
+    "delayedShipments": [
+      { "id": "SHP-5042", "origin": "Shanghai", "destination": "Los Angeles", "eta": "2026-12-04", "delayReason": "Port congestion (18h delay)", "carrier": "PacificLine" },
+      { "id": "SHP-5049", "origin": "Rotterdam", "destination": "Newark", "eta": "2026-12-03", "delayReason": "Customs inspection hold", "carrier": "NordicFreight" }
+    ],
+    "shipmentsInTransit": [
+      { "id": "SHP-5041", "origin": "Shenzhen", "destination": "Seattle", "eta": "2026-12-01", "status": "on_time", "carrier": "PacificLine" },
+      { "id": "SHP-5042", "origin": "Shanghai", "destination": "Los Angeles", "eta": "2026-12-04", "status": "delayed", "carrier": "PacificLine" },
+      { "id": "SHP-5046", "origin": "Hamburg", "destination": "Savannah", "eta": "2026-12-02", "status": "on_time", "carrier": "EuroCargo" },
+      { "id": "SHP-5049", "origin": "Rotterdam", "destination": "Newark", "eta": "2026-12-03", "status": "delayed", "carrier": "NordicFreight" },
+      { "id": "SHP-5053", "origin": "Busan", "destination": "Oakland", "eta": "2026-12-05", "status": "on_time", "carrier": "ApexAir" }
+    ],
+    "volumeByCarrier": [
+      { "carrier": "PacificLine", "shipments": 142 },
+      { "carrier": "EuroCargo", "shipments": 98 },
+      { "carrier": "NordicFreight", "shipments": 76 },
+      { "carrier": "ApexAir", "shipments": 49 }
+    ],
+    "weeklyVolume8w": [
+      { "week": "W40", "shipments": 78 },
+      { "week": "W41", "shipments": 84 },
+      { "week": "W42", "shipments": 81 },
+      { "week": "W43", "shipments": 90 },
+      { "week": "W44", "shipments": 95 },
+      { "week": "W45", "shipments": 92 },
+      { "week": "W46", "shipments": 101 },
+      { "week": "W47", "shipments": 108 }
+    ]
+  },
+  "b3-finance": {
+    "month": "2026-11",
+    "availableMonths": ["2026-09", "2026-10", "2026-11"],
+    "currency": "USD",
+    "cashOnHand": 4820000,
+    "monthlyBurn": 265000,
+    "runwayMonths": 18.2,
+    "expensesByCategory": [
+      { "category": "Payroll", "amount": 172000 },
+      { "category": "Cloud Infrastructure", "amount": 41000 },
+      { "category": "Marketing", "amount": 26000 },
+      { "category": "Legal & Compliance", "amount": 15000 },
+      { "category": "Software & Tools", "amount": 11000 }
+    ],
+    "largeTransactions": [
+      { "date": "2026-11-15", "vendor": "Gusto Payroll", "category": "Payroll", "amount": 86000 },
+      { "date": "2026-11-01", "vendor": "Gusto Payroll", "category": "Payroll", "amount": 86000 },
+      { "date": "2026-11-05", "vendor": "AWS Cloud Services", "category": "Cloud Infrastructure", "amount": 38400 },
+      { "date": "2026-11-12", "vendor": "Cooley LLP", "category": "Legal & Compliance", "amount": 14800 },
+      { "date": "2026-11-18", "vendor": "Google Cloud Ads", "category": "Marketing", "amount": 12500 }
+    ]
+  },
+  "b3-learning": {
+    "cohorts": ["All Cohorts", "2026-Q4 Enterprise", "2026-Q4 Self-Paced", "2026-Q3 Alumni"],
+    "activeLearnersWeek": 1284,
+    "courseCompletionRatePercent": 76.5,
+    "averageQuizScore": 84.2,
+    "coursesByEnrollment": [
+      { "course": "Cloud Security Fundamentals", "enrolled": 480, "completionPercent": 82 },
+      { "course": "Applied LLM Engineering", "enrolled": 415, "completionPercent": 74 },
+      { "course": "Kubernetes in Production", "enrolled": 320, "completionPercent": 71 },
+      { "course": "Data Modeling & SQL Mastery", "enrolled": 265, "completionPercent": 79 }
+    ],
+    "atRiskLearners": [
+      { "name": "Trevor Walsh", "cohort": "2026-Q4 Enterprise", "course": "Kubernetes in Production", "daysInactive": 12, "progressPercent": 24 },
+      { "name": "Priyanka Verma", "cohort": "2026-Q4 Self-Paced", "course": "Applied LLM Engineering", "daysInactive": 9, "progressPercent": 31 },
+      { "name": "Benny Cho", "cohort": "2026-Q4 Enterprise", "course": "Cloud Security Fundamentals", "daysInactive": 15, "progressPercent": 18 }
+    ],
+    "weeklyEngagement8w": [
+      { "week": "W1", "activeLearners": 980 },
+      { "week": "W2", "activeLearners": 1040 },
+      { "week": "W3", "activeLearners": 1095 },
+      { "week": "W4", "activeLearners": 1120 },
+      { "week": "W5", "activeLearners": 1160 },
+      { "week": "W6", "activeLearners": 1210 },
+      { "week": "W7", "activeLearners": 1245 },
+      { "week": "W8", "activeLearners": 1284 }
+    ]
+  }
+}

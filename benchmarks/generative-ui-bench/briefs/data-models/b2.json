@@ -1,0 +1,164 @@
+{
+  "b2-sales": {
+    "month": "2026-11",
+    "currency": "USD",
+    "revenueThisMonth": 184600,
+    "conversionPercent": 4.3,
+    "monthlyRevenue": [
+      { "month": "Jun", "revenue": 132000 },
+      { "month": "Jul", "revenue": 141500 },
+      { "month": "Aug", "revenue": 149200 },
+      { "month": "Sep", "revenue": 162800 },
+      { "month": "Oct", "revenue": 173400 },
+      { "month": "Nov", "revenue": 184600 }
+    ],
+    "topProducts": [
+      { "product": "Pro Team Plan", "unitsSold": 412, "revenue": 98880 },
+      { "product": "Analytics Add-on", "unitsSold": 286, "revenue": 51480 },
+      { "product": "Starter Annual", "unitsSold": 195, "revenue": 34240 }
+    ]
+  },
+  "b2-support": {
+    "openTicketsCount": 42,
+    "avgFirstResponseMinutes": 18,
+    "recentTickets": [
+      { "id": "SUP-1904", "subject": "SSO callback failing for Okta tenants", "customer": "Acme Corp", "priority": "high", "status": "open" },
+      { "id": "SUP-1903", "subject": "CSV export drops UTF-8 characters", "customer": "Globex", "priority": "medium", "status": "open" },
+      { "id": "SUP-1902", "subject": "Webhook retry delay on billing events", "customer": "Vanguard Bio", "priority": "high", "status": "open" },
+      { "id": "SUP-1901", "subject": "Need invoice recipient updated", "customer": "Pinecone Studio", "priority": "low", "status": "open" },
+      { "id": "SUP-1900", "subject": "Dashboard chart tooltip clipped on Safari", "customer": "Riverfront Media", "priority": "medium", "status": "open" }
+    ]
+  },
+  "b2-fitness": {
+    "date": "2026-11-29",
+    "stepsToday": 8420,
+    "dailyStepGoal": 10000,
+    "caloriesBurned": 615,
+    "weeklyWorkouts": [
+      { "day": "Mon", "type": "Run", "minutes": 35, "calories": 410 },
+      { "day": "Tue", "type": "Strength", "minutes": 45, "calories": 320 },
+      { "day": "Wed", "type": "Rest", "minutes": 0, "calories": 0 },
+      { "day": "Thu", "type": "Cycling", "minutes": 50, "calories": 530 },
+      { "day": "Fri", "type": "HIIT", "minutes": 30, "calories": 380 },
+      { "day": "Sat", "type": "Run", "minutes": 60, "calories": 670 },
+      { "day": "Sun", "type": "Yoga", "minutes": 40, "calories": 190 }
+    ]
+  },
+  "b2-job": {
+    "roleTitle": "Senior Product Designer",
+    "team": "Core Workspace & Collaboration",
+    "location": "Hybrid (San Francisco / Remote US)",
+    "description": "Shape end-to-end workflows for multi-user editing, real-time commenting, and design systems used by 200k daily teams.",
+    "salaryRange": "$175,000 - $210,000 + equity",
+    "qualifications": [
+      "5+ years designing complex web applications and SaaS workflows",
+      "Strong portfolio demonstrating systems thinking and measurable product impact",
+      "Fluency in Figma, prototyping, and collaborating closely with frontend engineers",
+      "Experience conducting user research and iterating from behavioral data"
+    ],
+    "shareUrl": "https://careers.example.com/roles/senior-product-designer"
+  },
+  "b2-cafe": {
+    "cafeName": "Cedar & Steam Coffee",
+    "openingHours": "Mon-Fri 7:00 AM - 6:00 PM, Sat-Sun 8:00 AM - 5:00 PM",
+    "todaysSpecial": {
+      "name": "Cardamom Oat Cortado & Pistachio Croissant",
+      "price": 10.5,
+      "note": "House-roasted Ethiopian single origin paired with freshly baked pastry."
+    },
+    "drinks": [
+      { "name": "Espresso", "price": 3.5, "vegetarian": true },
+      { "name": "Flat White", "price": 4.75, "vegetarian": true },
+      { "name": "Matcha Latte", "price": 5.5, "vegetarian": true },
+      { "name": "Cold Brew Tonic", "price": 5.25, "vegetarian": true }
+    ],
+    "food": [
+      { "name": "Avocado Sourdough Toast", "price": 9.5, "vegetarian": true },
+      { "name": "Smoked Turkey Brioche", "price": 11.75, "vegetarian": false },
+      { "name": "Mushroom Quiche", "price": 8.75, "vegetarian": true },
+      { "name": "Bacon Egg Brioche", "price": 10.25, "vegetarian": false }
+    ]
+  },
+  "b2-budget": {
+    "month": "2026-11",
+    "availableMonths": ["2026-09", "2026-10", "2026-11"],
+    "currency": "USD",
+    "totalSpent": 3240,
+    "monthlyBudget": 4000,
+    "largestExpense": {
+      "merchant": "Oakwood Apartments",
+      "category": "Housing",
+      "amount": 1650,
+      "date": "2026-11-01"
+    },
+    "spendingByCategory": [
+      { "category": "Housing", "amount": 1650 },
+      { "category": "Groceries", "amount": 540 },
+      { "category": "Dining", "amount": 360 },
+      { "category": "Transport", "amount": 280 },
+      { "category": "Utilities", "amount": 210 },
+      { "category": "Entertainment", "amount": 200 }
+    ]
+  },
+  "b2-course": {
+    "title": "Distributed Systems Engineering in Practice",
+    "instructor": "Dr. Hannah Park",
+    "progressPercent": 64,
+    "averageRating": 4.8,
+    "reviewCount": 1420,
+    "nextLesson": {
+      "module": "Module 4: Consensus Protocols",
+      "title": "Raft Log Replication & Leader Election",
+      "durationMinutes": 28
+    },
+    "modules": [
+      { "title": "1. Time, Clocks & Ordering", "status": "completed", "lessons": 5 },
+      { "title": "2. Replication & Consistency", "status": "completed", "lessons": 6 },
+      { "title": "3. Partitioning & Sharding", "status": "completed", "lessons": 5 },
+      { "title": "4. Consensus Protocols", "status": "in_progress", "lessons": 6 },
+      { "title": "5. Observability & Chaos Testing", "status": "not_started", "lessons": 4 }
+    ]
+  },
+  "b2-stock": {
+    "warningThreshold": 15,
+    "lowStockItems": [
+      { "sku": "SKU-104", "name": "Ceramic Pour-Over Dripper", "category": "Brewing", "remainingUnits": 4, "supplier": "Kinto" },
+      { "sku": "SKU-219", "name": "Stainless Burr Grinder", "category": "Equipment", "remainingUnits": 7, "supplier": "Baratza" },
+      { "sku": "SKU-308", "name": "Unbleached Paper Filters (100ct)", "category": "Consumables", "remainingUnits": 11, "supplier": "Hario" },
+      { "sku": "SKU-412", "name": "Double-Wall Glass Mug", "category": "Drinkware", "remainingUnits": 14, "supplier": "Fellow" }
+    ]
+  },
+  "b2-standup": {
+    "date": "2026-11-29",
+    "missingUpdatesCount": 2,
+    "missingTeammates": ["Lucas Meyer", "Nadia Okafor"],
+    "updates": [
+      { "teammate": "Sofia Patel", "status": "Shipped webhook signature verification PR; starting retry backoff tests.", "blocked": false, "blocker": null },
+      { "teammate": "Devon Brooks", "status": "Investigating staging DB migration timeout on billing_events table.", "blocked": true, "blocker": "Waiting on DBA read-replica credentials." },
+      { "teammate": "Kenji Sato", "status": "Completed dark-mode contrast fixes for chart legends and tooltips.", "blocked": false, "blocker": null },
+      { "teammate": "Claire Dubois", "status": "Finalizing Q4 launch telemetry spec with analytics team.", "blocked": false, "blocker": null }
+    ]
+  },
+  "b2-event": {
+    "name": "BuildForward Summit 2026",
+    "date": "2026-12-18",
+    "venue": "Moscone West, San Francisco",
+    "daysRemaining": 19,
+    "agenda": [
+      { "time": "09:00 AM", "session": "Opening Keynote: Reliable AI Interfaces", "speaker": "Dr. Lena Cho" },
+      { "time": "10:30 AM", "session": "Streaming UI Architectures at Scale", "speaker": "Omar Farooq" },
+      { "time": "01:30 PM", "session": "Hands-on Workshop: Schema-First Design Systems", "speaker": "Tessa Lindholm" },
+      { "time": "03:30 PM", "session": "Closing Panel: Production Guardrails", "speaker": "All Speakers" }
+    ],
+    "speakers": [
+      { "name": "Dr. Lena Cho", "bio": "VP of Applied AI at Horizon Systems, author of Reliable Agents." },
+      { "name": "Omar Farooq", "bio": "Principal Frontend Architect behind OpenStream UI." },
+      { "name": "Tessa Lindholm", "bio": "Design Systems Lead at Nordic Cloud." }
+    ],
+    "ticketTiers": [
+      { "tier": "Community Pass", "price": 199, "perks": "All talks and expo floor" },
+      { "tier": "Pro Pass", "price": 449, "perks": "All talks, workshops, and recordings" },
+      { "tier": "Team Bundle (5 seats)", "price": 1899, "perks": "Pro Pass for 5 attendees plus VIP lounge" }
+    ]
+  }
+}

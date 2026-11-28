@@ -1,0 +1,328 @@
+{
+  "b4-saas": {
+    "reportingPeriod": "2026-11",
+    "availablePeriods": ["2026-09", "2026-10", "2026-11", "2026-Q4"],
+    "mrr": 642000,
+    "arr": 7704000,
+    "churnMonthPercent": 1.8,
+    "nps": 58,
+    "seatUtilizationPercent": 81.4,
+    "signups90d": [
+      { "period": "Sep W1", "signups": 118 },
+      { "period": "Sep W3", "signups": 134 },
+      { "period": "Oct W1", "signups": 149 },
+      { "period": "Oct W3", "signups": 162 },
+      { "period": "Nov W1", "signups": 178 },
+      { "period": "Nov W3", "signups": 195 }
+    ],
+    "customersByPlan": [
+      { "plan": "Enterprise", "customers": 48 },
+      { "plan": "Business", "customers": 214 },
+      { "plan": "Pro", "customers": 685 },
+      { "plan": "Starter", "customers": 1120 }
+    ],
+    "largestCustomers": [
+      { "customer": "Apex Financial", "seats": 420, "monthlySpend": 29400 },
+      { "customer": "Helios Health", "seats": 360, "monthlySpend": 25200 },
+      { "customer": "Meridian Logistics", "seats": 310, "monthlySpend": 21700 },
+      { "customer": "Vanguard Bio", "seats": 280, "monthlySpend": 19600 },
+      { "customer": "Nordic Retail", "seats": 245, "monthlySpend": 17150 },
+      { "customer": "Summit Energy", "seats": 220, "monthlySpend": 15400 },
+      { "customer": "Orion Media", "seats": 190, "monthlySpend": 13300 },
+      { "customer": "Cobalt Manufacturing", "seats": 175, "monthlySpend": 12250 },
+      { "customer": "Cascade Bank", "seats": 160, "monthlySpend": 11200 },
+      { "customer": "Redwood Telecom", "seats": 145, "monthlySpend": 10150 }
+    ],
+    "atRiskAccounts": [
+      { "customer": "Cobalt Manufacturing", "mrr": 12250, "reason": "Seat usage dropped 42% over last 30 days" },
+      { "customer": "Orion Media", "mrr": 13300, "reason": "3 unresolved P1 support tickets before renewal" },
+      { "customer": "Harbor Legal", "mrr": 6400, "reason": "Champion left company" }
+    ],
+    "failedPayments": [
+      { "invoiceId": "INV-9941", "customer": "Pinecone Labs", "amount": 2400, "failedAt": "2026-11-27" },
+      { "invoiceId": "INV-9938", "customer": "Atlas Robotics", "amount": 4800, "failedAt": "2026-11-26" }
+    ],
+    "newestFeaturesAdoption": [
+      { "feature": "AI SQL Copilot", "adoptionPercent": 62 },
+      { "feature": "Real-time Audit Stream", "adoptionPercent": 47 },
+      { "feature": "Custom SSO Mapping", "adoptionPercent": 38 }
+    ]
+  },
+  "b4-hospital": {
+    "date": "2026-11-29",
+    "bedOccupancyPercent": 87.5,
+    "occupiedBeds": 350,
+    "totalBeds": 400,
+    "erWaitMinutes": 29,
+    "admissions14d": [
+      { "day": "Nov 16", "admissions": 44 },
+      { "day": "Nov 19", "admissions": 51 },
+      { "day": "Nov 22", "admissions": 48 },
+      { "day": "Nov 25", "admissions": 56 },
+      { "day": "Nov 28", "admissions": 52 }
+    ],
+    "patientsByDepartment": [
+      { "department": "Emergency", "patients": 64 },
+      { "department": "Cardiology", "patients": 58 },
+      { "department": "Orthopedics", "patients": 49 },
+      { "department": "ICU", "patients": 38 },
+      { "department": "Pediatrics", "patients": 42 },
+      { "department": "General Surgery", "patients": 99 }
+    ],
+    "staffOnShift": [
+      { "name": "Dr. Maya Rao", "role": "Attending Physician", "department": "Emergency" },
+      { "name": "Dr. Leon Grant", "role": "Lead Surgeon", "department": "General Surgery" },
+      { "name": "Nurse Carla Ruiz", "role": "Charge Nurse", "department": "ICU" },
+      { "name": "Nurse Owen Brooks", "role": "Triage Nurse", "department": "Emergency" }
+    ],
+    "criticalPatients": [
+      { "id": "PT-881", "bed": "ICU-04", "department": "ICU", "condition": "Post-op septic shock, stabilized on pressors" },
+      { "id": "PT-894", "bed": "ER-02", "department": "Emergency", "condition": "Acute STEMI awaiting cath lab transfer" }
+    ],
+    "readyForDischarge": [
+      { "id": "PT-720", "name": "Robert Hale", "department": "Orthopedics", "bed": "ORTH-12" },
+      { "id": "PT-735", "name": "Linda Cho", "department": "Cardiology", "bed": "CARD-08" },
+      { "id": "PT-741", "name": "Samir Patel", "department": "General Surgery", "bed": "SURG-19" }
+    ],
+    "orBookingsToday": [
+      { "room": "OR-1", "time": "08:00", "procedure": "Laparoscopic Cholecystectomy", "surgeon": "Dr. Leon Grant" },
+      { "room": "OR-2", "time": "10:30", "procedure": "Total Knee Arthroplasty", "surgeon": "Dr. Sarah Kim" },
+      { "room": "OR-3", "time": "13:00", "procedure": "Coronary Bypass", "surgeon": "Dr. Amir Haddad" }
+    ],
+    "lowSupplies": [
+      { "item": "O-Negative Blood Units", "remaining": 6, "parLevel": 20 },
+      { "item": "N95 Respirators (Boxes)", "remaining": 14, "parLevel": 40 },
+      { "item": "IV Normal Saline 1L", "remaining": 38, "parLevel": 100 }
+    ]
+  },
+  "b4-retail": {
+    "storeName": "Downtown Flagship #104",
+    "stores": ["Downtown Flagship #104", "Westside Mall #108", "Airport Concourse #112"],
+    "salesToday": 28450,
+    "salesTargetToday": 32000,
+    "avgBasketSize": 64.8,
+    "returnsThisWeek": 37,
+    "weekComparison": {
+      "thisWeekSales": 168400,
+      "lastWeekSales": 154200,
+      "deltaPercent": 9.2
+    },
+    "footTrafficByHour": [
+      { "hour": "09:00", "visitors": 45 },
+      { "hour": "11:00", "visitors": 112 },
+      { "hour": "13:00", "visitors": 168 },
+      { "hour": "15:00", "visitors": 144 },
+      { "hour": "17:00", "visitors": 195 },
+      { "hour": "19:00", "visitors": 130 }
+    ],
+    "bestSellers": [
+      { "sku": "APP-201", "name": "Merino Crew Sweater", "unitsSold": 74, "revenue": 6660 },
+      { "sku": "FTW-118", "name": "All-Weather Trail Sneaker", "unitsSold": 58, "revenue": 6960 },
+      { "sku": "ACC-042", "name": "Insulated Travel Bottle", "unitsSold": 91, "revenue": 3185 }
+    ],
+    "outOfStock": [
+      { "sku": "APP-209", "name": "Waterproof Parka (Size M)", "lastSold": "2026-11-29 11:15" },
+      { "sku": "FTW-122", "name": "Canvas Slip-On (Size 10)", "lastSold": "2026-11-28 18:40" }
+    ],
+    "staffOnShift": [
+      { "name": "Brianna Cole", "role": "Shift Lead", "zone": "Floor" },
+      { "name": "Diego Morales", "role": "Sales Associate", "zone": "Footwear" },
+      { "name": "Tessa Wu", "role": "Cashier", "zone": "Checkout" },
+      { "name": "Kevin Osei", "role": "Stock Specialist", "zone": "Backroom" }
+    ],
+    "promotions": [
+      { "name": "Holiday Bundle 20% Off", "redemptions": 128, "attributedSales": 11400 },
+      { "name": "Loyalty Double Points", "redemptions": 214, "attributedSales": 14800 }
+    ],
+    "registers": [
+      { "id": "REG-1", "status": "open", "cashier": "Tessa Wu" },
+      { "id": "REG-2", "status": "open", "cashier": "Brianna Cole" },
+      { "id": "REG-3", "status": "closed", "cashier": "Unassigned" }
+    ]
+  },
+  "b4-portfolio": {
+    "quarter": "2026-Q4",
+    "quarters": ["2026-Q2", "2026-Q3", "2026-Q4", "2027-Q1"],
+    "portfolioHealthSummary": "4 of 5 active initiatives are on track; Cloud Migration is Amber due to vendor sandbox delays.",
+    "teamUtilizationPercent": 86,
+    "projects": [
+      { "name": "Unified Billing v2", "owner": "Elena Vance", "deadline": "2026-12-18", "health": "green", "budgetSpent": 210000, "budgetAllocated": 250000 },
+      { "name": "Cloud Migration", "owner": "Rajiv Nair", "deadline": "2026-12-12", "health": "amber", "budgetSpent": 340000, "budgetAllocated": 360000 },
+      { "name": "Mobile Offline Sync", "owner": "Chloe Martin", "deadline": "2027-01-15", "health": "green", "budgetSpent": 125000, "budgetAllocated": 180000 },
+      { "name": "Zero-Trust IAM", "owner": "Tomasz Kowalski", "deadline": "2026-12-08", "health": "red", "budgetSpent": 195000, "budgetAllocated": 200000 },
+      { "name": "Self-Serve Analytics", "owner": "Sonia Alvarez", "deadline": "2027-01-30", "health": "green", "budgetSpent": 90000, "budgetAllocated": 160000 }
+    ],
+    "overdueMilestones": [
+      { "project": "Zero-Trust IAM", "milestone": "Hardware key rollout to Tier-1 admins", "dueDate": "2026-11-22" },
+      { "project": "Cloud Migration", "milestone": "Staging failover drill", "dueDate": "2026-11-26" }
+    ],
+    "risks": [
+      { "project": "Zero-Trust IAM", "risk": "Legacy VPN service lacks SAML 2.0 support", "severity": "high" },
+      { "project": "Cloud Migration", "risk": "Database cutover window overlaps holiday freeze", "severity": "medium" },
+      { "project": "Unified Billing v2", "risk": "EU VAT rounding edge cases", "severity": "low" }
+    ],
+    "upcomingDeadlines14d": [
+      { "project": "Zero-Trust IAM", "deliverable": "Production cutover", "date": "2026-12-08" },
+      { "project": "Cloud Migration", "deliverable": "EU region traffic shift", "date": "2026-12-12" }
+    ],
+    "deliveryPace6Sprints": [
+      { "sprint": "S21", "storyPoints": 142 },
+      { "sprint": "S22", "storyPoints": 156 },
+      { "sprint": "S23", "storyPoints": 149 },
+      { "sprint": "S24", "storyPoints": 164 },
+      { "sprint": "S25", "storyPoints": 171 },
+      { "sprint": "S26", "storyPoints": 168 }
+    ],
+    "blockedItems": [
+      { "id": "JIRA-4412", "project": "Cloud Migration", "summary": "Awaiting firewall rule approval from NetOps" },
+      { "id": "JIRA-4429", "project": "Zero-Trust IAM", "summary": "Pending Okta tenant license upgrade" }
+    ]
+  },
+  "b4-bank": {
+    "statementPeriod": "2026-11",
+    "statementPeriods": ["2026-09", "2026-10", "2026-11"],
+    "balances": {
+      "checking": 8420.5,
+      "savings": 24600.0,
+      "creditBalance": 1340.25,
+      "creditLimit": 12000.0,
+      "creditFrozen": false
+    },
+    "creditScore": 782,
+    "vacationGoal": {
+      "name": "Kyoto Spring Trip",
+      "savedAmount": 4200,
+      "targetAmount": 6000,
+      "progressPercent": 70
+    },
+    "recentTransactions": [
+      { "id": "TX-901", "date": "2026-11-28", "merchant": "Whole Foods Market", "category": "Groceries", "amount": -142.8 },
+      { "id": "TX-902", "date": "2026-11-27", "merchant": "Delta Air Lines", "category": "Travel", "amount": -486.0 },
+      { "id": "TX-903", "date": "2026-11-26", "merchant": "Blue Bottle Coffee", "category": "Dining", "amount": -11.5 },
+      { "id": "TX-904", "date": "2026-11-25", "merchant": "City Power & Light", "category": "Utilities", "amount": -118.4 },
+      { "id": "TX-905", "date": "2026-11-24", "merchant": "Payroll Direct Deposit", "category": "Income", "amount": 4850.0 }
+    ],
+    "spendingByCategory": [
+      { "category": "Housing", "amount": 1850 },
+      { "category": "Travel", "amount": 620 },
+      { "category": "Groceries", "amount": 540 },
+      { "category": "Dining", "amount": 310 },
+      { "category": "Utilities", "amount": 215 }
+    ],
+    "billsDueSoon": [
+      { "biller": "Metro Fiber Internet", "amount": 79.99, "dueDate": "2026-12-03" },
+      { "biller": "Auto Insurance", "amount": 148.0, "dueDate": "2026-12-07" }
+    ],
+    "alertTriggers": [
+      { "name": "Large purchase alert", "threshold": "$250", "enabled": true },
+      { "name": "Low checking balance", "threshold": "$1,000", "enabled": true },
+      { "name": "International transaction", "threshold": "Any", "enabled": true }
+    ]
+  },
+  "b4-power": {
+    "regions": ["All Regions", "North Grid", "Central Basin", "Coastal South"],
+    "currentLoadMw": 18420,
+    "totalCapacityMw": 21500,
+    "capacityUtilizationPercent": 85.7,
+    "pricePerMwhUsd": 68.4,
+    "emissionsTodayTonsCo2": 4120,
+    "generationBySource": [
+      { "source": "Solar", "mw": 5400 },
+      { "source": "Wind", "mw": 4650 },
+      { "source": "Natural Gas", "mw": 4820 },
+      { "source": "Nuclear", "mw": 2400 },
+      { "source": "Hydro", "mw": 1150 }
+    ],
+    "plants": [
+      { "name": "Red Mesa Solar", "region": "Central Basin", "outputMw": 2850, "status": "online" },
+      { "name": "North Ridge Wind", "region": "North Grid", "outputMw": 3100, "status": "online" },
+      { "name": "Harbor CCGT", "region": "Coastal South", "outputMw": 2600, "status": "degraded" },
+      { "name": "Cedar Point Nuclear", "region": "North Grid", "outputMw": 2400, "status": "online" }
+    ],
+    "outages": [
+      { "id": "OUT-31", "region": "Coastal South", "affectedCustomers": 4200, "cause": "Substation transformer fault", "eta": "2026-11-29 15:00" },
+      { "id": "OUT-32", "region": "North Grid", "affectedCustomers": 850, "cause": "High-wind feeder trip", "eta": "2026-11-29 13:30" }
+    ],
+    "demandForecast24h": [
+      { "hour": "00:00", "demandMw": 14200 },
+      { "hour": "06:00", "demandMw": 16100 },
+      { "hour": "12:00", "demandMw": 18800 },
+      { "hour": "18:00", "demandMw": 20400 },
+      { "hour": "22:00", "demandMw": 16900 }
+    ],
+    "plannedMaintenance": [
+      { "asset": "Transmission Line 404", "region": "Central Basin", "window": "2026-12-04 02:00-06:00" },
+      { "asset": "Harbor CCGT Turbine B", "region": "Coastal South", "window": "2026-12-09 00:00-08:00" }
+    ],
+    "liveAlerts": [
+      { "time": "08:42", "severity": "critical", "message": "Coastal South reserve margin dropped below 12%" },
+      { "time": "08:30", "severity": "warning", "message": "Wind ramp-down expected in North Grid at 14:00" }
+    ]
+  },
+  "b4-airline": {
+    "hub": "ORD - Chicago O'Hare",
+    "hubs": ["ORD - Chicago O'Hare", "DFW - Dallas/Fort Worth", "DEN - Denver"],
+    "onTimePerformancePercent": 84.6,
+    "avgPassengerLoadPercent": 88.2,
+    "cancellationsToday": 4,
+    "avgTurnaroundMinutes": 47,
+    "weatherAdvisories": [
+      { "severity": "warning", "advisory": "Crosswinds 26kt gusts on Runways 28C/27R until 15:00 CST" }
+    ],
+    "flights": [
+      { "flight": "UA 412", "route": "ORD -> SFO", "gate": "B14", "status": "on_time", "delayMinutes": 0 },
+      { "flight": "UA 809", "route": "ORD -> BOS", "gate": "C08", "status": "delayed", "delayMinutes": 55 },
+      { "flight": "UA 215", "route": "ORD -> MIA", "gate": "B06", "status": "boarding", "delayMinutes": 0 },
+      { "flight": "UA 633", "route": "ORD -> LHR", "gate": "C18", "status": "delayed", "delayMinutes": 40 },
+      { "flight": "UA 119", "route": "ORD -> SEA", "gate": "B21", "status": "on_time", "delayMinutes": 0 }
+    ],
+    "delayedFlights": [
+      { "flight": "UA 809", "route": "ORD -> BOS", "delayMinutes": 55, "reason": "Inbound aircraft weather hold" },
+      { "flight": "UA 633", "route": "ORD -> LHR", "delayMinutes": 40, "reason": "Late catering & crew swap" }
+    ],
+    "recentGateChanges": [
+      { "flight": "UA 809", "fromGate": "B12", "toGate": "C08", "changedAt": "08:15" },
+      { "flight": "UA 215", "fromGate": "B04", "toGate": "B06", "changedAt": "08:28" }
+    ],
+    "availableCrews": [
+      { "crewId": "CRW-14", "aircraftType": "B737-MAX", "members": 5, "base": "ORD" },
+      { "crewId": "CRW-22", "aircraftType": "A320", "members": 4, "base": "ORD" }
+    ],
+    "connectionsAtRisk": [
+      { "inboundFlight": "UA 809", "outboundFlight": "UA 902 (BOS -> DUB)", "passengersAtRisk": 14, "slackMinutes": 11 },
+      { "inboundFlight": "UA 633", "outboundFlight": "LH 431 (LHR -> FRA)", "passengersAtRisk": 9, "slackMinutes": 15 }
+    ]
+  },
+  "b4-creator": {
+    "platforms": ["All Platforms", "YouTube", "X", "Instagram", "Newsletter"],
+    "totalFollowers": 482600,
+    "followerGrowthMonth": 18400,
+    "followerGrowthPercent": 4.0,
+    "engagementRatePercent": 6.4,
+    "bestPostingHour": "6:00 PM EST (avg 8.7% engagement)",
+    "earningsThisMonthUsd": 14850,
+    "audienceByPlatform": [
+      { "platform": "YouTube", "followers": 245000 },
+      { "platform": "Instagram", "followers": 124000 },
+      { "platform": "X", "followers": 78600 },
+      { "platform": "Newsletter", "followers": 35000 }
+    ],
+    "bestPosts": [
+      { "title": "Building a 60fps Canvas App in 20 Mins", "platform": "YouTube", "reach": 184000, "engagementPercent": 7.9 },
+      { "title": "My Minimalist Desk Setup 2026", "platform": "Instagram", "reach": 96200, "engagementPercent": 8.4 },
+      { "title": "5 TypeScript Patterns I Stopped Using", "platform": "X", "reach": 142000, "engagementPercent": 5.8 }
+    ],
+    "scheduledPosts": [
+      { "title": "Local LLM Benchmarks on M4 Max", "platform": "YouTube", "scheduledFor": "2026-12-01 18:00" },
+      { "title": "Behind the Scenes: Audio Chain", "platform": "Instagram", "scheduledFor": "2026-12-03 18:00" }
+    ],
+    "commentsAwaitingReply": [
+      { "author": "@dev_kai", "platform": "YouTube", "text": "Could you share the shader repo link?" },
+      { "author": "@sara_ux", "platform": "Instagram", "text": "Which monitor light bar is that?" }
+    ],
+    "collaborationRequests": [
+      { "brand": "Linearity Audio", "offerUsd": 4500, "deliverable": "1 YouTube integration", "status": "pending" },
+      { "brand": "KeyCraft Mechanical", "offerUsd": 2200, "deliverable": "2 Instagram Reels", "status": "pending" }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "openui-generative-ui-bench",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "check:data": "node tools/check-data-models.ts",
+    "generate": "node run.ts",
+    "score": "node score.ts",
+    "render-check": "node render-check.ts",
+    "report": "node tools/report.ts"
+  },
+  "dependencies": {
+    "@openuidev/lang-core": "0.2.16",
+    "zod": "4.4.3"
+  }
+}
