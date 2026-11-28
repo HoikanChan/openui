@@ -220,7 +220,7 @@ public final class ExpressionParser {
         // Builtins require @-prefix; only Action is exempt.
         if (peek(1).type() == TokenType.L_PAREN
                 && (!builtins.isBuiltin(name) || "Action".equals(name))) {
-            return parseComp(name);
+            return parseComp(name, false);
         }
         adv();
         return new AstNode.Ref(name);
@@ -229,7 +229,7 @@ public final class ExpressionParser {
     private AstNode parseBuiltinOrRef(Token tok) {
         String name = tok.text();
         if (peek(1).type() == TokenType.L_PAREN) {
-            return parseComp(name);
+            return parseComp(name, true);
         }
         adv();
         return new AstNode.Ref(name);
@@ -340,7 +340,7 @@ public final class ExpressionParser {
     }
 
     // ── Compound parsers ──────────────────────────────────────────────────────────
-    private AstNode parseComp(String name) {
+    private AstNode parseComp(String name, boolean prefixed) {
         adv(); // consume TYPE / BUILTIN_CALL name
         Token opener = cur();
         eatOptional(TokenType.L_PAREN);
@@ -352,7 +352,7 @@ public final class ExpressionParser {
             }
         }
         eatClosing(TokenType.R_PAREN, ParseErrorCode.UNCLOSED_BRACKET, "'('", opener);
-        return new AstNode.Comp(name, args);
+        return new AstNode.Comp(name, args, prefixed);
     }
 
     private AstNode parseArr() {

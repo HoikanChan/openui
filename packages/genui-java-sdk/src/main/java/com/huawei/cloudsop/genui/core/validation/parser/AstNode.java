@@ -32,17 +32,28 @@ public sealed interface AstNode
                 AstNode.Assign {
 
     /**
-     * 组件调用：{@code Header("Hello", "Subtitle")}。
+     * 组件、内置函数或动作调用：{@code Header("Hello", "Subtitle")} 或 {@code @Set($x, 1)}。
      *
-     * @param name 组件名
+     * @param name 调用名（已剥离前导 {@code @}）
      * @param args 位置参数列表
+     * @param prefixed 源码中是否带前导 {@code @} 前缀
      * @since 2026
      */
-    record Comp(String name, List<AstNode> args) implements AstNode {
+    record Comp(String name, List<AstNode> args, boolean prefixed) implements AstNode {
 
         /** 紧凑构造方法，将参数列表归一化为不可变列表。 */
         public Comp {
             args = args == null ? List.of() : List.copyOf(args);
+        }
+
+        /**
+         * 兼容构造器：默认无前导 {@code @} 前缀。
+         *
+         * @param name 调用名
+         * @param args 位置参数列表
+         */
+        public Comp(String name, List<AstNode> args) {
+            this(name, args, false);
         }
     }
 
