@@ -83,6 +83,16 @@ public final class TypeAnalysisReport {
     }
 
     /**
+     * 按检查要求身份与检查结果登记一条结论。
+     *
+     * @param obligation 检查要求身份
+     * @param result 参数检查结果
+     */
+    void record(Obligation obligation, Checks.CheckResult result) {
+        record(new Entry(obligation, result.verdict(), List.copyOf(result.reasons())));
+    }
+
+    /**
      * 已发现并登记的检查要求条数。
      *
      * @return 去重后的检查要求数

@@ -8,12 +8,6 @@
   导致豁免静默失效（该拦的没拦住），或反过来误伤挪到该行的新方法（不该拦的拦了）。
 -->
 <suppressions>
-  <!-- 类型分析核心：AnalysisSession 是语义分析的主循环 -->
-  <suppress-xpath files="AnalysisSession\.java" checks="ParameterNumber"
-            query="//METHOD_DEF[./IDENT[@text='checkComponentParam'] or ./IDENT[@text='checkObligation'] or ./IDENT[@text='checkTableColumn']]/descendant-or-self::node()"/>
-  <suppress-xpath files="AnalysisSession\.java" checks="ClassDataAbstractionCoupling"
-            query="//CLASS_DEF[./IDENT[@text='AnalysisSession']]"/>
-
   <!--
     长参数列表：契约 record 的规范构造器/工厂直接镜像 base-contract.json 字段，
     再包一层参数对象只会增加一层无名字段映射。

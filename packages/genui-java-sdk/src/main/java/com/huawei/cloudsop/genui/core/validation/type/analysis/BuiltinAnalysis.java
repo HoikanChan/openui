@@ -95,6 +95,17 @@ public final class BuiltinAnalysis {
     /** Each/Render 的最长声明参数个数(Each 固定三参;Render 以三参形式声明,中位 row 可选)。 */
     private static final int TEMPLATE_PARAM_COUNT = 3;
 
+    private static final int FILTER_OPERATOR_ARG_INDEX = 2;
+    private static final int SORT_DIRECTION_ARG_INDEX = 2;
+    private static final int SORT_MIN_ARGS_WITH_DIRECTION = 3;
+
+    /** {@code @Filter} 运行时支持的比较操作符集合(其余值会在运行时静默过滤为空数组)。 */
+    private static final Set<String> FILTER_OPERATORS =
+            Set.of("==", "!=", ">", "<", ">=", "<=", "contains");
+
+    /** {@code @Sort} 契约声明的排序方向集合。 */
+    private static final Set<String> SORT_DIRECTIONS = Set.of("asc", "desc");
+
     private final BuiltinCatalog catalog;
     private final AnalysisSession session;
     private final Map<AstNode, DeferredTemplate> templates = new IdentityHashMap<>();
@@ -675,6 +686,7 @@ public final class BuiltinAnalysis {
         }
         SignatureCall checked = checkSignatureCall(spec, call, context);
         if (DATA_SPECIALS.contains(call.name())) {
+            checkDataSpecialSemantics(call, checked.arguments(), context);
             return dataSpecialResult(call, checked.arguments());
         }
         return SignatureInference.instantiate(spec.returnType(), checked.bounds());
@@ -764,15 +776,14 @@ public final class BuiltinAnalysis {
         }
         Checks.CheckResult result =
                 session.checkObligation(
-                        context.statementId(),
-                        "@" + call.name() + "/args/" + index,
-                        "param",
-                        "/builtins/" + call.name() + "/params/" + index,
+                        new AnalysisSession.ObligationTarget(
+                                context.statementId(),
+                                "@" + call.name() + "/args/" + index,
+                                "param",
+                                "/builtins/" + call.name() + "/params/" + index),
                         actual,
                         expectation,
-                        null,
-                        null,
-                        "/args/" + index);
+                        null);
         if (result.verdict() == Checks.Verdict.MISMATCH && !actual.hasUpstreamErrors()) {
             context.emit(
                     "builtin-argument-type-mismatch",
@@ -879,6 +890,183 @@ public final class BuiltinAnalysis {
                     "Use a string literal or a bare identifier as the binder name.");
         }
         return actual;
+    }
+
+    /**
+     * 数据类 builtin 的附加语义校验:校验 {@code @Filter} 的操作符与标量字段约束，以及 {@code @Sort} 的排序方向与字段约束。
+     *
+     * <p>只在输入参数具有确定静态证据时报错;动态或未知输入保持 UNPROVEN，不产生假阳性。
+     *
+     * @param call 被分析的调用表达式
+     * @param arguments 按实参顺序的事实列表
+     * @param context 当前语句、词法环境与循环引用追踪
+     */
+    private void checkDataSpecialSemantics(
+            AstNode.Comp call, List<Fact> arguments, AnalysisContext context) {
+        if (FILTER.equals(call.name())) {
+            checkFilterSemantics(call, arguments, context);
+            return;
+        }
+        if (SORT.equals(call.name())) {
+            checkSortSemantics(call, arguments, context);
+        }
+    }
+
+    private void checkFilterSemantics(
+            AstNode.Comp call, List<Fact> arguments, AnalysisContext context) {
+        if (arguments.size() > FILTER_OPERATOR_ARG_INDEX) {
+            checkLiteralEnumArgument(
+                    call,
+                    FILTER_OPERATOR_ARG_INDEX,
+                    arguments.get(FILTER_OPERATOR_ARG_INDEX),
+                    FILTER_OPERATORS,
+                    "a supported comparison operator (==, !=, >, <, >=, <=, contains)",
+                    context);
+        }
+        if (arguments.size() >= 2) {
+            checkCollectionFieldArgument(call, arguments.get(0), arguments.get(1), context);
+        }
+    }
+
+    private void checkSortSemantics(
+            AstNode.Comp call, List<Fact> arguments, AnalysisContext context) {
+        if (arguments.size() >= SORT_MIN_ARGS_WITH_DIRECTION) {
+            checkLiteralEnumArgument(
+                    call,
+                    SORT_DIRECTION_ARG_INDEX,
+                    arguments.get(SORT_DIRECTION_ARG_INDEX),
+                    SORT_DIRECTIONS,
+                    "\"asc\" or \"desc\"",
+                    context);
+        }
+        if (arguments.size() >= 2) {
+            checkCollectionFieldArgument(call, arguments.get(0), arguments.get(1), context);
+        }
+    }
+
+    private void checkLiteralEnumArgument(
+            AstNode.Comp call,
+            int index,
+            Fact actual,
+            Set<String> allowed,
+            String allowedLabel,
+            AnalysisContext context) {
+        Checks.CheckResult result =
+                session.checkObligation(
+                        new AnalysisSession.ObligationTarget(
+                                context.statementId(),
+                                "@" + call.name() + "/args/" + index + "/enum",
+                                "paramEnum",
+                                "/builtins/" + call.name() + "/params/" + index),
+                        actual,
+                        new Expectation.EnumValues(allowed),
+                        null);
+        if (result.verdict() == Checks.Verdict.MISMATCH && !actual.hasUpstreamErrors()) {
+            context.emit(
+                    "builtin-argument-type-mismatch",
+                    "@"
+                            + call.name()
+                            + " argument "
+                            + index
+                            + " expects "
+                            + allowedLabel
+                            + ", but received "
+                            + actual.type().displayName()
+                            + ".",
+                    null,
+                    "/args/" + index,
+                    "Use " + allowedLabel + ".");
+        }
+    }
+
+    private void checkCollectionFieldArgument(
+            AstNode.Comp call, Fact arrayFact, Fact fieldArgFact, AnalysisContext context) {
+        String fieldPath = singleNonEmptyLiteral(fieldArgFact);
+        if (fieldPath == null
+                || arrayFact.hasUpstreamErrors()
+                || fieldArgFact.hasUpstreamErrors()) {
+            return;
+        }
+        Fact element = session.ops().element(arrayFact);
+        if (!allClosedRecords(element.type()) || isKnownEmptySequence(arrayFact.type())) {
+            return;
+        }
+        Fact current = element;
+        for (String segment : fieldPath.split("\\.", -1)) {
+            if (segment.isEmpty()) {
+                emitInvalidFieldPath(call, fieldPath, "contains an empty path segment", context);
+                return;
+            }
+            if (!allClosedRecords(current.type())) {
+                return;
+            }
+            current = session.ops().readField(current, segment);
+            if (current.type() instanceof Type.Never) {
+                emitInvalidFieldPath(
+                        call, fieldPath, "is absent from " + element.type().displayName(), context);
+                return;
+            }
+        }
+        if (!(current.type() instanceof Type.Unknown)
+                && AnalysisSession.isComposite(current.type())) {
+            context.emit(
+                    "builtin-argument-type-mismatch",
+                    "@"
+                            + call.name()
+                            + " field \""
+                            + fieldPath
+                            + "\" resolves to "
+                            + current.type().displayName()
+                            + ", but must resolve to a primitive scalar value.",
+                    null,
+                    "/args/1",
+                    "Use a primitive scalar field (string, number, or boolean) instead of an array"
+                            + " or object.");
+        }
+    }
+
+    private void emitInvalidFieldPath(
+            AstNode.Comp call, String fieldPath, String reason, AnalysisContext context) {
+        context.emit(
+                "builtin-argument-type-mismatch",
+                "@" + call.name() + " field \"" + fieldPath + "\" " + reason + ".",
+                null,
+                "/args/1",
+                "Use a scalar field name present on the array element object.");
+    }
+
+    private static String singleNonEmptyLiteral(Fact fact) {
+        if (fact.type() instanceof Type.StringLiterals literals && literals.values().size() == 1) {
+            String value = literals.values().iterator().next();
+            return value.isEmpty() ? null : value;
+        }
+        return null;
+    }
+
+    private static boolean allClosedRecords(Type type) {
+        List<Type> branches = TypeOps.flatten(type);
+        if (branches.isEmpty()) {
+            return false;
+        }
+        for (Type branch : branches) {
+            if (!(branch instanceof Type.RecordType record) || !record.extra().isClosed()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isKnownEmptySequence(Type type) {
+        List<Type> branches = TypeOps.flatten(type);
+        if (branches.isEmpty()) {
+            return false;
+        }
+        for (Type branch : branches) {
+            if (!(branch instanceof Type.Sequence sequence) || sequence.maxLength() != 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
