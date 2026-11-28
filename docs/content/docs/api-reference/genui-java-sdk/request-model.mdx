@@ -1,0 +1,107 @@
+---
+title: Request Model
+description: UiGenerationRequest 字段说明、请求到 prompt 的映射、用户消息组装和 dataModel 双路径。
+---
+
+`UiGenerationRequest` 是面向 `GenUiGenerator` 的生成请求。`GenUiGenerator` 内部把它转换为 `GenUIPromptRequest` 交给 `GenerationSdk.assemblePrompt()` 组装 prompt，同时构造用户消息发送给 LLM。
+
+## UiGenerationRequest
+
+```java
+public record UiGenerationRequest(
+    String extensionId,              // 扩展选择标识
+    String userInput,                // 用户自然语言输入
+    Map<String, Object> request,     // 请求上下文数据（嵌入用户消息）
+    Map<String, Object> response,    // 渲染数据（完整，不经 Characterization 缩减）
+    String suggestion,               // 请求级 prompt overlay（追加一条 additionalRule）
+    Boolean editMode,                // 编辑模式开关
+    Boolean inlineMode,              // 内联模式开关
+    Boolean toolCalls,               // 启用 Query/Mutation/Tool sections
+    Boolean bindings                 // 启用 $binding 语法
+) {}
+```
+
+使用 Builder 构造：
+
+```java
+UiGenerationRequest request =
+    UiGenerationRequest.builder()
+        .extensionId("alarm")
+        .userInput("生成告警概览，用业务徽章展示严重级别")
+        .request(Map.of("tenant", "acme"))
+        .response(response)
+        .suggestion("优先使用基础组件，不要编造未注册业务组件")
+        .editMode(false)
+        .toolCalls(true)
+        .bindings(true)
+        .build();
+```
+
+`request` 和 `response` 在构造时被复制为不可变 `LinkedHashMap`，保持插入顺序；`null` 归一化为空 `Map`。
+
+## 字段说明
+
+| 字段 | 类型 | 作用 |
+| --- | --- | --- |
+| `extensionId` | `String` | 选择已注册的 `GenUIExtension`。`null` 时只用 base contract 组装。 |
+| `userInput` | `String` | 用户自然语言指令，作为 user message 主体。 |
+| `request` | `Map<String, Object>` | 请求上下文数据，以 JSON code block 嵌入用户消息，供模型参考。 |
+| `response` | `Map<String, Object>` | 完整渲染数据。同时用于 prompt data model（经 Characterization）和流式首帧 `dataModel`（原样）。 |
+| `suggestion` | `String` | 请求级 prompt overlay。被转换为一条 `additionalRule` 追加到 prompt，不改变已注册扩展。 |
+| `editMode` | `Boolean` | 为 `true` 时 prompt 包含 Edit Mode section（增量编辑规则）。 |
+| `inlineMode` | `Boolean` | 为 `true` 时 prompt 包含 Inline Mode section（代码/文本双模式）。 |
+| `toolCalls` | `Boolean` | 为 `true`（或有 tools 时默认 `true`）时 prompt 包含 Query/Mutation/Tool Workflow sections。 |
+| `bindings` | `Boolean` | 为 `true`（或 `toolCalls` 为 `true` 时默认跟随）时 prompt 包含 $binding 语法和 Interactive Filters。 |
+
+## 请求到 prompt 的映射
+
+`GenUiGenerator.toPromptRequest()` 把 `UiGenerationRequest` 转换为 `GenUIPromptRequest`：
+
+```java
+private GenUIPromptRequest toPromptRequest(UiGenerationRequest request) {
+    List<String> extraRules = request.suggestion() == null || request.suggestion().isBlank()
+            ? List.of()
+            : List.of(request.suggestion());
+
+    DataModelSpec dataModel = request.response().isEmpty()
+            ? null
+            : new DataModelSpec("Response data", request.response());
+    return new GenUIPromptRequest(request.extensionId(), dataModel, extraRules,
+            request.editMode(), request.inlineMode(), request.toolCalls(), request.bindings());
+}
+```
+
+关键映射：
+
+- **`suggestion` → `extraRules`**：这是 Request Overlay 机制。`suggestion` 被包装成单元素列表传给 `GenUIPromptRequest.extraRules()`，在 `assemblePrompt` 中追加到 `additionalRules` 末尾。它只在本次请求生效，不持久化到扩展。
+- **`response` → `DataModelSpec`**：`response` 被包装为 `DataModelSpec("Response data", response)`。该 `DataModelSpec` 的 `raw` 是完整渲染数据；在 `assemblePrompt` 的 Characterization 阶段，`raw` 会被替换为样本树 + sidecar（如果数据量大），但 `response` 本身不受影响。
+- **`editMode` / `inlineMode` / `toolCalls` / `bindings`**：直接透传，控制 prompt 中对应 section 的开关。
+
+## dataModel 双路径
+
+同一个 `request.response()` 走两条独立路径，只共享只读引用：
+
+1. **Prompt Data Model**：`DataModelSpec.raw` 进入 prompt。当数据量大时，Characterization 把它替换为样本树（前 K 行）+ TypeScript sidecar（完整 schema、enum domain、真实计数）。模型看到的是缩减后的形状描述，但能生成正确的 `data.<field>` 引用。
+2. **Render Data Model**：`response` 原样进入 `GenUiGenerationResult.dataModel()` 和流式首帧 `RenderStreamEnvelope.dataModel()`。前端 runtime 绑定的是完整数据，不会被采样或缩减。
+
+Characterization 只触碰 Prompt Data Model。详见 [Characterization](./characterization)。
+
+## 用户消息组装
+
+`GenUiGenerator.userMessage()` 把 `userInput` 和 `request` 组装为 user message：
+
+```text
+{userInput}
+
+## Request Context
+```json
+{Json.stringifyPretty(request)}
+```
+ /no_think
+```
+
+- 如果 `userInput` 为 `null`，消息体只有 Request Context。
+- 如果 `request` 为空，省略 Request Context section。
+- 末尾追加 ` /no_think`（抑制模型 thinking 输出的网关指令）。
+
+系统消息则由 `assemblePrompt()` 产生的完整 prompt 担任。

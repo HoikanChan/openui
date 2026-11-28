@@ -1,0 +1,143 @@
+---
+title: LLM Transport
+description: GenUiLlmConfig 配置、LlmTransport SPI、RestfulLlmTransport 实现、ChatCompletion 协议层和 SSE 解析。
+---
+
+`GenUiGenerator` 通过 `LlmTransport` SPI 调用 LLM 网关。SDK 提供 `RestfulLlmTransport` 默认实现，并内置 ChatCompletion 请求/响应协议和 SSE delta 解析。
+
+## GenUiLlmConfig
+
+```java
+public final class GenUiLlmConfig {
+    public static final String DEFAULT_ENDPOINT = "/rest/netrsn/v1/chat/completions";
+    public static final String DEFAULT_MODEL = "qwen3.6-27b";
+
+    // 字段：endpoint, defaultModel, temperature, enableThinking,
+    //       jsonObjectResponse, extraHeaders
+}
+```
+
+| 选项 | 默认 | 含义 |
+| --- | --- | --- |
+| `endpoint` | `/rest/netrsn/v1/chat/completions` | LLM 网关路径 |
+| `defaultModel` | `qwen3.6-27b` | 默认模型名 |
+| `temperature` | `0` | 采样温度 |
+| `enableThinking` | `false` | 是否启用模型 thinking |
+| `jsonObjectResponse` | `false` | 是否强制 `response_format.type=json_object` |
+| `extraHeaders` | 空 | 附加 HTTP 头（如 `X-Tenant-Id`） |
+
+OpenUI generation 期望模型内容是 openui-lang 文本，所以默认请求体**不**强制 JSON object 模式。如果旧网关要求 JSON object，显式打开：
+
+```java
+GenUiLlmConfig config =
+    GenUiLlmConfig.builder()
+        .jsonObjectResponse(true)
+        .build();
+```
+
+### 构造方式
+
+```java
+// 全部使用默认值
+GenUiLlmConfig.defaults();
+
+// 自定义
+GenUiLlmConfig.builder()
+    .endpoint("/custom/chat/completions")
+    .defaultModel("qwen3.6-72b")
+    .temperature(0.2)
+    .enableThinking(true)
+    .putHeader("X-Tenant-Id", tenantId)
+    .putHeader("Authorization", token)
+    .build();
+```
+
+`extraHeaders` 可以用 `putHeader(name, value)` 逐条添加，或用 `extraHeaders(map)` 批量替换。
+
+## LlmTransport SPI
+
+```java
+public interface LlmTransport {
+    String post(String body) throws LlmTransportException;        // 同步
+    InputStream postStream(String body) throws LlmTransportException;  // 流式
+}
+```
+
+- `post(body)`：发送同步请求，返回完整响应体字符串。
+- `postStream(body)`：发送流式请求，返回 `InputStream`（SSE 事件流）。
+
+`GenUiGenerator` 在 `create(config)` 时自动用 `RestfulLlmTransport`。需要自定义传输（如 mock 或其他 HTTP 客户端）时用 `withTransport`：
+
+```java
+GenUiGenerator generator =
+    GenUiGenerator.withTransport(config, myTransport);
+
+// 带 Characterization
+GenUiGenerator generator =
+    GenUiGenerator.withTransport(config, characterizationConfig, myTransport);
+```
+
+## RestfulLlmTransport
+
+默认实现，基于 Huawei BSP ROA `RestfulFactory`：
+
+```java
+public final class RestfulLlmTransport implements LlmTransport {
+    private static final int HTTP_OK = 200;
+    private static final String STREAM_HEADER = "SUPPORT_STREAM_CONTENT_FOR_SDK";
+
+    // postInternal: 设置 rawData、extraHeaders，流式时加 SUPPORT_STREAM_CONTENT_FOR_SDK: true
+    //               POST 到 config.endpoint()，非 200 抛 LlmTransportException
+}
+```
+
+- 同步调用：`RestfulResponse.getResponseContent()` 返回响应体。
+- 流式调用：加 `SUPPORT_STREAM_CONTENT_FOR_SDK: true` 头，`RestfulResponse.getDataStream()` 返回 SSE 流。
+- HTTP 状态码非 200 抛 `LlmTransportException`。
+
+## ChatCompletion 协议层
+
+SDK 内置 ChatCompletion 请求/响应协议，无需额外依赖：
+
+| 类 | 职责 |
+| --- | --- |
+| `ChatCompletionRequest` | 构造 ChatCompletion 请求体 JSON（`of(config, model, messages, stream)`） |
+| `ChatCompletionResponse` | 解析同步响应，`firstContent()` 取首个 choice 的 message content |
+| `ChatMessage` | 消息构造，`system(content)` / `user(content)` 工厂方法 |
+
+`GenUiGenerator.buildRequestBody()` 组装请求：
+
+```java
+GenUIPromptAssemblyResult assembly = sdk.assemblePrompt(toPromptRequest(request));
+List<ChatMessage> messages = List.of(
+    ChatMessage.system(assembly.prompt()),     // 系统 prompt
+    ChatMessage.user(userMessage(request))     // 用户消息（含 /no_think）
+);
+return ChatCompletionRequest.of(config, null, messages, stream).toJson();
+```
+
+`model` 传 `null` 时使用 `config.defaultModel()`。
+
+## SSE 解析
+
+流式响应通过 `SseDeltaParser` 解析：
+
+| 类 | 职责 |
+| --- | --- |
+| `SseDeltaParser` | 从 `InputStream` 读取 SSE 帧，提取 `delta.content`，回调消费 |
+| `SseFrames` | SSE 帧的低级分割工具 |
+
+```java
+try (InputStream stream = transport.postStream(body)) {
+    SseDeltaParser.parse(stream, delta -> {
+        accumulated.append(delta);
+        sink.accept(RenderStreamEnvelope.dsl(nextSeq[0]++, delta));
+    });
+}
+```
+
+`SseDeltaParser.parse(stream, consumer)` 逐帧读取 SSE 事件，把每个 `delta.content` 文本片段交给回调。详见 [Streaming](./streaming)。
+
+## 错误处理
+
+传输层错误统一为 `LlmTransportException`。`GenUiGenerator` 在同步路径把它包装为 `GenerationSdkException`；在流式路径，首帧 `dataModel` 发出后发生的传输错误不会抛给调用方，而是转为 `error` envelope 再发 `done`。详见 [Streaming](./streaming) 的错误处理。

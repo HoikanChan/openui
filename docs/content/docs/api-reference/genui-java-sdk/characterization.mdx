@@ -1,0 +1,106 @@
+---
+title: Characterization
+description: CharacterizationConfig 配置、Render/Prompt 双路径不变量、Enum Domain、Sample Rows、Sidecar 和效果验证。
+---
+
+大数据模型不适合完整写进 prompt。Characterization 是确定性的、无 LLM 参与的单遍转换，在保持 prompt 小巧的同时不丢失模型正确渲染所需的信息。
+
+## 双路径不变量
+
+同一个 `request.response()` 喂给两条解耦路径，只共享只读引用：
+
+- **Render Data Model**：完整 host 数据，作为 seq=0 `dataModel` envelope 发给 runtime，由 `GenUiGenerationResult.dataModel()` 返回。UI 绑定的是这份完整数据，**永远不会**被采样或缩减。
+- **Prompt Data Model**：prompt 中的数据副本。当数据量大时，Characterization 把它替换为同形状的样本树（前 K 行，长字符串截断）加一个 TypeScript 类型 **Sidecar**，携带完整 schema、每个低基数字符串字段的完整 enum domain（渲染为 `"a" | "b" | "c"` 联合，与 `@Switch` 用例同构）和真实数组/对象计数。
+
+Characterization 只触碰 Prompt Data Model。它在 `GenerationSdk.assemblePrompt`（唯一的 prompt 汇聚点）应用，因此同时覆盖 `GenUiGenerator` 路径和直接 `assemblePrompt` 调用者。
+
+当原始序列化数据小（`≤ triggerBytes`）时，gate 直接透传——小数据和跨语言 golden 测试保持逐字节一致。
+
+## Sidecar 示例
+
+Sidecar 追加在 `## Data Model` section 的 JSON sample block 之后：
+
+```ts
+data: {
+  rows: {
+    id: number
+    name: string
+    status: "closed" | "open" | "pending"
+    revenue: number
+    note?: string | null
+  }[]  // 10000 items (showing 3)
+}
+```
+
+模型看到的是缩减后的形状描述，但 `data.<field>` 引用路径在样本树中仍然有效，enum domain 完整可用。
+
+## CharacterizationConfig
+
+```java
+GenerationSdk sdk = GenerationSdk.builder()
+    .characterization(CharacterizationConfig.builder().sampleRows(5).build())
+    .build();
+```
+
+或通过 `GenUiGenerator`：
+
+```java
+GenUiGenerator generator =
+    GenUiGenerator.create(GenUiLlmConfig.defaults(), characterizationConfig);
+// 或
+GenUiGenerator.withTransport(config, characterizationConfig, transport);
+```
+
+| 选项 | 默认 | 含义 |
+| --- | --- | --- |
+| `enabled` | `true` | 主开关；`false` 恢复全量数据行为 |
+| `triggerBytes` | `2048` | 原始序列化大小超过此值时 Characterization 激活 |
+| `sampleRows` (K) | `3` | 样本树中保留的元素数量 |
+| `maxStringLen` | `80` | 超过此长度的字符串值在样本中被截断 |
+| `enumMaxDistinct` | `50` | 字符串列被判定为 enum 的绝对 distinct 值上限 |
+| `enumMaxRatio` | `0.5` | 字符串列被判定为 enum 的 `distinct / total` 上限 |
+| `deepScanLimit` | `10000` | 嵌套 object/array 列深扫 schema 推断的元素上限（不限制顶层 enum/count 完整性） |
+
+### Enum 判定规则
+
+一个字符串列成为 `EnumShape`（完整 domain）当且仅当：
+
+```
+distinct ≤ enumMaxDistinct && distinct / total ≤ enumMaxRatio
+```
+
+否则它保持为自由文本 `string`。enum/count 扫描遍历完整数组（不是样本），所以 domain 在符合条件时总是完整的。
+
+### 快速回滚
+
+```java
+CharacterizationConfig.builder().enabled(false).build()
+```
+
+`enabled=false` 恢复全量数据 prompt 行为，所有数据原样嵌入。
+
+## 形状节点
+
+Characterization 内部用 `ShapeNode` 层次描述数据形状：
+
+| 节点 | 含义 |
+| --- | --- |
+| `ObjectShape` | 对象，含有序字段列表 |
+| `ArrayShape` | 数组，含元素形状和真实计数 |
+| `FieldShape` | 对象字段，标记 optional/nullable |
+| `ScalarShape` | 标量（`ScalarType`: string/number/boolean/null） |
+| `EnumShape` | 低基数字符串，携带完整 distinct domain |
+
+`Characterizer.characterize(raw, config)` 单遍扫描完整数据，产出 `Characterized(sample, shape)`。`TsTypeRenderer.render(shape, sampleRows)` 把 shape 渲染为 TypeScript sidecar 文本。
+
+## 效果验证
+
+`CharacterizationEffectTest` 在代表性 fixture 上测量压缩效果，输出 `target/characterization-effect-metrics.md`：
+
+| 数据类型 | 压缩后占原始大小 |
+| --- | --- |
+| 10k 行表格 | ~0.05% |
+| 10k 点数值序列 | ~0.06% |
+| 深层嵌套对象 | ~0.77% |
+
+以上结果均在保持 enum domain 完整和数组计数真实的前提下达成。

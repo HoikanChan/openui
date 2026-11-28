@@ -1,0 +1,196 @@
+---
+title: Extension Registration
+description: GenUIExtension 结构、ComponentPropsSchema 校验规则、工具与组件冲突、注册流程和 JSON 示例。
+---
+
+业务扩展用 `GenUIExtension` 描述模型可使用的组件、工具、示例和规则。`GenerationSdk.register()` 在注册时做名称冲突和 propsSchema 校验，注册后扩展通过 `extensionId` 被选中参与 prompt 组装。
+
+## GenUIExtension 结构
+
+```java
+public record GenUIExtension(
+    String extensionId,                              // 扩展选择标识，必填
+    String version,                                  // 扩展版本，写入 Contract Version
+    Map<String, ComponentPromptSpec> components,     // 业务组件契约
+    List<ComponentGroup> componentGroups,            // prompt 中的组件分组
+    List<ToolSpec> tools,                            // 业务工具契约
+    List<String> examples,                           // prompt Examples section
+    List<String> additionalRules                     // prompt Additional Rules
+) {}
+```
+
+所有集合字段在构造时被复制为不可变 `Map`/`List`，`null` 会被归一化为空集合。`components` 使用 `LinkedHashMap` 保持注册顺序，该顺序决定 prompt 中组件签名的出现顺序。
+
+## ComponentPromptSpec
+
+```java
+public record ComponentPromptSpec(
+    String description,               // prompt 中签名后的说明文字
+    Map<String, Object> propsSchema   // OpenUI JSON Schema 子集
+) {}
+```
+
+`propsSchema` 是 OpenUI 控制的 JSON Schema 子集，用于注册时形状校验和 prompt 签名生成。它**不是**完整 JSON Schema——SDK 只支持组件 prop 校验所需的约定子集。
+
+### propsSchema 校验规则
+
+`ComponentPropsSchema.validate()` 在注册时执行以下校验：
+
+1. 如果 `propsSchema` 为空或只含 `x-openui-signature`（遗留签名），跳过校验。
+2. 如果存在 `type` 字段，必须为 `"object"`。
+3. `required` 数组中的每个属性必须存在于 `properties` 中。
+4. **required 属性必须排在 optional 属性前面**。如果 optional 属性之后再出现 required 属性，注册会失败。
+
+第 4 条是因为 `propsSchema.properties` 的顺序定义了生成 `openui-lang` 组件调用的位置参数顺序。位置参数调用要求所有 required 参数在前，optional 参数在后。
+
+```java
+// 校验失败示例：optional 之后出现 required
+{
+  "type": "object",
+  "properties": {
+    "title": { "type": "string" },        // required
+    "size":  { "type": "string" },        // optional
+    "data":  { "type": "array" }          // required —— 抛出异常
+  },
+  "required": ["title", "data"]
+}
+```
+
+```java
+// 正确示例：required 在前，optional 在后
+{
+  "type": "object",
+  "properties": {
+    "title": { "type": "string" },
+    "data":  { "type": "array" },
+    "size":  { "type": "string" }
+  },
+  "required": ["title", "data"]
+}
+```
+
+### 签名生成
+
+`ComponentPropsSchema.formatSignature()` 从 `propsSchema` 生成 prompt 中的组件签名。它支持：
+
+- `enum` → 渲染为 `"a" | "b" | "c"` 联合类型
+- `component: true` → 渲染为 `Component`
+- `array` → 渲染为 `T[]`
+- `object` → 递归渲染为 `{ field?: type, ... }`
+- `integer` → 归一化为 `number`
+- `type` 为数组 → 渲染为联合类型
+
+### 遗留签名
+
+`ComponentPromptSpec` 提供遗留构造器 `new ComponentPromptSpec(signature, description)`，会把签名存入 `propsSchema` 的 `x-openui-signature` 字段。`formatSignature` 优先使用遗留签名（如果存在），以便 prompt golden 测试逐步迁移到 `propsSchema`。
+
+## ToolSpec
+
+```java
+public record ToolSpec(
+    String name,                              // 工具名，必填
+    String description,                       // prompt 中的工具说明
+    Map<String, Object> inputSchema,          // JSON Schema 输入描述
+    Map<String, Object> outputSchema,         // JSON Schema 输出描述（用于 Query 默认值）
+    ToolAnnotations annotations               // 工具注解
+) {}
+```
+
+`inputSchema` 和 `outputSchema` 使用 `LinkedHashMap`（而非 `Map.copyOf`）保持属性顺序，因为属性顺序驱动签名字段顺序和 Query 默认值形状，必须与 TypeScript prompt 逐字节对齐。
+
+## ComponentGroup
+
+```java
+public record ComponentGroup(
+    String name,                 // prompt 中的分组标题
+    List<String> components,     // 该分组包含的组件名
+    List<String> notes           // 分组下的附加说明
+) {}
+```
+
+`ComponentGroup` 控制 prompt 中组件签名的分组显示。`PromptAssembler` 会按分组顺序输出，未出现在任何分组中的组件归入 "Other"。注册时校验分组引用的组件名必须存在于已注册组件集合中。
+
+## 注册校验
+
+`GenerationSdk.register(GenUIExtension)` 按顺序执行：
+
+1. `extensionId` 必填，不能为空。
+2. 每个组件的 `propsSchema` 通过 `ComponentPropsSchema.validate()`。
+3. **组件名冲突**：扩展组件名不能与 base contract 组件名重复，否则抛出 `Component name collision`。
+4. 扩展的 `componentGroups` 引用的组件名必须存在于 base + 扩展的合并组件集合中。
+5. **工具名冲突**：扩展工具名不能与 base contract 工具名重复。
+6. 扩展内工具名不能重复。
+
+通过校验后，扩展以 `extensionId` 为 key 存入内部 `Map`。重新注册相同 `extensionId` 会替换该扩展。一个 `extensionId` 隔离一个扩展，生成时不会读取其他扩展的契约。
+
+## JSON 示例
+
+服务通常从 JSON 读取扩展并注册：
+
+```java
+String extensionJson = """
+    {
+      "extensionId": "alarm",
+      "version": "1.0.0",
+      "components": {
+        "SeverityBadge": {
+          "description": "告警严重级别徽章",
+          "propsSchema": {
+            "type": "object",
+            "properties": {
+              "level": { "type": "string", "enum": ["critical", "warning", "info"] },
+              "count": { "type": "integer" }
+            },
+            "required": ["level"]
+          }
+        }
+      },
+      "componentGroups": [
+        { "name": "告警组件", "components": ["SeverityBadge"] }
+      ],
+      "tools": [
+        {
+          "name": "listAlarms",
+          "description": "查询告警列表",
+          "inputSchema": {
+            "type": "object",
+            "properties": { "severity": { "type": "string" } }
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": { "rows": { "type": "array" } }
+          }
+        }
+      ],
+      "examples": [
+        "root = Stack([header, SeverityBadge(\"critical\", 3)])"
+      ],
+      "additionalRules": [
+        "优先使用 SeverityBadge 展示严重级别"
+      ]
+    }
+    """;
+
+GenUIExtension extension = objectMapper.readValue(extensionJson, GenUIExtension.class);
+generator.register(extension);
+```
+
+生成时选择扩展：
+
+```java
+UiGenerationRequest request =
+    UiGenerationRequest.builder()
+        .extensionId("alarm")
+        .userInput("生成告警概览，用业务徽章展示严重级别")
+        .response(response)
+        .build();
+```
+
+## 注意事项
+
+- `extensionId` 是扩展选择标识，发布端和生成请求必须一致。
+- 组件名不能与 base contract 或同 extension 内其他组件重名。
+- 工具名不能与 base contract、已注册 extension 工具或请求级工具重名。
+- `propsSchema.properties` 顺序会影响 prompt 中的位置参数顺序。
+- required props 必须排在 optional props 前面，否则注册会失败。
+- 后端注册业务组件后，前端 runtime 也必须注册同名组件，否则 DSL 通过校验后仍无法渲染。
