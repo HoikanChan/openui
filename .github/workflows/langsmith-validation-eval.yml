@@ -1,0 +1,49 @@
+name: LangSmith Validation Evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      dataset_prefix:
+        description: Dataset name prefix in LangSmith
+        required: false
+        default: genui
+
+jobs:
+  validation-eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build evaluation runner
+        run: mvn -B -pl packages/genui-eval-langsmith -am package -DskipTests
+
+      - name: Run zero-LLM validation corpus and repair baseline
+        env:
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_ENDPOINT: ${{ vars.LANGSMITH_ENDPOINT || 'https://api.smith.langchain.com' }}
+        run: |
+          JAR=packages/genui-eval-langsmith/target/genui-eval-langsmith.jar
+          java -jar "$JAR" eval-corpus \
+            --dir=validation-test \
+            --dataset="${{ inputs.dataset_prefix }}-validation-test" \
+            --offline-report=target/validation-corpus.html
+          java -jar "$JAR" eval-repair \
+            --cases=packages/genui-java-sdk/repair-cases \
+            --dataset="${{ inputs.dataset_prefix }}-repair-cases" \
+            --out=target/repair-validation.jsonl \
+            --offline-report=target/repair-validation.html
+
+      - name: Upload offline HTML reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: genui-eval-html-reports
+          path: |
+            target/validation-corpus.html
+            target/repair-validation.html
+            target/repair-validation.jsonl

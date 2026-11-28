@@ -28,6 +28,7 @@
     <module>tools/lint-rules</module>
     <module>packages/genui-java-sdk</module>
     <module>packages/genui-eval-cli</module>
+    <module>packages/genui-eval-langsmith</module>
   </modules>
 
   <!--

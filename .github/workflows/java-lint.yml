@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - "packages/genui-java-sdk/**"
+      - "packages/genui-eval-langsmith/**"
       - "packages/genui-eval-cli/**"
       - "config/checkstyle/**"
       - "config/spotbugs/**"
@@ -16,6 +17,7 @@ on:
   pull_request:
     paths:
       - "packages/genui-java-sdk/**"
+      - "packages/genui-eval-langsmith/**"
       - "packages/genui-eval-cli/**"
       - "config/checkstyle/**"
       - "config/spotbugs/**"
