@@ -213,7 +213,9 @@ public final class ProgramAnalyzer {
         if (!(value.expr() instanceof AstNode.Comp comp)) {
             return false;
         }
-        return !builtins.isBuiltin(comp.name()) && !BuiltinCatalog.isReservedCall(comp.name());
+        return !builtins.isBuiltin(comp.name())
+                && !BuiltinCatalog.isActionCall(comp.name(), comp.prefixed())
+                && !BuiltinCatalog.isReservedCall(comp.name());
     }
 
     // ───────────────────────────────────────────────────────────────────────────
@@ -315,6 +317,13 @@ public final class ProgramAnalyzer {
             // Builtin: recurse args for nested refs/components; not a renderable element.
             // 实参角色(Each/Render 的 binder 与模板位)由 builtin module 给出。
             walkBuiltinArguments(comp, ctx);
+            return DYNAMIC;
+        }
+
+        if (BuiltinCatalog.isActionCall(name, comp.prefixed())) {
+            for (AstNode a : comp.args()) {
+                walkExpr(a, ctx);
+            }
             return DYNAMIC;
         }
 

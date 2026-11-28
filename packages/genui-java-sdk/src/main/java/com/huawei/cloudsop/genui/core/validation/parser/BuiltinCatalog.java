@@ -35,9 +35,16 @@ public final class BuiltinCatalog {
     /** 保留的语句级调用名之一：{@code Mutation}。 */
     public static final String MUTATION = "Mutation";
 
+    /** 动作容器调用名：{@code Action}（语法免 {@code @} 前缀）。 */
+    public static final String ACTION_CONTAINER = "Action";
+
+    /** 动作步骤名集合（须带前导 {@code @} 前缀调用）。 */
+    private static final Set<String> ACTION_STEP_NAMES =
+            Set.of("Run", "ToAssistant", "OpenUrl", "Set", "Reset");
+
     /** 全部 action 表达式名（步骤与容器）。 */
     private static final Set<String> ACTION_NAMES =
-            Set.of("Run", "ToAssistant", "OpenUrl", "Set", "Reset", "Action");
+            Set.of("Run", "ToAssistant", "OpenUrl", "Set", "Reset", ACTION_CONTAINER);
 
     /** 保留的语句级调用名集合。 */
     private static final Set<String> RESERVED_CALLS = Set.of(QUERY, MUTATION);
@@ -109,6 +116,21 @@ public final class BuiltinCatalog {
      */
     public static boolean isActionName(String name) {
         return ACTION_NAMES.contains(name);
+    }
+
+    /**
+     * 判断一次调用是否为合法的动作调用：{@code Action(...)} 免 {@code @} 前缀，动作步骤（{@code @Run} / {@code @ToAssistant}
+     * / {@code @OpenUrl} / {@code @Set} / {@code @Reset}）须带前导 {@code @} 前缀。
+     *
+     * @param name 调用名（已剥离前导 {@code @}）
+     * @param prefixed 源码中是否带前导 {@code @} 前缀
+     * @return 合法的动作调用时为 {@code true}
+     */
+    public static boolean isActionCall(String name, boolean prefixed) {
+        if (ACTION_CONTAINER.equals(name)) {
+            return true;
+        }
+        return prefixed && ACTION_STEP_NAMES.contains(name);
     }
 
     /**

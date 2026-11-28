@@ -828,6 +828,15 @@ public final class AnalysisSession {
             return builtinAnalysis.analyze(
                     comp, new BuiltinAnalysis.AnalysisContext(this, statementId, env, resolving));
         }
+        if (BuiltinCatalog.isActionCall(comp.name(), comp.prefixed())) {
+            for (AstNode argument : comp.args()) {
+                synth(argument, statementId, env, resolving);
+            }
+            if (BuiltinCatalog.ACTION_CONTAINER.equals(comp.name())) {
+                return Fact.of(new Type.Component("ActionExpression"));
+            }
+            return Fact.unknown(Fact.Loss.UNKNOWN_INPUT);
+        }
         ComponentDef definition = input.catalog().get(comp.name());
         if (definition == null) {
             for (AstNode argument : comp.args()) {
@@ -856,6 +865,9 @@ public final class AnalysisSession {
                 continue;
             }
             ParamDef param = params.get(index);
+            if (!param.required() && argument instanceof AstNode.Null) {
+                continue;
+            }
             Expectation expectation = compileParamExpectation(comp.name(), param);
             if (expectation == null) {
                 continue;
