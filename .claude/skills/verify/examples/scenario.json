@@ -1,0 +1,13 @@
+{
+  "source": "Example using the package's documented component contract, not a production bug fixture.",
+  "scenarios": [
+    {
+      "id": "hello-text",
+      "dsl": "root = TextContent(data.greeting)",
+      "data": { "greeting": "Hello OpenUI" },
+      "width": 400,
+      "expectText": ["Hello OpenUI"],
+      "absentText": ["Error"]
+    }
+  ]
+}
