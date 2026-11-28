@@ -119,9 +119,6 @@
         <version>${fmt.plugin.version}</version>
         <configuration>
           <style>AOSP</style>
-          <filesToExclude>
-            **/generated-sources/**/*.java
-          </filesToExclude>
         </configuration>
         <executions>
           <execution>
