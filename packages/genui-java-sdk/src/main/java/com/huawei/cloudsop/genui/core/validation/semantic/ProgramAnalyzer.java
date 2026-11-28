@@ -134,7 +134,7 @@ public final class ProgramAnalyzer {
                             null,
                             refSpan.line(),
                             refSpan.column(),
-                            RepairHints.unresolvedRefHint(ref.name()),
+                            RepairHints.unresolvedRefHint(ref.name(), builtins),
                             false));
         }
 

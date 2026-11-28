@@ -25,28 +25,28 @@ class ChartLengthProofTest {
     @Test
     void exactEqualLengthsProveEquality() {
         assertTrue(
-                AnalysisSession.provenSameLength(
+                ComponentConsumerValidator.provenSameLength(
                         new long[] {2, 2}, withoutSource(), new long[] {2, 2}, withoutSource()));
     }
 
     @Test
     void exactDifferentLengthsDoNotProveEquality() {
         assertFalse(
-                AnalysisSession.provenSameLength(
+                ComponentConsumerValidator.provenSameLength(
                         new long[] {2, 2}, withoutSource(), new long[] {3, 3}, withoutSource()));
     }
 
     @Test
     void oneExactOneNonExactDoesNotProveEquality() {
         assertFalse(
-                AnalysisSession.provenSameLength(
+                ComponentConsumerValidator.provenSameLength(
                         new long[] {2, 2}, withoutSource(), UNBOUNDED, withSources("ref:rows")));
     }
 
     @Test
     void identicalNonExactIntervalsFromDifferentSourcesProveNothing() {
         assertFalse(
-                AnalysisSession.provenSameLength(
+                ComponentConsumerValidator.provenSameLength(
                         UNBOUNDED,
                         withSources("ref:active"),
                         UNBOUNDED,
@@ -62,7 +62,7 @@ class ChartLengthProofTest {
         Fact each = ops.map(sorted, Fact.of(Types.scalar(Type.ScalarKind.STRING)));
 
         assertTrue(
-                AnalysisSession.provenSameLength(UNBOUNDED, each, UNBOUNDED, each),
+                ComponentConsumerValidator.provenSameLength(UNBOUNDED, each, UNBOUNDED, each),
                 "Each/Sort 必须保留输入的长度来源");
         assertTrue(each.lengthSourceIdentities().contains("ref:rows"));
         assertTrue(each.knownLength().isPresent() && each.knownLength().getAsLong() == 3);
@@ -80,13 +80,13 @@ class ChartLengthProofTest {
     @Test
     void sameDataPathProvesEqualityWithoutAnyDerivation() {
         assertTrue(
-                AnalysisSession.provenSameLength(
+                ComponentConsumerValidator.provenSameLength(
                         UNBOUNDED,
                         withSources("path:data.labels"),
                         UNBOUNDED,
                         withSources("path:data.labels")));
         assertFalse(
-                AnalysisSession.provenSameLength(
+                ComponentConsumerValidator.provenSameLength(
                         UNBOUNDED,
                         withSources("path:data.labels"),
                         UNBOUNDED,

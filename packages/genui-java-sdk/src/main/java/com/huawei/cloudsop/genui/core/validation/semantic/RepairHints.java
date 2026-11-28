@@ -72,7 +72,17 @@ public final class RepairHints {
     private RepairHints() {}
 
     /**
-     * 将一个未解析的引用名路由为修复提示：
+     * 将一个未解析的引用名按默认 builtin 词表路由为修复提示。
+     *
+     * @param name 未解析的引用名
+     * @return 修复提示文案
+     */
+    public static String unresolvedRefHint(String name) {
+        return unresolvedRefHint(name, BuiltinCatalog.getDefault());
+    }
+
+    /**
+     * 将一个未解析的引用名按指定 builtin 词表路由为修复提示：
      *
      * <ol>
      *   <li>精确（区分大小写）匹配内置函数名 → 模型忘记了前导 {@code @}；
@@ -81,11 +91,14 @@ public final class RepairHints {
      * </ol>
      *
      * @param name 未解析的引用名
+     * @param builtins 当前生效契约的 builtin 词表，可为 {@code null}
      * @return 修复提示文案
      */
-    public static String unresolvedRefHint(String name) {
+    public static String unresolvedRefHint(String name, BuiltinCatalog builtins) {
+        BuiltinCatalog effectiveBuiltins =
+                builtins == null ? BuiltinCatalog.getDefault() : builtins;
         // 契约 builtin 或 Action 步骤名均需 @ 前缀调用——两档提示一致。
-        if (BuiltinCatalog.getDefault().isBuiltin(name) || BuiltinCatalog.isActionName(name)) {
+        if (effectiveBuiltins.isBuiltin(name) || BuiltinCatalog.isActionName(name)) {
             return DID_YOU_MEAN_PREFIX
                     + name
                     + "\"? openui-lang builtins must be called with a leading '@'";
