@@ -14,6 +14,7 @@ import { dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
 import { loadBenchmarkCases } from "./benchmark-loader";
+import { reactUiDslViewTargetPlugin } from "./report-cli.mjs";
 import {
   forwardPromptCorrections,
   getPendingJudgeCorrections,
@@ -26,6 +27,7 @@ import { appendIteration, formatHistorySummary, readEvalHistory } from "./eval/e
 import { aggregateFailingPatterns, computeOverallScore } from "./eval/failing-patterns";
 import { judgeFixturesIncremental, makeFailedFixtureScore } from "./eval/judge";
 import { clearJudgeCache } from "./eval/judge-cache";
+import { pushVisualJudgeFeedback } from "./eval/langsmith-feedback";
 import { regenFixtures } from "./eval/regen";
 import {
   clearReportAppCache,
@@ -57,23 +59,24 @@ const packageRoot = resolve(__dirname, "../../..");
 const workspaceRoot = resolve(packageRoot, "../..");
 const reportAppRoot = resolve(__dirname, "report-app");
 
-// Load .env from package root so EVAL_JUDGE_RUNNER, LLM_API_KEY, etc. are available
-// without requiring the caller to source the file manually.
+// Load .env from package root (fallback to workspace root) so EVAL_JUDGE_RUNNER, LLM_API_KEY,
+// LANGSMITH_API_KEY, etc. are available without requiring the caller to source manually.
 (function loadDotEnv() {
-  const envPath = resolve(packageRoot, ".env");
-  if (!existsSync(envPath)) return;
-  for (const rawLine of readFileSync(envPath, "utf-8").split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    const sep = line.indexOf("=");
-    if (sep <= 0) continue;
-    const key = line.slice(0, sep).trim();
-    if (!key || process.env[key] !== undefined) continue;
-    const val = line
-      .slice(sep + 1)
-      .trim()
-      .replace(/^(['"])(.*)\1$/, "$2");
-    process.env[key] = val;
+  for (const envPath of [resolve(packageRoot, ".env"), resolve(workspaceRoot, ".env")]) {
+    if (!existsSync(envPath)) continue;
+    for (const rawLine of readFileSync(envPath, "utf-8").split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) continue;
+      const sep = line.indexOf("=");
+      if (sep <= 0) continue;
+      const key = line.slice(0, sep).trim();
+      if (!key || process.env[key] !== undefined) continue;
+      const val = line
+        .slice(sep + 1)
+        .trim()
+        .replace(/^(['"])(.*)\1$/, "$2");
+      process.env[key] = val;
+    }
   }
 })();
 
@@ -166,6 +169,7 @@ async function buildReportApp(reportDir: string): Promise<void> {
     configFile: false,
     publicDir: false,
     root: reportAppRoot,
+    plugins: [reactUiDslViewTargetPlugin(packageRoot)],
     resolve: {
       alias: {
         "@cloudsop/openui-lang-core": resolve(workspaceRoot, "packages/lang-core/src/index"),
@@ -465,6 +469,28 @@ async function runJudgePhase(
   const tmpPath = `${dataPath}.tmp`;
   writeFileSync(tmpPath, JSON.stringify(enhanced, null, 2), "utf-8");
   renameSync(tmpPath, dataPath);
+  try {
+    const renderResults = Object.fromEntries(
+      enhanced.entries.map((e) => [
+        e.id,
+        { passed: e.status !== "failed", error: e.failureReason },
+      ]),
+    );
+    const pushed = await pushVisualJudgeFeedback({
+      runDir: ctx.reportDir,
+      scores: allScores,
+      overallScore,
+      renderResults,
+    });
+    if (pushed.uploadedRuns > 0) {
+      console.log(
+        `[langsmith] Uploaded visual judge feedback for ${pushed.uploadedRuns} fixture(s)` +
+          ` (${pushed.uploadedScreenshots} rendered screenshot attachment(s)).`,
+      );
+    }
+  } catch (err) {
+    console.warn(`[langsmith] Failed to push visual judge feedback: ${String(err)}`);
+  }
   markPhaseDone(ctx.runId, "judge");
   return enhanced;
 }

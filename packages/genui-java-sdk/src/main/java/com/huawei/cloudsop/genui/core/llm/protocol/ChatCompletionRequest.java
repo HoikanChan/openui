@@ -24,6 +24,7 @@ public final class ChatCompletionRequest {
     private final double temperature;
     private final boolean enableThinking;
     private final boolean jsonObjectResponse;
+    private final boolean includeStreamUsage;
 
     private ChatCompletionRequest(
             String model,
@@ -31,13 +32,15 @@ public final class ChatCompletionRequest {
             boolean stream,
             double temperature,
             boolean enableThinking,
-            boolean jsonObjectResponse) {
+            boolean jsonObjectResponse,
+            boolean includeStreamUsage) {
         this.model = model;
         this.messages = List.copyOf(messages == null ? List.of() : messages);
         this.stream = stream;
         this.temperature = temperature;
         this.enableThinking = enableThinking;
         this.jsonObjectResponse = jsonObjectResponse;
+        this.includeStreamUsage = includeStreamUsage;
     }
 
     /**
@@ -61,11 +64,13 @@ public final class ChatCompletionRequest {
                 stream,
                 effectiveConfig.temperature(),
                 effectiveConfig.enableThinking(),
-                effectiveConfig.jsonObjectResponse());
+                effectiveConfig.jsonObjectResponse(),
+                effectiveConfig.includeStreamUsage());
     }
 
     /**
-     * 序列化为 OpenAI 兼容的 JSON 请求体。response_format 仅在配置启用 JSON object 响应时出现。
+     * 序列化为 OpenAI 兼容的 JSON 请求体。response_format 仅在配置启用 JSON object 响应时出现；stream_options
+     * 仅在流式且启用用量采集时出现。
      *
      * @return JSON 文本
      */
@@ -73,6 +78,9 @@ public final class ChatCompletionRequest {
         LinkedHashMap<String, Object> body = new LinkedHashMap<>();
         body.put("model", model);
         body.put("stream", stream);
+        if (stream && includeStreamUsage) {
+            body.put("stream_options", Map.of("include_usage", true));
+        }
         body.put("temperature", temperature);
         body.put("enable_thinking", enableThinking);
         if (jsonObjectResponse) {

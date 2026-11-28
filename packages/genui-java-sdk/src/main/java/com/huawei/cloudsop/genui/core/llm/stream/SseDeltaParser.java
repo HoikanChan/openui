@@ -5,6 +5,7 @@
 package com.huawei.cloudsop.genui.core.llm.stream;
 
 import com.huawei.cloudsop.genui.core.Json;
+import com.huawei.cloudsop.genui.core.llm.LlmUsage;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,6 +30,15 @@ public final class SseDeltaParser {
     private SseDeltaParser() {}
 
     /**
+     * 流式解析结果：包含累积正文与可选的尾部 token 用量。
+     *
+     * @param content 累积的完整正文
+     * @param usage 网关返回的 token 用量，未返回时为 {@code null}
+     * @since 2026
+     */
+    public record StreamParseResult(String content, LlmUsage usage) {}
+
+    /**
      * 解析整条 SSE 流。收到 {@code [DONE]} 或 finish_reason=stop 即结束；流读完仍无结束标记时 视为失败。读取使用 UTF-8。
      *
      * @param sseStream SSE 字节流
@@ -37,40 +47,56 @@ public final class SseDeltaParser {
      * @throws IOException 上游 error 帧、finish_reason 非 stop、流未以 stop/[DONE] 结束， 或底层读取失败
      */
     public static String parse(InputStream sseStream, Consumer<String> sink) throws IOException {
+        return parseWithUsage(sseStream, sink).content();
+    }
+
+    /**
+     * 解析整条 SSE 流并采集可选的 token 用量帧（如 OpenAI {@code stream_options.include_usage} 在 {@code
+     * finish_reason=stop} 之后发送的空 {@code choices} 用量帧）。
+     *
+     * @param sseStream SSE 字节流
+     * @param sink 每段 delta 正文的接收器
+     * @return 累积的完整内容与可选 token 用量
+     * @throws IOException 上游 error 帧、finish_reason 非 stop、流未以 stop/[DONE] 结束， 或底层读取失败
+     */
+    public static StreamParseResult parseWithUsage(InputStream sseStream, Consumer<String> sink)
+            throws IOException {
         Objects.requireNonNull(sseStream, "sseStream must not be null");
         Objects.requireNonNull(sink, "sink must not be null");
 
         StringBuilder pending = new StringBuilder();
-        StringBuilder accumulated = new StringBuilder();
+        ParseState state = new ParseState();
         try (InputStreamReader reader = new InputStreamReader(sseStream, StandardCharsets.UTF_8)) {
             char[] buffer = new char[READ_BUFFER_SIZE];
             int read;
             while ((read = reader.read(buffer)) != -1) {
                 pending.append(buffer, 0, read);
-                drainCompleteFrames(pending, accumulated, sink);
+                drainCompleteFrames(pending, state, sink);
             }
         } catch (StreamEnd end) {
-            return accumulated.toString();
+            return new StreamParseResult(state.accumulated.toString(), state.usage);
         }
         if (!pending.isEmpty()) {
             try {
-                handleFrame(pending.toString(), accumulated, sink);
+                handleFrame(pending.toString(), state, sink);
             } catch (StreamEnd end) {
-                return accumulated.toString();
+                return new StreamParseResult(state.accumulated.toString(), state.usage);
             }
+        }
+        if (state.sawStop) {
+            return new StreamParseResult(state.accumulated.toString(), state.usage);
         }
         throw new IOException("SSE stream ended without stop or [DONE]");
     }
 
     private static void drainCompleteFrames(
-            StringBuilder pending, StringBuilder accumulated, Consumer<String> sink)
-            throws IOException {
+            StringBuilder pending, ParseState state, Consumer<String> sink) throws IOException {
         int boundary;
         while ((boundary = frameBoundary(pending)) >= 0) {
             String frame = pending.substring(0, boundary);
             int separatorLength = separatorLength(pending, boundary);
             pending.delete(0, boundary + separatorLength);
-            handleFrame(frame, accumulated, sink);
+            handleFrame(frame, state, sink);
         }
     }
 
@@ -90,7 +116,7 @@ public final class SseDeltaParser {
         return text.substring(boundary).startsWith("\r\n\r\n") ? "\r\n\r\n".length() : 2;
     }
 
-    private static void handleFrame(String frame, StringBuilder accumulated, Consumer<String> sink)
+    private static void handleFrame(String frame, ParseState state, Consumer<String> sink)
             throws IOException {
         String payload = dataPayload(frame);
         if (payload != null && "[DONE]".equals(payload.trim())) {
@@ -100,15 +126,25 @@ public final class SseDeltaParser {
             return;
         }
 
-        String content;
-        String finishReason;
+        String content = null;
+        String finishReason = null;
         try {
             Map<String, Object> object = Json.asObject(Json.parse(payload), "SSE frame");
+            Object rawUsage = object.get("usage");
+            if (rawUsage instanceof Map<?, ?> usageMap) {
+                LlmUsage parsedUsage = LlmUsage.fromMap(usageMap);
+                if (parsedUsage != null) {
+                    state.usage = parsedUsage;
+                }
+            }
+            if (state.sawStop) {
+                return;
+            }
             if (object.get("error") != null) {
                 throw new IOException("SSE upstream error frame");
             }
-            List<Object> choices = Json.asList(object.get("choices"), "choices");
-            if (choices.isEmpty()) {
+            Object rawChoices = object.get("choices");
+            if (!(rawChoices instanceof List<?> choices) || choices.isEmpty()) {
                 return;
             }
             Map<String, Object> first = Json.asObject(choices.getFirst(), "choice");
@@ -123,14 +159,20 @@ public final class SseDeltaParser {
         }
         if (content != null && !content.isEmpty()) {
             sink.accept(content);
-            accumulated.append(content);
+            state.accumulated.append(content);
         }
         if (finishReason != null) {
             if (!"stop".equals(finishReason)) {
                 throw new IOException("incomplete, finish_reason=" + finishReason);
             }
-            throw new StreamEnd();
+            state.sawStop = true;
         }
+    }
+
+    private static final class ParseState {
+        private final StringBuilder accumulated = new StringBuilder();
+        private boolean sawStop;
+        private LlmUsage usage;
     }
 
     private static final class StreamEnd extends RuntimeException {

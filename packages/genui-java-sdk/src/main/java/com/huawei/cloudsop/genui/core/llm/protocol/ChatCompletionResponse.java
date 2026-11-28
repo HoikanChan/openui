@@ -6,6 +6,7 @@ package com.huawei.cloudsop.genui.core.llm.protocol;
 
 import com.huawei.cloudsop.genui.core.GenerationSdkException;
 import com.huawei.cloudsop.genui.core.Json;
+import com.huawei.cloudsop.genui.core.llm.LlmUsage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,9 +19,11 @@ import java.util.Map;
  */
 public final class ChatCompletionResponse {
     private final List<Choice> choices;
+    private final LlmUsage usage;
 
-    private ChatCompletionResponse(List<Choice> choices) {
+    private ChatCompletionResponse(List<Choice> choices, LlmUsage usage) {
         this.choices = List.copyOf(choices);
+        this.usage = usage;
     }
 
     /**
@@ -33,9 +36,12 @@ public final class ChatCompletionResponse {
     public static ChatCompletionResponse parse(String json) {
         Object parsed = Json.parse(json);
         Map<String, Object> object = Json.asObject(parsed, "chat completion response");
+        Object rawUsage = object.get("usage");
+        LlmUsage parsedUsage =
+                rawUsage instanceof Map<?, ?> usageMap ? LlmUsage.fromMap(usageMap) : null;
         Object choicesValue = object.get("choices");
         if (choicesValue == null) {
-            return new ChatCompletionResponse(List.of());
+            return new ChatCompletionResponse(List.of(), parsedUsage);
         }
 
         List<Object> rawChoices = Json.asList(choicesValue, "choices");
@@ -53,7 +59,7 @@ public final class ChatCompletionResponse {
             }
             parsedChoices.add(new Choice(message, asString(choice.get("finish_reason"))));
         }
-        return new ChatCompletionResponse(parsedChoices);
+        return new ChatCompletionResponse(parsedChoices, parsedUsage);
     }
 
     /**
@@ -63,6 +69,15 @@ public final class ChatCompletionResponse {
      */
     public List<Choice> choices() {
         return choices;
+    }
+
+    /**
+     * 响应中携带的 token 用量；上游未返回时为 {@code null}。
+     *
+     * @return token 用量或 {@code null}
+     */
+    public LlmUsage usage() {
+        return usage;
     }
 
     /**

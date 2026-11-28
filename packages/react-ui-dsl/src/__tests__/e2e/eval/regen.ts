@@ -3,7 +3,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { BenchmarkCase } from "../benchmark-loader.ts";
 import { runGenerationCli, type GenerationCase } from "./generation-cli.ts";
-import { markPhaseDone } from "./run-manifest.ts";
+import { writeLangSmithRunMap } from "./langsmith-feedback.ts";
+import { getRunDir, markPhaseDone } from "./run-manifest.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const EVAL_DIR = resolve(__dirname);
@@ -49,10 +50,12 @@ export async function regenFixtures(
   options: RegenOptions,
   onProgress?: (done: number, total: number) => void,
 ): Promise<{ results: RegenResult[]; success: boolean }> {
-  if (!process.env["LLM_API_KEY"]) {
+  const baseUrl = process.env["LLM_BASE_URL"] ?? "";
+  const isLocalGateway = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(baseUrl);
+  if (!process.env["LLM_API_KEY"] && !isLocalGateway) {
     throw new Error(
       "LLM_API_KEY is not set. The Eval Generation CLI needs it to call the LLM. " +
-        "Configure packages/react-ui-dsl/.env and retry.",
+        "Configure packages/react-ui-dsl/.env (or point LLM_BASE_URL to a local model) and retry.",
     );
   }
 
@@ -66,11 +69,20 @@ export async function regenFixtures(
     dataModel: f.dataModel as Record<string, unknown>,
   }));
 
+  const langsmithRuns: Record<string, string> = {};
+  let langsmithSessionId: string | undefined;
+
   let completed = 0;
   const cliResults = await runGenerationCli(cases, {
     workDir: stagingDir,
     concurrency,
     onResult: (result) => {
+      if (result.langsmithRunId) {
+        langsmithRuns[result.id] = result.langsmithRunId;
+      }
+      if (result.langsmithSessionId && !langsmithSessionId) {
+        langsmithSessionId = result.langsmithSessionId;
+      }
       if (result.status === "ok" && result.dsl) {
         writeFileSync(resolve(stagingDir, `${result.id}.dsl`), result.dsl, "utf-8");
       }
@@ -78,6 +90,12 @@ export async function regenFixtures(
       onProgress?.(completed, fixtures.length);
     },
   });
+
+  if (Object.keys(langsmithRuns).length > 0) {
+    const runDir = getRunDir(options.runId);
+    mkdirSync(runDir, { recursive: true });
+    writeLangSmithRunMap(runDir, { sessionId: langsmithSessionId, runs: langsmithRuns });
+  }
 
   const results: RegenResult[] = fixtures.map((fixture) => {
     const cliResult = cliResults.get(fixture.id);

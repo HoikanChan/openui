@@ -40,6 +40,8 @@ import java.util.function.Consumer;
  * @since 2026
  */
 public final class GenUiGenerator {
+    private static final long NANOS_PER_MILLI = 1_000_000L;
+
     private final GenerationSdk sdk;
     private final GenUiLlmConfig config;
     private final LlmTransport transport;
@@ -47,6 +49,7 @@ public final class GenUiGenerator {
     private final OpenuiLangValidator validator;
     private GenerationTiming timing = GenerationTiming.system();
     private String systemPromptOverride;
+    private GenerationObserver observer = GenerationObserver.NOOP;
 
     private GenUiGenerator(
             GenerationSdk sdk,
@@ -230,17 +233,55 @@ public final class GenUiGenerator {
     public GenUiGenerationResult generate(UiGenerationRequest request) {
         UiGenerationRequest effective =
                 request == null ? UiGenerationRequest.builder().build() : request;
+        long sessionStartedNanos = timing.nanoTime().getAsLong();
+        notifySessionStart(effective, false);
         if ("Markdown".equals(effective.renderComponentsKey())) {
-            return markdown().generate(effective);
+            return runSyncMarkdown(effective, sessionStartedNanos);
         }
         RequestBody body = buildRequest(toPromptRequest(effective), effective, false);
+        long callStartedNanos = timing.nanoTime().getAsLong();
+        notifyLlmStart(0, GenerationObserver.KIND_INITIAL, body.json());
         try {
-            String content =
-                    ChatCompletionResponse.parse(transport.post(body.json())).firstContent();
-            return new GenUiGenerationResult(
-                    OpenuiCodeExtractor.extract(content), effective.response());
+            ChatCompletionResponse response =
+                    ChatCompletionResponse.parse(transport.post(body.json()));
+            String content = response.firstContent();
+            notifyLlmEnd(
+                    0,
+                    GenerationObserver.KIND_INITIAL,
+                    content,
+                    response.usage(),
+                    callStartedNanos,
+                    null);
+            GenUiGenerationResult result =
+                    new GenUiGenerationResult(
+                            OpenuiCodeExtractor.extract(content), effective.response());
+            notifySessionEnd(result, sessionStartedNanos, null);
+            return result;
         } catch (LlmTransportException error) {
+            notifyLlmEnd(
+                    0,
+                    GenerationObserver.KIND_INITIAL,
+                    "",
+                    null,
+                    callStartedNanos,
+                    error.getMessage());
+            notifySessionEnd(null, sessionStartedNanos, error.getMessage());
             throw new GenerationSdkException("Model request failed: " + error.getMessage(), error);
+        } catch (RuntimeException error) {
+            notifySessionEnd(null, sessionStartedNanos, error.getMessage());
+            throw error;
+        }
+    }
+
+    private GenUiGenerationResult runSyncMarkdown(
+            UiGenerationRequest effective, long sessionStartedNanos) {
+        try {
+            GenUiGenerationResult result = markdown().generate(effective);
+            notifySessionEnd(result, sessionStartedNanos, null);
+            return result;
+        } catch (RuntimeException error) {
+            notifySessionEnd(null, sessionStartedNanos, error.getMessage());
+            throw error;
         }
     }
 
@@ -272,12 +313,79 @@ public final class GenUiGenerator {
         return copy;
     }
 
+    /**
+     * 绑定生成生命周期观测器,供评测、追踪和日志系统记录精确请求、诊断和 token 用量。
+     *
+     * <p>返回新实例,当前实例不受影响;{@code value} 为 null 时恢复为空观测器。
+     *
+     * @param value 观测器实现,可为 null
+     * @return 绑定该观测器的新生成器实例
+     */
+    public GenUiGenerator withObserver(GenerationObserver value) {
+        GenUiGenerator copy = scoped(transport);
+        copy.observer = value == null ? GenerationObserver.NOOP : value;
+        return copy;
+    }
+
     private GenUiGenerator scoped(LlmTransport scopedTransport) {
         GenUiGenerator copy =
                 new GenUiGenerator(sdk, config, scopedTransport, validationConfig, validator);
         copy.timing = timing;
         copy.systemPromptOverride = systemPromptOverride;
+        copy.observer = observer;
         return copy;
+    }
+
+    private void notifySessionStart(UiGenerationRequest request, boolean validationEnabled) {
+        long startedEpochMs = System.currentTimeMillis();
+        GenerationObserver.safely(
+                () ->
+                        observer.onSessionStart(
+                                request, config.defaultModel(), validationEnabled, startedEpochMs));
+    }
+
+    private void notifyLlmStart(int roundIndex, String kind, String requestBodyJson) {
+        long startedEpochMs = System.currentTimeMillis();
+        GenerationObserver.safely(
+                () ->
+                        observer.onLlmCallStart(
+                                new GenerationObserver.LlmCallStartEvent(
+                                        roundIndex,
+                                        kind,
+                                        config.defaultModel(),
+                                        requestBodyJson,
+                                        startedEpochMs)));
+    }
+
+    private void notifyLlmEnd(
+            int roundIndex,
+            String kind,
+            String rawOutput,
+            LlmUsage usage,
+            long startedNanos,
+            String errorMessage) {
+        long durationMs = (timing.nanoTime().getAsLong() - startedNanos) / NANOS_PER_MILLI;
+        long endedEpochMs = System.currentTimeMillis();
+        GenerationObserver.safely(
+                () ->
+                        observer.onLlmCallEnd(
+                                new GenerationObserver.LlmCallEndEvent(
+                                        roundIndex,
+                                        kind,
+                                        config.defaultModel(),
+                                        rawOutput,
+                                        usage,
+                                        durationMs,
+                                        endedEpochMs,
+                                        errorMessage)));
+    }
+
+    private void notifySessionEnd(
+            GenUiGenerationResult result, long startedNanos, String errorMessage) {
+        long durationMs = (timing.nanoTime().getAsLong() - startedNanos) / NANOS_PER_MILLI;
+        long endedEpochMs = System.currentTimeMillis();
+        GenerationObserver.safely(
+                () -> observer.onSessionEnd(result, durationMs, endedEpochMs, errorMessage));
     }
 
     private MarkdownGeneration markdown() {
@@ -318,27 +426,52 @@ public final class GenUiGenerator {
             Consumer<RenderStreamEnvelope> sink,
             MarkdownFallback fallback) {
         long started = timing.nanoTime().getAsLong();
+        long startedEpochMs = System.currentTimeMillis();
         Objects.requireNonNull(sink, "sink must not be null");
         Objects.requireNonNull(fallback, "fallback must not be null");
         UiGenerationRequest effective =
                 request == null ? UiGenerationRequest.builder().build() : request;
+        GenerationObserver.safely(
+                () ->
+                        observer.onSessionStart(
+                                effective,
+                                config.defaultModel(),
+                                validationConfig.validationEnabled(),
+                                startedEpochMs));
         if ("Markdown".equals(effective.renderComponentsKey())) {
-            return markdown().generateStream(effective, sink);
+            try {
+                GenUiGenerationResult result = markdown().generateStream(effective, sink);
+                notifySessionEnd(result, started, null);
+                return result;
+            } catch (RuntimeException error) {
+                notifySessionEnd(null, started, error.getMessage());
+                throw error;
+            }
         }
         GenerationSession session = new GenerationSession(transport, timing, started, sink);
-        var outcome =
-                session.run(
-                        () -> {
-                            session.ensureInitial(effective.response());
-                            return scoped(session)
-                                    .generateStreamInternal(effective, session::emit, session);
-                        });
+        GenerationSession.Outcome outcome;
+        try {
+            outcome =
+                    session.run(
+                            () -> {
+                                session.ensureInitial(effective.response());
+                                return scoped(session)
+                                        .generateStreamInternal(effective, session::emit, session);
+                            });
+        } catch (RuntimeException error) {
+            notifySessionEnd(null, started, error.getMessage());
+            throw error;
+        }
         session.ensureInitial(effective.response());
         if (outcome.failure() == null) {
             sink.accept(RenderStreamEnvelope.done(session.nextSeq()));
+            notifySessionEnd(outcome.result(), started, null);
             return outcome.result();
         }
-        return fallbackFromFailure(effective, sink, fallback, session, outcome);
+        GenUiGenerationResult fallbackResult =
+                fallbackFromFailure(effective, sink, fallback, session, outcome);
+        notifySessionEnd(fallbackResult, started, null);
+        return fallbackResult;
     }
 
     private GenUiGenerationResult fallbackFromFailure(
@@ -348,24 +481,33 @@ public final class GenUiGenerator {
             GenerationSession session,
             GenerationSession.Outcome outcome) {
         sink.accept(RenderStreamEnvelope.replace(session.nextSeq(), outcome.failure()));
+        long fallbackStartedNanos = timing.nanoTime().getAsLong();
+        notifyLlmStart(-1, GenerationObserver.KIND_MARKDOWN_FALLBACK, null);
         try {
             GenUiGenerationResult result =
                     fallback.generate(
                             effective,
                             outcome.failure(),
-                            event -> {
-                                if (!RenderStreamEnvelope.TYPE_DATA_MODEL.equals(event.type())
-                                        && !RenderStreamEnvelope.TYPE_DONE.equals(event.type())) {
-                                    sink.accept(
-                                            new RenderStreamEnvelope(
-                                                    event.type(),
-                                                    session.nextSeq(),
-                                                    event.content()));
-                                }
-                            });
+                            event -> forwardFallbackEvent(event, session, sink));
             sink.accept(RenderStreamEnvelope.done(session.nextSeq()));
-            return result.withEndReason(outcome.failure(), roundsOf(outcome.result()));
+            GenUiGenerationResult finalResult =
+                    result.withEndReason(outcome.failure(), roundsOf(outcome.result()));
+            notifyLlmEnd(
+                    -1,
+                    GenerationObserver.KIND_MARKDOWN_FALLBACK,
+                    finalResult.dsl() == null ? "" : finalResult.dsl(),
+                    null,
+                    fallbackStartedNanos,
+                    null);
+            return finalResult;
         } catch (GenerationSdkException error) {
+            notifyLlmEnd(
+                    -1,
+                    GenerationObserver.KIND_MARKDOWN_FALLBACK,
+                    "",
+                    null,
+                    fallbackStartedNanos,
+                    error.getMessage());
             sink.accept(
                     RenderStreamEnvelope.error(
                             session.nextSeq(),
@@ -375,6 +517,16 @@ public final class GenUiGenerator {
             sink.accept(RenderStreamEnvelope.done(session.nextSeq()));
             return new GenUiGenerationResult("", effective.response())
                     .withEndReason(outcome.failure(), roundsOf(outcome.result()));
+        }
+    }
+
+    private static void forwardFallbackEvent(
+            RenderStreamEnvelope event,
+            GenerationSession session,
+            Consumer<RenderStreamEnvelope> sink) {
+        if (!RenderStreamEnvelope.TYPE_DATA_MODEL.equals(event.type())
+                && !RenderStreamEnvelope.TYPE_DONE.equals(event.type())) {
+            sink.accept(new RenderStreamEnvelope(event.type(), session.nextSeq(), event.content()));
         }
     }
 
@@ -421,7 +573,8 @@ public final class GenUiGenerator {
                         config,
                         transport,
                         session::expiredNow,
-                        delta -> sink.accept(RenderStreamEnvelope.dsl(0, delta)));
+                        delta -> sink.accept(RenderStreamEnvelope.dsl(0, delta)),
+                        observer);
         session.partialSnapshot(() -> repair.snapshot(GenerationEndReason.MODEL_REQUEST_FAILED));
         try {
             GenUiGenerationResult result = repair.run(body.json());
@@ -453,16 +606,33 @@ public final class GenUiGenerator {
                                 null,
                                 GenerationEndReason.MODEL_REQUEST_FAILED,
                                 List.of()));
+        long callStartedNanos = timing.nanoTime().getAsLong();
+        notifyLlmStart(0, GenerationObserver.KIND_INITIAL, body.json());
         try (InputStream stream = transport.postStream(body.json())) {
-            SseDeltaParser.parse(
-                    stream,
-                    delta -> {
-                        sink.accept(RenderStreamEnvelope.dsl(0, delta));
-                        accumulated.append(delta);
-                    });
+            SseDeltaParser.StreamParseResult parsed =
+                    SseDeltaParser.parseWithUsage(
+                            stream,
+                            delta -> {
+                                sink.accept(RenderStreamEnvelope.dsl(0, delta));
+                                accumulated.append(delta);
+                            });
+            notifyLlmEnd(
+                    0,
+                    GenerationObserver.KIND_INITIAL,
+                    parsed.content(),
+                    parsed.usage(),
+                    callStartedNanos,
+                    null);
             return new GenUiGenerationResult(
                     OpenuiCodeExtractor.extract(accumulated.toString()), dataModel);
         } catch (LlmTransportException | IOException error) {
+            notifyLlmEnd(
+                    0,
+                    GenerationObserver.KIND_INITIAL,
+                    accumulated.toString(),
+                    null,
+                    callStartedNanos,
+                    error.getMessage());
             sink.accept(
                     RenderStreamEnvelope.error(0, "LLM_STREAM_FAILED", error.getMessage(), true));
             return new GenUiGenerationResult(

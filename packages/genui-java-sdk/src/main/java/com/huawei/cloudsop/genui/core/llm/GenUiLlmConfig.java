@@ -24,6 +24,7 @@ public final class GenUiLlmConfig {
     private final double temperature;
     private final boolean enableThinking;
     private final boolean jsonObjectResponse;
+    private final boolean includeStreamUsage;
     private final Map<String, String> extraHeaders;
 
     private GenUiLlmConfig(Builder builder) {
@@ -32,6 +33,7 @@ public final class GenUiLlmConfig {
         this.temperature = builder.temperature;
         this.enableThinking = builder.enableThinking;
         this.jsonObjectResponse = builder.jsonObjectResponse;
+        this.includeStreamUsage = builder.includeStreamUsage;
         this.extraHeaders = Map.copyOf(builder.extraHeaders);
     }
 
@@ -99,6 +101,15 @@ public final class GenUiLlmConfig {
     }
 
     /**
+     * 是否在流式请求中附带 {@code stream_options.include_usage=true},默认关闭以兼容旧网关。
+     *
+     * @return 开启流式用量请求时为 true
+     */
+    public boolean includeStreamUsage() {
+        return includeStreamUsage;
+    }
+
+    /**
      * 返回额外请求头,不可变 map。
      *
      * @return 额外请求头
@@ -122,6 +133,7 @@ public final class GenUiLlmConfig {
         private double temperature;
         private boolean enableThinking;
         private boolean jsonObjectResponse;
+        private boolean includeStreamUsage;
         private final LinkedHashMap<String, String> extraHeaders = new LinkedHashMap<>();
 
         private Builder() {}
@@ -178,6 +190,17 @@ public final class GenUiLlmConfig {
          */
         public Builder jsonObjectResponse(boolean jsonObjectResponse) {
             this.jsonObjectResponse = jsonObjectResponse;
+            return this;
+        }
+
+        /**
+         * 设置是否在流式请求中请求返回 token 用量({@code stream_options.include_usage})。
+         *
+         * @param includeStreamUsage 是否请求流式用量
+         * @return 当前构建器
+         */
+        public Builder includeStreamUsage(boolean includeStreamUsage) {
+            this.includeStreamUsage = includeStreamUsage;
             return this;
         }
 

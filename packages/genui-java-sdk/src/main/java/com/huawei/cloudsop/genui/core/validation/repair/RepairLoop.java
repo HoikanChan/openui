@@ -7,6 +7,8 @@ import com.huawei.cloudsop.genui.core.contract.GenerationContract;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerationResult;
 import com.huawei.cloudsop.genui.core.llm.GenUiLlmConfig;
 import com.huawei.cloudsop.genui.core.llm.GenerationEndReason;
+import com.huawei.cloudsop.genui.core.llm.GenerationObserver;
+import com.huawei.cloudsop.genui.core.llm.LlmUsage;
 import com.huawei.cloudsop.genui.core.llm.protocol.ChatCompletionRequest;
 import com.huawei.cloudsop.genui.core.llm.stream.SseDeltaParser;
 import com.huawei.cloudsop.genui.core.llm.transport.LlmTransport;
@@ -41,6 +43,8 @@ import java.util.function.Consumer;
 public final class RepairLoop {
     /** 模型请求中的增量修复标记,供日志与评测识别修复轮。 */
     public static final String INCREMENTAL_REPAIR_MARKER = "[REPAIR:INCREMENTAL]";
+
+    private static final long NANOS_PER_MILLI = 1_000_000L;
 
     /**
      * 本次修复使用的原始需求与契约。
@@ -79,6 +83,7 @@ public final class RepairLoop {
     private final LlmTransport transport;
     private final BooleanSupplier budgetExpired;
     private final Consumer<String> output;
+    private final GenerationObserver observer;
     private final List<RoundEndResult> rounds = new ArrayList<>();
     private boolean inFlight;
 
@@ -99,10 +104,33 @@ public final class RepairLoop {
             LlmTransport transport,
             BooleanSupplier budgetExpired,
             Consumer<String> output) {
+        this(context, validator, config, transport, budgetExpired, output, GenerationObserver.NOOP);
+    }
+
+    /**
+     * 创建带生命周期观测器的修复会话。
+     *
+     * @param context 原始生成上下文与修复次数上限
+     * @param validator 当前程序的轮末校验器
+     * @param config 模型配置;修复固定使用 temperature=0、关闭 thinking
+     * @param transport 每轮模型请求的传输实现
+     * @param budgetExpired 判断是否禁止启动第二次及之后的修复
+     * @param output 实时接收 DSL 增量,包括跨轮所需的尾部闭合文本
+     * @param observer 生命周期观测器,为 null 时退回 {@link GenerationObserver#NOOP}
+     */
+    public RepairLoop(
+            Context context,
+            OpenuiLangValidator validator,
+            GenUiLlmConfig config,
+            LlmTransport transport,
+            BooleanSupplier budgetExpired,
+            Consumer<String> output,
+            GenerationObserver observer) {
         this.context = Objects.requireNonNull(context, "context");
         this.transport = Objects.requireNonNull(transport, "transport");
         this.budgetExpired = Objects.requireNonNull(budgetExpired, "budgetExpired");
         this.output = Objects.requireNonNull(output, "output");
+        this.observer = observer == null ? GenerationObserver.NOOP : observer;
         Map<String, Object> dataModel = context.dataModel().isEmpty() ? null : context.dataModel();
         this.program =
                 new ProgramRoundSession(
@@ -118,6 +146,7 @@ public final class RepairLoop {
                         .temperature(0)
                         .enableThinking(false)
                         .jsonObjectResponse(config.jsonObjectResponse())
+                        .includeStreamUsage(config.includeStreamUsage())
                         .extraHeaders(config.extraHeaders())
                         .build();
     }
@@ -139,8 +168,8 @@ public final class RepairLoop {
             }
             inFlight = true;
         }
-        consume(initialBody);
-        RoundEndResult current = completeRound();
+        consume(0, GenerationObserver.KIND_INITIAL, initialBody);
+        RoundEndResult current = completeRound(0);
         int attempts = 0;
         while (current.validationResult().status() == ValidationStatus.INVALID
                 && (attempts == 0 || !budgetExpired.getAsBoolean())
@@ -152,8 +181,8 @@ public final class RepairLoop {
             if (!separator.isEmpty()) {
                 output.accept(separator);
             }
-            consume(body);
-            current = completeRound();
+            consume(attempts, GenerationObserver.KIND_REPAIR, body);
+            current = completeRound(attempts);
         }
         ValidationResult validation = current.validationResult();
         boolean valid = validation.status() == ValidationStatus.VALID;
@@ -204,18 +233,54 @@ public final class RepairLoop {
                 snapshot);
     }
 
-    private void consume(String body) throws LlmTransportException {
+    private void consume(int roundIndex, String kind, String body) throws LlmTransportException {
+        long startedEpochMs = System.currentTimeMillis();
+        long startedNanos = System.nanoTime();
+        String model = repairConfig.defaultModel();
+        GenerationObserver.safely(
+                () ->
+                        observer.onLlmCallStart(
+                                new GenerationObserver.LlmCallStartEvent(
+                                        roundIndex, kind, model, body, startedEpochMs)));
+        StringBuilder raw = new StringBuilder();
+        LlmUsage usage = null;
+        String errorMessage = null;
         try (InputStream stream = transport.postStream(body)) {
-            SseDeltaParser.parse(
-                    stream,
-                    delta -> {
-                        output.accept(delta);
-                        synchronized (this) {
-                            program.onDelta(delta);
-                        }
-                    });
+            SseDeltaParser.StreamParseResult parsed =
+                    SseDeltaParser.parseWithUsage(
+                            stream,
+                            delta -> {
+                                raw.append(delta);
+                                output.accept(delta);
+                                synchronized (this) {
+                                    program.onDelta(delta);
+                                }
+                            });
+            usage = parsed.usage();
         } catch (IOException error) {
+            errorMessage = error.getMessage();
             throw new LlmTransportException(error.getMessage(), error);
+        } catch (LlmTransportException error) {
+            errorMessage = error.getMessage();
+            throw error;
+        } finally {
+            long endedEpochMs = System.currentTimeMillis();
+            long durationMs = (System.nanoTime() - startedNanos) / NANOS_PER_MILLI;
+            String capturedRaw = raw.toString();
+            LlmUsage capturedUsage = usage;
+            String capturedError = errorMessage;
+            GenerationObserver.safely(
+                    () ->
+                            observer.onLlmCallEnd(
+                                    new GenerationObserver.LlmCallEndEvent(
+                                            roundIndex,
+                                            kind,
+                                            model,
+                                            capturedRaw,
+                                            capturedUsage,
+                                            durationMs,
+                                            endedEpochMs,
+                                            capturedError)));
         }
     }
 
@@ -247,10 +312,15 @@ public final class RepairLoop {
         return previousOutput;
     }
 
-    private synchronized RoundEndResult completeRound() {
-        RoundEndResult round = program.onRoundEnd();
-        rounds.add(round);
-        inFlight = false;
+    private RoundEndResult completeRound(int roundIndex) {
+        RoundEndResult round;
+        synchronized (this) {
+            round = program.onRoundEnd();
+            rounds.add(round);
+            inFlight = false;
+        }
+        long completedAt = System.currentTimeMillis();
+        GenerationObserver.safely(() -> observer.onRoundValidated(roundIndex, round, completedAt));
         return round;
     }
 

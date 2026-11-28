@@ -41,7 +41,7 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if echo "$FILES" | grep -Eq '^(packages/genui-java-sdk/|packages/genui-eval-cli/|config/(checkstyle|spotbugs|pmd)/|tools/(lint-rules|lint-regression)/|pom\.xml$|\.github/workflows/java-lint\.yml$)'; then
+          if echo "$FILES" | grep -Eq '^(packages/genui-java-sdk/|packages/genui-eval-langsmith/|packages/genui-eval-cli/|config/(checkstyle|spotbugs|pmd)/|tools/(lint-rules|lint-regression)/|pom\.xml$|\.github/workflows/java-lint\.yml$)'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"

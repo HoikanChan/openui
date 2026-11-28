@@ -8,10 +8,14 @@ import com.huawei.cloudsop.genui.core.Json;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerationResult;
 import com.huawei.cloudsop.genui.core.llm.GenUiGenerator;
 import com.huawei.cloudsop.genui.core.llm.GenerationEndReason;
+import com.huawei.cloudsop.genui.eval.langsmith.BatchRunBuffer;
+import com.huawei.cloudsop.genui.eval.trace.LangSmithGenerationObserver;
 
 import java.io.PrintStream;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -30,19 +34,40 @@ final class JobRunner {
             GenUiGenerator generator,
             PrintStream out)
             throws InterruptedException {
+        runAll(jobs, concurrency, generator, false, null, null, out);
+    }
+
+    static void runAll(
+            List<EvalCliMain.GenerationJob> jobs,
+            int concurrency,
+            GenUiGenerator generator,
+            boolean validate,
+            BatchRunBuffer langSmithBuffer,
+            String langSmithSessionId,
+            PrintStream out)
+            throws InterruptedException {
         ExecutorService pool =
                 Executors.newFixedThreadPool(Math.min(concurrency, Math.max(jobs.size(), 1)));
         try {
             List<Future<?>> futures =
                     jobs.stream()
-                            .map(job -> pool.submit(() -> runOne(job, generator, out)))
+                            .map(
+                                    job ->
+                                            pool.submit(
+                                                    () ->
+                                                            runOne(
+                                                                    job,
+                                                                    generator,
+                                                                    validate,
+                                                                    langSmithBuffer,
+                                                                    langSmithSessionId,
+                                                                    out)))
                             .<Future<?>>map(f -> f)
                             .toList();
             for (Future<?> future : futures) {
                 try {
                     future.get();
                 } catch (java.util.concurrent.ExecutionException error) {
-                    // runOne 已把用例级异常转为 error 行;走到这里属于意外,记录后继续等其余用例
                     System.err.println(
                             "[genui-eval-cli] unexpected worker failure: " + error.getCause());
                 }
@@ -53,28 +78,95 @@ final class JobRunner {
     }
 
     private static void runOne(
-            EvalCliMain.GenerationJob job, GenUiGenerator generator, PrintStream out) {
+            EvalCliMain.GenerationJob job,
+            GenUiGenerator generator,
+            boolean validate,
+            BatchRunBuffer langSmithBuffer,
+            String langSmithSessionId,
+            PrintStream out) {
         LinkedHashMap<String, Object> line = new LinkedHashMap<>();
         line.put("id", job.id());
+        LangSmithGenerationObserver observer =
+                createObserver(job, validate, langSmithBuffer, langSmithSessionId);
+        GenUiGenerator effectiveGenerator =
+                observer == null ? generator : generator.withObserver(observer);
         try {
-            GenUiGenerationResult result = EvalCliMain.GenerationJob.execute(job, generator);
+            GenUiGenerationResult result =
+                    EvalCliMain.GenerationJob.execute(job, effectiveGenerator, validate);
             String failure = dslFailure(result);
             String dsl = result.dsl() == null ? "" : result.dsl().strip();
-            if (failure != null) {
-                line.put("status", "error");
-                line.put("error", dsl.isEmpty() ? failure + " (empty DSL)" : failure);
-            } else if (dsl.isEmpty()) {
-                line.put("status", "error");
-                line.put("error", "LLM returned empty DSL");
-            } else {
-                line.put("status", "ok");
-                line.put("dsl", dsl);
-            }
+            populateResult(line, failure, dsl);
+            finishObserver(
+                    line,
+                    observer,
+                    langSmithSessionId,
+                    Map.of(
+                            "status",
+                            line.get("status"),
+                            "dsl",
+                            dsl,
+                            "endReason",
+                            result.endReason().name()),
+                    failure);
         } catch (Exception error) {
             line.put("status", "error");
             line.put("error", String.valueOf(error.getMessage()));
+            finishObserver(
+                    line,
+                    observer,
+                    langSmithSessionId,
+                    Map.of("status", "error"),
+                    error.getMessage());
         }
         emit(out, Json.stringify(line));
+    }
+
+    private static LangSmithGenerationObserver createObserver(
+            EvalCliMain.GenerationJob job,
+            boolean validate,
+            BatchRunBuffer buffer,
+            String sessionId) {
+        if (buffer == null) {
+            return null;
+        }
+        return new LangSmithGenerationObserver(
+                buffer,
+                sessionId,
+                null,
+                job.id(),
+                "eval_cli_" + job.id(),
+                Map.of("caseId", job.id(), "userInput", job.userInput()),
+                Map.of("validate", validate));
+    }
+
+    private static void populateResult(
+            LinkedHashMap<String, Object> line, String failure, String dsl) {
+        if (failure != null) {
+            line.put("status", "error");
+            line.put("error", dsl.isEmpty() ? failure + " (empty DSL)" : failure);
+        } else if (dsl.isEmpty()) {
+            line.put("status", "error");
+            line.put("error", "LLM returned empty DSL");
+        } else {
+            line.put("status", "ok");
+            line.put("dsl", dsl);
+        }
+    }
+
+    private static void finishObserver(
+            LinkedHashMap<String, Object> line,
+            LangSmithGenerationObserver observer,
+            String sessionId,
+            Map<String, Object> outputs,
+            String error) {
+        if (observer == null) {
+            return;
+        }
+        line.put("langsmithRunId", observer.rootRunId());
+        if (sessionId != null) {
+            line.put("langsmithSessionId", sessionId);
+        }
+        observer.finishRoot(outputs, error, Instant.now());
     }
 
     /**
